@@ -1,8 +1,10 @@
 /* ---- PROGRAM BANKASI -------------------------------------------------------------
    Bir sporcu için yazılan program, sporcunun profilinde (Sporcu Profili → Antrenman Programları)
    iki kaynaktan okunur:
-     • kaydedilenler — `ath.programs[]`: koçun "Profile kaydet" dediği, adı olan programlar.
-       {id, name, note, created_at, from:{date,session}, blocks:[takvim bloğu…]}
+     • kaydedilenler — `ath.programs[]`: sporcunun takviminde bir seans yazıldıkça kendiliğinden
+       (`pbAutoSave`: seans başına tek kayıt, değiştikçe aynı kayıt güncellenir, içeriği birebir aynı
+       olan ikinci kayıt açılmaz) ve koç "Profile kaydet" deyince adıyla.
+       {id, name, note, created_at, from:{date,session,sessionId,auto}, blocks:[takvim bloğu…]}
      • takvim geçmişi — `ath.days`: sporcunun takvimine yazılmış her seans (elle yazılan,
        Bireyselleştirmeden onaylanan, takımdan gelen). Bunların kopyası tutulmaz; takvimden okunur.
    Programın biçimi takvimin kendi bloğudur, bu yüzden her yazım yerine aynen yapıştırılır:
@@ -42,16 +44,49 @@ function pbMakeProgram(name,blocks,from){
   return{id:uid(),name:nm,note:'',created_at:new Date().toISOString(),from:from||null,blocks:clean};
 }
 const pbHasSame=(programs,blocks)=>{const s=pbSig(blocks);return(programs||[]).some(p=>p&&pbSig(p.blocks)===s);};
-/* Kayıt: 'ok' | 'dup' | 'empty'. Sporcunun güncel hâline uygulanır. */
+/* Takvimdeki takım senkron kopyası bir programı değil takım seansını taşır; Bireyselleştirme'nin yazdığı
+   seans (`indiv`) ise sporcuya özel yazılmıştır, o sayılır. */
+const pbOwn=s=>!!s&&(!s.sourceId||!!s.indiv);
+/* Elle kayıt: 'ok' | 'dup' | 'empty'. Aynı seans zaten kendiliğinden kaydedilmişse o kayıt adlandırılır. */
 function pbSave(athId,name,blocks,from){
   const prog=pbMakeProgram(name,blocks,from);
   if(!prog)return'empty';
+  const sid=from&&from.sessionId;
   let dup=false;
-  _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{if(a.id===athId&&pbHasSame(a.programs,prog.blocks))dup=true;}));
+  _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{
+    if(a.id!==athId)return;
+    if(sid&&(a.programs||[]).some(p=>p&&p.from&&p.from.sessionId===sid))return;
+    if(pbHasSame(a.programs,prog.blocks))dup=true;
+  }));
   if(dup)return'dup';
   if(!_pbWrite)return'empty';
-  _pbWrite(athId,a=>pbHasSame(a.programs,prog.blocks)?{}:{programs:[prog,...(a.programs||[])]});
+  _pbWrite(athId,a=>{
+    const list=a.programs||[];
+    const i=sid?list.findIndex(p=>p&&p.from&&p.from.sessionId===sid):-1;
+    if(i>=0)return{programs:list.map((p,j)=>j===i?{...p,name:prog.name,blocks:prog.blocks,from:{...prog.from}}:p)};
+    return pbHasSame(list,prog.blocks)?{}:{programs:[prog,...list]};
+  });
   return'ok';
+}
+/* Otomatik kayıt: sporcunun takviminde yazılan seans, profilinde kayıtlı program olarak durur. Seans
+   başına tek kayıt (`from.sessionId`): seans değiştikçe aynı kayıt güncellenir, adı korunur. Egzersizleri
+   sonradan silinse bile kayıt kalır. Başka bir kayıtla içeriği birebir aynıysa yenisi açılmaz. */
+function pbAutoSave(athId,session,date){
+  if(!_pbWrite||!athId||!pbOwn(session))return;
+  const blocks=pbBlocksOf(session);
+  if(!blocks.length)return;
+  _pbWrite(athId,a=>{
+    const list=a.programs||[];
+    const i=list.findIndex(p=>p&&p.from&&p.from.sessionId===session.id);
+    const from={date:date||'',session:session.name||'',sessionId:session.id,auto:i>=0?!!(list[i].from&&list[i].from.auto):true};
+    const prog=pbMakeProgram(i>=0?list[i].name:(session.name||''),blocks,from);
+    if(!prog)return{};
+    if(i>=0){
+      if(pbSig(list[i].blocks)===pbSig(prog.blocks))return{};
+      return{programs:list.map((p,j)=>j===i?{...p,blocks:prog.blocks,from}:p)};
+    }
+    return pbHasSame(list,prog.blocks)?{}:{programs:[prog,...list]};
+  });
 }
 
 /* Seçicinin ve profilin okuduğu satırlar: bir sporcunun kayıtlı programları, sonra takvimi. */
@@ -66,15 +101,16 @@ function pbRowsOf(ath,teamName){
     if(!p||!Array.isArray(p.blocks))return;
     const blocks=p.blocks.filter(b=>(b.exercises||[]).some(pbNamed));
     if(!blocks.length)return;
-    row({key:`saved:${ath.id}:${p.id}`,kind:'saved',id:p.id,name:p.name||'',date:(p.from&&p.from.date)||'',at:p.created_at||'',note:p.note||''},blocks);
+    row({key:`saved:${ath.id}:${p.id}`,kind:'saved',id:p.id,name:p.name||'',date:(p.from&&p.from.date)||'',at:p.created_at||'',note:p.note||'',auto:!!(p.from&&p.from.auto)},blocks);
   });
   const days=ath.days||{};
   Object.keys(days).forEach(dk=>{
     const d=days[dk];
     ((d&&d.sessions)||[]).forEach(s=>{
+      if(!pbOwn(s))return;
       const blocks=pbBlocksOf(s);
       if(!blocks.length)return;
-      row({key:`day:${ath.id}:${dk}:${s.id}`,kind:'day',id:s.id,name:s.name||'',date:dk,at:dk,team:!!s.sourceId},blocks);
+      row({key:`day:${ath.id}:${dk}:${s.id}`,kind:'day',id:s.id,name:s.name||'',date:dk,at:dk},blocks);
     });
   });
   return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
@@ -171,9 +207,9 @@ function PbRow({r,open,onToggle,showAth,children}){
   return(<div className={'panel pbk-row'+(open?' open':'')}>
     <div className="pbk-top">
       <button type="button" className="pbk-sum" aria-expanded={open} onClick={onToggle}>
-        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')}>{r.kind==='saved'?L('KAYITLI','SAVED'):(r.team?L('TAKIM','TEAM'):L('TAKVİM','CALENDAR'))}</span>
+        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')}>{r.kind==='saved'?L('KAYITLI','SAVED'):L('TAKVİM','CALENDAR')}</span>
         <span className="pbk-name">{r.name||first||'—'}</span>
-        <span className="pbk-meta">{showAth?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}</span>
+        <span className="pbk-meta">{showAth?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}{r.auto?' · '+L('otomatik','auto'):''}</span>
         <span className="pbk-first">{first}</span>
         <span className="inj-car" aria-hidden="true">▾</span>
       </button>
@@ -187,7 +223,11 @@ function PbRow({r,open,onToggle,showAth,children}){
 function ProgramPicker({onClose,onPick,athId,title}){
   const rows=useMemo(()=>pbAllRows(),[]);
   /* Seansın sahibi sporcunun programı varsa liste onunla açılır; yoksa herkesinki. */
-  const[f,setF]=useState(()=>({q:'',ath:rows.some(r=>r.athId===athId)?athId:'',src:''}));
+  const[f,setF]=useState(()=>{
+    const ath=rows.some(r=>r.athId===athId)?athId:'';
+    /* Kayıtlı programlar önde: takvim geçmişi kalabalık olur. Hiç kayıtlı yoksa boş liste açılmasın. */
+    return{q:'',ath,src:rows.some(r=>r.kind==='saved'&&(!ath||r.athId===ath))?'saved':''};
+  });
   const[open,setOpen]=useState(null);
   const[limit,setLimit]=useState(30);
   const set=(k,v)=>{setF(o=>({...o,[k]:v}));setLimit(30);};
@@ -212,9 +252,9 @@ function ProgramPicker({onClose,onPick,athId,title}){
             {aths.map(([id,nm])=><option key={id} value={id}>{nm}</option>)}
           </select>
           <select value={f.src} onChange={e=>set('src',e.target.value)} aria-label={L('Kaynak','Source')}>
-            <option value="">{L('Kayıtlı + takvim','Saved + calendar')}</option>
-            <option value="saved">{L(`Yalnız kayıtlı (${nSaved})`,`Saved only (${nSaved})`)}</option>
-            <option value="day">{L('Yalnız takvimde yazılanlar','Calendar only')}</option>
+            <option value="saved">{L(`Kayıtlı programlar (${nSaved})`,`Saved programmes (${nSaved})`)}</option>
+            <option value="">{L('Kayıtlı + takvim geçmişi','Saved + calendar history')}</option>
+            <option value="day">{L('Yalnız takvim geçmişi','Calendar history only')}</option>
           </select>
         </div>
         <div className="pbk-list">
@@ -224,6 +264,8 @@ function ProgramPicker({onClose,onPick,athId,title}){
           {shown.slice(0,limit).map(r=><PbRow key={r.key} r={r} showAth open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
             <button type="button" className="btn sm" onClick={()=>{onPick(r);onClose();}}>{L('Yapıştır','Paste')}</button>
           </PbRow>)}
+          {shown.length===0&&f.src==='saved'&&pbFilter(rows,{...f,src:''}).length>0&&<button type="button" className="btn sm sec"
+            onClick={()=>set('src','')}>{L(`Takvim geçmişinde ${pbFilter(rows,{...f,src:''}).length} eşleşme var — göster`,`${pbFilter(rows,{...f,src:''}).length} match(es) in the calendar history — show`)}</button>}
           {shown.length>limit&&<button type="button" className="btn sm sec" onClick={()=>setLimit(n=>n+30)}>{L(`Daha göster (${shown.length-limit})`,`Show more (${shown.length-limit})`)}</button>}
         </div>
       </div>
@@ -265,7 +307,7 @@ function AthPrograms({ath,updAth}){
   const rename=r=>{
     const nm=prompt(L('Programın adı','Programme name'),r.name);
     if(nm==null||!nm.trim())return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,name:nm.trim()}:p)}));
+    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,name:nm.trim(),from:p.from?{...p.from,auto:false}:p.from}:p)}));
   };
   const note=r=>{
     const n=prompt(L('Not (örn. hangi dönem, kime iyi geldi)','Note (e.g. which period, what it suited)'),r.note||'');
@@ -285,8 +327,8 @@ function AthPrograms({ath,updAth}){
   return(<div className="panel pbk-panel">
     <div className="pbk-head">
       <h2>{L('Antrenman Programları','Training Programmes')}</h2>
-      <span className="help">{L('Sporcu için yazılan programlar burada durur. Takvimde, Hafta/Gün planında ve Bireyselleştirme\'de "Kayıtlı program" düğmesiyle yapıştırılır.',
-        'Programmes written for this athlete live here. Paste them from the "Saved programme" button on the calendar, the Week/Day plan and Individualization.')}</span>
+      <span className="help">{L('Sporcunun takviminde yazdığın her seans buraya kendiliğinden kaydedilir (aynı içerik bir kez). Takvimde, Hafta/Gün planında ve Bireyselleştirme\'de "Kayıtlı program" düğmesiyle yapıştırılır.',
+        'Every session you write on this athlete\'s calendar is kept here automatically (identical content once). Paste them from the "Saved programme" button on the calendar, the Week/Day plan and Individualization.')}</span>
     </div>
     <div className="row" style={{gap:6,flexWrap:'wrap',marginBottom:10}}>
       <button type="button" className={'btn sm'+(src==='saved'?'':' sec')} onClick={()=>{setSrc('saved');setLimit(20);}}>{L('Kayıtlı','Saved')} ({nSaved})</button>
@@ -296,9 +338,9 @@ function AthPrograms({ath,updAth}){
     </div>
     {msg&&<div className="iv-toast" style={{marginBottom:10}}>{msg}</div>}
     {shown.length===0&&<div className="ex-empty">{rows.length===0
-      ?L('Henüz program yok. Sporcunun takvimine bir antrenman yaz; burada görünür ve "Profile kaydet" ile adlandırıp saklayabilirsin.','No programmes yet. Write a training session on the athlete\'s calendar; it shows up here and can be named and kept with "Save to profile".')
+      ?L('Henüz program yok. Sporcunun takvimine bir antrenman yaz; burada kendiliğinden görünür.','No programmes yet. Write a training session on the athlete\'s calendar; it appears here by itself.')
       :src==='saved'&&!q&&nSaved===0
-        ?L('Kayıtlı program yok. "Takvimde yazılanlar"dan birini "Profile kaydet" ile sakla, ya da takvimde bir seansta "Profile kaydet"e bas.','No saved programmes. Keep one from "Written on calendar" with "Save to profile", or press "Save to profile" inside a session.')
+        ?L('Kayıtlı program yok. Bundan sonra takvimde yazdığın seanslar kendiliğinden buraya girer; eskilerden birini "Takvimde yazılanlar"dan "Profile kaydet" ile alabilirsin.','No saved programmes yet. Sessions you write on the calendar from now on land here by themselves; keep an older one from "Written on calendar" with "Save to profile".')
         :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
     {shown.slice(0,limit).map(r=><div key={r.key}>
       <PbRow r={r} open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>

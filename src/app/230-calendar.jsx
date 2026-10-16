@@ -955,7 +955,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}
-            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null} ownerId={(ownerAth||coachAthlete||{}).id}/>)}
+            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null} ownerId={(ownerAth||coachAthlete||{}).id} dateKey={editDate}/>)}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>{L('Bitti','Done')}</button>
           </div>

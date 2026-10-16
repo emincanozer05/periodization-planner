@@ -388,7 +388,7 @@ function RpeGauge({value,onChange,hideZone}){
   </div>);
 }
 
-function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId}){
+function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId,dateKey}){
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
@@ -417,10 +417,27 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const pasteBlocks=row=>u(withName(pbAppendBlocks(session.blocks,row)));
   const saveAth=ownerId||(coach&&coach.ath&&coach.ath.id)||'';
   const[saved,setSaved]=useState('');
+  const sesDate=dateKey||(coach&&coach.date)||'';
+  /* On an athlete's own calendar a session is kept on their profile as it is written: one record per
+     session, updated in place a moment after the last change. Opening a session is not an edit, and
+     closing the editor inside that moment writes what is pending rather than dropping it. */
+  const autoRef=useRef({sig:null,timer:null,run:null});
+  useEffect(()=>{
+    if(!saveAth||isTemplate||!pbOwn(session))return;
+    const sig=pbSig(session.blocks),a=autoRef.current;
+    if(a.sig===null){a.sig=sig;return;}
+    if(sig===a.sig)return;
+    a.sig=sig;
+    clearTimeout(a.timer);
+    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);};
+    a.timer=setTimeout(()=>a.run&&a.run(),2000);
+  },[session.blocks]);
+  useEffect(()=>()=>{const a=autoRef.current;clearTimeout(a.timer);if(a.run)a.run();},[]);
   const saveToProfile=()=>{
     const nm=prompt(L('Programın adı','Programme name'),String(session.name||'').trim());
     if(nm==null)return;
-    const r=pbSave(saveAth,nm,session.blocks,{date:(coach&&coach.date)||'',session:session.name||''});
+    if(autoRef.current.run){clearTimeout(autoRef.current.timer);autoRef.current.run=null;}
+    const r=pbSave(saveAth,nm,session.blocks,{date:sesDate,session:session.name||'',sessionId:session.id});
     setSaved(r==='ok'?L('✓ Profile kaydedildi','✓ Saved to profile'):r==='dup'?L('Zaten kayıtlı','Already saved'):L('Kaydedilecek egzersiz yok','No exercises to save'));
     setTimeout(()=>setSaved(''),4000);
   };
@@ -497,7 +514,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         {!isTemplate&&<ProgramPickBtn cls="ab-paste" athId={saveAth} label={L('Kayıtlı Program','Saved Programme')} onPick={pasteBlocks}
           title={L('Önceden yazılmış bir programı bu seansa blok olarak yapıştır','Paste a programme written before into this session as blocks')}/>}
         {!isTemplate&&saveAth&&<button className="ab-save" onClick={saveToProfile}
-          title={L('Bu seansı sporcunun profilinde Antrenman Programları\'na kaydet','Keep this session in the athlete\'s profile under Training Programmes')}>{saved||('💾 '+L('Profile Kaydet','Save to Profile'))}</button>}
+          title={L('Seans sporcunun profiline kendiliğinden kaydedilir; burada ona bir ad verirsin','The session is kept on the athlete\'s profile automatically; here you give it a name')}>{saved||('💾 '+L('Profilde Adlandır','Name in Profile'))}</button>}
         <button className="ab-note" onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
