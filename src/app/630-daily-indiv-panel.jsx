@@ -216,7 +216,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}

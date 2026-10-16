@@ -254,12 +254,26 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed}){
+function DiInstructionForm({instr,save,onBuild,closed,athId}){
+  const[pasted,setPasted]=useState('');
+  /* A programme written before, poured into the table: its blocks become rows, after whatever is
+     already written. The table caps each category per section, so the count says what fitted. */
+  const pasteProgram=row=>{
+    const r=pbToPatterns(row.blocks,instr);
+    save({...instr,patterns:r.patterns,phases:r.phases});
+    const ex=n=>n===1?'exercise':'exercises';
+    setPasted(r.added>=r.total?L(`${r.added} egzersiz tabloya eklendi.`,`${r.added} ${ex(r.added)} added to the table.`)
+      :L(`${r.added} / ${r.total} egzersiz eklendi — kalanlar kategori başına üst sınıra takıldı.`,`${r.added} of ${r.total} exercises added — the rest hit the per-category limit.`));
+    setTimeout(()=>setPasted(''),6000);
+  };
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
-          <label>{L('Antrenman tablosu','Training table')}</label></div>
+          <label>{L('Antrenman tablosu','Training table')}</label>
+          <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
+            title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
+          {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}

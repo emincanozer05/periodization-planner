@@ -8620,6 +8620,36 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
   .ph-sum .ph-date{grid-column:1}.ph-sum .ph-ath{grid-column:1}.ph-sum .ph-name{grid-column:1/-1}
   .ph-ex{grid-template-columns:1fr}
 }
+/* ---- Program bankası: kayıtlı program seçici + Sporcu Profili → Antrenman Programları ----
+   Önizleme satırları Program geçmişinin `ph-blk / ph-ex` biçimini kullanır (19d). */
+.modal.pbk-modal{max-width:760px;width:96vw;height:min(720px,88vh);background:var(--panel);-webkit-backdrop-filter:none;backdrop-filter:none}
+.pbk-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.pbk-list{flex:1;min-height:0;overflow:auto;padding:12px 16px 16px}
+.pbk-row{padding:0;margin-bottom:8px}
+.pbk-top{display:flex;align-items:center;gap:8px;padding-right:10px}
+.pbk-sum{flex:1;min-width:0;display:grid;grid-template-columns:auto minmax(0,1.3fr) auto minmax(0,1.5fr) 18px;align-items:center;gap:10px;padding:11px 12px;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pbk-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbk-meta{font-size:12px;color:var(--text2);white-space:nowrap}
+.pbk-first{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbk-kind{white-space:nowrap}
+.pbk-acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.pbk-body{padding:4px 14px 14px;border-top:1px solid var(--line,rgba(127,127,127,.2))}
+.pbk-panel{margin-top:18px}
+.pbk-head{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+.pbk-head h2{margin:0}
+.pbk-q{flex:1;min-width:180px}
+.pbk-day{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-2px 0 8px;padding:10px 12px;border-radius:10px;background:var(--card2,rgba(127,127,127,.06))}
+.pbk-day label{margin:0}
+@media (max-width:760px){
+  .pbk-filters{grid-template-columns:1fr 1fr}
+  .pbk-filters input[type=search]{grid-column:1/-1}
+  .pbk-top{flex-direction:column;align-items:stretch;padding:0 10px 10px}
+  .pbk-sum{grid-template-columns:auto minmax(0,1fr) 18px;row-gap:2px;padding-bottom:4px}
+  .pbk-sum .pbk-meta,.pbk-sum .pbk-first{grid-column:1/-1}
+  .pbk-acts{justify-content:flex-start}
+}
+.pbar button.copy{background:transparent;color:var(--text2);border-color:var(--border2)}
+.pbar button.copy:hover{border-color:var(--text2);color:var(--text);background:var(--panel)}
 </style>
 </head>
 <body>
@@ -18430,6 +18460,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     else saveDays(nd);
   };
   const edAdd=p=>svDay(editDate,{sessions:[...(edDay.sessions||[]),SESS(p)]});
+  const edPaste=row=>svDay(editDate,{sessions:[...(edDay.sessions||[]),pbToSession(row)]});
   const edUpd=(sid,ns)=>svDay(editDate,{sessions:edDay.sessions.map(s=>s.id===sid?ns:s)});
   const edDel=sid=>svDay(editDate,{sessions:edDay.sessions.filter(s=>s.id!==sid)});
   const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
@@ -19173,7 +19204,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
         <div className="dw-layout">
         <div className="dw-b">
-          <BlockAddBar onAdd={edAdd}/>
+          <BlockAddBar onAdd={edAdd} onPaste={edPaste} athId={(ownerAth||coachAthlete||{}).id}/>
           {(edDay.sessions||[]).length===0&&<div className="dw-empty">{L('Henüz seans yok — yukarıdan bir antrenman bloğu ekleyerek başla','No sessions yet — start by adding a training block above')}</div>}
           {(edDay.sessions||[]).map((s,i)=>sesKind(s)
             ?<SesKindCard key={s.id} session={s} index={i} total={edDay.sessions.length}
@@ -19183,7 +19214,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}
-            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null}/>)}
+            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null} ownerId={(ownerAth||coachAthlete||{}).id}/>)}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>{L('Bitti','Done')}</button>
           </div>
@@ -19202,7 +19233,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
    hovering it (or tabbing onto it) opens a small card saying what that block covers, in
    the language the app is showing. The card is portalled to <body> with fixed
    coordinates, so the scrolling drawer it sits in can never clip it. */
-function BlockAddBar({onAdd,variant}){
+function BlockAddBar({onAdd,onPaste,athId,variant}){
   const[tip,setTip]=useState(null);
   const show=(p,e)=>{
     const r=e.currentTarget.getBoundingClientRect();
@@ -19215,6 +19246,9 @@ function BlockAddBar({onAdd,variant}){
     onClick={()=>{hide();onAdd(spData(p));}}
     onMouseEnter={e=>show(p,e)} onMouseLeave={hide} onFocus={e=>show(p,e)} onBlur={hide}
     aria-label={`${spLabel(p)} — ${spDesc(p)}`}>+ {spLabel(p)}</button>);
+  /* A programme written before, pasted as a new session — from any athlete's profile or calendar. */
+  const paste=onPaste&&<ProgramPickBtn athId={athId} cls="copy" label={L('Kayıtlı program','Saved programme')}
+    title={L('Önceden yazılmış bir programı bul ve yeni seans olarak yapıştır','Find a programme written before and paste it as a new session')} onPick={onPaste}/>;
   const card=tip&&ReactDOM.createPortal(<div className={'qa-tip'+(tip.below?'':' up')} role="tooltip"
     style={{left:tip.x,top:tip.y}}>
     <b>{spLabel(tip.p)}</b>
@@ -19222,9 +19256,9 @@ function BlockAddBar({onAdd,variant}){
   </div>,document.body);
   if(variant==='planner')return(<div className="pbar">
     <strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{lbl}</strong>
-    {btns}{card}
+    {btns}{paste}{card}
   </div>);
-  return(<div className="dw-quickadd"><span className="qa-lbl">{lbl}</span>{btns}{card}</div>);
+  return(<div className="dw-quickadd"><span className="qa-lbl">{lbl}</span>{btns}{paste}{card}</div>);
 }
 
 /* The kind's name, and the short line a week card shows for it in place of the goals —
@@ -22097,7 +22131,7 @@ function RpeGauge({value,onChange,hideZone}){
   </div>);
 }
 
-function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
+function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId}){
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
@@ -22121,6 +22155,18 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
      and the calendar card start out saying the same thing. */
   const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n||(session.blocks.length?'':(session.soloName||session.name||'')),kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
+  /* A programme written before, pasted as blocks at the end of this session; and — on an athlete's own
+     calendar — this session's blocks kept on the athlete's profile for next time. */
+  const pasteBlocks=row=>u(withName(pbAppendBlocks(session.blocks,row)));
+  const saveAth=ownerId||(coach&&coach.ath&&coach.ath.id)||'';
+  const[saved,setSaved]=useState('');
+  const saveToProfile=()=>{
+    const nm=prompt(L('Programın adı','Programme name'),String(session.name||'').trim());
+    if(nm==null)return;
+    const r=pbSave(saveAth,nm,session.blocks,{date:(coach&&coach.date)||'',session:session.name||''});
+    setSaved(r==='ok'?L('✓ Profile kaydedildi','✓ Saved to profile'):r==='dup'?L('Zaten kayıtlı','Already saved'):L('Kaydedilecek egzersiz yok','No exercises to save'));
+    setTimeout(()=>setSaved(''),4000);
+  };
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   /* Writing THIS block's participant list. The other blocks keep whoever they had — a
@@ -22191,6 +22237,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
           title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>
+        {!isTemplate&&<ProgramPickBtn cls="ab-paste" athId={saveAth} label={L('Kayıtlı Program','Saved Programme')} onPick={pasteBlocks}
+          title={L('Önceden yazılmış bir programı bu seansa blok olarak yapıştır','Paste a programme written before into this session as blocks')}/>}
+        {!isTemplate&&saveAth&&<button className="ab-save" onClick={saveToProfile}
+          title={L('Bu seansı sporcunun profilinde Antrenman Programları\'na kaydet','Keep this session in the athlete\'s profile under Training Programmes')}>{saved||('💾 '+L('Profile Kaydet','Save to Profile'))}</button>}
         <button className="ab-note" onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
@@ -22235,6 +22285,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const dupS=sid=>{const o=day.sessions.find(s=>s.id===sid);sv({sessions:[...day.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:o.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}]});};
   const mvS=(sid,d)=>{const a=[...day.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];sv({sessions:a});};
   const addS=p=>sv({sessions:[...day.sessions,SESS(p)]});
+  const pasteS=row=>sv({sessions:[...day.sessions,pbToSession(row)]});
   const cpY=()=>{const yk=fmt(addD(parseD(selDay),-1));const y=days[yk];if(!y?.sessions?.length){alert(L('Dün seans yok','No sessions yesterday'));return;}
     sv({sessions:y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:s.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}))});};
   // ---- Drag-drop & quick-duplicate across days ----
@@ -22323,7 +22374,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
             <ShareIcon/> {L('Paylaş','Share')}</button>
         </div>
       </div>
-      <BlockAddBar variant="planner" onAdd={addS}/>
+      <BlockAddBar variant="planner" onAdd={addS} onPaste={pasteS}/>
       {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdan bir antrenman bloğu ekle','No sessions planned — add a training block above')}</div>}
       {day.sessions.map((s,i)=>sesKind(s)
         ?<SesKindCard key={s.id} session={s} index={i} total={day.sessions.length}
@@ -28545,6 +28596,8 @@ function ProfileTab({ath,updAth,setup}){
         emptyText={L('Henüz gözlem yok — sporcu hakkındaki bireysel gözlemlerini tarihli bir not olarak ekle.','No observations yet — add your individual observations about the athlete as a dated note.')}
         placeholder={L('Sporcu hakkındaki bireysel gözlemler: karakter, antrenmana yaklaşım, fiziksel durum, dikkat edilmesi gerekenler…','Individual observations about the athlete: character, approach to training, physical state, what to watch…')}/>
     </div>
+
+    <AthPrograms ath={ath} updAth={updAth}/>
 
     {/* ── Head coach's observations: one block that opens and closes ── */}
     <div className={`hc-wrap${hcOpen?' open':''}`}>
@@ -35353,6 +35406,328 @@ function ProgramHistory({team,updateTeam}){
     </div>}
   </div>);
 }
+/* ---- PROGRAM BANKASI -------------------------------------------------------------
+   Bir sporcu için yazılan program, sporcunun profilinde (Sporcu Profili → Antrenman Programları)
+   iki kaynaktan okunur:
+     • kaydedilenler — `ath.programs[]`: koçun "Profile kaydet" dediği, adı olan programlar.
+       {id, name, note, created_at, from:{date,session}, blocks:[takvim bloğu…]}
+     • takvim geçmişi — `ath.days`: sporcunun takvimine yazılmış her seans (elle yazılan,
+       Bireyselleştirmeden onaylanan, takımdan gelen). Bunların kopyası tutulmaz; takvimden okunur.
+   Programın biçimi takvimin kendi bloğudur, bu yüzden her yazım yerine aynen yapıştırılır:
+   takvim çekmecesi ve Hafta/Gün planlayıcısı (yeni seans ya da mevcut seansa blok), ve
+   Bireyselleştirme'nin Antrenman tablosu (bloktan tablo satırlarına çevrilir).
+
+   Seçici (`ProgramPicker`) takımların TÜM sporcularını okur — bir sporcunun programı bir
+   başkasına da yapıştırılabilsin diye. Okunan liste `registerProgramBank` ile uygulamanın
+   tepesinden verilir (kütüphane listesiyle aynı yol: setLibItems); yazma da aynı yoldan,
+   `_pbWrite` ile, sporcunun güncel hâline uygulanır. */
+let _pbTeams=[];
+let _pbWrite=null;
+function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
+
+const pbNamed=e=>!!String(e&&e.name||'').trim();
+/* Yapıştırılabilir bir program yalnızca S&C bloklarından oluşur: top antrenmanı bloğu çizim ve
+   video taşır (saklamak için ağır) ve bir antrenman programı sayılmaz. */
+const pbBlocksOf=session=>((session&&session.blocks)||[]).filter(b=>blkKind(b)!=='ball'&&(b.exercises||[]).some(pbNamed));
+/* Bir bloğun bağımsız kopyası: yeni kimlik; katılımcı listesi kaynağın seansına aittir, gelmez. */
+function pbCloneBlock(b){
+  const c=phClone(b);
+  c.id=uid();
+  delete c.athletes;
+  c.exercises=(c.exercises||[]).map(e=>{const x={...e};delete x.id;return x;});
+  return c;
+}
+const pbFreshBlocks=blocks=>(blocks||[]).map(pbCloneBlock);
+/* İçeriğin imzası: aynı program iki kez kaydedilmesin. */
+const pbSig=blocks=>JSON.stringify((blocks||[]).map(b=>(b.exercises||[]).filter(pbNamed).map(e=>
+  [e.name,e.sets,e.reps,e.duration,e.load,e.rpe,e.tempo,e.rest,e.superset,e.phase])));
+/* Kaydedilecek program ya da null (kaydedilecek egzersiz yok). */
+function pbMakeProgram(name,blocks,from){
+  const clean=(blocks||[]).filter(b=>blkKind(b)!=='ball').map(b=>{
+    const c=pbCloneBlock(b);c.exercises=c.exercises.filter(pbNamed);return c;}).filter(b=>b.exercises.length);
+  if(!clean.length)return null;
+  const nm=String(name||'').trim()||String((clean[0]&&clean[0].name)||'').trim()||L('Program','Programme');
+  return{id:uid(),name:nm,note:'',created_at:new Date().toISOString(),from:from||null,blocks:clean};
+}
+const pbHasSame=(programs,blocks)=>{const s=pbSig(blocks);return(programs||[]).some(p=>p&&pbSig(p.blocks)===s);};
+/* Kayıt: 'ok' | 'dup' | 'empty'. Sporcunun güncel hâline uygulanır. */
+function pbSave(athId,name,blocks,from){
+  const prog=pbMakeProgram(name,blocks,from);
+  if(!prog)return'empty';
+  let dup=false;
+  _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{if(a.id===athId&&pbHasSame(a.programs,prog.blocks))dup=true;}));
+  if(dup)return'dup';
+  if(!_pbWrite)return'empty';
+  _pbWrite(athId,a=>pbHasSame(a.programs,prog.blocks)?{}:{programs:[prog,...(a.programs||[])]});
+  return'ok';
+}
+
+/* Seçicinin ve profilin okuduğu satırlar: bir sporcunun kayıtlı programları, sonra takvimi. */
+function pbRowsOf(ath,teamName){
+  const out=[];
+  const row=(base,blocks)=>{
+    const names=[];blocks.forEach(b=>(b.exercises||[]).forEach(e=>{if(pbNamed(e))names.push(e.name);}));
+    out.push({...base,athId:ath.id,athName:ath.name||L('(adsız)','(unnamed)'),teamName:teamName||'',blocks,exNames:names,exCount:names.length,
+      text:phNorm([base.name,ath.name,base.date||'',base.note||'',...blocks.map(b=>b.name),...names].join(' '))});
+  };
+  (ath.programs||[]).forEach(p=>{
+    if(!p||!Array.isArray(p.blocks))return;
+    const blocks=p.blocks.filter(b=>(b.exercises||[]).some(pbNamed));
+    if(!blocks.length)return;
+    row({key:`saved:${ath.id}:${p.id}`,kind:'saved',id:p.id,name:p.name||'',date:(p.from&&p.from.date)||'',at:p.created_at||'',note:p.note||''},blocks);
+  });
+  const days=ath.days||{};
+  Object.keys(days).forEach(dk=>{
+    const d=days[dk];
+    ((d&&d.sessions)||[]).forEach(s=>{
+      const blocks=pbBlocksOf(s);
+      if(!blocks.length)return;
+      row({key:`day:${ath.id}:${dk}:${s.id}`,kind:'day',id:s.id,name:s.name||'',date:dk,at:dk,team:!!s.sourceId},blocks);
+    });
+  });
+  return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
+}
+function pbAllRows(){
+  const out=[];
+  _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>pbRowsOf(a,(t.setup&&t.setup.teamName)||'').forEach(r=>out.push(r))));
+  return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
+}
+function pbFilter(rows,f){
+  const terms=phNorm(f.q).split(/\s+/).filter(Boolean);
+  return rows.filter(r=>{
+    if(f.ath&&r.athId!==f.ath)return false;
+    if(f.src&&r.kind!==f.src)return false;
+    return !terms.length||terms.every(t=>r.text.includes(t));
+  });
+}
+
+/* Takvime: yeni bir seans olarak ya da mevcut seansın sonuna bloklar olarak. */
+function pbToSession(row){
+  const s=SESS({name:row.name||(row.blocks[0]&&row.blocks[0].name)||L('Program','Programme')});
+  return{...s,blocks:pbFreshBlocks(row.blocks)};
+}
+const pbBlankBlock=b=>!String(b.name||'').trim()&&!(b.exercises||[]).some(e=>pbNamed(e)||String(e.sets||e.reps||e.duration||'').trim())&&!((b.athletes||[]).length);
+/* Seansın boş, ilk açılan bloğu yapıştırılan programın yerini alır; dolu bloklar yerinde kalır. */
+const pbAppendBlocks=(blocks,row)=>[...(blocks||[]).filter(b=>!pbBlankBlock(b)),...pbFreshBlocks(row.blocks)];
+/* Sporcunun takvimine: seçilen güne yeni seans. */
+function pbDaysWith(days,date,row){
+  const d=(days||{})[date]||EDAY(date);
+  return{...(days||{}),[date]:{...d,date,sessions:[...(d.sessions||[]),pbToSession(row)]}};
+}
+
+/* Bireyselleştirme'nin Antrenman tablosuna: bloklar satırlara çevrilir. Kategorisi olan egzersiz kendi
+   kategorisinin satırına, olmayan "Kategorisiz"e düşer; bölümler (Hazırlık / Ana / Soğuma ve koçun
+   adlandırdıkları) tablonun fazlarına eşlenir. Var olan satırlar korunur, yenileri sona eklenir. */
+function pbToPatterns(blocks,instr){
+  const phases=[...diMovePhases(instr&&instr.phases)];
+  const before=diMovePatterns(instr&&instr.patterns);
+  const preMap={hazirlik:'prep',ana:'main',soguma:'cool'};
+  const addPhase=np=>{
+    if(np.preset==='prep')phases.unshift(np);
+    else if(np.preset==='main'&&phases.some(x=>x.preset==='cool'))phases.splice(phases.findIndex(x=>x.preset==='cool'),0,np);
+    else phases.push(np);
+  };
+  const phaseOf=(b,pid)=>{
+    if(!pid)return'';
+    const pre=preMap[pid];
+    let hit=pre?phases.find(p=>p.preset===pre):phases.find(p=>!p.preset&&p.name&&p.name===String((b.phaseNames||{})[pid]||''));
+    if(!hit){
+      if(phases.length>=6)return'';
+      hit={id:'ph_'+Math.random().toString(36).slice(2,7),name:pre?'':String((b.phaseNames||{})[pid]||'').slice(0,40)||L(`Faz ${phases.length+1}`,`Phase ${phases.length+1}`),preset:pre||''};
+      addPhase(hit);
+    }
+    return hit.id;
+  };
+  const rows=[];
+  (blocks||[]).forEach(b=>{
+    const open=blkPhases(b);
+    (b.exercises||[]).filter(pbNamed).forEach(ex=>{
+      const cat=(!ex.noPat&&MV_KEYS.includes(ex.pattern))?mvCat(ex.pattern):null;
+      const al=(ex.alt&&typeof ex.alt==='object')?ex.alt:{};
+      const ph=exPhase(ex);
+      rows.push({id:cat?cat.id:'',phase:open.includes(ph)?phaseOf(b,ph):'',exercise:ex.name,
+        type:cat&&ex.plane?[ex.plane]:[],direction:cat&&ex.dir?[ex.dir]:[],
+        sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',
+        link:ex.link||'',superset:ex.superset||'',note:exDesc(ex)||'',
+        alt:{name:al.name||'',sets:al.sets||'',reps:al.reps||'',duration:al.duration||'',tempo:al.tempo||'',rpe:al.rpe||'',load:al.load||'',rest:al.rest||'',link:al.link||''}});
+    });
+  });
+  const patterns=diMovePatterns([...before,...rows]);
+  return{patterns,phases:diMovePhases(phases),added:patterns.length-before.length,total:rows.length};
+}
+
+/* ---- Görünüm -------------------------------------------------------------------- */
+const pbLine=x=>{
+  const sr=x.sets&&x.reps?`${x.sets}×${x.reps}`:(x.sets?`${x.sets} ${L('set','sets')}`:(x.reps||''));
+  return[sr,x.duration||'',x.load||'',x.rpe?`RPE ${x.rpe}`:'',x.tempo||'',x.rest?`${L('din.','rest')} ${x.rest}`:''].filter(Boolean).join(' · ');
+};
+function PbBlocks({blocks}){
+  return(<div className="ph-prog">
+    {(blocks||[]).map((b,bi)=><div key={bi} className="ph-blk">
+      {b.name&&<div className="ph-blk-h">{b.name}</div>}
+      {(b.exercises||[]).filter(pbNamed).map((x,i)=><div key={i} className="ph-ex">
+        <span className="ph-ex-n">{x.superset?x.superset+' ':''}{x.name}</span>
+        <span className="ph-ex-p">{MV_KEYS.includes(x.pattern)?mvCatLabel(x.pattern):''}</span>
+        <span className="ph-ex-d">{pbLine(x)}</span>
+      </div>)}
+    </div>)}
+  </div>);
+}
+/* Bir program satırı: özet çubuğu (açılır) + istenen düğmeler. */
+function PbRow({r,open,onToggle,showAth,children}){
+  const first=r.exNames.slice(0,3).join(', ')+(r.exNames.length>3?'…':'');
+  return(<div className={'panel pbk-row'+(open?' open':'')}>
+    <div className="pbk-top">
+      <button type="button" className="pbk-sum" aria-expanded={open} onClick={onToggle}>
+        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')}>{r.kind==='saved'?L('KAYITLI','SAVED'):(r.team?L('TAKIM','TEAM'):L('TAKVİM','CALENDAR'))}</span>
+        <span className="pbk-name">{r.name||first||'—'}</span>
+        <span className="pbk-meta">{showAth?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}</span>
+        <span className="pbk-first">{first}</span>
+        <span className="inj-car" aria-hidden="true">▾</span>
+      </button>
+      {children&&<div className="pbk-acts">{children}</div>}
+    </div>
+    {open&&<div className="pbk-body"><PbBlocks blocks={r.blocks}/>{r.note&&<div className="help" style={{marginTop:8}}>{r.note}</div>}</div>}
+  </div>);
+}
+
+/* Yapıştırılacak programı seçtiren pencere. `onPick(row)` çağrılır, pencere kapanır. */
+function ProgramPicker({onClose,onPick,athId,title}){
+  const rows=useMemo(()=>pbAllRows(),[]);
+  /* Seansın sahibi sporcunun programı varsa liste onunla açılır; yoksa herkesinki. */
+  const[f,setF]=useState(()=>({q:'',ath:rows.some(r=>r.athId===athId)?athId:'',src:''}));
+  const[open,setOpen]=useState(null);
+  const[limit,setLimit]=useState(30);
+  const set=(k,v)=>{setF(o=>({...o,[k]:v}));setLimit(30);};
+  useEffect(()=>{
+    const onKey=e=>{if(e.key==='Escape')onClose();};
+    document.addEventListener('keydown',onKey);
+    return()=>document.removeEventListener('keydown',onKey);
+  },[]);
+  const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
+  const shown=useMemo(()=>pbFilter(rows,f),[rows,f]);
+  const nSaved=rows.filter(r=>r.kind==='saved').length;
+  return ReactDOM.createPortal(
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal pbk-modal" role="dialog" aria-modal="true" aria-label={title||L('Kayıtlı program','Saved programme')} onClick={e=>e.stopPropagation()}>
+        <div className="modal-head"><h2 style={{margin:0,fontSize:17,flex:1}}>{title||L('Kayıtlı programdan yapıştır','Paste a saved programme')}</h2>
+          <button className="x-btn" onClick={onClose} aria-label={L('Kapat','Close')}>✕</button></div>
+        <div className="pbk-filters">
+          <input type="search" autoFocus placeholder={L('Ara: egzersiz, program adı, sporcu, tarih…','Search: exercise, programme, athlete, date…')}
+            value={f.q} onChange={e=>set('q',e.target.value)} aria-label={L('Ara','Search')}/>
+          <select value={f.ath} onChange={e=>set('ath',e.target.value)} aria-label={L('Sporcu','Athlete')}>
+            <option value="">{L('Tüm sporcular','All athletes')}</option>
+            {aths.map(([id,nm])=><option key={id} value={id}>{nm}</option>)}
+          </select>
+          <select value={f.src} onChange={e=>set('src',e.target.value)} aria-label={L('Kaynak','Source')}>
+            <option value="">{L('Kayıtlı + takvim','Saved + calendar')}</option>
+            <option value="saved">{L(`Yalnız kayıtlı (${nSaved})`,`Saved only (${nSaved})`)}</option>
+            <option value="day">{L('Yalnız takvimde yazılanlar','Calendar only')}</option>
+          </select>
+        </div>
+        <div className="pbk-list">
+          {shown.length===0&&<div className="ex-empty">{rows.length===0
+            ?L('Henüz program yok. Bir sporcunun takvimine program yaz ya da seansta "Profile kaydet"e bas.','No programmes yet. Write one on an athlete\'s calendar or press "Save to profile" in a session.')
+            :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
+          {shown.slice(0,limit).map(r=><PbRow key={r.key} r={r} showAth open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
+            <button type="button" className="btn sm" onClick={()=>{onPick(r);onClose();}}>{L('Yapıştır','Paste')}</button>
+          </PbRow>)}
+          {shown.length>limit&&<button type="button" className="btn sm sec" onClick={()=>setLimit(n=>n+30)}>{L(`Daha göster (${shown.length-limit})`,`Show more (${shown.length-limit})`)}</button>}
+        </div>
+      </div>
+    </div>,document.body);
+}
+/* Düğme + seçici: hangi sekmede olursa olsun aynı yapıştırma yolu. */
+function ProgramPickBtn({onPick,athId,label,title,cls}){
+  const[open,setOpen]=useState(false);
+  return(<>
+    <button type="button" className={cls||'btn xs sec'} onClick={()=>setOpen(true)}
+      title={title||L('Önceden yazılmış bir programı bul ve yapıştır','Find a programme written before and paste it')}>📋 {label||L('Kayıtlı program','Saved programme')}</button>
+    {open&&<ProgramPicker athId={athId} onClose={()=>setOpen(false)} onPick={onPick}/>}
+  </>);
+}
+
+/* Sporcu Profili → Antrenman Programları: kayıtlı programlar ve takvimde yazılanlar. */
+function AthPrograms({ath,updAth}){
+  const[q,setQ]=useState('');
+  const[src,setSrc]=useState('saved');
+  const[open,setOpen]=useState(null);
+  const[limit,setLimit]=useState(20);
+  const[dayFor,setDayFor]=useState(null);
+  const[day,setDay]=useState(fmt(today));
+  const[msg,setMsg]=useState('');
+  const flash=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
+  const rows=useMemo(()=>pbRowsOf(ath,''),[ath.programs,ath.days]);
+  const nSaved=rows.filter(r=>r.kind==='saved').length,nDay=rows.length-nSaved;
+  const shown=useMemo(()=>pbFilter(rows,{q,ath:'',src}),[rows,q,src]);
+  const saveRow=r=>{
+    const nm=prompt(L('Programın adı','Programme name'),r.name||'');
+    if(nm==null)return;
+    if(pbHasSame(ath.programs,r.blocks)){flash(L('Bu program zaten kayıtlı.','This programme is already saved.'));return;}
+    const p=pbMakeProgram(nm,r.blocks,{date:r.date,session:r.name});
+    if(!p)return;
+    updAth(ath.id,a=>({programs:[p,...(a.programs||[])]}));
+    flash(L(`"${p.name}" profile kaydedildi.`,`"${p.name}" saved to the profile.`));
+    setSrc('saved');
+  };
+  const rename=r=>{
+    const nm=prompt(L('Programın adı','Programme name'),r.name);
+    if(nm==null||!nm.trim())return;
+    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,name:nm.trim()}:p)}));
+  };
+  const note=r=>{
+    const n=prompt(L('Not (örn. hangi dönem, kime iyi geldi)','Note (e.g. which period, what it suited)'),r.note||'');
+    if(n==null)return;
+    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,note:n.trim()}:p)}));
+  };
+  const del=r=>{
+    if(!confirm(L('Bu kayıtlı program silinsin mi? Takvimdeki seanslar etkilenmez.','Delete this saved programme? Sessions on the calendar are not affected.')))return;
+    updAth(ath.id,a=>({programs:(a.programs||[]).filter(p=>p.id!==r.id)}));setOpen(null);
+  };
+  const toDay=r=>{
+    if(!day)return;
+    updAth(ath.id,a=>({days:pbDaysWith(a.days,day,r)}));
+    setDayFor(null);
+    flash(L(`${fd(day)} tarihine seans olarak eklendi.`,`Added to ${fd(day)} as a session.`));
+  };
+  return(<div className="panel pbk-panel">
+    <div className="pbk-head">
+      <h2>{L('Antrenman Programları','Training Programmes')}</h2>
+      <span className="help">{L('Sporcu için yazılan programlar burada durur. Takvimde, Hafta/Gün planında ve Bireyselleştirme\'de "Kayıtlı program" düğmesiyle yapıştırılır.',
+        'Programmes written for this athlete live here. Paste them from the "Saved programme" button on the calendar, the Week/Day plan and Individualization.')}</span>
+    </div>
+    <div className="row" style={{gap:6,flexWrap:'wrap',marginBottom:10}}>
+      <button type="button" className={'btn sm'+(src==='saved'?'':' sec')} onClick={()=>{setSrc('saved');setLimit(20);}}>{L('Kayıtlı','Saved')} ({nSaved})</button>
+      <button type="button" className={'btn sm'+(src==='day'?'':' sec')} onClick={()=>{setSrc('day');setLimit(20);}}>{L('Takvimde yazılanlar','Written on calendar')} ({nDay})</button>
+      <input type="search" className="pbk-q" placeholder={L('Ara: egzersiz, program adı, tarih…','Search: exercise, programme, date…')} value={q}
+        onChange={e=>{setQ(e.target.value);setLimit(20);}} aria-label={L('Ara','Search')}/>
+    </div>
+    {msg&&<div className="iv-toast" style={{marginBottom:10}}>{msg}</div>}
+    {shown.length===0&&<div className="ex-empty">{rows.length===0
+      ?L('Henüz program yok. Sporcunun takvimine bir antrenman yaz; burada görünür ve "Profile kaydet" ile adlandırıp saklayabilirsin.','No programmes yet. Write a training session on the athlete\'s calendar; it shows up here and can be named and kept with "Save to profile".')
+      :src==='saved'&&!q&&nSaved===0
+        ?L('Kayıtlı program yok. "Takvimde yazılanlar"dan birini "Profile kaydet" ile sakla, ya da takvimde bir seansta "Profile kaydet"e bas.','No saved programmes. Keep one from "Written on calendar" with "Save to profile", or press "Save to profile" inside a session.')
+        :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
+    {shown.slice(0,limit).map(r=><div key={r.key}>
+      <PbRow r={r} open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
+        {r.kind==='day'&&<button type="button" className="btn xs" onClick={()=>saveRow(r)}>{L('Profile kaydet','Save to profile')}</button>}
+        <button type="button" className="btn xs sec" onClick={()=>{setDayFor(dayFor===r.key?null:r.key);setDay(fmt(today));}}>{L('Takvime ekle…','Add to calendar…')}</button>
+        {r.kind==='saved'&&<>
+          <button type="button" className="btn xs sec" onClick={()=>rename(r)}>{L('Adlandır','Rename')}</button>
+          <button type="button" className="btn xs sec" onClick={()=>note(r)}>{L('Not','Note')}</button>
+          <button type="button" className="btn xs sec iv-rmb" onClick={()=>del(r)}>✕</button>
+        </>}
+      </PbRow>
+      {dayFor===r.key&&<div className="pbk-day">
+        <label>{L('Hangi güne eklensin?','Which day?')}</label>
+        <input type="date" value={day} onChange={e=>setDay(e.target.value)}/>
+        <button type="button" className="btn sm" disabled={!day} onClick={()=>toDay(r)}>{L('Ekle','Add')}</button>
+        <span className="help">{L('Seçilen günün planına yeni bir seans olarak girer; orada düzenlenir.','It enters that day\'s plan as a new session, where it is edited.')}</span>
+      </div>}
+    </div>)}
+    {shown.length>limit&&<button type="button" className="btn sm sec" onClick={()=>setLimit(n=>n+20)}>{L(`Daha göster (${shown.length-limit})`,`Show more (${shown.length-limit})`)}</button>}
+  </div>);
+}
 const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Advanced'};
 
 /* Position → grouping axis. Non-basketball rosters fall into `other`, which
@@ -40462,12 +40837,26 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed}){
+function DiInstructionForm({instr,save,onBuild,closed,athId}){
+  const[pasted,setPasted]=useState('');
+  /* A programme written before, poured into the table: its blocks become rows, after whatever is
+     already written. The table caps each category per section, so the count says what fitted. */
+  const pasteProgram=row=>{
+    const r=pbToPatterns(row.blocks,instr);
+    save({...instr,patterns:r.patterns,phases:r.phases});
+    const ex=n=>n===1?'exercise':'exercises';
+    setPasted(r.added>=r.total?L(`${r.added} egzersiz tabloya eklendi.`,`${r.added} ${ex(r.added)} added to the table.`)
+      :L(`${r.added} / ${r.total} egzersiz eklendi — kalanlar kategori başına üst sınıra takıldı.`,`${r.added} of ${r.total} exercises added — the rest hit the per-category limit.`));
+    setTimeout(()=>setPasted(''),6000);
+  };
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
-          <label>{L('Antrenman tablosu','Training table')}</label></div>
+          <label>{L('Antrenman tablosu','Training table')}</label>
+          <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
+            title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
+          {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
@@ -40938,7 +41327,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}
@@ -43523,6 +43912,11 @@ function App(){
     return{...prev,exercises:next};
   }));
   return()=>registerBallSave(null);},[setData]);
+  /* The program bank reads every team's athletes (a programme written for one can be pasted for
+     another) and writes through the latest state, like updateTeam does. */
+  useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>({...prev,teams:prev.teams.map(t=>
+    (t.athletes||[]).some(a=>a.id===athId)?{...t,athletes:t.athletes.map(a=>a.id===athId?{...a,...fn(a)}:a)}:t)})));
+  },[data.teams,setData]);
   // Brand every printout / shared PDF with the active team's logo.
   useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');
     registerClubName((team&&team.setup&&(team.setup.clubName||team.setup.teamName))||'');},[team]);
