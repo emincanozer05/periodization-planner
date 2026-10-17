@@ -72,8 +72,6 @@ function ProfileTab({ath,updAth,setup}){
         placeholder={L('Sporcu hakkındaki bireysel gözlemler: karakter, antrenmana yaklaşım, fiziksel durum, dikkat edilmesi gerekenler…','Individual observations about the athlete: character, approach to training, physical state, what to watch…')}/>
     </div>
 
-    <AthPrograms ath={ath} updAth={updAth}/>
-
     {/* ── Head coach's observations: one block that opens and closes ── */}
     <div className={`hc-wrap${hcOpen?' open':''}`}>
       <button className="hc-head" aria-expanded={hcOpen} onClick={toggleHc}>

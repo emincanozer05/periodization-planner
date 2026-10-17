@@ -154,6 +154,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises} ownerAth={ath}/>
+    <AthPrograms ath={ath} updAth={updAth}/>
     <MuscleLoadDistribution days={ath.days||{}} refDate={athSel.date}/></>}
   </div>);
 }
