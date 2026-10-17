@@ -641,6 +641,12 @@ function EvaluationView({team,updateTeam,data,setData}){
     if(!name)return;
     setData({...data,testTemplates:[...templates,{id:uid(),name,tests:[...pick]}]});
   };
+  /* A template saved before the FMS replaced the ankle and ASLR tests still names them: they
+     come out as the FMS, once, so applying it never starts a test the picker no longer offers. */
+  const tplIds=t=>{
+    const known=new Set(fullCatalog.map(c=>c.id));
+    return[...new Set((t.tests||[]).map(id=>id==='ankleDF'||id==='aslr'?'fms':id))].filter(id=>known.has(id));
+  };
   const delTemplate=id=>{
     if(!confirm(Lx('Bu şablon silinsin mi?','Delete this template?')))return;
     setData({...data,testTemplates:templates.filter(t=>t.id!==id)});
@@ -754,8 +760,8 @@ function EvaluationView({team,updateTeam,data,setData}){
             <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.07em'}}>
               {Lx('Şablonlar','Templates')}
             </span>
-            {templates.map(t=><span key={t.id} className="ev2-tpl" onClick={()=>setPick(new Set(t.tests||[]))}>
-              {t.name}<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,opacity:.6}}>{(t.tests||[]).length}</span>
+            {templates.map(t=><span key={t.id} className="ev2-tpl" onClick={()=>setPick(new Set(tplIds(t)))}>
+              {t.name}<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,opacity:.6}}>{tplIds(t).length}</span>
               <button className="ev2-tpl-x" onClick={e=>{e.stopPropagation();delTemplate(t.id);}} title={Lx('Sil','Delete')}>✕</button>
             </span>)}
           </div>}

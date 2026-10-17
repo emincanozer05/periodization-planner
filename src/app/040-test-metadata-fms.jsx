@@ -103,18 +103,20 @@ function ybCalc(yb){
 /* =========================================================
    FMS — Functional Movement Screen
    ---------------------------------------------------------
-   Seven movements, each scored 0-3. Four are screened per side: the athlete
+   Seven movements, each scored 0-3. Five are screened per side: the athlete
    is given the LOWER of the two sides for that movement, and a right/left
    difference is itself a finding, so both sides are kept on the record.
-   Three movements carry a clearing test (shoulder impingement, spinal
-   extension, spinal flexion): a positive — that is, painful — clearing drops
-   its movement to 0 no matter what was scored.
-   Total is the sum of the seven movement scores, out of 21.
+   Clearing tests are pain checks, 'pos' (pain) or 'neg' (none): shoulder
+   impingement (per side), ankle pain (per side — it belongs to the inline lunge),
+   spinal extension and spinal flexion. A positive one drops its movement to 0 no
+   matter what was scored. Ankle mobility is a red / yellow / green call per side
+   that is read, not scored. Total is the sum of the seven movement scores, out of 21.
    ========================================================= */
 const FMS_ITEMS=[
   {id:'deepSquat',       bi:false, clear:null,          tr:'Derin Çömelme',                  en:'Deep Squat'},
   {id:'hurdleStep',      bi:true,  clear:null,          tr:'Yüksek Adımlama',                en:'Hurdle Step'},
-  {id:'inlineLunge',     bi:true,  clear:null,          tr:'Tek Çizgi Üzerinde Lunge',       en:'Inline Lunge'},
+  {id:'inlineLunge',     bi:true,  clear:'anklePain',   tr:'Tek Çizgi Üzerinde Lunge',       en:'Inline Lunge',
+    clearTr:'Ayak Bileği Temizleme — Ağrı', clearEn:'Ankle Clearing — Pain'},
   {id:'shoulderMobility',bi:true,  clear:'shoulderClear',tr:'Omuz Mobilitesi',               en:'Shoulder Mobility',
     clearTr:'Omuz Sıkışma Temizleme Testi', clearEn:'Shoulder Impingement Clearing'},
   {id:'aslr',            bi:true,  clear:null,          tr:'Aktif Düz Bacak Kaldırma',       en:'Active Straight-Leg Raise'},
@@ -123,6 +125,13 @@ const FMS_ITEMS=[
   {id:'rotary',          bi:true,  clear:'rotaryClear', tr:'Rotasyon Stabilitesi',           en:'Rotary Stability',
     clearTr:'Omurga Fleksiyon Temizleme Testi', clearEn:'Spinal Flexion Clearing'},
 ];
+/* A clearing test as stored: one answer, or one per side. Either way the answer that
+   matters is whether anything hurt — a positive on either side is a positive. A record
+   saved before the sheet had sides holds a bare string, and still reads. */
+const fmsClear=v=>{
+  if(v&&typeof v==='object'){const a=[v.right,v.left];return a.includes('pos')?'pos':a.includes('neg')?'neg':'';}
+  return v==='pos'||v==='neg'?v:'';
+};
 /* Read one FMS record: the raw entries, the score that counts per movement,
    the asymmetries, and the total. `n` is how many of the seven were scored —
    a partially filled screen still reports, it just says so. */
@@ -134,7 +143,7 @@ function fmsCalc(f){
     const right=it.bi?num(raw&&raw.right):null;
     const left =it.bi?num(raw&&raw.left ):null;
     const single=it.bi?null:num(raw);
-    const cleared=it.clear?(o[it.clear]||''):'';
+    const cleared=it.clear?fmsClear(o[it.clear]):'';
     let score=it.bi
       ?((right!=null&&left!=null)?Math.min(right,left):(right!=null?right:left))
       :single;
@@ -144,13 +153,196 @@ function fmsCalc(f){
     return{...it,right,left,single,score,cleared,asym,filled:score!=null};
   });
   const scored=items.filter(i=>i.filled);
+  const mob=o.ankleMob||{};
+  const cm=o.comments||{};
   return{items,n:scored.length,
     total:scored.length?scored.reduce((a,i)=>a+i.score,0):null,
     asym:items.some(i=>i.asym!=null),
     zeros:items.filter(i=>i.filled&&i.score===0).length,
-    any:scored.length>0||items.some(i=>i.cleared)||!!o.observations};
+    any:scored.length>0||items.some(i=>i.cleared)||!!(mob.right||mob.left)||!!o.observations||Object.keys(cm).some(k=>cm[k])}
 }
 const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
+
+/* The sheet's own layout — one entry per line of the official score sheet, top to
+   bottom. The same list draws the card on screen and the page on paper, so the two
+   cannot drift apart.
+     f    the field on the record      side  'right' | 'left' | '' (one answer)
+     kind score 0-3 · clear +/− · ryg red / yellow / green
+     lab  [tr,en] and ls: its row-span, on the first line of a group
+     fin  the Final Score cell that starts here: {of: movement id | null, n: rows}
+     cm   the Comments cell that starts here:    {id: key in `comments`, n: rows}
+     sub  a clearing / mobility line under its movement (small red label) */
+const FMS_SHEET=[
+  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1}},
+  {f:'hurdleStep',side:'right',kind:'score',lab:['YÜKSEK ADIMLAMA','HURDLE STEP'],ls:2,fin:{of:'hurdleStep',n:2},cm:{id:'hurdleStep',n:2}},
+  {f:'hurdleStep',side:'left',kind:'score'},
+  {f:'inlineLunge',side:'right',kind:'score',lab:['TEK ÇİZGİ LUNGE','INLINE LUNGE'],ls:2,fin:{of:'inlineLunge',n:4},cm:{id:'inlineLunge',n:2}},
+  {f:'inlineLunge',side:'left',kind:'score'},
+  {f:'anklePain',side:'right',kind:'clear',sub:true,lab:['AYAK BİLEĞİ TEMİZLEME — AĞRI','ANKLE CLEARING - PAIN'],ls:2,cm:{id:'ankle',n:4}},
+  {f:'anklePain',side:'left',kind:'clear',sub:true},
+  {f:'ankleMob',side:'right',kind:'ryg',sub:true,lab:['AYAK BİLEĞİ TEMİZLEME — MOBİLİTE','ANKLE CLEARING - MOBILITY'],ls:2,fin:{of:null,n:2}},
+  {f:'ankleMob',side:'left',kind:'ryg',sub:true},
+  {f:'shoulderMobility',side:'right',kind:'score',lab:['OMUZ MOBİLİTESİ','SHOULDER MOBILITY'],ls:2,fin:{of:'shoulderMobility',n:4},cm:{id:'shoulderMobility',n:4}},
+  {f:'shoulderMobility',side:'left',kind:'score'},
+  {f:'shoulderClear',side:'right',kind:'clear',sub:true,lab:['OMUZ TEMİZLEME','SHOULDER CLEARING'],ls:2},
+  {f:'shoulderClear',side:'left',kind:'clear',sub:true},
+  {f:'aslr',side:'right',kind:'score',lab:['AKTİF DÜZ BACAK KALDIRMA','ACTIVE STRAIGHT-LEG RAISE'],ls:2,fin:{of:'aslr',n:2},cm:{id:'aslr',n:2}},
+  {f:'aslr',side:'left',kind:'score'},
+  {f:'trunkPushup',side:'',kind:'score',lab:['GÖVDE STABİLİTESİ ŞINAVI','TRUNK STABILITY PUSHUP'],ls:1,fin:{of:'trunkPushup',n:2},cm:{id:'trunkPushup',n:2}},
+  {f:'pushupClear',side:'',kind:'clear',sub:true,lab:['EKSTANSİYON TEMİZLEME','EXTENSION CLEARING'],ls:1},
+  {f:'rotary',side:'right',kind:'score',lab:['ROTASYON STABİLİTESİ','ROTARY STABILITY'],ls:2,fin:{of:'rotary',n:3},cm:{id:'rotary',n:3}},
+  {f:'rotary',side:'left',kind:'score'},
+  {f:'rotaryClear',side:'',kind:'clear',sub:true,lab:['FLEKSİYON TEMİZLEME','FLEXION CLEARING'],ls:1},
+];
+/* What the record holds for one line of the sheet. */
+const fmsCell=(f,r)=>{const v=(f||{})[r.f];return r.side?((v&&v[r.side])||''):(v==null?'':v);};
+/* The line's words for the footer of the sheet, in the report language. */
+const FMS_LEGEND=()=>[
+  L('Ham Skor: Bu skor sağ ve sol tarafın ayrı puanlanması için kullanılır. Yedi testin beşinde sağ ve sol taraf puanlanır ve ikisi de bu alana kaydedilir.',
+    'Raw Score: This score is used to denote right and left side scoring. The right and left sides are scored in five of the seven tests and both are documented in this space.'),
+  L('Nihai Skor: Bu skor testin genel puanını gösterir. Ham skorların (her iki taraf) en düşüğü testin nihai skoru olarak alınır. Sağda üç, solda iki puan alan bir kişinin nihai skoru ikidir. Nihai skorlar toplanarak toplam skoru verir.',
+    'Final Score: This score is used to denote the overall score for the test. The lowest score for the raw score (each side) is carried over to give a final score for the test. A person who scores a three on the right and a two on the left would receive a final score of two. The final score is then summarized and used as a total score.'),
+  L('Temizleme Testi: Pozitif ağrıyı, negatif ağrı olmadığını gösterir. Ağrı varsa (+) o testin skoru 0 olur.',
+    'Clearing Test: A positive indicates pain. A negative indicates no pain. If pain is present (+), the score for that test would result in a 0.'),
+];
+const fmsAgeAt=(dob,date)=>{
+  if(!dob||!date)return null;
+  const b=parseD(dob),n=parseD(date);if(isNaN(b)||isNaN(n))return null;
+  let y=n.getFullYear()-b.getFullYear();
+  if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))y--;
+  return y>=0?y:null;
+};
+/* The identity strip across the top of the sheet. Name, date, birth date, age and sex come
+   from the athlete and the test; the two measurements are typed once and carried forward
+   from the athlete's last screen until this one has its own. */
+function fmsHeader(test,ath){
+  const t=test||{},f=t.fms||{},a=ath||{};
+  const carried=k=>{
+    const prev=(a.tests||[]).filter(x=>x&&x.id!==t.id&&x.date&&(!t.date||x.date<=t.date)&&x.fms&&x.fms[k]!=null&&x.fms[k]!=='')
+      .sort((p,q)=>q.date.localeCompare(p.date));
+    return prev.length?prev[0].fms[k]:'';
+  };
+  const own=k=>f[k]!=null?f[k]:carried(k);
+  return{name:a.name||'',date:t.date||'',dob:a.dateOfBirth||'',age:fmsAgeAt(a.dateOfBirth,t.date),
+    sex:a.sex==='M'?L('Erkek','Male'):a.sex==='F'?L('Kadın','Female'):'',
+    tibia:own('tibia'),hand:own('hand')};
+}
+const fmsTotalTone=t=>t==null?'':t>=17?'#16a34a':t>=14?'#d99a00':'#dc2626';
+
+/* ---- The sheet on paper: one A4 portrait page, drawn after the official score sheet. ---- */
+const FMS_RED='#ec1c24';
+const FMS_SHEET_CSS=`
+.fmsx{width:100%;color:#1b1b1b;font-family:'Space Grotesk',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
+.fmsx *{box-sizing:border-box}
+.fmsx-head{display:flex;height:21mm;margin-bottom:5mm}
+.fmsx-head .lg{flex:none;width:21mm;background:${FMS_RED}}
+.fmsx-head .lg img{display:block;width:100%;height:100%;object-fit:cover}
+.fmsx-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 6mm;font-size:19pt;line-height:1.1;letter-spacing:.04em;font-weight:500}
+.fmsx-id{margin-bottom:5mm}
+.fmsx-id .rw{display:flex;gap:0;border-bottom:.3mm solid #666;margin-bottom:3.4mm;font-size:8pt;letter-spacing:.03em;text-transform:uppercase}
+.fmsx-id .rw:last-child{margin-bottom:0}
+.fmsx-id .fd{display:flex;gap:1.6mm;align-items:baseline;min-width:0;padding-right:3mm}
+.fmsx-id .fd b{font-weight:500;color:#333;white-space:nowrap}
+.fmsx-id .fd span{font-weight:600;text-transform:none;letter-spacing:0;font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmsx table{width:100%;border-collapse:collapse;table-layout:fixed;border:.3mm solid #777;margin:0;border-radius:0;overflow:visible}
+.fmsx td,.fmsx th{font-family:'Space Grotesk',Arial,sans-serif}
+.fmsx th{background:${FMS_RED};color:#fff;font-weight:400;font-size:9.5pt;letter-spacing:.05em;height:8.4mm;text-align:center;padding:0;border:none;text-transform:uppercase;border-left:.3mm solid #fff}
+.fmsx th:first-child{border-left:none}
+.fmsx td{border:.3mm solid #777;padding:0 2mm;height:7.6mm;font-size:9pt;vertical-align:middle;background:#fff;overflow:hidden}
+.fmsx td.lab{font-size:9pt;letter-spacing:.03em;text-transform:uppercase;text-align:left}
+.fmsx td.lab.sub{color:${FMS_RED};font-size:7.6pt;text-align:right;padding-right:2mm;border-top:.3mm dashed #777}
+.fmsx td.sd{width:100%;text-align:center;color:${FMS_RED};font-size:8.5pt;padding:0}
+.fmsx td.raw,.fmsx td.fin{text-align:center;font-size:12pt;font-weight:700;padding:0}
+.fmsx td.cm{font-size:8pt;line-height:1.25;vertical-align:top;padding:1.1mm 2mm;overflow:hidden}
+.fmsx td.cm div{overflow:hidden;white-space:pre-wrap;word-break:break-word}
+.fmsx .pos{color:#dc2626}.fmsx .neg{color:#16a34a}
+.fmsx .ryg{display:flex;height:7.5mm}
+.fmsx .ryg span{flex:1;display:flex;align-items:center;justify-content:center;font-size:8.5pt;font-weight:400;border-left:.3mm solid #777}
+.fmsx .ryg span:first-child{border-left:none}
+.fmsx .ryg .r{color:#dc2626}.fmsx .ryg .y{color:#d99a00}.fmsx .ryg .g{color:#16a34a}
+.fmsx .ryg .r.on{background:#dc2626;color:#fff}.fmsx .ryg .y.on{background:#f2c200;color:#1b1b1b}.fmsx .ryg .g.on{background:#16a34a;color:#fff}
+.fmsx tr.tot td{height:8.4mm;background:#fff;font-size:10pt}
+.fmsx tr.tot td.red{background:${FMS_RED};color:#fff;font-size:9.5pt;letter-spacing:.04em;text-transform:uppercase;border-color:${FMS_RED}}
+.fmsx tr.tot td.v{font-size:13pt;font-weight:700;text-align:left;padding-left:4mm}
+.fmsx-obs{margin-top:2.4mm;font-size:8pt;line-height:1.3;max-height:12mm;overflow:hidden;color:#333}
+.fmsx-obs b{font-weight:600}
+.fmsx-foot{display:flex;gap:1.6mm;margin-top:5mm;align-items:stretch}
+.fmsx-foot .lg{flex:none;width:24mm;background:${FMS_RED}}
+.fmsx-foot .lg img{display:block;width:100%;height:100%;object-fit:cover}
+.fmsx-foot .tx{flex:1;background:#444;color:#e9e9e9;padding:3.2mm 4.4mm;font-size:6.6pt;line-height:1.38}
+.fmsx-foot .tx p+p{margin-top:2.2mm}
+.fmsx-gen{margin-top:3mm;text-align:center;font-size:7pt;letter-spacing:.05em;color:#8b9099}
+`;
+function fmsSheetHtml(test,ath,opts){
+  const o=opts||{};
+  const f=(test&&test.fms)||{};
+  const c=fmsCalc(f);
+  const hd=fmsHeader(test,ath);
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const logo=location.origin+'/fms-logo.png';
+  const byId={};c.items.forEach(i=>{byId[i.id]=i;});
+  const tone=v=>v==null||v===''?'':(Number(v)<=1?'#dc2626':Number(v)===2?'#d99a00':'#16a34a');
+  const cm=f.comments||{};
+  const RH=7.6;
+  const field=(lbl,val,w)=>`<div class="fd" style="${w?`flex:0 0 ${w}`:'flex:1'}"><b>${lbl}:</b><span>${esc(val)}</span></div>`;
+  const rows=FMS_SHEET.map(r=>{
+    let td='';
+    if(r.lab)td+=`<td class="lab${r.sub?' sub':''}" rowspan="${r.ls}" colspan="${r.side?1:2}">${esc(L(r.lab[0],r.lab[1]))}</td>`;
+    if(r.side)td+=`<td class="sd">${r.side==='right'?'R':'L'}</td>`;
+    const v=fmsCell(f,r);
+    if(r.kind==='score')td+=`<td class="raw"${v!==''?` style="color:${tone(v)}"`:''}>${esc(v)}</td>`;
+    else if(r.kind==='clear')td+=`<td class="raw">${v==='pos'?'<span class="pos">+</span>':v==='neg'?'<span class="neg">&minus;</span>':''}</td>`;
+    else td+=`<td class="raw" style="padding:0"><div class="ryg">${['r','y','g'].map(k=>`<span class="${k}${v===k?' on':''}">${k.toUpperCase()}</span>`).join('')}</div></td>`;
+    if(r.fin){
+      const it=r.fin.of?byId[r.fin.of]:null;
+      td+=`<td class="fin" rowspan="${r.fin.n}"${it&&it.score!=null?` style="color:${tone(it.score)}"`:''}>${it&&it.score!=null?it.score:''}</td>`;
+    }
+    if(r.cm)td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${r.cm.n*RH-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
+    return`<tr>${td}</tr>`;
+  }).join('');
+  const obs=[f.observations,o.note].filter(x=>x&&String(x).trim());
+  return`<div class="fmsx">
+  <div class="fmsx-head"><div class="lg"><img src="${logo}" alt="FMS"/></div><div class="tt"><div>${L('FONKSİYONEL HAREKET<br>TARAMASI PUAN KÂĞIDI','FUNCTIONAL MOVEMENT<br>SCREEN SCORE SHEET')}</div></div></div>
+  <div class="fmsx-id">
+    <div class="rw">${field(L('Ad','Name'),hd.name)}${field(L('Tarih','Date'),fd(hd.date),'46mm')}${field(L('Doğum','DOB'),fd(hd.dob),'40mm')}</div>
+    <div class="rw">${field(L('Tibia Boyu','Tibia Height'),hd.tibia===''?'':hd.tibia+' cm','46mm')}${field(L('El Uzunluğu','Hand Length'),hd.hand===''?'':hd.hand+' cm','46mm')}${field(L('Yaş','Age'),hd.age==null?'':hd.age,'30mm')}${field(L('Cinsiyet','Gender'),hd.sex)}</div>
+  </div>
+  <table>
+    <colgroup><col style="width:27.5%"/><col style="width:6.5%"/><col style="width:16%"/><col style="width:15%"/><col style="width:35%"/></colgroup>
+    <tr><th colspan="2">${L('Test','Screen')}</th><th>${L('Ham Skor','Raw Score')}</th><th>${L('Nihai Skor','Final Score')}</th><th>${L('Yorumlar','Comments')}</th></tr>
+    ${rows}
+    <tr class="tot"><td class="red" colspan="2">${L('Toplam Tarama Skoru','Total Screen Score')}</td><td class="v" colspan="3"${c.total!=null?` style="color:${fmsTotalTone(c.total)}"`:''}>${c.total!=null?c.total+' / 21':''}</td></tr>
+  </table>
+  ${obs.length?`<div class="fmsx-obs"><b>${L('Gözlemler:','Observations:')}</b> ${esc(obs.join(' · '))}</div>`:''}
+  <div class="fmsx-foot"><div class="tx">${FMS_LEGEND().map(p=>`<p>${esc(p)}</p>`).join('')}</div><div class="lg"><img src="${logo}" alt="FMS"/></div></div>
+  ${o.foot?`<div class="fmsx-gen">${o.foot}</div>`:''}
+</div>`;
+}
+/* The sheet alone, as its own document — what the card's own print button opens. */
+function printFmsSheet(test,ath,opts){
+  const w=window.open('','_blank','width=900,height=1200');
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>FMS — ${String((ath&&ath.name)||'').replace(/</g,'&lt;')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 portrait;margin:10mm}
+*{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{background:#fff;font-family:'Space Grotesk',Arial,sans-serif}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:13px;z-index:9999}
+.print-bar button{background:#ec1c24;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.scr-sp{height:56px}
+.pg{max-width:190mm;margin:0 auto;padding:0 0 10mm}
+@media print{.print-bar,.scr-sp{display:none}.pg{max-width:none;padding:0}}
+${FMS_SHEET_CSS}
+</style></head><body>
+<div class="print-bar">📄 ${L('FMS puan kâğıdı hazır','FMS score sheet is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button onclick="window.close()">${L('Kapat','Close')}</button></div>
+<div class="scr-sp"></div>
+<div class="pg">${fmsSheetHtml(test,ath,opts)}</div>
+</body></html>`;
+  w.document.write(html);w.document.close();
+  printWhenImagesReady(w,{safety:8000});
+}
 
 /* Read an uploaded FMS score-sheet PDF into something a report can print.
    A PDF cannot be printed from inside the report window — browsers will not

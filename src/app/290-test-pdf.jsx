@@ -221,6 +221,12 @@ tbody tr.grp:first-child td{border-top:none}
 }
 
 function generateTestPDF(test,ath,setup,customTests,athletes){
+  /* A record that is only the FMS prints as the score sheet itself — one page, laid out like the
+     official sheet — rather than as a report with a header card above it. */
+  const only=expandBattery(test.battery);
+  if(Array.isArray(only)&&only.length&&only.every(id=>id==='fms')&&!(test.fms&&test.fms.pdf)){
+    printFmsSheet(test,ath,{note:test.notes});return;
+  }
   const w=window.open('','_blank','width=900,height=1200');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.');return;}
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period;
@@ -265,28 +271,18 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const lcD=Math.abs(lcR-lcL),lcMx=Math.max(lcR,lcL);
   const lcPct=(lcR&&lcL)?(lcD/lcMx*100):null;
   const lcColor=lcPct==null?'':lcPct<10?'#16a34a':lcPct<15?'#eab308':'#dc2626';
-  // Colour helpers: FMS score 1=red / 2=yellow / 3=green; ankle DF asymmetry 0-5°=green / 5-9°=yellow / ≥10°=red
+  // Colour helpers: FMS score 1=red / 2=yellow / 3=green (the retired ASLR line); ankle DF asymmetry 0-5°=green / 5-9°=yellow / ≥10°=red
   const fmsColor=v=>{const n=Number(v);return n===1?'#dc2626':n===2?'#eab308':n===3?'#16a34a':'';};
   const ankleAsymColor=d=>{const n=Math.abs(Number(d)||0);return n<5?'#16a34a':n<10?'#eab308':'#dc2626';};
-  /* FMS — only the movements that were actually scored (or whose clearing test
-     was run) go on the sheet; a movement left blank is left off entirely. */
+  /* FMS — the live score sheet prints as a page of its own, after everything else (see the
+     end of the report). What stays here is a sheet scanned before the live one existed:
+     its pages are rasterised, and they print in the body of the report as before. */
   const fmsR=fmsCalc(test.fms);
-  const fmsRows=fmsR.items.filter(i=>i.filled||i.cleared);
-  /* The uploaded FMS score sheet, rasterised on the way in. It shares its page
-     with the scores when both are on the record, so the pages are sized against
-     what is left of the page rather than a fixed box. */
+  const fmsOn=Array.isArray(bat)?has('fms'):fmsR.any;
   const fmsPdf=test.fms&&test.fms.pdf;
   const fmsPages=(fmsPdf&&Array.isArray(fmsPdf.pages))?fmsPdf.pages:[];
-  /* An attached sheet is the result — it already carries the seven movements and
-     their scores. Printing the hand-entered table beside it would put the same
-     rows on the page twice and cost the section its single page, so the sheet
-     replaces the table and only the total stays, on the section's own line. */
-  const fmsShowTable=fmsRows.length&&!fmsPages.length;
   const fmsPageH=fmsPages.length>1?120:185;
   const fmsTotalColor=t=>t==null?'':t>=17?'#16a34a':t>=14?'#eab308':'#dc2626';
-  // fmsColor leaves 0 uncoloured (it is the "not entered" case elsewhere); on the
-  // FMS sheet a 0 is a real, and the worst, score — it prints red like a 1.
-  const fmsSc=v=>v===0?'#dc2626':fmsColor(v);
   // Y Balance Test
   const yb=ybCalc(test.yBalance);
   const hasYB=yb.limb!=null||['ant','pm','pl'].some(k=>yb.right[k]!=null||yb.left[k]!=null);
@@ -364,10 +360,12 @@ ${TINFO_CSS}
 .ph img{border-radius:8px;border:1px solid var(--border);display:block}
 .phx{background:var(--bg2);border:1px dashed var(--border);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:24px}
 .phl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
-/* The FMS sheet is read as one thing — the scores and the uploaded score sheet
-   together — so it is kept whole on a single page and its pages are sized
-   against what is left of that page, never split across two. */
+/* A scanned FMS sheet is kept whole on a single page and its pages are sized
+   against what is left of that page, never split across two. The live sheet is its own
+   page, after everything else. */
 .fms-sheet{page-break-inside:avoid;break-inside:avoid}
+.fmsx-page{break-before:page;page-break-before:always}
+${FMS_SHEET_CSS}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:8px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
 /* Height and width are both capped and neither is set: the page keeps its own
@@ -508,32 +506,13 @@ ${has('ohs')?`
   </div>
 </div>`:''}
 
-${(Array.isArray(bat)?has('fms'):fmsR.any)&&(fmsShowTable||fmsPages.length)?`
+${fmsOn&&fmsPages.length?`
 <div class="section fms-sheet">
-  <div class="section-h">${L('FMS — FONKSİYONEL HAREKET TARAMASI','FMS — FUNCTIONAL MOVEMENT SCREEN')}${fmsR.total!=null?` — ${L('Toplam','Total')}: <span style="color:${fmsTotalColor(fmsR.total)}">${fmsR.total} / 21</span>`:''}${fmsR.n>0&&fmsR.n<7?` <span style="font-weight:400">(${fmsR.n}/7 ${L('hareket','movements')})</span>`:''}</div>
-  ${fmsShowTable?`<table>
-    <colgroup><col style="width:40%"/><col style="width:13%"/><col style="width:13%"/><col style="width:13%"/><col style="width:21%"/></colgroup>
-    <tr><th>${L('Hareket','Movement')}</th><th>${L('Sağ','Right')}</th><th>${L('Sol','Left')}</th><th>${L('Skor','Score')}</th><th>${L('Not','Note')}</th></tr>
-    ${fmsRows.map(i=>{
-      const nm=L(i.tr,i.en);
-      const clr=i.cleared?`<div style="font-weight:400;font-size:9px;color:${i.cleared==='pos'?'#dc2626':'var(--muted)'};margin-top:2px">${L(i.clearTr,i.clearEn)}: ${i.cleared==='pos'?L('Pozitif (ağrı)','Positive (pain)'):L('Negatif','Negative')}</div>`:'';
-      const note=i.cleared==='pos'?L('Temizleme testi pozitif → 0','Clearing test positive → 0')
-        :i.asym!=null?`${L('Asimetri','Asymmetry')} ${i.asym} pt`
-        :i.score===0?L('Ağrı / yapılamadı','Pain / unable'):'—';
-      const noteCol=i.cleared==='pos'||i.score===0?'#dc2626':i.asym!=null?'#eab308':'';
-      return`<tr><td style="text-align:left;font-weight:600">${nm}${clr}</td>`
-        +`<td${i.right!=null?` style="color:${fmsSc(i.right)};font-weight:600"`:''}>${i.bi?(i.right!=null?i.right:'—'):'—'}</td>`
-        +`<td${i.left!=null?` style="color:${fmsSc(i.left)};font-weight:600"`:''}>${i.bi?(i.left!=null?i.left:'—'):'—'}</td>`
-        +`<td${i.score!=null?` style="color:${fmsSc(i.score)};font-weight:700"`:''}>${i.score!=null?i.score+' / 3':'—'}</td>`
-        +`<td${noteCol?` style="color:${noteCol};font-weight:600"`:''}>${note}</td></tr>`;
-    }).join('')}
-  </table>
-  <div class="obs-box">${L('Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde düşük olan taraf geçerlidir. Temizleme testinin pozitif (ağrılı) çıkması ilgili hareketi 0 yapar. Toplam skor 21 üzerindendir; 14 ve altı yaralanma riski açısından dikkat gerektirir.','Each movement is scored 0-3; on the bilateral movements the lower side is the one that counts. A positive (painful) clearing test drops its movement to 0. The total is out of 21; 14 or below warrants attention on injury risk.')}</div>`:''}
-  ${fmsPages.length?`<div class="fms-pages" style="--fms-ph:${fmsPageH}mm">
+  <div class="section-h">${L('FMS — FONKSİYONEL HAREKET TARAMASI','FMS — FUNCTIONAL MOVEMENT SCREEN')}${fmsR.total!=null?` — ${L('Toplam','Total')}: <span style="color:${fmsTotalColor(fmsR.total)}">${fmsR.total} / 21</span>`:''}</div>
+  <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">
     ${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}
   </div>
-  <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div>`:''}
-  ${test.fms?.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.fms.observations.replace(/</g,'&lt;')}</div>`:''}
+  <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div>
 </div>`:''}
 
 ${has('sprint')?`
@@ -613,7 +592,11 @@ ${(test.notes||infoTable)?`
   ${infoTable?`<div class="tinfo-h">${L('Bu kayıttaki testler hakkında','About the tests on this record')}</div>${infoTable}`:''}
 </div>`:''}
 
-<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>
+${fmsOn&&fmsR.any
+  /* The score sheet is the last page, and the "generated" line goes at its foot — left in the body
+     it would spill onto a page of its own between the report and the sheet. */
+  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>`
+  :`<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`}
 
 </body></html>`;
 
