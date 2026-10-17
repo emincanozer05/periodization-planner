@@ -171,9 +171,11 @@ const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
      lab  [tr,en] and ls: its row-span, on the first line of a group
      fin  the Final Score cell that starts here: {of: movement id | null, n: rows}
      cm   the Comments cell that starts here:    {id: key in `comments`, n: rows}
-     sub  a clearing / mobility line under its movement (small red label) */
+     sub  a clearing / mobility line under its movement (small red label)
+     rh   the line's height in ordinary lines (default 1): a one-line movement whose comment
+          would otherwise show a line and a half */
 const FMS_SHEET=[
-  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1}},
+  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1},rh:2},
   {f:'hurdleStep',side:'right',kind:'score',lab:['YÜKSEK ADIMLAMA','HURDLE STEP'],ls:2,fin:{of:'hurdleStep',n:2},cm:{id:'hurdleStep',n:2}},
   {f:'hurdleStep',side:'left',kind:'score'},
   {f:'inlineLunge',side:'right',kind:'score',lab:['TEK ÇİZGİ LUNGE','INLINE LUNGE'],ls:2,fin:{of:'inlineLunge',n:4},cm:{id:'inlineLunge',n:2}},
@@ -285,7 +287,7 @@ function fmsSheetHtml(test,ath,opts){
   const cm=f.comments||{};
   const RH=7.6;
   const field=(lbl,val,w)=>`<div class="fd" style="${w?`flex:0 0 ${w}`:'flex:1'}"><b>${lbl}:</b><span>${esc(val)}</span></div>`;
-  const rows=FMS_SHEET.map(r=>{
+  const rows=FMS_SHEET.map((r,i)=>{
     let td='';
     if(r.lab)td+=`<td class="lab${r.sub?' sub':''}" rowspan="${r.ls}" colspan="${r.side?1:2}">${esc(L(r.lab[0],r.lab[1]))}</td>`;
     if(r.side)td+=`<td class="sd">${r.side==='right'?'R':'L'}</td>`;
@@ -297,8 +299,11 @@ function fmsSheetHtml(test,ath,opts){
       const it=r.fin.of?byId[r.fin.of]:null;
       td+=`<td class="fin" rowspan="${r.fin.n}"${it&&it.score!=null?` style="color:${tone(it.score)}"`:''}>${it&&it.score!=null?it.score:''}</td>`;
     }
-    if(r.cm)td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${r.cm.n*RH-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
-    return`<tr>${td}</tr>`;
+    if(r.cm){
+      const h=FMS_SHEET.slice(i,i+r.cm.n).reduce((a,x)=>a+(x.rh||1)*RH,0);
+      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
+    }
+    return`<tr${r.rh?` style="height:${r.rh*RH}mm"`:''}>${td}</tr>`;
   }).join('');
   const obs=[f.observations,o.note].filter(x=>x&&String(x).trim());
   return`<div class="fmsx">

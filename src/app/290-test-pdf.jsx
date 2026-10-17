@@ -593,9 +593,11 @@ ${(test.notes||infoTable)?`
 </div>`:''}
 
 ${fmsOn&&fmsR.any
-  /* The score sheet is the last page, and the "generated" line goes at its foot — left in the body
-     it would spill onto a page of its own between the report and the sheet. */
-  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>`
+  /* The score sheet is always page 2. It is written last, with the "generated" line at its foot,
+     which is right when the report fits on page 1; when it does not, fmsToPage2 moves it in front
+     of the first block that would spill over, and the report's own footer goes back at the end. */
+  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>
+<div class="footer" style="display:none">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`
   :`<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`}
 
 </body></html>`;
@@ -604,6 +606,30 @@ ${fmsOn&&fmsR.any
   w.document.close();
   // Posture / OHS / sprint photos are full-size and remote, so give them a longer
   // cap than the session sheets before the dialog opens regardless.
-  printWhenImagesReady(w,{safety:15000});
+  printWhenImagesReady(w,{safety:15000,before:fmsToPage2});
+}
+/* Puts the FMS score sheet on page 2 of the report. The page is laid out at the printed width
+   (A4 less the 12mm margins) and the blocks after the athlete card are measured against one page
+   height: the sheet goes in front of the first block that does not end on page 1, and that block
+   follows on page 3. Images are loaded by now, so their heights are real. */
+function fmsToPage2(w){
+  const d=w.document,sheet=d.querySelector('.fmsx-page');if(!sheet)return;
+  const b=d.body,prevW=b.style.width;
+  b.style.width='186mm';
+  try{
+    const probe=d.createElement('div');probe.style.cssText='position:absolute;visibility:hidden;height:273mm';
+    b.appendChild(probe);const pageH=probe.offsetHeight*0.97;probe.remove();
+    const top=d.documentElement.getBoundingClientRect().top;
+    const head=d.querySelector('.athlete-header');
+    let el=head&&head.nextElementSibling,cut=null;
+    for(;el&&el!==sheet;el=el.nextElementSibling){
+      if(el.getBoundingClientRect().bottom-top>pageH){cut=el;break;}
+    }
+    if(!cut)return;
+    b.insertBefore(sheet,cut);
+    sheet.style.breakAfter='page';sheet.style.pageBreakAfter='always';
+    const gen=sheet.querySelector('.fmsx-gen');if(gen)gen.remove();
+    const foot=d.querySelector('body > .footer');if(foot)foot.style.display='';
+  }finally{b.style.width=prevW;}
 }
 

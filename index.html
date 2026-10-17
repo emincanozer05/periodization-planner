@@ -3815,6 +3815,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tc-obs-posture{flex:0 0 46%}
 .tc-obs-posture textarea{min-height:150px}
 .tc-obs-flex{flex:1 1 220px;min-width:220px}
+/* Under the FMS sheet the card body is a column, so the side-panel basis (42%) would size the
+   box off the card's height and clip the textarea at the card's foot. Here it is its own block. */
+.tc-obs-fms{flex:none}
+.tc-obs-fms textarea{flex:none;min-height:110px;resize:none;overflow:hidden}
 .tc-obs-flex textarea{min-height:150px}
 .tc-obs textarea::placeholder{color:rgba(255,255,255,.25)}
 .tc-obs textarea:focus{border-color:var(--card-accent,#0094ff);box-shadow:0 0 0 3px rgba(0,148,255,.1)}
@@ -9877,9 +9881,11 @@ const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
      lab  [tr,en] and ls: its row-span, on the first line of a group
      fin  the Final Score cell that starts here: {of: movement id | null, n: rows}
      cm   the Comments cell that starts here:    {id: key in `comments`, n: rows}
-     sub  a clearing / mobility line under its movement (small red label) */
+     sub  a clearing / mobility line under its movement (small red label)
+     rh   the line's height in ordinary lines (default 1): a one-line movement whose comment
+          would otherwise show a line and a half */
 const FMS_SHEET=[
-  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1}},
+  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1},rh:2},
   {f:'hurdleStep',side:'right',kind:'score',lab:['YÜKSEK ADIMLAMA','HURDLE STEP'],ls:2,fin:{of:'hurdleStep',n:2},cm:{id:'hurdleStep',n:2}},
   {f:'hurdleStep',side:'left',kind:'score'},
   {f:'inlineLunge',side:'right',kind:'score',lab:['TEK ÇİZGİ LUNGE','INLINE LUNGE'],ls:2,fin:{of:'inlineLunge',n:4},cm:{id:'inlineLunge',n:2}},
@@ -9991,7 +9997,7 @@ function fmsSheetHtml(test,ath,opts){
   const cm=f.comments||{};
   const RH=7.6;
   const field=(lbl,val,w)=>`<div class="fd" style="${w?`flex:0 0 ${w}`:'flex:1'}"><b>${lbl}:</b><span>${esc(val)}</span></div>`;
-  const rows=FMS_SHEET.map(r=>{
+  const rows=FMS_SHEET.map((r,i)=>{
     let td='';
     if(r.lab)td+=`<td class="lab${r.sub?' sub':''}" rowspan="${r.ls}" colspan="${r.side?1:2}">${esc(L(r.lab[0],r.lab[1]))}</td>`;
     if(r.side)td+=`<td class="sd">${r.side==='right'?'R':'L'}</td>`;
@@ -10003,8 +10009,11 @@ function fmsSheetHtml(test,ath,opts){
       const it=r.fin.of?byId[r.fin.of]:null;
       td+=`<td class="fin" rowspan="${r.fin.n}"${it&&it.score!=null?` style="color:${tone(it.score)}"`:''}>${it&&it.score!=null?it.score:''}</td>`;
     }
-    if(r.cm)td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${r.cm.n*RH-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
-    return`<tr>${td}</tr>`;
+    if(r.cm){
+      const h=FMS_SHEET.slice(i,i+r.cm.n).reduce((a,x)=>a+(x.rh||1)*RH,0);
+      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
+    }
+    return`<tr${r.rh?` style="height:${r.rh*RH}mm"`:''}>${td}</tr>`;
   }).join('');
   const obs=[f.observations,o.note].filter(x=>x&&String(x).trim());
   return`<div class="fmsx">
@@ -24119,9 +24128,11 @@ ${(test.notes||infoTable)?`
 </div>`:''}
 
 ${fmsOn&&fmsR.any
-  /* The score sheet is the last page, and the "generated" line goes at its foot — left in the body
-     it would spill onto a page of its own between the report and the sheet. */
-  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>`
+  /* The score sheet is always page 2. It is written last, with the "generated" line at its foot,
+     which is right when the report fits on page 1; when it does not, fmsToPage2 moves it in front
+     of the first block that would spill over, and the report's own footer goes back at the end. */
+  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>
+<div class="footer" style="display:none">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`
   :`<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`}
 
 </body></html>`;
@@ -24130,7 +24141,31 @@ ${fmsOn&&fmsR.any
   w.document.close();
   // Posture / OHS / sprint photos are full-size and remote, so give them a longer
   // cap than the session sheets before the dialog opens regardless.
-  printWhenImagesReady(w,{safety:15000});
+  printWhenImagesReady(w,{safety:15000,before:fmsToPage2});
+}
+/* Puts the FMS score sheet on page 2 of the report. The page is laid out at the printed width
+   (A4 less the 12mm margins) and the blocks after the athlete card are measured against one page
+   height: the sheet goes in front of the first block that does not end on page 1, and that block
+   follows on page 3. Images are loaded by now, so their heights are real. */
+function fmsToPage2(w){
+  const d=w.document,sheet=d.querySelector('.fmsx-page');if(!sheet)return;
+  const b=d.body,prevW=b.style.width;
+  b.style.width='186mm';
+  try{
+    const probe=d.createElement('div');probe.style.cssText='position:absolute;visibility:hidden;height:273mm';
+    b.appendChild(probe);const pageH=probe.offsetHeight*0.97;probe.remove();
+    const top=d.documentElement.getBoundingClientRect().top;
+    const head=d.querySelector('.athlete-header');
+    let el=head&&head.nextElementSibling,cut=null;
+    for(;el&&el!==sheet;el=el.nextElementSibling){
+      if(el.getBoundingClientRect().bottom-top>pageH){cut=el;break;}
+    }
+    if(!cut)return;
+    b.insertBefore(sheet,cut);
+    sheet.style.breakAfter='page';sheet.style.pageBreakAfter='always';
+    const gen=sheet.querySelector('.fmsx-gen');if(gen)gen.remove();
+    const foot=d.querySelector('body > .footer');if(foot)foot.style.display='';
+  }finally{b.style.width=prevW;}
 }
 
 /* =========================================================
@@ -25121,7 +25156,7 @@ function FmsSheetCard({test,ath,onUpdate}){
               {it&&it.asym!=null&&it.cleared!=='pos'&&<div className="fmsl-flag am">{L('asimetri','asym.')} {it.asym}</div>}
             </td>}
             {r.cm&&<td className="cm" rowSpan={r.cm.n}>
-              <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)}
+              <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)+(r.rh||0)}
                 placeholder={L('Yorum…','Comment…')} aria-label={L('Yorum','Comment')}/>
             </td>}
           </tr>);
@@ -25237,7 +25272,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           <div className="fmsl-old">{L('Bu kayıtta, canlı kâğıttan önce yüklenmiş bir FMS PDF’i var. Raporda yine basılır.','This record carries an FMS PDF uploaded before the live sheet existed. It still prints in the report.')}</div>
           <FmsPdfPanel pdf={f.pdf} onChange={v=>setF('pdf',v)}/>
         </div>}
-        <MkObs value={obsVal} onChange={setObs} label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
+        <MkObs value={obsVal} onChange={setObs} className="tc-obs-fms" autoGrow label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
     </div>);
   }
