@@ -514,7 +514,7 @@ function FmsSheetCard({test,ath,onUpdate}){
               {it&&it.asym!=null&&it.cleared!=='pos'&&<div className="fmsl-flag am">{L('asimetri','asym.')} {it.asym}</div>}
             </td>}
             {r.cm&&<td className="cm" rowSpan={r.cm.n}>
-              <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)}
+              <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)+(r.rh||0)}
                 placeholder={L('Yorum…','Comment…')} aria-label={L('Yorum','Comment')}/>
             </td>}
           </tr>);
@@ -630,7 +630,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           <div className="fmsl-old">{L('Bu kayıtta, canlı kâğıttan önce yüklenmiş bir FMS PDF’i var. Raporda yine basılır.','This record carries an FMS PDF uploaded before the live sheet existed. It still prints in the report.')}</div>
           <FmsPdfPanel pdf={f.pdf} onChange={v=>setF('pdf',v)}/>
         </div>}
-        <MkObs value={obsVal} onChange={setObs} label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
+        <MkObs value={obsVal} onChange={setObs} className="tc-obs-fms" autoGrow label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
     </div>);
   }
