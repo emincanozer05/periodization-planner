@@ -86,6 +86,11 @@ const slog=(msg,extra)=>{
   for(let i=0;i<_slSubs.length;i++){try{_slSubs[i]();}catch(_){}}
 };
 const slogSub=f=>{_slSubs.push(f);return()=>{_slSubs=_slSubs.filter(x=>x!==f);};};
+/* Sayfayı uygulamanın KENDİSİ yenilediyse sebebi yenilemeden önce yazılır; açılışta günlüğe
+   düşer. Günlük bellekte durduğu için yoksa yenilemeyle birlikte silinir ve "kendi kendine
+   yenilendi" şikâyeti neyin yenilediğini söylemeden kalırdı. Günlükte bu satır yoksa yenileyen
+   uygulama değildir: tarayıcı (aşağı çekerek yenileme) ya da işletim sistemi (bellek baskısı). */
+try{const w=sessionStorage.getItem('coachos_reload_why');if(w){sessionStorage.removeItem('coachos_reload_why');slog('sayfa uygulama tarafından yenilendi: '+w);}}catch(_){}
 const slogText=()=>SYNC_LOG.map(e=>{
   const d=new Date(e.t);
   const p=n=>String(n).padStart(2,'0');

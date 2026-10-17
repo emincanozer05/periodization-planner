@@ -1053,6 +1053,18 @@ function useCloudSync(data,setData){
     const fb=FB();if(!fb||!user)return;
     let reloading=false;
     const RESUB_MS=20000;
+    /* Koç bir alana yazıyor ya da az önce dokundu mu? Taşıma değişikliği sayfayı yeniler ve
+       yenileme açık testi, açık sekmeyi, kaydırma konumunu — koçun bulunduğu yeri — siler.
+       Yazımlar IndexedDB'de kalıcı olduğu için veri gitmez ama bir form doldururken bunun
+       olması "sayfa kendi kendine yenilendi" diye yaşanıyor; o yüzden yenileme, koç elini
+       çekene kadar bekler (gözcü iki saniyede bir döner, bekleme ucuzdur). */
+    const lastAct={t:0};
+    const touch=()=>{lastAct.t=Date.now();};
+    window.addEventListener('pointerdown',touch,true);window.addEventListener('keydown',touch,true);
+    const editing=()=>{
+      const a=typeof document!=='undefined'&&document.activeElement;
+      return !!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable))||Date.now()-lastAct.t<15000;
+    };
     const tick=()=>{
       if(reloading)return;
       const now=Date.now();
@@ -1073,9 +1085,11 @@ function useCloudSync(data,setData){
       if(!sawServer.current&&startedAt.current&&now-startedAt.current>STALL_MS
          &&(typeof navigator==='undefined'||navigator.onLine!==false)
          &&typeof window!=='undefined'&&typeof window.__fsSwitchTransport==='function'
+         &&!editing()           // __fsSwitchTransport() hakkı bir kez harcar: koç çekilmeden çağrılmaz
          &&window.__fsSwitchTransport()){
         reloading=true;
         slog('gözcü: sunucuya hiç ulaşılamadı → taşıma değiştirilip sayfa yenileniyor');
+        try{sessionStorage.setItem('coachos_reload_why','taşıma değişti (sunucuya hiç ulaşılamadı)');}catch(e){}
         try{lsFlush();}catch(e){}
         setTimeout(()=>{try{location.reload();}catch(e){}},400);
         return;
@@ -1126,7 +1140,7 @@ function useCloudSync(data,setData){
       if(st==='syncing'&&writeAcked.current){setStatus('synced');setSyncErr('');}
     };
     const iv=setInterval(tick,2000);
-    return()=>clearInterval(iv);
+    return()=>{clearInterval(iv);window.removeEventListener('pointerdown',touch,true);window.removeEventListener('keydown',touch,true);};
   },[user]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:

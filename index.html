@@ -6656,6 +6656,11 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
    lifted hover state until something else is touched — so the lift is dropped; taps
    don't wait on double-tap-to-zoom; and the smallest controls grow to a finger's size. */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* The page itself scrolls (not an inner box), and the app runs installed, full-screen: with
+   nothing set, a finger drag down from the top of any long form — FMS, anthropometry,
+   the program table — is the browser's pull-to-refresh and reloads the page, dropping the
+   open test and the scroll position. Inner scrollers already say `contain`; the root did not. */
+html,body{overscroll-behavior-y:none}
 @media(hover:none){
   .panel:hover{transform:none;box-shadow:var(--shadow);border-color:var(--border)}
   .btn:hover{transform:none;box-shadow:none}
@@ -31712,6 +31717,11 @@ const slog=(msg,extra)=>{
   for(let i=0;i<_slSubs.length;i++){try{_slSubs[i]();}catch(_){}}
 };
 const slogSub=f=>{_slSubs.push(f);return()=>{_slSubs=_slSubs.filter(x=>x!==f);};};
+/* Sayfayı uygulamanın KENDİSİ yenilediyse sebebi yenilemeden önce yazılır; açılışta günlüğe
+   düşer. Günlük bellekte durduğu için yoksa yenilemeyle birlikte silinir ve "kendi kendine
+   yenilendi" şikâyeti neyin yenilediğini söylemeden kalırdı. Günlükte bu satır yoksa yenileyen
+   uygulama değildir: tarayıcı (aşağı çekerek yenileme) ya da işletim sistemi (bellek baskısı). */
+try{const w=sessionStorage.getItem('coachos_reload_why');if(w){sessionStorage.removeItem('coachos_reload_why');slog('sayfa uygulama tarafından yenilendi: '+w);}}catch(_){}
 const slogText=()=>SYNC_LOG.map(e=>{
   const d=new Date(e.t);
   const p=n=>String(n).padStart(2,'0');
@@ -33099,6 +33109,18 @@ function useCloudSync(data,setData){
     const fb=FB();if(!fb||!user)return;
     let reloading=false;
     const RESUB_MS=20000;
+    /* Koç bir alana yazıyor ya da az önce dokundu mu? Taşıma değişikliği sayfayı yeniler ve
+       yenileme açık testi, açık sekmeyi, kaydırma konumunu — koçun bulunduğu yeri — siler.
+       Yazımlar IndexedDB'de kalıcı olduğu için veri gitmez ama bir form doldururken bunun
+       olması "sayfa kendi kendine yenilendi" diye yaşanıyor; o yüzden yenileme, koç elini
+       çekene kadar bekler (gözcü iki saniyede bir döner, bekleme ucuzdur). */
+    const lastAct={t:0};
+    const touch=()=>{lastAct.t=Date.now();};
+    window.addEventListener('pointerdown',touch,true);window.addEventListener('keydown',touch,true);
+    const editing=()=>{
+      const a=typeof document!=='undefined'&&document.activeElement;
+      return !!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable))||Date.now()-lastAct.t<15000;
+    };
     const tick=()=>{
       if(reloading)return;
       const now=Date.now();
@@ -33119,9 +33141,11 @@ function useCloudSync(data,setData){
       if(!sawServer.current&&startedAt.current&&now-startedAt.current>STALL_MS
          &&(typeof navigator==='undefined'||navigator.onLine!==false)
          &&typeof window!=='undefined'&&typeof window.__fsSwitchTransport==='function'
+         &&!editing()           // __fsSwitchTransport() hakkı bir kez harcar: koç çekilmeden çağrılmaz
          &&window.__fsSwitchTransport()){
         reloading=true;
         slog('gözcü: sunucuya hiç ulaşılamadı → taşıma değiştirilip sayfa yenileniyor');
+        try{sessionStorage.setItem('coachos_reload_why','taşıma değişti (sunucuya hiç ulaşılamadı)');}catch(e){}
         try{lsFlush();}catch(e){}
         setTimeout(()=>{try{location.reload();}catch(e){}},400);
         return;
@@ -33172,7 +33196,7 @@ function useCloudSync(data,setData){
       if(st==='syncing'&&writeAcked.current){setStatus('synced');setSyncErr('');}
     };
     const iv=setInterval(tick,2000);
-    return()=>clearInterval(iv);
+    return()=>{clearInterval(iv);window.removeEventListener('pointerdown',touch,true);window.removeEventListener('keydown',touch,true);};
   },[user]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:

@@ -50,5 +50,16 @@ test('hareketi azalt: işletim sistemi tercihinde animasyon ve geçişler kısal
   assert.ok(/@media \(prefers-reduced-motion:reduce\)\{\s*\*,\*::before,\*::after\{[^}]*animation-duration:\.01ms!important[^}]*transition-duration:\.01ms!important/.test(css));
 });
 
+test('aşağı çekerek yenileme kapalı: sayfa kendisi kayıyor, kökte overscroll-behavior-y yok olursa uzun formlar (FMS) tabletle doldurulurken sayfa yenilenir', () => {
+  assert.ok(/html,body\{overscroll-behavior-y:none\}/.test(css));
+});
+
+test('sync gözcüsü taşıma değişikliği yenilemesini koç bir alandayken yapmıyor ve sebebini bırakıyor', () => {
+  const src = fs.readFileSync(__dirname + '/src/app/450-use-cloud-sync.jsx', 'utf8');
+  // editing() kontrolü, oturum başına tek hakkı harcayan __fsSwitchTransport() çağrısından ÖNCE gelmeli
+  assert.ok(/&&!editing\(\)[^\n]*\n\s*&&window\.__fsSwitchTransport\(\)/.test(src), 'editing() __fsSwitchTransport()\'ten önce değil');
+  assert.ok(/coachos_reload_why/.test(src) && /coachos_reload_why/.test(fs.readFileSync(__dirname + '/src/app/440-sync-infra-chunking-merge.jsx', 'utf8')));
+});
+
 console.log(failed ? `\n${failed} kaldı` : '\nhepsi geçti');
 process.exit(failed ? 1 : 0);
