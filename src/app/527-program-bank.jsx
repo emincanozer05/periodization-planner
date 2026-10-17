@@ -1,5 +1,5 @@
 /* ---- PROGRAM BANKASI -------------------------------------------------------------
-   Bir sporcu için yazılan program, sporcunun profilinde (Sporcu Profili → Antrenman Programları)
+   Bir sporcu için yazılan program, sporcunun profilinde (sporcu detayı → Takvim sekmesi → Antrenman Programları)
    iki kaynaktan okunur:
      • kaydedilenler — `ath.programs[]`: sporcunun takviminde bir seans yazıldıkça kendiliğinden
        (`pbAutoSave`: seans başına tek kayıt, değiştikçe aynı kayıt güncellenir, içeriği birebir aynı
@@ -11,10 +11,12 @@
    takvim çekmecesi ve Hafta/Gün planlayıcısı (yeni seans ya da mevcut seansa blok), ve
    Bireyselleştirme'nin Antrenman tablosu (bloktan tablo satırlarına çevrilir).
 
-   Seçici (`ProgramPicker`) takımların TÜM sporcularını okur — bir sporcunun programı bir
-   başkasına da yapıştırılabilsin diye. Okunan liste `registerProgramBank` ile uygulamanın
-   tepesinden verilir (kütüphane listesiyle aynı yol: setLibItems); yazma da aynı yoldan,
-   `_pbWrite` ile, sporcunun güncel hâline uygulanır. */
+   Seçici (`ProgramPicker`) yapıştırılan yerin sporcusu belliyse YALNIZCA o sporcunun programlarını
+   gösterir (seans onun takviminde ya da Bireyselleştirme'de onun kartında yazılıyorsa). Sporcu belli
+   değilse (takım takvimi, Hafta/Gün planı) hangi sporcunun programı olduğunu seçtirir. Okunan liste
+   `registerProgramBank` ile uygulamanın tepesinden verilir (kütüphane listesiyle aynı yol:
+   setLibItems); yazma da aynı yoldan, `_pbWrite` ile, sporcunun güncel hâline uygulanır.
+   Profil paneli (`AthPrograms`) sporcunun Takvim sekmesinde, takvimin hemen altında durur. */
 let _pbTeams=[];
 let _pbWrite=null;
 function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
@@ -221,13 +223,11 @@ function PbRow({r,open,onToggle,showAth,children}){
 
 /* Yapıştırılacak programı seçtiren pencere. `onPick(row)` çağrılır, pencere kapanır. */
 function ProgramPicker({onClose,onPick,athId,title}){
-  const rows=useMemo(()=>pbAllRows(),[]);
-  /* Seansın sahibi sporcunun programı varsa liste onunla açılır; yoksa herkesinki. */
-  const[f,setF]=useState(()=>{
-    const ath=rows.some(r=>r.athId===athId)?athId:'';
+  /* Yazılan yerin sporcusu belliyse yalnızca onun programları; başkasının programı hiç gelmez. */
+  const rows=useMemo(()=>pbAllRows().filter(r=>!athId||r.athId===athId),[]);
+  const[f,setF]=useState(()=>({q:'',ath:athId||'',
     /* Kayıtlı programlar önde: takvim geçmişi kalabalık olur. Hiç kayıtlı yoksa boş liste açılmasın. */
-    return{q:'',ath,src:rows.some(r=>r.kind==='saved'&&(!ath||r.athId===ath))?'saved':''};
-  });
+    src:rows.some(r=>r.kind==='saved')?'saved':''}));
   const[open,setOpen]=useState(null);
   const[limit,setLimit]=useState(30);
   const set=(k,v)=>{setF(o=>({...o,[k]:v}));setLimit(30);};
@@ -239,18 +239,19 @@ function ProgramPicker({onClose,onPick,athId,title}){
   const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
   const shown=useMemo(()=>pbFilter(rows,f),[rows,f]);
   const nSaved=rows.filter(r=>r.kind==='saved').length;
+  const athName=useMemo(()=>{let n='';_pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{if(a.id===athId)n=a.name||'';}));return n;},[]);
   return ReactDOM.createPortal(
     <div className="modal-bg" onClick={onClose}>
       <div className="modal pbk-modal" role="dialog" aria-modal="true" aria-label={title||L('Kayıtlı program','Saved programme')} onClick={e=>e.stopPropagation()}>
-        <div className="modal-head"><h2 style={{margin:0,fontSize:17,flex:1}}>{title||L('Kayıtlı programdan yapıştır','Paste a saved programme')}</h2>
+        <div className="modal-head"><h2 style={{margin:0,fontSize:17,flex:1}}>{title||L('Kayıtlı programdan yapıştır','Paste a saved programme')}{athName&&<small className="pbk-for"> · {athName}</small>}</h2>
           <button className="x-btn" onClick={onClose} aria-label={L('Kapat','Close')}>✕</button></div>
-        <div className="pbk-filters">
+        <div className={'pbk-filters'+(athId?' one':'')}>
           <input type="search" autoFocus placeholder={L('Ara: egzersiz, program adı, sporcu, tarih…','Search: exercise, programme, athlete, date…')}
             value={f.q} onChange={e=>set('q',e.target.value)} aria-label={L('Ara','Search')}/>
-          <select value={f.ath} onChange={e=>set('ath',e.target.value)} aria-label={L('Sporcu','Athlete')}>
+          {!athId&&<select value={f.ath} onChange={e=>set('ath',e.target.value)} aria-label={L('Sporcu','Athlete')}>
             <option value="">{L('Tüm sporcular','All athletes')}</option>
             {aths.map(([id,nm])=><option key={id} value={id}>{nm}</option>)}
-          </select>
+          </select>}
           <select value={f.src} onChange={e=>set('src',e.target.value)} aria-label={L('Kaynak','Source')}>
             <option value="saved">{L(`Kayıtlı programlar (${nSaved})`,`Saved programmes (${nSaved})`)}</option>
             <option value="">{L('Kayıtlı + takvim geçmişi','Saved + calendar history')}</option>
@@ -259,9 +260,10 @@ function ProgramPicker({onClose,onPick,athId,title}){
         </div>
         <div className="pbk-list">
           {shown.length===0&&<div className="ex-empty">{rows.length===0
-            ?L('Henüz program yok. Bir sporcunun takvimine program yaz ya da seansta "Profile kaydet"e bas.','No programmes yet. Write one on an athlete\'s calendar or press "Save to profile" in a session.')
+            ?(athId?L('Bu sporcu için henüz program yazılmamış. Takvimine bir antrenman yazdıkça burada görünür.','Nothing has been written for this athlete yet. Sessions you write on their calendar show up here.')
+              :L('Henüz program yok. Bir sporcunun takvimine program yaz.','No programmes yet. Write one on an athlete\'s calendar.'))
             :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
-          {shown.slice(0,limit).map(r=><PbRow key={r.key} r={r} showAth open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
+          {shown.slice(0,limit).map(r=><PbRow key={r.key} r={r} showAth={!athId} open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
             <button type="button" className="btn sm" onClick={()=>{onPick(r);onClose();}}>{L('Yapıştır','Paste')}</button>
           </PbRow>)}
           {shown.length===0&&f.src==='saved'&&pbFilter(rows,{...f,src:''}).length>0&&<button type="button" className="btn sm sec"
@@ -281,7 +283,7 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
   </>);
 }
 
-/* Sporcu Profili → Antrenman Programları: kayıtlı programlar ve takvimde yazılanlar. */
+/* Sporcu detayı → Takvim sekmesi → Antrenman Programları: bu sporcunun kayıtlı programları ve takvimde yazdıkları. */
 function AthPrograms({ath,updAth}){
   const[q,setQ]=useState('');
   const[src,setSrc]=useState('saved');

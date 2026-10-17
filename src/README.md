@@ -107,7 +107,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/510-researches.jsx` | RESEARCHES — article-summary blog (auto APA via CrossRef) · Daily research feed — pulls fresh training-science RCTs from |
 | `app/520-exercise-library-export.jsx` | PROGRAM INDIVIDUALIZATION — one source session, one editable sheet per athlete. |
 | `app/525-program-history.jsx` | PROGRAM GEÇMİŞİ — Bireyselleştirme → Program geçmişi: arama, kopyala (taslak), şablon |
-| `app/527-program-bank.jsx` | PROGRAM BANKASI — sporcunun kayıtlı programları (`ath.programs`) + takvimde yazılanlar; her yazım yerinden yapıştıran seçici (`ProgramPicker` / `ProgramPickBtn`), Sporcu Profili paneli (`AthPrograms`), bloktan Bireyselleştirme tablosuna çeviri |
+| `app/527-program-bank.jsx` | PROGRAM BANKASI — sporcunun kayıtlı programları (`ath.programs`) + takvimde yazılanlar; her yazım yerinden yapıştıran seçici (`ProgramPicker` / `ProgramPickBtn`), sporcunun Takvim sekmesindeki panel (`AthPrograms`), bloktan Bireyselleştirme tablosuna çeviri |
 | `app/530-athlete-context-readiness.jsx` | — |
 | `app/540-indiv-plan-descriptions.jsx` | — |
 | `app/550-coach-assistant.jsx` | — |
