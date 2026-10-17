@@ -17,7 +17,40 @@
   kendi uyarı sayfası. iOS'ta bu adım bildirim için ZORUNLU olduğundan, yanlış
   yere açılan bir kısayol tek başına bütün akışı bitiriyordu.
 -->
-<link rel="manifest" href="alerts.webmanifest"/>
+<link rel="manifest" href="alerts.webmanifest" id="mf"/>
+<!--
+  TOKEN ANA EKRAN KISAYOLUNA GÖMÜLÜYOR.
+  Ekip üyesi kişisel linki (…/alerts.html#k=TOKEN) açıp "Ana Ekrana Ekle" diyor; kurulan
+  kısayol ise manifestteki start_url'den açılıyor ve statik manifestte o adreste token yok.
+  Token'ı localStorage'dan okumak yetmiyor: iOS'ta ana ekran uygulamasının depolaması
+  Safari'ninkinden AYRI, yani Safari'de görülen token uygulamaya hiç geçmiyor ve ilk açılışta
+  "Bu adres eksik" çıkıyordu. Bu yüzden token biliniyorsa (adresten ya da cihazdan) manifest
+  burada, token'ı start_url'nin # kısmına koyarak üretiliyor: # sunucuya gitmiyor, yani
+  token yine sunucu loglarına düşmüyor. Token yoksa statik manifest olduğu gibi duruyor.
+  Kimlik (id) statik manifestteki türetilmiş kimlikle aynı: zaten kurulu bir kısayol
+  ikinci bir uygulama sayılmıyor.
+-->
+<script>
+(function(){
+  try{
+    var k=(new URLSearchParams((location.hash||'').replace(/^#/,'')).get('k')||'').trim();
+    if(!k)k=(new URLSearchParams((location.search||'').replace(/^\?/,'')).get('k')||'').trim();
+    if(!k)k=(localStorage.getItem('coachos.alerts.token')||'').trim();
+    if(!k||!window.URL||!URL.createObjectURL||!window.Blob)return;
+    var u=function(p){return new URL(p,location.href).href;};
+    var page=u('alerts.html');
+    var mf={name:'CoachOS Wellness',short_name:'CoachOS Wellness',description:'Takımının wellness uyarıları.',
+      lang:'tr',dir:'ltr',id:new URL(page).pathname,start_url:page+'#k='+encodeURIComponent(k),scope:page,
+      display:'standalone',display_override:['standalone','minimal-ui'],background_color:'#0b0d0f',
+      theme_color:'#0b0d0f',orientation:'any',categories:['health','sports'],
+      icons:[{src:u('icon-192.png'),sizes:'192x192',type:'image/png',purpose:'any'},
+             {src:u('icon-512.png'),sizes:'512x512',type:'image/png',purpose:'any'},
+             {src:u('icon-maskable-512.png'),sizes:'512x512',type:'image/png',purpose:'maskable'}]};
+    document.getElementById('mf').setAttribute('href',
+      URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'})));
+  }catch(e){/* statik manifest kalıyor */}
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -179,6 +212,9 @@ header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
 .btn.fill{background:#0094ff;border-color:#0094ff;color:#fff}
 .btn.sec{border-color:#2c3237;color:#eef2f5}
 .btn.full{display:flex;width:100%}
+input.paste{display:block;width:100%;box-sizing:border-box;margin-top:12px;padding:13px 14px;border-radius:12px;
+  border:1.5px solid #2c3237;background:#11161a;color:#eef2f5;font:inherit;font-size:16px}
+input.paste:focus{outline:none;border-color:#0094ff}
 .msg{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:13.5px}
 .msg.ok{background:rgba(47,224,168,.10);border:1px solid rgba(47,224,168,.5);color:#2fe0a8}
 .msg.warn{background:rgba(252,211,77,.10);border:1px solid rgba(252,211,77,.45);color:#fcd34d}
@@ -332,6 +368,10 @@ var I18N={
       'Uygulamayı ANA EKRANDAN aç — bu sayfa yeniden açılacak.'],
     no_config:'Yapılandırma yüklenemedi. Koçuna ilet: push-config.js sunucuda eksik.',
     no_token:'Bu adres eksik. Koçundan sana özel bildirim linkini iste.',
+    no_token_app:'Bu uygulama kişisel bildirim linkini hatırlamıyor. Koçunun sana gönderdiği linki aşağıya yapıştır — bir kez yeterli.',
+    paste_ph:'Koçundan gelen link',
+    paste_btn:'Linki kullan',
+    paste_bad:'Bu bir bildirim linkine benzemiyor. Koçunun gönderdiği linkin tamamını yapıştır.',
     open_app:'CoachOS uygulamasını aç',
     connecting:'Bağlanılıyor…',
     team:'Takım',
@@ -408,6 +448,10 @@ var I18N={
       'Open the app FROM THE HOME SCREEN — this page will open again.'],
     no_config:'Configuration could not be loaded. Tell your coach: push-config.js is missing on the server.',
     no_token:'This address is incomplete. Ask your coach for your personal notification link.',
+    no_token_app:'This app does not remember your personal notification link. Paste the link your coach sent you below — once is enough.',
+    paste_ph:'The link from your coach',
+    paste_btn:'Use this link',
+    paste_bad:'That does not look like a notification link. Paste the whole link your coach sent.',
     open_app:'Open the CoachOS app',
     connecting:'Connecting…',
     team:'Team',
@@ -721,6 +765,15 @@ if(CFG){
    açıldığında oradan okunuyor. Cihazda kalması bir risk getirmiyor: linkin
    kendisi zaten o telefonda, tarayıcı geçmişinde duruyor. */
 var LS_TOKEN='coachos.alerts.token';
+/* Yapıştırılan metinden token: tam link (# ya da ? kısmında k=…) ya da çıplak token. */
+function tokenFrom(text){
+  var t=String(text||'').trim();
+  if(!t)return '';
+  var m=/[#?&]k=([^&#\s]+)/.exec(t);
+  if(m){try{t=decodeURIComponent(m[1]);}catch(e){t=m[1];}}
+  t=t.trim();
+  return /^[A-Za-z0-9_-]{16,128}$/.test(t)?t:'';
+}
 var TOKEN=(params().get('k')||'').trim();
 if(TOKEN){try{localStorage.setItem(LS_TOKEN,TOKEN);}catch(e){}}
 else{try{TOKEN=(localStorage.getItem(LS_TOKEN)||'').trim();}catch(e){}}
@@ -893,7 +946,24 @@ function boot(){
     /* Bildirimler artık bu sayfaya açılıyor — koçun KENDİ cihazı da buraya
        düşebiliyor. O cihaz kadroda bir ekip üyesi olarak eşleşmemişse elinde
        hiçbir şey kalmasın istemiyoruz: uygulamanın kendisine bir çıkış duruyor. */
-    show(setupBox,'warn',T('no_token'));
+    show(setupBox,'warn',IS_STANDALONE?T('no_token_app'):T('no_token'));
+    /* Bağlantıyı elle girmek: ana ekran uygulaması Safari'nin depolamasını görmüyor, ama
+       kişi linki hâlâ WhatsApp'ında / mesajında tutuyor. Yapıştırdığı link cihaza yazılıp
+       sayfa yeniden açılıyor; bir daha sorulmaz. Tam link de, yalnızca token da kabul. */
+    var paste=el('input',{type:'text',id:'paste-link',inputmode:'url',autocomplete:'off',autocapitalize:'off',
+      spellcheck:'false',placeholder:T('paste_ph'),'aria-label':T('paste_ph'),class:'paste'});
+    var pasteMsg=el('div',{class:'msgbox'});
+    var useLink=function(){
+      var t=tokenFrom(paste.value);
+      if(!t){show(pasteMsg,'bad',T('paste_bad'));return;}
+      try{localStorage.setItem(LS_TOKEN,t);}catch(e){}
+      location.replace(location.pathname+'#k='+encodeURIComponent(t));
+      location.reload();
+    };
+    paste.addEventListener('keydown',function(e){if(e.key==='Enter')useLink();});
+    setupBox.appendChild(paste);
+    setupBox.appendChild(el('button',{type:'button',class:'btn fill full',text:T('paste_btn'),onclick:useLink}));
+    setupBox.appendChild(pasteMsg);
     setupBox.appendChild(el('a',{class:'btn sec full',href:'index.html',
       style:'text-decoration:none;margin-top:12px',text:T('open_app')}));
     return;
