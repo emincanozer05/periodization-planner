@@ -321,12 +321,28 @@ function useCloudSync(data,setData){
        Atasız birleştirme hiçbir şeyi silmez, iki tarafı da korur (bkz. mergeCloud).
        Ekranda gerçek veri yokken (açılıştaki örnek takım) bu yola hiç girilmez: örnek takımı
        koçun bulutuna karıştırmanın âlemi yok. */
+    /* SEANS KORUMASI (bkz. guardSessions): gelen hâl ekrandaki seanslardan birçoğunu birden
+       düşürüyorsa — başka bir cihaz bulutu eski kopyasıyla ezdiyse — düşenler geri konur ve
+       sonuç geri yazılır. Yalnızca bu oturumda bulutla en az bir kez mutabık kalınmışsa (base
+       varsa) sorulur: açılışta ekranda duran eski bir yerel kopya, o arada gerçekten silinmiş
+       seansları geri getirmesin. */
+    const guard=st=>{
+      if(base==null)return{state:st,n:0};
+      const g=guardSessions(dataRef.current,st);
+      if(g.n){
+        slog('seans koruması: gelen hâlde '+g.n+' seans eksikti → geri kondu');
+        setSyncNote(`Başka bir cihazdan gelen kayıtta ${g.n} seans eksikti (eski bir kopya buluta yazılmış olabilir). Seanslar silinmedi, yerlerinde korundu.`);
+      }
+      return g;
+    };
     if(pending&&base!==json&&(base!=null||hasRealData(dataRef.current))){
-      const{state,changed,stats}=mergeCloud(base,dataRef.current,parsed,preferRemote);
+      const merged=mergeCloud(base,dataRef.current,parsed,preferRemote);
+      const g=guard(merged.state);
+      const state=g.state,stats=merged.stats,changed=merged.changed||g.n>0;
       if(changed){
         dataRef.current=state;setData(state);
         dirty.current=true;
-        if(stats.conflicts)setSyncNote(preferRemote
+        if(stats.conflicts&&!g.n)setSyncNote(preferRemote
           ?'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (diğer cihazdaki) değişiklik geçerli oldu.'
           :'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (bu cihazdaki) değişiklik geçerli oldu.');
         return true;
@@ -340,6 +356,11 @@ function useCloudSync(data,setData){
        dizgiler karşılaştırılıyordu. Birkaç MB'lık bir durumda tek bir uzak görüntü için
        telefonun ana iş parçacığında yüzlerce ms — hem de yanıtı çoğu zaman ilk alanda
        belli olan bir soru için. `deq` ilk farkta duruyor ve hiçbir şey ayırmıyor. */
+    const g=guard(parsed);
+    if(g.n){
+      // lastApplied'a YAZILMAZ: bu hâl buluttakinden farklı, debounce turu onu geri yazacak.
+      dataRef.current=g.state;setData(g.state);dirty.current=true;return true;
+    }
     if(!deq(parsed,dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
     dirty.current=false;return false;
   };
@@ -444,8 +465,14 @@ function useCloudSync(data,setData){
       try{await fb.firestore().collection(COL).doc(uid).set({userId:uid,n:rec.n,rev:rec.rev,st:srvStamp()});}catch(e){console.warn('manifest heal',e);}
       return{json:rec.json,n:rec.n,rev:rec.rev,at:0,found,byRev};
     }
-    return{json:null,n:0,rev:0,at:0,found,byRev};
+    return{json:null,n:0,rev:0,at:manifest?stampMs(manifest.st):0,found,byRev};
   };
+  /* Bulut tutarsız ve elde bulutla mutabık bir hâl yokken eski kopyayı yazmadan önce kaç tur
+     daha beklendiği. Manifest son birkaç dakikada yazılmışsa başka bir cihaz büyük bir kaydı
+     hâlâ gönderiyor olabilir: 8 saniye sonra onun üstüne eski kopyayı yazmak, o cihazın bütün
+     yeni seanslarını siliyordu. */
+  const healWaits=useRef(0);
+  const HEAL_FRESH_MS=3*60*1000, HEAL_MAX_WAITS=20;
 
   // Tutarsız ara durum: sunucuya tekrar bak → düzeldiyse uygula, düzelmediyse yerelden geri yaz.
   const healInconsistent=async(fb,uid)=>{
@@ -473,7 +500,25 @@ function useCloudSync(data,setData){
       console.warn('cloud inconsistent · rev sayısı:',revs.length,
         revs.map(r=>r+': '+Object.keys(byRev[r]).length+' parça').join(' | '));
 
-      // 1) Bu tarayıcıdaki son TUTARLI kopya (en güvenli kaynak).
+      /* 1) Bu oturumda bulutla mutabık kalınmışsa EKRANDAKİ hâl. Emniyet kopyası ondan
+         eskidir (ekrandaki hâl o kopyanın üstüne yapılmış düzenlemeleri de taşır); eskiden
+         kopya öne alınıyor ve buluta körlemesine yazılıyordu — o kopyadan sonra yazılan
+         seanslar böylece bütün cihazlardan siliniyordu. */
+      if(ancestor.current!=null&&hasRealData(dataRef.current)){
+        slog('onarım: ekrandaki hâl buluta yeniden yazılıyor');
+        healWaits.current=0;
+        ready.current=true;lastSynced.current=null;
+        await writeNow();
+        return;
+      }
+      // Bulutta taze bir yazım yarıda → eski bir kopyayla üstüne yazma, biraz daha bekle.
+      if(at&&Date.now()-at<HEAL_FRESH_MS&&healWaits.current<HEAL_MAX_WAITS){
+        healWaits.current++;
+        slog('onarım: bulut tutarsız ama manifest yeni → başka cihazın yazımı bekleniyor','tur='+healWaits.current);
+        healing.current=false;waitThenHeal(fb,uid);return;
+      }
+      healWaits.current=0;
+      // 2) Bu tarayıcıdaki son TUTARLI kopya (ekranda bulutla mutabık bir hâl yoksa).
       const local=lsLoad(uid);
       if(local){
         let lp=null;try{lp=migrate(JSON.parse(local));}catch(e){}
@@ -486,14 +531,14 @@ function useCloudSync(data,setData){
         }
       }
 
-      // 2) Ekranda hâlâ gerçek veri duruyorsa onu yaz.
+      // 3) Ekranda hâlâ gerçek veri duruyorsa onu yaz.
       if(hasRealData(dataRef.current)){
         ready.current=true;lastSynced.current=null;
         await writeNow();
         return;                                               // hata olduysa writeNow yazdı
       }
 
-      // 3) Son çare: parçaları rev'ler arası birleştirip geçerli JSON çıkarmayı dene.
+      // 4) Son çare: parçaları rev'ler arası birleştirip geçerli JSON çıkarmayı dene.
       const spliced=byRev?spliceRecover(byRev):null;
       if(spliced){
         const sp=migrate(JSON.parse(spliced.json));
@@ -1046,6 +1091,20 @@ function useCloudSync(data,setData){
      yeniden icat etmez — var olan yolları (forcePull, writeNow, yeniden abonelik) çağırır,
      yalnızca onları çağıracak bir olay kalmadığında.
      ═══════════════════════════════════════════════════════════════════════ */
+  /* GÜNLÜK BULUT YEDEĞİ (bkz. cloudSnapshotDaily): günde bir kez, bulutla eşitken (yazılmamış
+     değişiklik yokken) durumun tamamı ayrıca saklanır. Açılıştan bir süre sonra başlar —
+     açılışın ilk dakikası senkronun kendisine kalsın. */
+  useEffect(()=>{
+    if(!user)return;
+    const run=()=>{
+      const fb=FB();
+      if(!fb||!ready.current||dirty.current||writing.current||ancestor.current==null)return;
+      cloudSnapshotDaily(fb,user.uid,dataRef.current);
+    };
+    const first=setTimeout(run,90000);
+    const iv=setInterval(run,10*60*1000);
+    return()=>{clearTimeout(first);clearInterval(iv);};
+  },[user]);
   const statusRef=useRef(status);statusRef.current=status;
   const lastPull=useRef(0);
   const lastResub=useRef(0);

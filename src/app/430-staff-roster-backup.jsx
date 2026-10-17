@@ -465,6 +465,40 @@ function Backup({data,setData,sync}){
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert(L('Geçersiz dosya','Invalid file'));return;}if(confirm(L('Tüm veriler değiştirilsin mi?','Replace all data?')))setData(migrate(p));}catch{alert(L('Okuma hatası','Read error'));}};
     r.readAsText(f);e.target.value='';};
+  /* Bir yedekte olup şu an olmayan seansları geri al. "Yedek Yükle"nin aksine hiçbir şeyin
+     yerine geçmez: yedekten sonra girilen wellness, RPE, test ve seanslar olduğu gibi kalır. */
+  const restoreFrom=(json,label)=>{
+    let b;try{b=migrate(JSON.parse(json));}catch{alert(L('Okuma hatası','Read error'));return;}
+    const{n}=restoreSessionsFrom(data,b);
+    if(!n){alert(L(`${label}: eksik seans yok — bu yedekteki bütün seanslar zaten takvimde.`,`${label}: nothing missing — every session in this backup is already on the calendar.`));return;}
+    if(!confirm(L(`${label}: şu an takvimde olmayan ${n} seans geri eklensin mi? Mevcut hiçbir şey silinmez ya da değişmez.`,
+      `${label}: add back ${n} session(s) that are not on the calendar now? Nothing existing is deleted or changed.`)))return;
+    setData(prev=>restoreSessionsFrom(prev,b).state);
+    setSnapMsg(L(`✓ ${n} seans geri eklendi (${label}).`,`✓ ${n} session(s) restored (${label}).`));
+  };
+  const rRef=useRef(null);
+  const impMissing=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
+    r.onload=ev=>restoreFrom(ev.target.result,f.name);r.readAsText(f);e.target.value='';};
+  /* Günlük bulut yedekleri (bkz. cloudSnapshotDaily). */
+  const uid=sync&&sync.user&&sync.user.uid;
+  const[snaps,setSnaps]=useState(null);
+  const[snapBusy,setSnapBusy]=useState('');
+  const[snapMsg,setSnapMsg]=useState('');
+  const loadSnaps=async()=>{
+    const fb=FB();if(!fb||!uid)return;
+    setSnapBusy('list');
+    try{setSnaps(await cloudSnapshotList(fb,uid));}catch(e){setSnapMsg(L('Yedekler okunamadı: ','Could not read backups: ')+((e&&e.code)||(e&&e.message)||'?'));}
+    setSnapBusy('');
+  };
+  useEffect(()=>{if(uid)loadSnaps();},[uid]);
+  const snapJson=async m=>{const fb=FB();setSnapBusy(m.day);try{return await cloudSnapshotLoad(fb,uid,m);}finally{setSnapBusy('');}};
+  const snapRestore=async m=>{try{restoreFrom(await snapJson(m),fd(m.day));}catch(e){alert(L('Yedek okunamadı: ','Could not read backup: ')+((e&&e.message)||'?'));}};
+  const snapDownload=async m=>{try{const j=await snapJson(m);
+    const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=`periodization_otomatik_yedek_${m.day}.json`;a.click();URL.revokeObjectURL(a.href);
+  }catch(e){alert(L('Yedek okunamadı: ','Could not read backup: ')+((e&&e.message)||'?'));}};
+  const snapNow=async()=>{const fb=FB();if(!fb||!uid)return;setSnapBusy('now');
+    try{await cloudSnapshotDaily(fb,uid,data);await loadSnaps();}finally{setSnapBusy('');}};
   return(<div>
     <PageHero title={L('Yedekleme','Backup')}
       sub={L('Her takımı tek dosyada dışa aktar ve geri yükle.',
@@ -485,7 +519,33 @@ function Backup({data,setData,sync}){
         <button className="btn" onClick={exp}>📦 {L('Tam Yedeği İndir','Download Full Backup')}</button>
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 {L('Yedek Yükle','Load Backup')}</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
+        <button className="btn sec" onClick={()=>rRef.current.click()}
+          title={L('Yedek dosyasında olup şu an takvimde olmayan seansları ekler; başka hiçbir şeye dokunmaz','Adds the sessions in a backup file that are not on the calendar now; touches nothing else')}>
+          ↺ {L('Dosyadan eksik seansları geri al','Restore missing sessions from file')}</button>
+        <input type="file" accept=".json" ref={rRef} onChange={impMissing} className="hidden"/>
       </div>
+      {snapMsg&&<div className="iv-toast" style={{marginTop:10}}>{snapMsg}</div>}
+    </div>
+    <div className="panel"><h2>{L('Otomatik Günlük Yedekler','Automatic Daily Backups')}</h2>
+      <div className="help" style={{marginBottom:12}}>{L(`Uygulama her gün verinin tamamını bulutta ayrıca saklar (son ${SNAP_KEEP_DAYS} gün). Bir şey kaybolursa o günün yedeğinden yalnızca eksik seansları geri alabilir ya da yedeği dosya olarak indirebilirsin.`,
+        `Every day the app keeps a full copy of your data in the cloud (last ${SNAP_KEEP_DAYS} days). If something goes missing, restore only the missing sessions from that day's backup, or download it as a file.`)}</div>
+      {!uid?<div className="help">{L('Otomatik yedek için giriş yapılmış olmalı.','Sign in to use automatic backups.')}</div>:<>
+        <div className="row" style={{marginBottom:10}}>
+          <button className="btn sm sec" disabled={!!snapBusy} onClick={snapNow}>{snapBusy==='now'?L('Alınıyor…','Saving…'):L('Bugünün yedeğini şimdi al','Back up today now')}</button>
+          <button className="btn sm sec" disabled={!!snapBusy} onClick={loadSnaps}>{snapBusy==='list'?L('Yükleniyor…','Loading…'):L('Listeyi yenile','Refresh list')}</button>
+        </div>
+        {snaps&&snaps.length===0&&<div className="help">{L('Henüz otomatik yedek yok. İlki uygulama açıkken birkaç dakika içinde alınır.','No automatic backups yet. The first is taken within a few minutes while the app is open.')}</div>}
+        {snaps&&snaps.length>0&&<table><thead><tr><th>{L('Gün','Day')}</th><th>{L('Seans','Sessions')}</th><th>{L('Boyut','Size')}</th><th/></tr></thead><tbody>
+          {snaps.map(m=><tr key={m.day}>
+            <td><strong>{fd(m.day)}</strong></td>
+            <td>{m.sessions!=null?m.sessions:'—'}</td>
+            <td style={{fontSize:12}}>{Math.round((m.size||0)/1024)} KB</td>
+            <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+              <button className="btn xs" disabled={!!snapBusy} onClick={()=>snapRestore(m)}>{snapBusy===m.day?'…':L('Eksik seansları geri al','Restore missing sessions')}</button>{' '}
+              <button className="btn xs sec" disabled={!!snapBusy} onClick={()=>snapDownload(m)}>{L('İndir','Download')}</button>
+            </td></tr>)}
+        </tbody></table>}
+      </>}
     </div>
   </div>);
 }
