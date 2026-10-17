@@ -438,6 +438,96 @@ function FmsPdfPanel({pdf,onChange}){
   </div>);
 }
 
+/* The FMS score sheet, live. One line per line of the official sheet (FMS_SHEET):
+   tap a 0-3, tap + or − on a clearing test, tap R / Y / G on ankle mobility, write a
+   comment against a movement. Final scores and the total are worked out as you go. The
+   header is not typed: it is read off the athlete and the test (and the two
+   measurements are carried forward from the last screen). */
+function FmsSheetCard({test,ath,onUpdate}){
+  const f=test.fms||{};
+  const c=fmsCalc(f);
+  const hd=fmsHeader(test,ath);
+  const byId={};c.items.forEach(i=>{byId[i.id]=i;});
+  const setTop=(k,v)=>onUpdate(t=>({fms:{...(t.fms||{}),[k]:v}}));
+  const setCell=(r,v)=>onUpdate(t=>{
+    const o=t.fms||{};
+    if(!r.side)return{fms:{...o,[r.f]:v}};
+    const cur=o[r.f];
+    // A clearing test saved before the sheet had sides is a bare answer: it stands for both.
+    const base=typeof cur==='string'&&cur?{right:cur,left:cur}:(cur&&typeof cur==='object'?cur:{});
+    return{fms:{...o,[r.f]:{...base,[r.side]:v}}};
+  });
+  const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
+  const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
+  const sideLbl=r=>r.side==='right'?L('Sağ','Right'):L('Sol','Left');
+  // The words a screen reader gets for a line: its group's label, carried down to the second side.
+  let lastLab='';
+  const labs=FMS_SHEET.map(r=>{if(r.lab)lastLab=L(r.lab[0],r.lab[1]);return lastLab;});
+  const missing=[!hd.dob&&L('doğum tarihi','date of birth'),!hd.sex&&L('cinsiyet','sex')].filter(Boolean);
+  const total=c.total;
+  return(<div className="fmsl">
+    <div className="fmsl-top">
+      <div className="fmsl-hd"><span className="fmsl-t">{L('FONKSİYONEL HAREKET TARAMASI PUAN KÂĞIDI','FUNCTIONAL MOVEMENT SCREEN SCORE SHEET')}</span></div>
+      <div className="fmsl-id">
+        <div className="fmsl-f wide"><label>{L('Ad','Name')}</label><div className="fmsl-v">{hd.name||'—'}</div></div>
+        <div className="fmsl-f"><label>{L('Tarih','Date')}</label><div className="fmsl-v">{fd(hd.date)||'—'}</div></div>
+        <div className="fmsl-f"><label>{L('Doğum','DOB')}</label><div className="fmsl-v">{fd(hd.dob)||'—'}</div></div>
+        <div className="fmsl-f"><label>{L('Yaş','Age')}</label><div className="fmsl-v">{hd.age!=null?hd.age:'—'}</div></div>
+        <div className="fmsl-f"><label>{L('Cinsiyet','Gender')}</label><div className="fmsl-v">{hd.sex||'—'}</div></div>
+        <div className="fmsl-f"><label>{L('Tibia Boyu','Tibia Height')}</label>
+          <div className="fmsl-in"><LiveInput type="number" step="0.1" inputMode="decimal" value={hd.tibia} onChange={v=>setTop('tibia',v)}/><span>cm</span></div></div>
+        <div className="fmsl-f"><label>{L('El Uzunluğu','Hand Length')}</label>
+          <div className="fmsl-in"><LiveInput type="number" step="0.1" inputMode="decimal" value={hd.hand} onChange={v=>setTop('hand',v)}/><span>cm</span></div></div>
+      </div>
+      <div className="fmsl-auto">{L('Ad, tarih, doğum tarihi, yaş ve cinsiyet sporcu profilinden otomatik gelir; tibia boyu ve el uzunluğu bir kez girilir, sonraki taramalara taşınır.','Name, date, date of birth, age and sex come from the athlete’s profile; tibia height and hand length are typed once and carried to the next screens.')}
+        {missing.length>0&&<b> {L('Profilde eksik: ','Missing on the profile: ')}{missing.join(', ')}.</b>}</div>
+    </div>
+    <div className="fmsl-scroll"><table className="fmsl-t">
+      <colgroup><col className="c-lab"/><col className="c-sd"/><col className="c-raw"/><col className="c-fin"/><col className="c-cm"/></colgroup>
+      <thead><tr><th colSpan="2">{L('Test','Screen')}</th><th>{L('Ham Skor','Raw Score')}</th><th>{L('Nihai Skor','Final Score')}</th><th>{L('Yorumlar','Comments')}</th></tr></thead>
+      <tbody>
+        {FMS_SHEET.map((r,i)=>{
+          const v=fmsCell(f,r);
+          const it=r.fin&&r.fin.of?byId[r.fin.of]:null;
+          const nm=labs[i];
+          return(<tr key={i}>
+            {r.lab&&<td className={'lab'+(r.sub?' sub':'')} rowSpan={r.ls} colSpan={r.side?1:2}>{L(r.lab[0],r.lab[1])}</td>}
+            {r.side&&<td className="sd">{r.side==='right'?'R':'L'}</td>}
+            <td className="raw">
+              {r.kind==='score'&&<div className="fmsl-seg" role="group" aria-label={`${nm} ${sideLbl(r)}`}>
+                {['0','1','2','3'].map(n=>(<button type="button" key={n} className={'s'+n+(String(v)===n?' on':'')} aria-pressed={String(v)===n}
+                  onClick={()=>setCell(r,String(v)===n?'':n)}>{n}</button>))}
+              </div>}
+              {r.kind==='clear'&&<div className="fmsl-seg clr" role="group" aria-label={`${nm} ${r.side?sideLbl(r):''}`.trim()}>
+                <button type="button" className={'neg'+(v==='neg'?' on':'')} aria-pressed={v==='neg'} title={L('Negatif — ağrı yok','Negative — no pain')}
+                  onClick={()=>setCell(r,v==='neg'?'':'neg')}>−</button>
+                <button type="button" className={'pos'+(v==='pos'?' on':'')} aria-pressed={v==='pos'} title={L('Pozitif — ağrı var (skor 0)','Positive — pain (score 0)')}
+                  onClick={()=>setCell(r,v==='pos'?'':'pos')}>+</button>
+              </div>}
+              {r.kind==='ryg'&&<div className="fmsl-seg ryg" role="group" aria-label={`${nm} ${sideLbl(r)}`}>
+                {['r','y','g'].map(k=>(<button type="button" key={k} className={k+(v===k?' on':'')} aria-pressed={v===k}
+                  onClick={()=>setCell(r,v===k?'':k)}>{k.toUpperCase()}</button>))}
+              </div>}
+            </td>
+            {r.fin&&<td className={'fin '+(it&&it.score!=null?tone(it.score):'')} rowSpan={r.fin.n}>{it&&it.score!=null?it.score:''}
+              {it&&it.cleared==='pos'&&<div className="fmsl-flag">{L('ağrı → 0','pain → 0')}</div>}
+              {it&&it.asym!=null&&it.cleared!=='pos'&&<div className="fmsl-flag am">{L('asimetri','asym.')} {it.asym}</div>}
+            </td>}
+            {r.cm&&<td className="cm" rowSpan={r.cm.n}>
+              <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)}
+                placeholder={L('Yorum…','Comment…')} aria-label={L('Yorum','Comment')}/>
+            </td>}
+          </tr>);
+        })}
+      </tbody>
+      <tfoot><tr><td className="lab tot" colSpan="2">{L('Toplam Tarama Skoru','Total Screen Score')}</td>
+        <td className={'tot-v '+(total!=null?(total>=17?'t3':total>=14?'t2':'t1'):'')} colSpan="3">{total!=null?total:'—'}<small> / 21</small>
+          {c.n>0&&c.n<7&&<span className="fmsl-flag">{c.n}/7 {L('hareket puanlandı','movements scored')}</span>}</td></tr></tfoot>
+    </table></div>
+    <div className="fmsl-leg">{FMS_LEGEND().map((p,i)=><p key={i}>{p}</p>)}</div>
+  </div>);
+}
+
 function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const u=(k,v)=>onUpdate({[k]:v});
   // Merged into the test as it is when the value lands: photos arrive after their upload,
@@ -525,17 +615,22 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   if(id==='fms'){
     const f=test.fms||{};
     const setF=(k,v)=>onUpdate(t=>({fms:{...(t.fms||{}),[k]:v}}));
-    /* The screen is run on the official FMS sheet and comes back as a PDF, so
-       the sheet is the record — there is nothing to re-key here. */
+    const athObj=(athletes||[]).find(a=>a.id===athId)||{id:athId};
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <div className="tcard-hd">
         <div className="tcard-badge">{index}</div>
         <div className="tcard-title">{name}</div>
+        <button type="button" className="btn xs sec fmsl-print" onClick={()=>{try{printFmsSheet(test,athObj,{note:test.notes});}catch(e){alert(L('Çıktı hatası: ','Print error: ')+e.message);}}}
+          title={L('Puan kâğıdı tek A4 sayfada çıkar','The score sheet prints on one A4 page')}>⎙ {L('Kâğıdı yazdır','Print sheet')}</button>
         <img className="fms-hd-logo" src="fms-logo.png" alt="FMS"/>
       </div>
       <div className="tcard-body-wide">
-        <FmsPdfPanel pdf={f.pdf||null} onChange={v=>setF('pdf',v)}/>
-        <MkObs value={obsVal} onChange={setObs} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
+        <FmsSheetCard test={test} ath={athObj} onUpdate={onUpdate}/>
+        {f.pdf&&<div>
+          <div className="fmsl-old">{L('Bu kayıtta, canlı kâğıttan önce yüklenmiş bir FMS PDF’i var. Raporda yine basılır.','This record carries an FMS PDF uploaded before the live sheet existed. It still prints in the report.')}</div>
+          <FmsPdfPanel pdf={f.pdf} onChange={v=>setF('pdf',v)}/>
+        </div>}
+        <MkObs value={obsVal} onChange={setObs} label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
     </div>);
   }
@@ -688,7 +783,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 
 function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
   const cTests=Array.isArray(customTests)?customTests:[];
-  const ids=expandBattery(test.battery)||TEST_CATALOG.filter(c=>!c.retired||(c.id==='fms'&&FMS_HAS(test))).map(c=>c.id);
+  const ids=expandBattery(test.battery)||TEST_CATALOG.filter(c=>!c.retired||(TI_HAS[c.id]&&TI_HAS[c.id](test))).map(c=>c.id);
   const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id));
   const u=(k,v)=>onUpdate({[k]:v});
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';

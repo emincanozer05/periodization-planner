@@ -285,18 +285,23 @@ const makeTest=(period='pre')=>({
   ohs:{score:'',frontPhoto:null,sidePhoto:null,backPhoto:null,observations:'',problems:['','','','','']},
   /* FMS — Functional Movement Screen. Seven movements, each scored 0-3; the
      bilateral ones are scored per side and the lower side is the one that
-     counts. Three of them carry a clearing test: a positive (painful) clearing
-     drops that movement to 0. Total is out of 21. */
+     counts. Clearing tests are 'pos' (pain) / 'neg' (no pain) and a positive one
+     drops its movement to 0: shoulder (per side), ankle pain (per side, belongs to
+     the inline lunge), spinal extension and spinal flexion. Ankle mobility is a
+     red / yellow / green call per side and does not score. Total is out of 21.
+     `comments` is one line per row of the sheet; `tibia` / `hand` are the two
+     measurements in the sheet's header (cm). */
   fms:{deepSquat:'',
     hurdleStep:{right:'',left:''},
-    inlineLunge:{right:'',left:''},
-    shoulderMobility:{right:'',left:''},shoulderClear:'',
+    inlineLunge:{right:'',left:''},anklePain:{right:'',left:''},ankleMob:{right:'',left:''},
+    shoulderMobility:{right:'',left:''},shoulderClear:{right:'',left:''},
     aslr:{right:'',left:''},
     trunkPushup:'',pushupClear:'',
     rotary:{right:'',left:''},rotaryClear:'',
-    /* The screen is often run on the official FMS sheet and comes back as a PDF.
-       That PDF is attached here: {name,size,at,pages:[dataURL],data} — `pages`
-       are the rasterised pages the report prints, `data` the original file. */
+    tibia:null,hand:null,comments:{},   // null = not typed on this screen yet → carried from the last one
+    /* A sheet scanned before the live one existed is still attached here:
+       {name,size,at,pages:[dataURL],data} — `pages` are the rasterised pages the
+       report prints, `data` the original file. */
     pdf:null,
     observations:''},
   // Y Balance Test — leg length (ASIS–medial malleolus, cm) + 3 reach directions per foot (cm)
@@ -325,12 +330,13 @@ const TEST_CATALOG=[
   {id:'anthro',        name:'Anthropometric Measurement', short:'Anthro'},
   {id:'circ',          name:'Body Circumference',         short:'Circumf.'},
   {id:'posture',       name:'Static Posture',             short:'Posture'},
-  {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF'},
-  {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR'},
+  {id:'fms',           name:'FMS — Functional Movement Screen',short:'FMS'},
   {id:'ohs',           name:'Overhead Squat Test',        short:'OHS'},
-  /* Retired from the picker: no new battery offers it. Kept here so a record that was
-     screened with it still reads, prints and charts as before. */
-  {id:'fms',           name:'FMS',                        short:'FMS',retired:true},
+  /* Retired from the picker: no new battery offers them — the FMS sheet carries the
+     active straight-leg raise and an ankle clearing of its own. Kept here so a record
+     that was screened with them still reads, prints and charts as before. */
+  {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF',retired:true},
+  {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR',retired:true},
   {id:'yBalance',      name:'Y Balance Test',             short:'YBT'},
   {id:'verticalJump',  name:'Vertical Jump',              short:'VJ'},
   {id:'cmj',           name:'Counter-Movement Jump',      short:'CMJ'},
