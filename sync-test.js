@@ -480,6 +480,55 @@ async function scenarioSilenceCostsNothing() {
   endScene(); h.unmount();
 }
 
+/* Haftanın takım seansları böyle kayboldu: başka bir cihaz bulutu kendi ESKİ kopyasıyla
+   onardı, bu cihaz o sırada düzenleme yapmıyordu ve gelen hâli olduğu gibi kabul etti —
+   kayıp bütün cihazlara yayıldı. Gelen hâl birçok seansı birden düşürüyorsa bu bir silme
+   değildir: seanslar ekranda kalmalı ve buluta geri yazılmalı. */
+const withSessions = ids => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Takım' },
+  days: Object.fromEntries(ids.map((id, i) => ['2026-10-1' + (2 + i), { date: '2026-10-1' + (2 + i), sessions: [{ id, name: 'Antrenman ' + id }], dailyNotes: '' }])),
+  athletes: [{ id: 'a1', name: 'Ali' }] }], templates: [] });
+const cloudState = w => {
+  const m = w.fake.docs.get('coach1');
+  return m ? m.ids.map(h => w.fake.docs.get('coach1_' + h).c).join('') : '';
+};
+async function scenarioStaleOverwrite() {
+  scene('başka cihaz bulutu eski kopyayla ezerse: seanslar silinmiyor, buluta geri yazılıyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(withSessions(['s1', 's2', 's3', 's4', 's5']));
+  await sleep(1500);
+  check('cihaz senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  remoteWrite(w, withSessions([]), Date.now() + 5000);   // eski kopya: bu haftanın seansları yok
+  w.fake.emit({});
+  await sleep(3000);
+  const scr = JSON.stringify(out.data);
+  check('seanslar ekranda duruyor', ['s1', 's2', 's3', 's4', 's5'].every(id => scr.includes('"' + id + '"')), 'ekrandaki: ' + scr.slice(0, 200));
+  const cl = cloudState(w);
+  check('seanslar buluta geri yazıldı', ['s1', 's2', 's3', 's4', 's5'].every(id => cl.includes('"' + id + '"')), 'buluttaki: ' + cl.slice(0, 200));
+  check('kullanıcıya not düşüldü', /seans eksikti/.test(out.sync.syncNote || ''), 'not=' + out.sync.syncNote);
+  endScene(); h.unmount();
+}
+/* Koruma koçun kendi silmesini engellememeli: başka cihazda TEK bir seans silmek eskisi
+   gibi her yere geçer. */
+async function scenarioSingleDeleteSyncs() {
+  scene('başka cihazda tek seans silinince: silme buraya da geçiyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(withSessions(['s1', 's2', 's3']));
+  await sleep(1500);
+  remoteWrite(w, withSessions(['s1', 's2']), Date.now() + 5000);
+  w.fake.emit({});
+  await sleep(2500);
+  const scr = JSON.stringify(out.data);
+  check('silinen seans gitti', !scr.includes('"s3"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('diğerleri duruyor', scr.includes('"s1"') && scr.includes('"s2"'));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -494,6 +543,8 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
   await scenarioSilentStream();
   await scenarioSilenceCostsNothing();
   await scenarioNeverReachesServer();
+  await scenarioStaleOverwrite();
+  await scenarioSingleDeleteSyncs();
   console.log('\n' + pass + ' geçti, ' + fail + ' kaldı');
   process.exit(fail ? 1 : 0);
 })();

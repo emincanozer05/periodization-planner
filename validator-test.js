@@ -96,6 +96,7 @@ function loadApp() {
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
+    'guardSessions', 'restoreSessionsFrom', 'sesCount',
     'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
@@ -1871,6 +1872,46 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       A.liftPRsOf(hist, hist.liftLog[1]).length === 1 && A.liftPRsOf(hist, hist.liftLog[2]).length === 0 && A.liftPRsOf(hist, hist.liftLog[0]).length === 0);
     const sg = A.liftSuggestRm(hist);
     check('1RM önerisi: ≤6 tekrarlı en iyi sette Epley, 2.5 kg\'a yuvarlı', sg['back squat'] && sg['back squat'].kg === 122.5, JSON.stringify(sg));
+  }
+
+  /* ─── seans koruması: eski bir kopya seansları topluca silemez ──────────── */
+  {
+    const ses = (id, extra) => Object.assign({ id, name: 'S ' + id }, extra || {});
+    const day = (d, ss) => ({ date: d, sessions: ss, dailyNotes: '' });
+    const before = { teams: [{ id: 't1', activeSeasonId: 'S2', seasonData: { S1: { days: { '2025-10-01': day('2025-10-01', [ses('old1')]) } } },
+      days: { '2026-10-12': day('2026-10-12', [ses('t1'), ses('t2')]), '2026-10-13': day('2026-10-13', [ses('t3')]), '2026-10-14': day('2026-10-14', [ses('t4')]) },
+      athletes: [{ id: 'a1', days: { '2026-10-12': day('2026-10-12', [ses('m1', { sourceId: 't1' }), ses('own1')]) } }, { id: 'a2', days: {} }] }] };
+    const stale = { teams: [{ id: 't1', activeSeasonId: 'S2', seasonData: { S1: { days: { '2025-10-01': day('2025-10-01', [ses('old1')]) } } },
+      days: {}, athletes: [{ id: 'a1', days: {} }, { id: 'a2', days: {} }] }] };
+    const g = A.guardSessions(before, stale);
+    const t = g.state.teams[0];
+    check('koruma: eski kopya 4 takım + 1 sporcu seansını düşürünce hepsi geri konuyor', g.n === 5 && A.sesCount(g.state) === A.sesCount(before), `n=${g.n} sayı=${A.sesCount(g.state)}`);
+    check('koruma: seans kendi gününe dönüyor', t.days['2026-10-12'].sessions.map(s => s.id).join() === 't1,t2' && t.days['2026-10-14'].sessions[0].id === 't4');
+    check('koruma: sporcunun takım kopyası (kaynağı geri geldiği için) de dönüyor', t.athletes[0].days['2026-10-12'].sessions.some(s => s.id === 'm1'));
+    const one = { teams: [{ ...before.teams[0], days: { ...before.teams[0].days, '2026-10-14': day('2026-10-14', []) } }] };
+    check('koruma: tek bir seansın silinmesi koruma DEĞİL, silme olarak geçiyor', A.guardSessions(before, one).n === 0 && A.guardSessions(before, one).state === one);
+    const moved = { teams: [{ ...before.teams[0], days: { '2026-10-20': day('2026-10-20', [ses('t1'), ses('t2'), ses('t3'), ses('t4')]) } }] };
+    check('koruma: başka güne taşınan seanslar kayıp sayılmıyor', A.guardSessions(before, moved).n === 0);
+    const switched = { teams: [{ ...before.teams[0], activeSeasonId: 'S1', days: before.teams[0].seasonData.S1.days,
+      seasonData: { S2: { days: before.teams[0].days } } }] };
+    check('koruma: sezon değiştirmek (seanslar park edildi) kayıp sayılmıyor', A.guardSessions(before, switched).n === 0);
+    const noAth = { teams: [{ ...stale.teams[0], athletes: [{ id: 'a2', days: {} }], days: before.teams[0].days }] };
+    check('koruma: silinen sporcunun seansları geri getirilmiyor', A.guardSessions(before, noAth).n === 0);
+    check('koruma: silinen takımın seansları geri getirilmiyor', A.guardSessions(before, { teams: [] }).n === 0);
+    const b2 = { teams: [{ ...before.teams[0], seasons: [{ id: 'S1' }, { id: 'S2' }] }] };
+    const seasonGone = { teams: [{ ...b2.teams[0], seasons: [{ id: 'S1' }], activeSeasonId: 'S1', days: b2.teams[0].seasonData.S1.days, seasonData: {} }] };
+    check('koruma: "sezonu tüm planıyla sil" geri alınmıyor', A.guardSessions(b2, seasonGone).n === 0);
+    const indivB = { teams: [{ id: 't1', days: {}, athletes: ['a1', 'a2', 'a3', 'a4'].map(id => ({ id, days: { '2026-10-12': day('2026-10-12', [ses('i' + id, { indiv: { srcKey: 'x' } })]) } })) }] };
+    const indivA = { teams: [{ id: 't1', days: {}, athletes: ['a1', 'a2', 'a3', 'a4'].map(id => ({ id, days: {} })) }] };
+    check('koruma: Bireyselleştirme\'nin birçok sporcudan programı kaldırması geri alınmıyor', A.guardSessions(indivB, indivA).n === 0);
+    const parkedLost = { teams: [{ ...before.teams[0], seasonData: { S1: { days: {} } }, days: {} }] };
+    const gp = A.guardSessions(before, parkedLost);
+    check('koruma: park edilmiş sezonun seansı kendi sezonuna dönüyor', gp.state.teams[0].seasonData.S1.days['2025-10-01'].sessions[0].id === 'old1' && !gp.state.teams[0].days['2025-10-01']);
+    const now = { teams: [{ ...before.teams[0], days: { '2026-10-12': day('2026-10-12', [ses('t1'), ses('yeni')]) } }] };
+    const r = A.restoreSessionsFrom(now, before);
+    const rd = r.state.teams[0].days;
+    check('yedekten geri alma: yalnızca eksikler eklenir, yenisi korunur, çift kayıt yok',
+      r.n === 3 && rd['2026-10-12'].sessions.map(s => s.id).join() === 't1,yeni,t2' && rd['2026-10-13'].sessions[0].id === 't3', JSON.stringify(rd['2026-10-12'].sessions.map(s => s.id)) + ' n=' + r.n);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

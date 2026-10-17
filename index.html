@@ -31639,6 +31639,40 @@ function Backup({data,setData,sync}){
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert(L('Geçersiz dosya','Invalid file'));return;}if(confirm(L('Tüm veriler değiştirilsin mi?','Replace all data?')))setData(migrate(p));}catch{alert(L('Okuma hatası','Read error'));}};
     r.readAsText(f);e.target.value='';};
+  /* Bir yedekte olup şu an olmayan seansları geri al. "Yedek Yükle"nin aksine hiçbir şeyin
+     yerine geçmez: yedekten sonra girilen wellness, RPE, test ve seanslar olduğu gibi kalır. */
+  const restoreFrom=(json,label)=>{
+    let b;try{b=migrate(JSON.parse(json));}catch{alert(L('Okuma hatası','Read error'));return;}
+    const{n}=restoreSessionsFrom(data,b);
+    if(!n){alert(L(`${label}: eksik seans yok — bu yedekteki bütün seanslar zaten takvimde.`,`${label}: nothing missing — every session in this backup is already on the calendar.`));return;}
+    if(!confirm(L(`${label}: şu an takvimde olmayan ${n} seans geri eklensin mi? Mevcut hiçbir şey silinmez ya da değişmez.`,
+      `${label}: add back ${n} session(s) that are not on the calendar now? Nothing existing is deleted or changed.`)))return;
+    setData(prev=>restoreSessionsFrom(prev,b).state);
+    setSnapMsg(L(`✓ ${n} seans geri eklendi (${label}).`,`✓ ${n} session(s) restored (${label}).`));
+  };
+  const rRef=useRef(null);
+  const impMissing=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
+    r.onload=ev=>restoreFrom(ev.target.result,f.name);r.readAsText(f);e.target.value='';};
+  /* Günlük bulut yedekleri (bkz. cloudSnapshotDaily). */
+  const uid=sync&&sync.user&&sync.user.uid;
+  const[snaps,setSnaps]=useState(null);
+  const[snapBusy,setSnapBusy]=useState('');
+  const[snapMsg,setSnapMsg]=useState('');
+  const loadSnaps=async()=>{
+    const fb=FB();if(!fb||!uid)return;
+    setSnapBusy('list');
+    try{setSnaps(await cloudSnapshotList(fb,uid));}catch(e){setSnapMsg(L('Yedekler okunamadı: ','Could not read backups: ')+((e&&e.code)||(e&&e.message)||'?'));}
+    setSnapBusy('');
+  };
+  useEffect(()=>{if(uid)loadSnaps();},[uid]);
+  const snapJson=async m=>{const fb=FB();setSnapBusy(m.day);try{return await cloudSnapshotLoad(fb,uid,m);}finally{setSnapBusy('');}};
+  const snapRestore=async m=>{try{restoreFrom(await snapJson(m),fd(m.day));}catch(e){alert(L('Yedek okunamadı: ','Could not read backup: ')+((e&&e.message)||'?'));}};
+  const snapDownload=async m=>{try{const j=await snapJson(m);
+    const b=new Blob([j],{type:'application/json'});const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=`periodization_otomatik_yedek_${m.day}.json`;a.click();URL.revokeObjectURL(a.href);
+  }catch(e){alert(L('Yedek okunamadı: ','Could not read backup: ')+((e&&e.message)||'?'));}};
+  const snapNow=async()=>{const fb=FB();if(!fb||!uid)return;setSnapBusy('now');
+    try{await cloudSnapshotDaily(fb,uid,data);await loadSnaps();}finally{setSnapBusy('');}};
   return(<div>
     <PageHero title={L('Yedekleme','Backup')}
       sub={L('Her takımı tek dosyada dışa aktar ve geri yükle.',
@@ -31659,7 +31693,33 @@ function Backup({data,setData,sync}){
         <button className="btn" onClick={exp}>📦 {L('Tam Yedeği İndir','Download Full Backup')}</button>
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 {L('Yedek Yükle','Load Backup')}</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
+        <button className="btn sec" onClick={()=>rRef.current.click()}
+          title={L('Yedek dosyasında olup şu an takvimde olmayan seansları ekler; başka hiçbir şeye dokunmaz','Adds the sessions in a backup file that are not on the calendar now; touches nothing else')}>
+          ↺ {L('Dosyadan eksik seansları geri al','Restore missing sessions from file')}</button>
+        <input type="file" accept=".json" ref={rRef} onChange={impMissing} className="hidden"/>
       </div>
+      {snapMsg&&<div className="iv-toast" style={{marginTop:10}}>{snapMsg}</div>}
+    </div>
+    <div className="panel"><h2>{L('Otomatik Günlük Yedekler','Automatic Daily Backups')}</h2>
+      <div className="help" style={{marginBottom:12}}>{L(`Uygulama her gün verinin tamamını bulutta ayrıca saklar (son ${SNAP_KEEP_DAYS} gün). Bir şey kaybolursa o günün yedeğinden yalnızca eksik seansları geri alabilir ya da yedeği dosya olarak indirebilirsin.`,
+        `Every day the app keeps a full copy of your data in the cloud (last ${SNAP_KEEP_DAYS} days). If something goes missing, restore only the missing sessions from that day's backup, or download it as a file.`)}</div>
+      {!uid?<div className="help">{L('Otomatik yedek için giriş yapılmış olmalı.','Sign in to use automatic backups.')}</div>:<>
+        <div className="row" style={{marginBottom:10}}>
+          <button className="btn sm sec" disabled={!!snapBusy} onClick={snapNow}>{snapBusy==='now'?L('Alınıyor…','Saving…'):L('Bugünün yedeğini şimdi al','Back up today now')}</button>
+          <button className="btn sm sec" disabled={!!snapBusy} onClick={loadSnaps}>{snapBusy==='list'?L('Yükleniyor…','Loading…'):L('Listeyi yenile','Refresh list')}</button>
+        </div>
+        {snaps&&snaps.length===0&&<div className="help">{L('Henüz otomatik yedek yok. İlki uygulama açıkken birkaç dakika içinde alınır.','No automatic backups yet. The first is taken within a few minutes while the app is open.')}</div>}
+        {snaps&&snaps.length>0&&<table><thead><tr><th>{L('Gün','Day')}</th><th>{L('Seans','Sessions')}</th><th>{L('Boyut','Size')}</th><th/></tr></thead><tbody>
+          {snaps.map(m=><tr key={m.day}>
+            <td><strong>{fd(m.day)}</strong></td>
+            <td>{m.sessions!=null?m.sessions:'—'}</td>
+            <td style={{fontSize:12}}>{Math.round((m.size||0)/1024)} KB</td>
+            <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+              <button className="btn xs" disabled={!!snapBusy} onClick={()=>snapRestore(m)}>{snapBusy===m.day?'…':L('Eksik seansları geri al','Restore missing sessions')}</button>{' '}
+              <button className="btn xs sec" disabled={!!snapBusy} onClick={()=>snapDownload(m)}>{L('İndir','Download')}</button>
+            </td></tr>)}
+        </tbody></table>}
+      </>}
     </div>
   </div>);
 }
@@ -32068,6 +32128,176 @@ function mergeCloud(baseJson,localState,remoteState,preferRemote){
   return{state:merged,changed:!deq(merged,remoteState),stats:st};
 }
 
+/* =========================================================
+   SEANS KORUMASI
+   Bir cihaz bulutu kendi ESKİ kopyasıyla onardığında (bulut tutarsız göründü, cihaz son
+   emniyet kopyasını yazdı) o kopyadan sonra yazılan her seans buluttan gidiyordu; öteki
+   cihazlar o sırada düzenleme yapmadığı için gelen hâli olduğu gibi kabul ediyor ve kayıp
+   bütün cihazlara yayılıyordu — bir haftanın takım seansları böyle kayboldu.
+   Artık gelen hâl ekrandakinden birden çok seansı birden düşürüyorsa bu bir silme sayılmaz:
+   düşen seanslar yerlerine konur ve sonuç buluta geri yazılır. Koçun tek tek sildiği seans
+   (bir ya da iki) eskisi gibi silinir; topluca kaybolmak ise hiçbir düzenlemenin sonucu
+   değildir. Yanlışlıkla korunan bir seans elle silinebilir, kaybolan geri getirilemez.
+   Bir seans takım takviminde de sezonlar arasında da id'siyle aranır: başka güne ya da
+   başka sezona taşınan seans kayıp sayılmaz. Silinmiş takımın ya da sporcunun seansları
+   da kayıp sayılmaz (silen bilerek sildi).
+   ========================================================= */
+const SES_GUARD_MIN=3;
+/* Durumdaki her seans: anahtar → {team, ath, sea, date, s}. Takım seansının anahtarı
+   sezondan ve tarihten bağımsızdır; sporcu seansı sporcuya bağlıdır. */
+function sesLocate(state){
+  const out=new Map();
+  ((state&&state.teams)||[]).forEach(t=>{
+    if(!t||t.id==null)return;
+    const put=(days,sea,ath)=>Object.keys(days||{}).forEach(dk=>{
+      const d=days[dk];
+      ((d&&d.sessions)||[]).forEach(s=>{
+        if(s&&s.id!=null)out.set(t.id+'|'+(ath!=null?'a:'+ath:'t')+'|'+s.id,{team:t.id,ath,sea,date:dk,s});
+      });
+    });
+    put(t.days,t.activeSeasonId,null);
+    const sd=t.seasonData||{};
+    Object.keys(sd).forEach(sid=>put((sd[sid]||{}).days,sid,null));
+    (t.athletes||[]).forEach(a=>{if(a&&a.id!=null)put(a.days,null,a.id);});
+  });
+  return out;
+}
+/* Takımın takviminden ya da sporcunun KENDİ takviminden bir seans. Takım seansının sporcu
+   kopyaları (sourceId) sayılmaz: tek bir takım seansını silmek onu on beş sporcudan da
+   kaldırır ve bu bir toplu kayıp değildir. Bireyselleştirme'nin yazdığı seans (`indiv`) da
+   sayılmaz: o sayfa bir programı birçok sporcunun takviminden bilerek bir kerede kaldırır
+   ya da yeniden yazar, ve program sayfada durduğu için yeniden yazılabilir. */
+const sesPrimary=e=>e.ath==null||!(e.s&&(e.s.sourceId||e.s.indiv));
+/* `lost` listesindeki seansları duruma geri koy. Takım seansı ait olduğu sezona döner
+   (sezon artık ekrandaysa takvime, park edilmişse park edildiği yere); sporcu kopyası
+   ancak kaynağı olan takım seansı da ortadaysa döner. */
+function sesPutBack(state,lost){
+  if(!lost.length)return state;
+  const add=(days,e)=>{
+    const d=(days||{})[e.date]||{date:e.date,sessions:[],dailyNotes:''};
+    if((d.sessions||[]).some(s=>s&&s.id===e.s.id))return days||{};
+    return{...(days||{}),[e.date]:{...d,date:e.date,sessions:[...(d.sessions||[]),e.s]}};
+  };
+  return{...state,teams:state.teams.map(t=>{
+    const mine=lost.filter(e=>e.team===t.id);
+    if(!mine.length)return t;
+    let nt={...t};
+    mine.filter(e=>e.ath==null).forEach(e=>{
+      const sd=nt.seasonData||{};
+      if(e.sea!=null&&e.sea!==nt.activeSeasonId&&sd[e.sea])
+        nt.seasonData={...sd,[e.sea]:{...sd[e.sea],days:add(sd[e.sea].days,e)}};
+      else nt.days=add(nt.days,e);
+    });
+    const teamIds=new Set();
+    sesLocate({teams:[nt]}).forEach(e=>{if(e.ath==null)teamIds.add(e.s.id);});
+    const byAth=new Map();
+    mine.filter(e=>e.ath!=null&&(!e.s.sourceId||teamIds.has(e.s.sourceId)))
+      .forEach(e=>{if(!byAth.has(e.ath))byAth.set(e.ath,[]);byAth.get(e.ath).push(e);});
+    if(byAth.size)nt.athletes=(nt.athletes||[]).map(a=>{
+      const es=a&&byAth.get(a.id);if(!es)return a;
+      let days=a.days||{};es.forEach(e=>{days=add(days,e);});
+      return{...a,days};
+    });
+    return nt;
+  })};
+}
+/* `before`'da olup `after`'da olmayan seanslar — yalnızca `after`'da hâlâ duran takım ve
+   sporculara ait olanlar. */
+function sesMissing(before,after){
+  const A=sesLocate(after);
+  const teams=new Map(((after&&after.teams)||[]).filter(Boolean).map(t=>[t.id,t]));
+  const lost=[];
+  sesLocate(before).forEach((e,k)=>{
+    if(A.has(k))return;
+    const t=teams.get(e.team);if(!t)return;
+    if(e.ath!=null&&!(t.athletes||[]).some(a=>a&&a.id===e.ath))return;
+    // Sezon "tüm planıyla" silindiyse seansları da bilerek silinmiştir.
+    if(e.ath==null&&e.sea!=null&&Array.isArray(t.seasons)&&!t.seasons.some(sn=>sn&&sn.id===e.sea))return;
+    lost.push(e);
+  });
+  return lost;
+}
+/* Gelen hâl (`after`) ekrandakinden (`before`) en az SES_GUARD_MIN seansı birden
+   düşürüyorsa düşenleri geri koy. {state, n}: n = geri konan (takım + sporcunun kendi)
+   seans sayısı; 0 ise durum olduğu gibi döner. */
+function guardSessions(before,after){
+  if(!before||!after||!Array.isArray(after.teams))return{state:after,n:0};
+  const lost=sesMissing(before,after);
+  const n=lost.filter(sesPrimary).length;
+  if(n<SES_GUARD_MIN)return{state:after,n:0};
+  return{state:sesPutBack(after,lost),n};
+}
+/* Bir yedekte olup şu an olmayan seansları geri al (Yedekleme ekranı). Hiçbir şeyi silmez,
+   değiştirmez; yalnızca eksik seansları ekler. */
+function restoreSessionsFrom(current,backup){
+  const lost=sesMissing(backup,current);
+  return{state:sesPutBack(current,lost),n:lost.filter(sesPrimary).length};
+}
+const sesCount=state=>{let n=0;sesLocate(state).forEach(e=>{if(sesPrimary(e))n++;});return n;};
+
+/* =========================================================
+   GÜNLÜK BULUT YEDEĞİ
+   Senkron yalnızca SON hâli tutar; eski parçalar birkaç dakika içinde silinir. Bir şey
+   kaybolduğunda "dünkü hâle dön" diyebilmek için her gün bir kez durumun tamamı ayrıca
+   saklanır: users/<uid>/snapshots/<gün> (özet) + users/<uid>/snapshot_parts/<gün>_<i>
+   (içerik, Firestore'un 1 MB doküman sınırına sığacak parçalar). Önce parçalar, sonra özet
+   yazılır: özeti olan her yedek tamdır. Son SNAP_KEEP_DAYS gün tutulur.
+   Senkron koleksiyonuna (kullanici_verileri) hiç dokunmaz.
+   ========================================================= */
+const SNAP_KEEP_DAYS=30;
+const SNAP_PART=250000;   // karakter; Türkçe karakterle en kötü ~750 KB → 1 MB sınırının altında
+const _snapDay=()=>{const d=new Date();const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());};
+let _snapDone='',_snapBusy=false;
+const _snapRef=(fb,uid)=>fb.firestore().collection('users').doc(uid);
+async function cloudSnapshotDaily(fb,uid,state){
+  if(!fb||!uid||_snapBusy||!hasRealData(state))return;
+  const day=_snapDay();
+  if(_snapDone===uid+'|'+day)return;
+  _snapBusy=true;
+  try{
+    const root=_snapRef(fb,uid);
+    const metas=root.collection('snapshots');
+    const m=await metas.doc(day).get();
+    if(!m.exists){
+      const json=ser(state);
+      const parts=[];for(let i=0;i<json.length;i+=SNAP_PART)parts.push(json.slice(i,i+SNAP_PART));
+      const pc=root.collection('snapshot_parts');
+      for(let i=0;i<parts.length;i+=8){
+        const b=fb.firestore().batch();
+        parts.slice(i,i+8).forEach((c,k)=>b.set(pc.doc(day+'_'+(i+k)),{c}));
+        await b.commit();
+      }
+      await metas.doc(day).set({day,n:parts.length,size:json.length,sessions:sesCount(state),at:srvStamp()});
+      slog('günlük yedek alındı',day+' · '+parts.length+' parça');
+    }
+    _snapDone=uid+'|'+day;
+    // Eskileri temizle
+    const all=await metas.get();
+    const list=[];all.forEach(d=>{const v=d.data();if(v&&v.day)list.push(v);});
+    list.sort((a,b)=>String(b.day).localeCompare(String(a.day)));
+    for(const v of list.slice(SNAP_KEEP_DAYS)){
+      const b=fb.firestore().batch();
+      for(let i=0;i<(v.n||0);i++)b.delete(root.collection('snapshot_parts').doc(v.day+'_'+i));
+      b.delete(metas.doc(v.day));
+      await b.commit();
+    }
+  }catch(e){console.warn('snapshot',e);slog('günlük yedek alınamadı',(e&&e.code)||(e&&e.message)||'?');}
+  finally{_snapBusy=false;}
+}
+/* Yedeklerin listesi, en yeni önce: [{day,n,size,sessions}]. */
+async function cloudSnapshotList(fb,uid){
+  const all=await _snapRef(fb,uid).collection('snapshots').get({source:'server'});
+  const list=[];all.forEach(d=>{const v=d.data();if(v&&v.day)list.push({day:v.day,n:v.n||0,size:v.size||0,sessions:v.sessions});});
+  return list.sort((a,b)=>String(b.day).localeCompare(String(a.day)));
+}
+/* Bir günün yedeğini oku → JSON dizgisi. */
+async function cloudSnapshotLoad(fb,uid,meta){
+  const pc=_snapRef(fb,uid).collection('snapshot_parts');
+  const parts=await Promise.all(Array.from({length:meta.n},(_,i)=>pc.doc(meta.day+'_'+i).get({source:'server'})));
+  if(parts.some(p=>!p.exists))throw new Error('yedek eksik');
+  return parts.map(p=>(p.data()||{}).c||'').join('');
+}
+
 // --- ESKİ FORMAT GEÇİŞİ (tek seferlik): per-entity dokümanlardan durumu kur ---
 function docKind(d){
   if(!d)return null;
@@ -32412,12 +32642,28 @@ function useCloudSync(data,setData){
        Atasız birleştirme hiçbir şeyi silmez, iki tarafı da korur (bkz. mergeCloud).
        Ekranda gerçek veri yokken (açılıştaki örnek takım) bu yola hiç girilmez: örnek takımı
        koçun bulutuna karıştırmanın âlemi yok. */
+    /* SEANS KORUMASI (bkz. guardSessions): gelen hâl ekrandaki seanslardan birçoğunu birden
+       düşürüyorsa — başka bir cihaz bulutu eski kopyasıyla ezdiyse — düşenler geri konur ve
+       sonuç geri yazılır. Yalnızca bu oturumda bulutla en az bir kez mutabık kalınmışsa (base
+       varsa) sorulur: açılışta ekranda duran eski bir yerel kopya, o arada gerçekten silinmiş
+       seansları geri getirmesin. */
+    const guard=st=>{
+      if(base==null)return{state:st,n:0};
+      const g=guardSessions(dataRef.current,st);
+      if(g.n){
+        slog('seans koruması: gelen hâlde '+g.n+' seans eksikti → geri kondu');
+        setSyncNote(`Başka bir cihazdan gelen kayıtta ${g.n} seans eksikti (eski bir kopya buluta yazılmış olabilir). Seanslar silinmedi, yerlerinde korundu.`);
+      }
+      return g;
+    };
     if(pending&&base!==json&&(base!=null||hasRealData(dataRef.current))){
-      const{state,changed,stats}=mergeCloud(base,dataRef.current,parsed,preferRemote);
+      const merged=mergeCloud(base,dataRef.current,parsed,preferRemote);
+      const g=guard(merged.state);
+      const state=g.state,stats=merged.stats,changed=merged.changed||g.n>0;
       if(changed){
         dataRef.current=state;setData(state);
         dirty.current=true;
-        if(stats.conflicts)setSyncNote(preferRemote
+        if(stats.conflicts&&!g.n)setSyncNote(preferRemote
           ?'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (diğer cihazdaki) değişiklik geçerli oldu.'
           :'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (bu cihazdaki) değişiklik geçerli oldu.');
         return true;
@@ -32431,6 +32677,11 @@ function useCloudSync(data,setData){
        dizgiler karşılaştırılıyordu. Birkaç MB'lık bir durumda tek bir uzak görüntü için
        telefonun ana iş parçacığında yüzlerce ms — hem de yanıtı çoğu zaman ilk alanda
        belli olan bir soru için. `deq` ilk farkta duruyor ve hiçbir şey ayırmıyor. */
+    const g=guard(parsed);
+    if(g.n){
+      // lastApplied'a YAZILMAZ: bu hâl buluttakinden farklı, debounce turu onu geri yazacak.
+      dataRef.current=g.state;setData(g.state);dirty.current=true;return true;
+    }
     if(!deq(parsed,dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
     dirty.current=false;return false;
   };
@@ -32535,8 +32786,14 @@ function useCloudSync(data,setData){
       try{await fb.firestore().collection(COL).doc(uid).set({userId:uid,n:rec.n,rev:rec.rev,st:srvStamp()});}catch(e){console.warn('manifest heal',e);}
       return{json:rec.json,n:rec.n,rev:rec.rev,at:0,found,byRev};
     }
-    return{json:null,n:0,rev:0,at:0,found,byRev};
+    return{json:null,n:0,rev:0,at:manifest?stampMs(manifest.st):0,found,byRev};
   };
+  /* Bulut tutarsız ve elde bulutla mutabık bir hâl yokken eski kopyayı yazmadan önce kaç tur
+     daha beklendiği. Manifest son birkaç dakikada yazılmışsa başka bir cihaz büyük bir kaydı
+     hâlâ gönderiyor olabilir: 8 saniye sonra onun üstüne eski kopyayı yazmak, o cihazın bütün
+     yeni seanslarını siliyordu. */
+  const healWaits=useRef(0);
+  const HEAL_FRESH_MS=3*60*1000, HEAL_MAX_WAITS=20;
 
   // Tutarsız ara durum: sunucuya tekrar bak → düzeldiyse uygula, düzelmediyse yerelden geri yaz.
   const healInconsistent=async(fb,uid)=>{
@@ -32564,7 +32821,25 @@ function useCloudSync(data,setData){
       console.warn('cloud inconsistent · rev sayısı:',revs.length,
         revs.map(r=>r+': '+Object.keys(byRev[r]).length+' parça').join(' | '));
 
-      // 1) Bu tarayıcıdaki son TUTARLI kopya (en güvenli kaynak).
+      /* 1) Bu oturumda bulutla mutabık kalınmışsa EKRANDAKİ hâl. Emniyet kopyası ondan
+         eskidir (ekrandaki hâl o kopyanın üstüne yapılmış düzenlemeleri de taşır); eskiden
+         kopya öne alınıyor ve buluta körlemesine yazılıyordu — o kopyadan sonra yazılan
+         seanslar böylece bütün cihazlardan siliniyordu. */
+      if(ancestor.current!=null&&hasRealData(dataRef.current)){
+        slog('onarım: ekrandaki hâl buluta yeniden yazılıyor');
+        healWaits.current=0;
+        ready.current=true;lastSynced.current=null;
+        await writeNow();
+        return;
+      }
+      // Bulutta taze bir yazım yarıda → eski bir kopyayla üstüne yazma, biraz daha bekle.
+      if(at&&Date.now()-at<HEAL_FRESH_MS&&healWaits.current<HEAL_MAX_WAITS){
+        healWaits.current++;
+        slog('onarım: bulut tutarsız ama manifest yeni → başka cihazın yazımı bekleniyor','tur='+healWaits.current);
+        healing.current=false;waitThenHeal(fb,uid);return;
+      }
+      healWaits.current=0;
+      // 2) Bu tarayıcıdaki son TUTARLI kopya (ekranda bulutla mutabık bir hâl yoksa).
       const local=lsLoad(uid);
       if(local){
         let lp=null;try{lp=migrate(JSON.parse(local));}catch(e){}
@@ -32577,14 +32852,14 @@ function useCloudSync(data,setData){
         }
       }
 
-      // 2) Ekranda hâlâ gerçek veri duruyorsa onu yaz.
+      // 3) Ekranda hâlâ gerçek veri duruyorsa onu yaz.
       if(hasRealData(dataRef.current)){
         ready.current=true;lastSynced.current=null;
         await writeNow();
         return;                                               // hata olduysa writeNow yazdı
       }
 
-      // 3) Son çare: parçaları rev'ler arası birleştirip geçerli JSON çıkarmayı dene.
+      // 4) Son çare: parçaları rev'ler arası birleştirip geçerli JSON çıkarmayı dene.
       const spliced=byRev?spliceRecover(byRev):null;
       if(spliced){
         const sp=migrate(JSON.parse(spliced.json));
@@ -33137,6 +33412,20 @@ function useCloudSync(data,setData){
      yeniden icat etmez — var olan yolları (forcePull, writeNow, yeniden abonelik) çağırır,
      yalnızca onları çağıracak bir olay kalmadığında.
      ═══════════════════════════════════════════════════════════════════════ */
+  /* GÜNLÜK BULUT YEDEĞİ (bkz. cloudSnapshotDaily): günde bir kez, bulutla eşitken (yazılmamış
+     değişiklik yokken) durumun tamamı ayrıca saklanır. Açılıştan bir süre sonra başlar —
+     açılışın ilk dakikası senkronun kendisine kalsın. */
+  useEffect(()=>{
+    if(!user)return;
+    const run=()=>{
+      const fb=FB();
+      if(!fb||!ready.current||dirty.current||writing.current||ancestor.current==null)return;
+      cloudSnapshotDaily(fb,user.uid,dataRef.current);
+    };
+    const first=setTimeout(run,90000);
+    const iv=setInterval(run,10*60*1000);
+    return()=>{clearTimeout(first);clearInterval(iv);};
+  },[user]);
   const statusRef=useRef(status);statusRef.current=status;
   const lastPull=useRef(0);
   const lastResub=useRef(0);
