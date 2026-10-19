@@ -198,6 +198,12 @@ test('yazı tipi dosyaları (fonts/) uygulama kopyasına giriyor', async () => {
   assert.ok(await (await w.caches.open('coachos-app-v1')).match(APP + 'fonts/Archivo.woff2'));
 });
 
+test('FMS bilgilendirme görselleri (fms/) uygulama kopyasına giriyor', async () => {
+  const w = makeWorld();
+  await w.fetchEvent(get(APP + 'fms/deep-squat.jpg'));
+  assert.ok(await (await w.caches.open('coachos-app-v1')).match(APP + 'fms/deep-squat.jpg'));
+});
+
 test('uyarı sayfası kendi kopyasına, uygulama ondan ayrı kopyaya gidiyor', async () => {
   const w = makeWorld();
   await w.fetchEvent(get(APP + 'alerts.html'));

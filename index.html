@@ -9823,18 +9823,20 @@ function ybCalc(yb){
    that is read, not scored. Total is the sum of the seven movement scores, out of 21.
    ========================================================= */
 const FMS_ITEMS=[
-  {id:'deepSquat',       bi:false, clear:null,          tr:'Derin Çömelme',                  en:'Deep Squat'},
-  {id:'hurdleStep',      bi:true,  clear:null,          tr:'Yüksek Adımlama',                en:'Hurdle Step'},
-  {id:'inlineLunge',     bi:true,  clear:'anklePain',   tr:'Tek Çizgi Üzerinde Lunge',       en:'Inline Lunge',
-    clearTr:'Ayak Bileği Temizleme — Ağrı', clearEn:'Ankle Clearing — Pain'},
-  {id:'shoulderMobility',bi:true,  clear:'shoulderClear',tr:'Omuz Mobilitesi',               en:'Shoulder Mobility',
-    clearTr:'Omuz Sıkışma Temizleme Testi', clearEn:'Shoulder Impingement Clearing'},
-  {id:'aslr',            bi:true,  clear:null,          tr:'Aktif Düz Bacak Kaldırma',       en:'Active Straight-Leg Raise'},
-  {id:'trunkPushup',     bi:false, clear:'pushupClear', tr:'Gövde Stabilitesi Şınavı',       en:'Trunk Stability Push-Up',
-    clearTr:'Omurga Ekstansiyon Temizleme Testi', clearEn:'Spinal Extension Clearing'},
-  {id:'rotary',          bi:true,  clear:'rotaryClear', tr:'Rotasyon Stabilitesi',           en:'Rotary Stability',
-    clearTr:'Omurga Fleksiyon Temizleme Testi', clearEn:'Spinal Flexion Clearing'},
+  {id:'deepSquat',       bi:false, clear:null,          tr:'Deep Squat',                en:'Deep Squat'},
+  {id:'hurdleStep',      bi:true,  clear:null,          tr:'Hurdle Step',               en:'Hurdle Step'},
+  {id:'inlineLunge',     bi:true,  clear:'anklePain',   tr:'In-Line Lunge',             en:'In-Line Lunge',
+    clearTr:'Ankle Clearing — Pain', clearEn:'Ankle Clearing — Pain'},
+  {id:'shoulderMobility',bi:true,  clear:'shoulderClear',tr:'Shoulder Mobility',        en:'Shoulder Mobility',
+    clearTr:'Shoulder Impingement Clearing', clearEn:'Shoulder Impingement Clearing'},
+  {id:'aslr',            bi:true,  clear:null,          tr:'Active Straight-Leg Raise', en:'Active Straight-Leg Raise'},
+  {id:'trunkPushup',     bi:false, clear:'pushupClear', tr:'Trunk Stability Push-Up',   en:'Trunk Stability Push-Up',
+    clearTr:'Spinal Extension Clearing', clearEn:'Spinal Extension Clearing'},
+  {id:'rotary',          bi:true,  clear:'rotaryClear', tr:'Rotary Stability',          en:'Rotary Stability',
+    clearTr:'Spinal Flexion Clearing', clearEn:'Spinal Flexion Clearing'},
 ];
+/* Movement and clearing-test names stay in English (the official FMS terms) in both languages,
+   on screen and on paper; only the surrounding words (Test, Raw Score, …) follow the language setting. */
 /* A clearing test as stored: one answer, or one per side. Either way the answer that
    matters is whether anything hurt — a positive on either side is a positive. A record
    saved before the sheet had sides holds a bare string, and still reads. */
@@ -9885,26 +9887,26 @@ const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
      rh   the line's height in ordinary lines (default 1): a one-line movement whose comment
           would otherwise show a line and a half */
 const FMS_SHEET=[
-  {f:'deepSquat',side:'',kind:'score',lab:['DERİN ÇÖMELME','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1},rh:2},
-  {f:'hurdleStep',side:'right',kind:'score',lab:['YÜKSEK ADIMLAMA','HURDLE STEP'],ls:2,fin:{of:'hurdleStep',n:2},cm:{id:'hurdleStep',n:2}},
+  {f:'deepSquat',side:'',kind:'score',lab:['DEEP SQUAT','DEEP SQUAT'],ls:1,fin:{of:'deepSquat',n:1},cm:{id:'deepSquat',n:1},rh:2},
+  {f:'hurdleStep',side:'right',kind:'score',lab:['HURDLE STEP','HURDLE STEP'],ls:2,fin:{of:'hurdleStep',n:2},cm:{id:'hurdleStep',n:2}},
   {f:'hurdleStep',side:'left',kind:'score'},
-  {f:'inlineLunge',side:'right',kind:'score',lab:['TEK ÇİZGİ LUNGE','INLINE LUNGE'],ls:2,fin:{of:'inlineLunge',n:4},cm:{id:'inlineLunge',n:2}},
+  {f:'inlineLunge',side:'right',kind:'score',lab:['IN-LINE LUNGE','IN-LINE LUNGE'],ls:2,fin:{of:'inlineLunge',n:4},cm:{id:'inlineLunge',n:2}},
   {f:'inlineLunge',side:'left',kind:'score'},
-  {f:'anklePain',side:'right',kind:'clear',sub:true,lab:['AYAK BİLEĞİ TEMİZLEME — AĞRI','ANKLE CLEARING - PAIN'],ls:2,cm:{id:'ankle',n:4}},
+  {f:'anklePain',side:'right',kind:'clear',sub:true,lab:['ANKLE CLEARING - PAIN','ANKLE CLEARING - PAIN'],ls:2,cm:{id:'ankle',n:4}},
   {f:'anklePain',side:'left',kind:'clear',sub:true},
-  {f:'ankleMob',side:'right',kind:'ryg',sub:true,lab:['AYAK BİLEĞİ TEMİZLEME — MOBİLİTE','ANKLE CLEARING - MOBILITY'],ls:2,fin:{of:null,n:2}},
+  {f:'ankleMob',side:'right',kind:'ryg',sub:true,lab:['ANKLE CLEARING - MOBILITY','ANKLE CLEARING - MOBILITY'],ls:2,fin:{of:null,n:2}},
   {f:'ankleMob',side:'left',kind:'ryg',sub:true},
-  {f:'shoulderMobility',side:'right',kind:'score',lab:['OMUZ MOBİLİTESİ','SHOULDER MOBILITY'],ls:2,fin:{of:'shoulderMobility',n:4},cm:{id:'shoulderMobility',n:4}},
+  {f:'shoulderMobility',side:'right',kind:'score',lab:['SHOULDER MOBILITY','SHOULDER MOBILITY'],ls:2,fin:{of:'shoulderMobility',n:4},cm:{id:'shoulderMobility',n:4}},
   {f:'shoulderMobility',side:'left',kind:'score'},
-  {f:'shoulderClear',side:'right',kind:'clear',sub:true,lab:['OMUZ TEMİZLEME','SHOULDER CLEARING'],ls:2},
+  {f:'shoulderClear',side:'right',kind:'clear',sub:true,lab:['SHOULDER CLEARING','SHOULDER CLEARING'],ls:2},
   {f:'shoulderClear',side:'left',kind:'clear',sub:true},
-  {f:'aslr',side:'right',kind:'score',lab:['AKTİF DÜZ BACAK KALDIRMA','ACTIVE STRAIGHT-LEG RAISE'],ls:2,fin:{of:'aslr',n:2},cm:{id:'aslr',n:2}},
+  {f:'aslr',side:'right',kind:'score',lab:['ACTIVE STRAIGHT-LEG RAISE','ACTIVE STRAIGHT-LEG RAISE'],ls:2,fin:{of:'aslr',n:2},cm:{id:'aslr',n:2}},
   {f:'aslr',side:'left',kind:'score'},
-  {f:'trunkPushup',side:'',kind:'score',lab:['GÖVDE STABİLİTESİ ŞINAVI','TRUNK STABILITY PUSHUP'],ls:1,fin:{of:'trunkPushup',n:2},cm:{id:'trunkPushup',n:2}},
-  {f:'pushupClear',side:'',kind:'clear',sub:true,lab:['EKSTANSİYON TEMİZLEME','EXTENSION CLEARING'],ls:1},
-  {f:'rotary',side:'right',kind:'score',lab:['ROTASYON STABİLİTESİ','ROTARY STABILITY'],ls:2,fin:{of:'rotary',n:3},cm:{id:'rotary',n:3}},
+  {f:'trunkPushup',side:'',kind:'score',lab:['TRUNK STABILITY PUSH-UP','TRUNK STABILITY PUSH-UP'],ls:1,fin:{of:'trunkPushup',n:2},cm:{id:'trunkPushup',n:2}},
+  {f:'pushupClear',side:'',kind:'clear',sub:true,lab:['EXTENSION CLEARING','EXTENSION CLEARING'],ls:1},
+  {f:'rotary',side:'right',kind:'score',lab:['ROTARY STABILITY','ROTARY STABILITY'],ls:2,fin:{of:'rotary',n:3},cm:{id:'rotary',n:3}},
   {f:'rotary',side:'left',kind:'score'},
-  {f:'rotaryClear',side:'',kind:'clear',sub:true,lab:['FLEKSİYON TEMİZLEME','FLEXION CLEARING'],ls:1},
+  {f:'rotaryClear',side:'',kind:'clear',sub:true,lab:['FLEXION CLEARING','FLEXION CLEARING'],ls:1},
 ];
 /* What the record holds for one line of the sheet. */
 const fmsCell=(f,r)=>{const v=(f||{})[r.f];return r.side?((v&&v[r.side])||''):(v==null?'':v);};
@@ -10033,6 +10035,62 @@ function fmsSheetHtml(test,ath,opts){
   ${o.foot?`<div class="fmsx-gen">${o.foot}</div>`:''}
 </div>`;
 }
+/* ---- The page that follows the score sheet: what each of the seven movements is for. ----
+   One A4 portrait page, a picture on the left and the words beside it. The pictures live in fms/
+   (cropped 3:2 and shrunk for print). The movement names are the English FMS terms in both
+   languages; the explanations follow the language setting. */
+const FMS_INFO=[
+  {id:'deepSquat',img:'deep-squat.jpg',name:'Deep Squat',
+    tr:'Tüm vücut mekaniğini ve nöromüsküler kontrolü test eder. Kalça, diz ve ayak bileğinin simetrik mobilite ve stabilitesini ölçer. Başın üstündeki çubuk omuzlar ve sırtın da simetrik hareket edebildiğini gösterir. Günlük hayatta ya da sporda tam derinliğe nadiren inilir. Yine de bu kalıba erişebilmek, her seferinde maksimum hareket açıklığının sınırına dayanmamanı sağlayan bir tampon alan yaratır.',
+    en:'Tests whole-body mechanics and neuromuscular control. Measures the symmetrical mobility and stability of the hips, knees and ankles. The dowel held overhead shows that the shoulders and back can also move symmetrically. Full depth is rarely reached in daily life or in sport. Still, being able to access this pattern creates a buffer zone, so you are not up against the limit of your maximum range of motion every time.'},
+  {id:'hurdleStep',img:'hurdle-step.jpg',name:'Hurdle Step',
+    tr:'Yürüme ve ivmelenmenin temel parçası olan adım ve koşu mekaniğini, tek bacak üzerinde denge ve kontrolle birlikte test eder. Bir bacak üzerinde dururken diğer bacağın ayak bileği, diz ve kalçasını kontrollü şekilde bükerek adım atabilme becerisine bakar.',
+    en:'Tests the stepping and running mechanics that underlie walking and acceleration, together with balance and control on one leg. Looks at the ability to step by bending the ankle, knee and hip of one leg in a controlled way while standing on the other.'},
+  {id:'inlineLunge',img:'inline-lunge.jpg',name:'In-Line Lunge',
+    tr:'Hurdle Step koşu ve yürümeyi incelerken, In-Line Lunge yavaşlama ve yön değiştirme hareketlerini yansıtır. Alt vücudu ince bir tabanda, ayaklar arka arkaya konumda yük altına sokar. Böylece denge, kalça-diz-ayak bileği kontrolü ve sağ-sol farkı görülür.',
+    en:'While the Hurdle Step examines running and walking, the In-Line Lunge reflects deceleration and change of direction. It loads the lower body on a narrow base, with the feet one behind the other. This shows balance, hip-knee-ankle control and right-left differences.'},
+  {id:'shoulderMobility',img:'shoulder-mobility.jpg',name:'Shoulder Mobility',
+    tr:'Omuz kuşağı, göğüs kafesi (torasik omurga) ve kolların birbiriyle uyumlu çalışma ritmini gösterir. İki elin sırtta birbirine ne kadar yaklaşabildiğine bakılır. Bu hareket şut, pas ve baş üstü hareketler için önemlidir.',
+    en:'Shows how well the shoulder girdle, the rib cage (thoracic spine) and the arms work together. Looks at how close the two hands can get to each other behind the back. This movement matters for shooting, passing and overhead movements.'},
+  {id:'aslr',img:'aslr.jpg',name:'Active Straight-Leg Raise',
+    tr:'Bükülen kalçanın aktif mobilitesini ortaya çıkarır. Bir bacak havadayken diğer bacak ve gövde stabil kalabiliyor mu, ona bakar. Ayrıca arka bacak kaslarının esnekliği ve pelvis kontrolü görülür.',
+    en:'Reveals the active mobility of the flexing hip. Looks at whether the other leg and the trunk stay stable while one leg is in the air. It also shows hamstring flexibility and pelvic control.'},
+  {id:'trunkPushup',img:'trunk-pushup.jpg',name:'Trunk Stability Push-Up',
+    tr:'Refleksif core stabilizasyonunun temel gözlemidir. Kollar şınav kalıbında çalışırken omurga ve kalçada hareket olmaması beklenir. Şınava yerden “ölü başlangıçla” başlandığı için, ana kasların çalışmasına karşı sagittal düzlemde stabilite ve lumbopelvik kontrol test edilir.',
+    en:'The basic observation of reflexive core stabilization. While the arms work in a push-up pattern, no movement is expected in the spine and hips. Because the push-up starts from the floor with a “dead start”, stability in the sagittal plane against the work of the prime movers, and lumbopelvic control, are tested.'},
+  {id:'rotary',img:'rotary-stability.jpg',name:'Rotary Stability',
+    tr:'Karmaşık bir kalıptır. Doğru nöromüsküler koordinasyon ve tırmanma gibi temel kalıplardaki mobilite ve stabilite uyumunu gerektirir. Dört ayak pozisyonunda kol ve bacak birlikte hareket ederken gövdenin kontrolünü korumaya bakar. Bu, güç aktarımı ve çok düzlemli gövde stabilitesi açısından önemlidir.',
+    en:'A complex pattern. It requires proper neuromuscular coordination and the combined mobility and stability of basic patterns such as crawling. In the quadruped position, it looks at whether control of the trunk is kept while the arm and leg move together. This matters for force transfer and multiplanar trunk stability.'},
+];
+/* Fixed height, so the page cannot spill onto a second sheet: the rows share what is left under the
+   band, and anything that still does not fit is clipped rather than pushed over. 266mm sits under both
+   print pages' usable height (A4 less 12mm margins in the report, 10mm in the lone sheet). */
+const FMS_INFO_CSS=`
+.fmsi{width:100%;height:266mm;display:flex;flex-direction:column;color:#1b1b1b;break-inside:avoid;page-break-inside:avoid;overflow:hidden;
+  break-before:page;page-break-before:always}
+.fmsi *{box-sizing:border-box}
+.fmsi-head{flex:none;display:flex;height:15mm;margin-bottom:3mm}
+.fmsi-head .lg{flex:none;width:15mm;background:${FMS_RED}}
+.fmsi-head .lg img{display:block;width:100%;height:100%;object-fit:cover}
+.fmsi-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 5mm;font-size:15pt;letter-spacing:.04em;font-weight:700}
+.fmsi-list{flex:1;min-height:0;display:flex;flex-direction:column}
+.fmsi-row{flex:1 1 0;min-height:0;display:flex;align-items:center;gap:4.5mm;border-top:.25mm solid #cfcfcf;padding:1mm 0}
+.fmsi-row:first-child{border-top:none}
+.fmsi-img{flex:none;width:48mm;height:32mm;background:#eee;overflow:hidden}
+.fmsi-img img{display:block;width:100%;height:100%;object-fit:cover}
+.fmsi-tx{flex:1;min-width:0}
+.fmsi-tx h3{display:flex;align-items:baseline;gap:2.2mm;margin:0 0 1.2mm;font-size:14pt;line-height:1.15;font-weight:700;letter-spacing:.01em;color:#111}
+.fmsi-tx h3 i{font-style:normal;color:${FMS_RED};font-weight:700}
+.fmsi-tx p{margin:0;font-size:9pt;line-height:1.36;color:#2b2b2b}
+`;
+function fmsInfoHtml(){
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const base=location.origin;
+  return`<div class="fmsi">
+  <div class="fmsi-head"><div class="lg"><img src="${base}/fms-logo.png" alt="FMS"/></div><div class="tt">${L('FMS HAREKET KALIPLARI','FMS MOVEMENT PATTERNS')}</div></div>
+  <div class="fmsi-list">${FMS_INFO.map((m,i)=>`<div class="fmsi-row"><div class="fmsi-img"><img src="${base}/fms/${m.img}" alt="${esc(m.name)}"/></div><div class="fmsi-tx"><h3><i>${i+1}</i><span>${esc(m.name)}</span></h3><p>${esc(L(m.tr,m.en))}</p></div></div>`).join('')}</div>
+</div>`;
+}
 /* The sheet alone, as its own document — what the card's own print button opens. */
 function printFmsSheet(test,ath,opts){
   const w=window.open('','_blank','width=900,height=1200');
@@ -10050,10 +10108,11 @@ body{background:#fff;font-family:'Google Sans',Arial,sans-serif}
 .pg{max-width:190mm;margin:0 auto;padding:0 0 10mm}
 @media print{.print-bar,.scr-sp{display:none}.pg{max-width:none;padding:0}}
 ${FMS_SHEET_CSS}
+${FMS_INFO_CSS}
 </style></head><body>
 <div class="print-bar">📄 ${L('FMS puan kâğıdı hazır','FMS score sheet is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp"></div>
-<div class="pg">${fmsSheetHtml(test,ath,opts)}</div>
+<div class="pg">${fmsSheetHtml(test,ath,opts)}${fmsInfoHtml()}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
   printWhenImagesReady(w,{safety:8000});
@@ -10135,8 +10194,8 @@ const TEST_INFO={
     tr:{w:'Sporcu kollarını baş üstünde tutarak squat hareketi yapar.',p:'Mobilite, stabilite, postüral kontrol ve temel hareket kalitesini değerlendirmek için kullanılır.'},
     en:{w:'The athlete squats while holding the arms overhead.',p:'Used to assess mobility, stability, postural control and basic movement quality.'}},
   fms:{n:'FMS — Functional Movement Screen',
-    tr:{w:'Sporcuya yedi temel hareket kalıbı uygulanır: derin çömelme, yüksek adımlama, tek çizgi üzerinde lunge, omuz mobilitesi, aktif düz bacak kaldırma, gövde stabilitesi şınavı ve rotasyon stabilitesi. Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde sağ ve sol ayrı ayrı puanlanır ve düşük olan taraf geçerlidir.',p:'Temel hareket kalitesini, mobilite-stabilite dengesini, sağ-sol asimetrilerini ve ağrı yaratan hareketleri tek bir tarama ile ortaya koymak için kullanılır. Toplam skor 21 üzerindendir.'},
-    en:{w:'The athlete is taken through seven basic movement patterns: deep squat, hurdle step, inline lunge, shoulder mobility, active straight-leg raise, trunk stability push-up and rotary stability. Each is scored 0-3; the bilateral movements are scored per side and the lower side is the one that counts.',p:'Used to establish basic movement quality, the balance between mobility and stability, right-left asymmetry and any movement that provokes pain, in a single screen. The total is out of 21.'}},
+    tr:{w:'Sporcuya yedi temel hareket kalıbı uygulanır: Deep Squat, Hurdle Step, In-Line Lunge, Shoulder Mobility, Active Straight-Leg Raise, Trunk Stability Push-Up ve Rotary Stability. Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde sağ ve sol ayrı ayrı puanlanır ve düşük olan taraf geçerlidir.',p:'Temel hareket kalitesini, mobilite-stabilite dengesini, sağ-sol asimetrilerini ve ağrı yaratan hareketleri tek bir tarama ile ortaya koymak için kullanılır. Toplam skor 21 üzerindendir.'},
+    en:{w:'The athlete is taken through seven basic movement patterns: Deep Squat, Hurdle Step, In-Line Lunge, Shoulder Mobility, Active Straight-Leg Raise, Trunk Stability Push-Up and Rotary Stability. Each is scored 0-3; the bilateral movements are scored per side and the lower side is the one that counts.',p:'Used to establish basic movement quality, the balance between mobility and stability, right-left asymmetry and any movement that provokes pain, in a single screen. The total is out of 21.'}},
   yBalance:{n:'Y Balance Test',
     tr:{w:'Sporcu tek ayak üzerinde dururken diğer bacağıyla üç yönde (anterior, posteromedial, posterolateral) mümkün olduğunca uzağa uzanır.',p:'Dinamik dengeyi, tek bacak stabilitesini ve sağ-sol farkına bağlı yaralanma riskini değerlendirmek için kullanılır.'},
     en:{w:'Standing on one leg, the athlete reaches as far as possible with the other leg in three directions (anterior, posteromedial, posterolateral).',p:'Used to assess dynamic balance, single-leg stability and the injury risk carried by a right–left difference.'}},
@@ -23920,6 +23979,7 @@ ${TINFO_CSS}
 .fms-sheet{page-break-inside:avoid;break-inside:avoid}
 .fmsx-page{break-before:page;page-break-before:always}
 ${FMS_SHEET_CSS}
+${FMS_INFO_CSS}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:8px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
 /* Height and width are both capped and neither is set: the page keeps its own
@@ -24151,6 +24211,7 @@ ${fmsOn&&fmsR.any
      which is right when the report fits on page 1; when it does not, fmsToPage2 moves it in front
      of the first block that would spill over, and the report's own footer goes back at the end. */
   ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>
+${fmsInfoHtml()}
 <div class="footer" style="display:none">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`
   :`<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`}
 
@@ -24162,7 +24223,7 @@ ${fmsOn&&fmsR.any
   // cap than the session sheets before the dialog opens regardless.
   printWhenImagesReady(w,{safety:15000,before:fmsToPage2});
 }
-/* Puts the FMS score sheet on page 2 of the report. The page is laid out at the printed width
+/* Puts the FMS score sheet on page 2 of the report (the movement-pattern page follows it as page 3). The page is laid out at the printed width
    (A4 less the 12mm margins) and the blocks after the athlete card are measured against one page
    height: the sheet goes in front of the first block that does not end on page 1, and that block
    follows on page 3. Images are loaded by now, so their heights are real. */
@@ -24180,8 +24241,10 @@ function fmsToPage2(w){
       if(el.getBoundingClientRect().bottom-top>pageH){cut=el;break;}
     }
     if(!cut)return;
+    const info=d.querySelector('.fmsi');
     b.insertBefore(sheet,cut);
     sheet.style.breakAfter='page';sheet.style.pageBreakAfter='always';
+    if(info){b.insertBefore(info,cut);info.style.breakAfter='page';info.style.pageBreakAfter='always';}   // page 3: what the movements are for
     const gen=sheet.querySelector('.fmsx-gen');if(gen)gen.remove();
     const foot=d.querySelector('body > .footer');if(foot)foot.style.display='';
   }finally{b.style.width=prevW;}
