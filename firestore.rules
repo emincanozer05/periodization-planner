@@ -2,10 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* Senkron manifesti (doküman adı = uid) yazılırken `base`, buluttaki manifestin rev'i
+       olmak ZORUNDA: yazan cihaz, arada başka bir cihazın yazdığı hâli görmeden onun üstüne
+       yazamaz (çevrimdışı kuyruktan dönen eski yazım, aynı anda yazan iki cihaz). Reddedilen
+       cihaz buluttakini okuyup kendi düzenlemesiyle birleştirir ve yeniden yazar.
+       `base` taşımayan yazımlar (eski uygulama sürümleri, eski düzen) eskisi gibi geçer. */
+    function syncHeadOk(docId) {
+      return docId != request.auth.uid
+        || !('base' in request.resource.data)
+        || !('rev' in resource.data)
+        || request.resource.data.base == resource.data.rev;
+    }
     match /kullanici_verileri/{docId} {
       allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid && syncHeadOk(docId);
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     match /users/{uid}/{doc=**} {
       allow read, write: if request.auth.uid == uid;
