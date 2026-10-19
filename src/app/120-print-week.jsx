@@ -109,16 +109,16 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const axMax=Math.max(step,Math.ceil(maxLoad/step)*step);
   const yOf=v=>cPad+cUsableH-(axMax>0?(v/axMax)*cUsableH:0);
   const ticks=[];for(let v=0;v<=axMax+.001;v+=step)ticks.push(v);
-  const grid=ticks.map(v=>`<line x1="${cGut}" y1="${yOf(v)}" x2="${cTotalW}" y2="${yOf(v)}" stroke="#e5e7eb" stroke-width="1"/><text x="${cGut-8}" y="${yOf(v)+3.5}" text-anchor="end" font-size="9" fill="#8b9099" font-family="'IBM Plex Mono',monospace">${Math.round(v)}</text>`).join('');
+  const grid=ticks.map(v=>`<line x1="${cGut}" y1="${yOf(v)}" x2="${cTotalW}" y2="${yOf(v)}" stroke="#e5e7eb" stroke-width="1"/><text x="${cGut-8}" y="${yOf(v)+3.5}" text-anchor="end" font-size="9" fill="#8b9099" font-family="'Google Sans',Arial,sans-serif">${Math.round(v)}</text>`).join('');
   const bars=rDay.map((load,i)=>{
     const h=Math.max(yOf(0)-yOf(load),0);
     const x=cGut+i*(cBarW+cGap);const y=yOf(load);
-    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/><text x="${x+cBarW/2}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text><text x="${x+cBarW/2}" y="${cH-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${dnL(i)}</text>`;
+    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/><text x="${x+cBarW/2}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text><text x="${x+cBarW/2}" y="${cH-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'Google Sans',Arial,sans-serif">${dnL(i)}</text>`;
   }).join('');
   const meanY=chartMean>0?yOf(chartMean):0;
   const meanTx=`${L('Ort.','Mean')} ${Math.round(chartMean)} AU`;
   const meanW=meanTx.length*5.6+14;
-  const meanLine=chartMean>0?`<line x1="${cGut}" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#334155" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.8"/><rect x="${cTotalW-meanW}" y="${meanY-9.5}" width="${meanW}" height="17" rx="5" fill="#f4f5f7" stroke="#cbd5e1" stroke-width="1"/><text x="${cTotalW-meanW/2}" y="${meanY+2.5}" text-anchor="middle" font-size="9" fill="#3b4252" font-weight="700" font-family="'IBM Plex Mono',monospace">${meanTx}</text>`:'';
+  const meanLine=chartMean>0?`<line x1="${cGut}" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#334155" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.8"/><rect x="${cTotalW-meanW}" y="${meanY-9.5}" width="${meanW}" height="17" rx="5" fill="#f4f5f7" stroke="#cbd5e1" stroke-width="1"/><text x="${cTotalW-meanW/2}" y="${meanY+2.5}" text-anchor="middle" font-size="9" fill="#3b4252" font-weight="700" font-family="'Google Sans',Arial,sans-serif">${meanTx}</text>`:'';
   const chartSvg=`<svg viewBox="0 0 ${cTotalW} ${cH}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:190px">${grid}${bars}${meanLine}</svg>`;
   // Monotony flag
   const mF=!monotony?{c:'#8b9099',t:'—'}:monotony>2?{c:'#ff6b5b',t:L('YÜKSEK','HIGH')}:monotony>=1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>=1?{c:'#9aab3a',t:L('NORMAL','NORMAL')}:{c:'#5b8cff',t:L('DÜŞÜK','LOW')};
@@ -221,8 +221,8 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const crest=hasMedia(rawCrest)?escHTML(mediaSrc(rawCrest)):'';
   const club=escHTML(clubNameNow());
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Haftalık Plan','Weekly Plan')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:6mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
@@ -231,19 +231,19 @@ html,body{height:100%}
 /* The sheet is a picture as often as it is a page, and a picture that runs edge to edge
    reads as a screenshot of something cut off. The page padding is the white frame around
    it — the same on all four sides — and it is what the shared PNG is captured with. */
-body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column;padding:16px 18px}
+body{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column;padding:16px 18px}
 .fit{display:flex;flex-direction:column}
-.mono{font-family:'IBM Plex Mono',monospace}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:11px;padding:13px 18px;background:#0a0b0d;color:#fff;border-radius:14px;flex:none}
 .hdr-l{min-width:0;display:flex;align-items:center;gap:14px}
 /* The app's own mark, small, before the team's title — the crest on the right is the club's. */
 .hdr-logo{height:18px;width:auto;flex:none;display:block}
 .hdr-tx{min-width:0}
 .hdr h1{font-size:20px;font-weight:700;letter-spacing:-.015em;line-height:1.1}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.66;margin-top:4px;letter-spacing:.02em}
+.hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;opacity:.66;margin-top:4px;letter-spacing:.02em}
 .hdr-r{display:flex;align-items:center;gap:10px;flex:none}
 .hstat{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 12px}
-.hstat-l{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.hstat-l{font-family:'Google Sans',Arial,sans-serif;color:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
 .hstat-v{background:var(--accent);color:#0a0b0d;padding:3px 10px;border-radius:7px;font-weight:700;font-size:11.5px;white-space:nowrap}
 .hdr-div{width:1px;align-self:stretch;background:rgba(255,255,255,.18);margin:0 2px}
 .hdr-club{display:flex;align-items:center;gap:10px;max-width:190px}
@@ -253,69 +253,69 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .day-cell{vertical-align:top;background:#fff;border:1px solid var(--border);border-radius:12px;padding:0;width:14.28%;overflow:hidden}
 .day-head{padding:9px 11px 5px;display:flex;justify-content:space-between;align-items:baseline}
 .day-name{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
-.day-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);font-weight:500}
+.day-date{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);font-weight:500}
 /* A rest day is not an empty cell: it says what it is. */
 .rest-box{padding:26px 10px 30px;text-align:center}
-.rest-tag{color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.24em}
+.rest-tag{color:var(--dim);font-family:'Google Sans',Arial,sans-serif;font-size:11px;letter-spacing:.24em}
 .sess{background:var(--bg2);border:3px solid var(--border2);border-radius:11px;padding:8px 10px;margin:5px;overflow:hidden}
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
-.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted)}
 .sess-sep{width:1px;height:11px;background:var(--border2);flex:none}
 .sess-time{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em}
 .sess-dur{font-size:10px;font-weight:600;color:var(--text2)}
 .au-pill{background:var(--accent);color:#0a0b0d;padding:1px 7px;border-radius:4px;font-weight:600}
 .blk{margin-top:6px}
-.blk-h{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9.5px;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+.blk-h{font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9.5px;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--border)}
 .ex{margin-bottom:3px;font-size:9.5px;line-height:1.4;padding-left:2px;color:var(--text)}
 .exn{font-weight:500;color:var(--text)}
-.ex-no{display:inline-block;min-width:20px;padding:1px 5px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;text-align:center;margin-right:5px;background:var(--bg2);color:var(--muted)}
+.ex-no{display:inline-block;min-width:20px;padding:1px 5px;border-radius:4px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;text-align:center;margin-right:5px;background:var(--bg2);color:var(--muted)}
 .ex-no.ss{background:var(--accent);color:#0a0b0d}
-.exr{margin-left:5px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:9.5px}
-.exl{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:500}
-.exd{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
-.ext{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
-.exrr{margin-left:4px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
+.exr{margin-left:5px;color:var(--text);font-family:'Google Sans',Arial,sans-serif;font-weight:600;font-size:9.5px}
+.exl{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif;font-weight:500}
+.exd{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif}
+.ext{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif;font-size:8.5px}
+.exrr{margin-left:4px;color:var(--dim);font-family:'Google Sans',Arial,sans-serif;font-size:8.5px}
 .exdesc{font-size:8.5px;color:var(--dim);line-height:1.35;margin-top:2px;padding-left:4px}
 .day-total{margin:5px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;text-align:left}
-.day-total u{display:block;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.day-total u{display:block;text-decoration:none;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
 .day-total b{display:block;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-top:2px}
 .day-notes{margin:0 4px 4px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:7px;color:var(--text2);line-height:1.3}
 /* Monotony block */
 .mono-row{display:flex;gap:12px;margin-top:11px;padding:15px;background:#fff;border:1px solid var(--border);border-radius:14px;page-break-inside:avoid;break-inside:avoid}
 .mono-chart{flex:2.2;min-width:0}
-.mono-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.mono-h{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .mono-side{flex:1.6;display:flex;flex-direction:column;gap:8px;min-width:0}
 .mono-stats{display:flex;gap:7px}
 .stat{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;text-align:left}
-.stat-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-weight:500}
+.stat-l{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-weight:500}
 .stat-v{font-size:19px;font-weight:700;color:var(--text);margin-top:3px;line-height:1;letter-spacing:-.015em}
-.stat-u{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;margin-left:3px}
+.stat-u{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);font-weight:500;margin-left:3px}
 /* The verdict beside the number that produced it, tinted by the zone it lands in. */
 .mono-big{display:flex;align-items:center;gap:14px;border:1px solid var(--border2);border-radius:11px;padding:11px 13px}
 .mono-big-in{flex:none;text-align:center;min-width:76px}
-.mono-big-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.09em;text-transform:uppercase}
+.mono-big-l{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.09em;text-transform:uppercase}
 .mono-big-v{font-size:30px;font-weight:700;line-height:1;margin:2px 0 4px;color:var(--text);letter-spacing:-.02em}
-.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 10px;border-radius:7px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
+.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:3px 10px;border-radius:7px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
 .mono-big-s{font-size:10px;color:var(--text2);line-height:1.5}
-.mono-big-s span{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.mono-big-s span{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted)}
 .mono-help{background:var(--bg2);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font-size:9px;line-height:1.6;color:var(--text2)}
-.mono-help-h{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
+.mono-help-h{font-family:'Google Sans',Arial,sans-serif;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
 .mono-help-line{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
 .mono-help-line .dot{display:inline-block;width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .mono-help-line .tr{color:var(--dim);font-size:8px;margin-left:2px}
 .mono-help-line.tr-note{display:block;color:var(--dim);font-size:8px;line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
 /* Athletes table */
 .ath-tbl-wrap{margin-top:12px;page-break-inside:avoid;break-inside:avoid}
-.ath-tbl-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--accent);line-height:1.5}
+.ath-tbl-h{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--accent);line-height:1.5}
 .ath-tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:fixed}
-.ath-tbl th{background:#0a0b0d;color:#fff;padding:7px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.08em;text-align:center;text-transform:uppercase}
+.ath-tbl th{background:#0a0b0d;color:#fff;padding:7px 8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;letter-spacing:.08em;text-align:center;text-transform:uppercase}
 .ath-tbl td{padding:6px 8px;font-size:10px;border-top:1px solid var(--border);background:#fff;text-align:center;color:var(--text)}
 .ath-tbl tr:nth-child(even) td{background:var(--bg2)}
-.srpe-cell{display:inline-block;background:#0a0b0d;color:#fff;padding:1px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px}
+.srpe-cell{display:inline-block;background:#0a0b0d;color:#fff;padding:1px 8px;border-radius:6px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9px}
 .load-bar-wrap{background:var(--bg2);border:1px solid var(--border);height:10px;border-radius:5px;overflow:hidden;position:relative}
 .load-bar{height:100%;background:var(--accent);border-radius:5px}
-.footer{margin-top:10px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.06em}
+.footer{margin-top:10px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.06em}
 </style></head><body>
 <div class="fit">
 <div class="hdr">

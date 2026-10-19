@@ -147,7 +147,7 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#0094ff;--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Archivo',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
 .hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:10px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
@@ -366,7 +366,7 @@ function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool,refLabel,refNor
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Archivo',Arial,sans-serif;color:var(--text);background:#fff;font-size:9.5px;line-height:1.4}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:9.5px;line-height:1.4}
 .hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:11px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}

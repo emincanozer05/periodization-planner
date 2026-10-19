@@ -117,14 +117,14 @@ function printTeamInsights(R){
 
   const html=`<!DOCTYPE html>
 <html lang="${REPORT_LANG}"><head><meta charset="utf-8"><title>${L('Takım Analizi','Team Insights')} — ${esc(R.teamName)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f7f8fa}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 /* The sheet is laid out at the printed page's own width, on screen as well, so the
    height measured in the window is the height the printer will see. #fit is given that
    measured height once the sheet has been scaled into it — the document is then exactly
@@ -146,13 +146,13 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
 .hdr h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .date{display:inline-block;margin-top:5px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
-.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .date{display:inline-block;margin-top:5px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:8px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:var(--bg2)}
 .kpi .kv{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
-.kpi .kv u{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
-.kpi .kk{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
+.kpi .kv u{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
+.kpi .kk{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
 .card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px;display:flex;flex-direction:column}
 /* WHAT IS IN THE CARD FOLLOWS THE CARD. A frame stretched to the foot of the sheet with
@@ -181,9 +181,9 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--border)}
 .ct{font-size:12px;font-weight:700;letter-spacing:-.01em}
 .cs{font-size:9px;color:var(--dim);margin-top:2px}
-.tot{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;white-space:nowrap}
+.tot{font-family:'Google Sans',Arial,sans-serif;font-size:15px;font-weight:600;white-space:nowrap}
 .tot u{font-size:8.5px;color:var(--dim);text-decoration:none;margin-left:3px;letter-spacing:.06em}
-.count{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)}
+.count{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)}
 .count.on{background:#fee2e2;color:#be123c}
 /* The three columns end on ONE line at the foot of the sheet. A column is a flex
    column and its LAST card takes whatever height the column was given over and above
@@ -194,11 +194,11 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;align-items:stretch}
 .cols>div{display:flex;flex-direction:column;min-width:0}
 .cols>div>.card:last-child{flex:1 1 auto;margin-bottom:0}
-.none{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
+.none{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
 .algrid{display:grid;gap:6px}
 .al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;padding:6px 8px;background:#fffdf7}
 .al.high{border-left-color:#be123c;background:#fff7f8}
-.al .k{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
+.al .k{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
 .al.high .k{color:#be123c}
 .al .w{font-size:10px;font-weight:700;margin:2px 0 2px;letter-spacing:-.01em}
 .al .t{font-size:8.5px;color:var(--text2);line-height:1.4}
@@ -207,8 +207,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .sd-r:last-child{border-bottom:none}
 .sd-r .l{font-size:10px;font-weight:500;display:flex;align-items:center;gap:6px;min-width:0}
 .sd-r .l i{width:7px;height:7px;border-radius:2px;flex:none}
-.sd-r .n{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600}
-.sd-r .m{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);white-space:nowrap}
+.sd-r .n{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600}
+.sd-r .m{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);white-space:nowrap}
 .mini{display:inline-block;width:100%;min-width:34px;height:5px;border-radius:3px;background:#eceef1;overflow:hidden;vertical-align:middle}
 .mini i{display:block;height:100%;border-radius:3px}
 .fl{display:flex;flex-direction:column}
@@ -216,9 +216,9 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .fl-r:last-child{border-bottom:none}
 .fl-r.hot .nm{color:#be123c}
 .fl-r .nm{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
-.fl-r .nm u{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
+.fl-r .nm u{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
 .fl-r .tg{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-.tag{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
+.tag{font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
 /* A pain chip is graded by colour as well as by word — grey for a region that was
    ticked on a question that never asked how bad it is, then amber, orange, red. The
    small figure on the end is how many days of the week the region came back. */
@@ -228,12 +228,12 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .tag.p3{background:#fff1f2;border-color:#fecdd3;color:#be123c}
 .tag b{font-weight:600;margin-left:5px;padding-left:5px;border-left:1px solid currentColor;opacity:.65}
 .tbl{width:100%;border-collapse:collapse}
-.tbl th{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);text-align:left;padding:0 5px 5px;border-bottom:1px solid var(--border)}
-.tbl td{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
+.tbl th{font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);text-align:left;padding:0 5px 5px;border-bottom:1px solid var(--border)}
+.tbl td{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
 .tbl tbody tr:last-child td{border-bottom:none}
 .tbl .r{text-align:right}
 .tbl .rk{width:20px;color:var(--dim)}
-.tbl .d{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:500}
+.tbl .d{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500}
 .tbl .ac{font-weight:600}
 .tbl .ac .mini{width:42px;margin-left:6px}
 .tbl tfoot td{border-top:1.5px solid var(--border);border-bottom:none;font-weight:700;padding-top:6px}
@@ -242,13 +242,13 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .tr .bar{width:100%;max-width:34px;height:100%;background:#f1f2f4;border-radius:5px;display:flex;align-items:flex-end;overflow:hidden}
 .tr .bar i{display:block;width:100%;background:#c9cfd6;border-radius:5px}
 .tr .c.on .bar i{background:var(--accent)}
-.tr .v{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600}
-.tr .l{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
-.tr .dd{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600}
-.legend{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);letter-spacing:.03em;padding-top:6px;border-top:1px solid #f1f2f4;margin-top:6px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:4px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.tr .v{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600}
+.tr .l{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
+.tr .dd{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:600}
+.legend{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.03em;padding-top:6px;border-top:1px solid #f1f2f4;margin-top:6px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:4px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>

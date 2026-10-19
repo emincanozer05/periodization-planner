@@ -234,12 +234,12 @@ const fmsTotalTone=t=>t==null?'':t>=17?'#16a34a':t>=14?'#d99a00':'#dc2626';
 /* ---- The sheet on paper: one A4 portrait page, drawn after the official score sheet. ---- */
 const FMS_RED='#ec1c24';
 const FMS_SHEET_CSS=`
-.fmsx{width:100%;color:#1b1b1b;font-family:'Space Grotesk',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
+.fmsx{width:100%;color:#1b1b1b;font-family:'Google Sans',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
 .fmsx *{box-sizing:border-box}
 .fmsx-head{display:flex;height:21mm;margin-bottom:5mm}
 .fmsx-head .lg{flex:none;width:21mm;background:${FMS_RED}}
 .fmsx-head .lg img{display:block;width:100%;height:100%;object-fit:cover}
-.fmsx-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 6mm;font-size:19pt;line-height:1.1;letter-spacing:.04em;font-weight:500}
+.fmsx-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 6mm;font-size:19pt;line-height:1.1;letter-spacing:.04em;font-weight:700}
 .fmsx-id{margin-bottom:5mm}
 .fmsx-id .rw{display:flex;gap:0;border-bottom:.3mm solid #666;margin-bottom:3.4mm;font-size:8pt;letter-spacing:.03em;text-transform:uppercase}
 .fmsx-id .rw:last-child{margin-bottom:0}
@@ -247,7 +247,7 @@ const FMS_SHEET_CSS=`
 .fmsx-id .fd b{font-weight:500;color:#333;white-space:nowrap}
 .fmsx-id .fd span{font-weight:600;text-transform:none;letter-spacing:0;font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fmsx table{width:100%;border-collapse:collapse;table-layout:fixed;border:.3mm solid #777;margin:0;border-radius:0;overflow:visible}
-.fmsx td,.fmsx th{font-family:'Space Grotesk',Arial,sans-serif}
+.fmsx td,.fmsx th{font-family:'Google Sans',Arial,sans-serif}
 .fmsx th{background:${FMS_RED};color:#fff;font-weight:400;font-size:9.5pt;letter-spacing:.05em;height:8.4mm;text-align:center;padding:0;border:none;text-transform:uppercase;border-left:.3mm solid #fff}
 .fmsx th:first-child{border-left:none}
 .fmsx td{border:.3mm solid #777;padding:0 2mm;height:7.6mm;font-size:9pt;vertical-align:middle;background:#fff;overflow:hidden}
@@ -329,11 +329,11 @@ function printFmsSheet(test,ath,opts){
   if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>FMS — ${String((ath&&ath.name)||'').replace(/</g,'&lt;')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+${RPT_FONT}
 @page{size:A4 portrait;margin:10mm}
 *{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{background:#fff;font-family:'Space Grotesk',Arial,sans-serif}
+body{background:#fff;font-family:'Google Sans',Arial,sans-serif}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:13px;z-index:9999}
 .print-bar button{background:#ec1c24;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .scr-sp{height:56px}
@@ -517,11 +517,11 @@ function testInfoTable(ids){
    table lands in the sheet it is printed on rather than beside it. */
 const TINFO_CSS=`
 .tinfo{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;page-break-inside:auto;break-inside:auto}
-.tinfo th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
-.tinfo td{font-family:'Space Grotesk',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
+.tinfo th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
+.tinfo td{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
 .tinfo tr{page-break-inside:avoid;break-inside:avoid}
 .tinfo td.tin{font-weight:700;color:var(--text)}
-.tinfo-h{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px;page-break-after:avoid;break-after:avoid-page}
+.tinfo-h{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px;page-break-after:avoid;break-after:avoid-page}
 /* The heading used to land at the foot of a sheet with the table it introduces
    starting on the next one, which reads as a block torn in half. So the whole
    block opens its own sheet: the heading, the sub-heading and the first rows

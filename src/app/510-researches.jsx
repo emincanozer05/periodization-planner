@@ -71,7 +71,7 @@ function printResearch(rec){
 @page{size:A4 portrait;margin:18mm}
 ${RPT_FONT}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
+body{font-family:'Google Sans',Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
 h1{font-size:23px;font-weight:800;margin-bottom:8px;line-height:1.2}
 .meta{font-size:12px;color:#475569;margin-bottom:2px}
 .apa{font-size:12px;color:#334155;background:#f1f5f9;border-left:3px solid #0891b2;padding:10px 12px;border-radius:6px;margin:14px 0;word-break:break-word}
