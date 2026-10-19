@@ -83,6 +83,8 @@ function fakeFirestore() {
     ack: true,          // commit sunucu onayı veriyor mu
     serverSnaps: true,  // anlık görüntüler sunucudan mı geliyor (false → hep önbellek)
     holdSnap: false,    // ilk anlık görüntüyü tut (cihaz henüz "hazır" olamasın)
+    rules: false,       // firestore.rules'taki manifest kuralı: `base` buluttaki rev'i tutmalı
+    rejected: 0,
     commits: 0, listens: 0, hung: 0,
     now: () => ({ toMillis: () => Date.now() }),
     /* Ağ geri geldi. Gerçeğinde de olan bu: bekleyen yazımlar kuyruktan çıkıp onaylanır —
@@ -127,6 +129,13 @@ function fakeFirestore() {
         delete: ref => ops.push(['del', ref.__id]),
         commit: () => {
           api.commits++;
+          /* firestore.rules → syncHeadOk: manifest, buluttakinin rev'ini `base` olarak taşımıyorsa
+             reddedilir. Batch atomiktir: hiçbir işlem uygulanmaz. */
+          if (api.rules && ops.some(([kind, id, v]) => kind === 'set' && id === 'coach1' && v && v.base !== undefined
+              && docs.has(id) && docs.get(id).rev !== undefined && docs.get(id).rev !== v.base)) {
+            api.rejected++;
+            return Promise.reject(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
+          }
           // Yerel kopyaya HER HÂLDE işlenir — gerçeğinde de yazım önce diske gider.
           ops.forEach(([kind, id, v]) => kind === 'del' ? docs.delete(id) : docs.set(id, stamp(v)));
           if (api.ack) { emit({}); return Promise.resolve(); }
@@ -228,11 +237,14 @@ const withSecond = (n, m) => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: {
    bitenden haberdar olup olmadığı. Parçalar içerik adresli olduğu için birleştirme
    dokümanın ADINA değil içindeki `h` alanına bakar; tek parçalık bir set bu yüzden elle
    kurulabiliyor. emit YOK — bu, uyuyan/ölmüş bir dinleyicinin teslim etmediği yazım. */
-function remoteWrite(w, state, rev) {
+function remoteWrite(w, state, rev, base) {
   const h = 'uzak' + rev;
   w.fake.docs.set('coach1_' + h, { userId: 'coach1', c: JSON.stringify(state), h, rev });
-  w.fake.docs.set('coach1', { userId: 'coach1', v: 2, n: 1, rev, ids: [h], st: w.fake.now() });
+  const m = { userId: 'coach1', v: 2, n: 1, rev, ids: [h], st: w.fake.now() };
+  if (base !== undefined) m.base = base;   // yazan cihazın dayandığı hâl (yeni sürüm bunu her yazımda koyar)
+  w.fake.docs.set('coach1', m);
 }
+const cloudRev = w => (w.fake.docs.get('coach1') || {}).rev;
 
 let BAG = null;
 let pass = 0, fail = 0, failedHere = 0;
@@ -489,7 +501,7 @@ const withSessions = ids => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { 
   athletes: [{ id: 'a1', name: 'Ali' }] }], templates: [] });
 const cloudState = w => {
   const m = w.fake.docs.get('coach1');
-  return m ? m.ids.map(h => w.fake.docs.get('coach1_' + h).c).join('') : '';
+  return m ? m.ids.map(h => (w.fake.docs.get('coach1_' + h) || {}).c || '').join('') : '';
 };
 async function scenarioStaleOverwrite() {
   scene('başka cihaz bulutu eski kopyayla ezerse: seanslar silinmiyor, buluta geri yazılıyor');
@@ -529,6 +541,94 @@ async function scenarioSingleDeleteSyncs() {
   endScene(); h.unmount();
 }
 
+/* ÇEVRİMDIŞI TABLETİN DÖNÜŞÜ. Bu cihaz önce n1'i yazdı (rev r0), sonra notu n2 yaptı ve onu da
+   yazdı. Tablet r0'ı görmüş, sonra çevrimdışı kalmış ve kendi düzenlemesini (Veli'yi ekledi)
+   kuyruğa yazmış; ağ dönünce o kayıt buluta gitti — bu cihazın n2'sini HİÇ görmeden. Eskiden bu
+   cihaz, kendi tarafında yazılmamış bir şey olmadığı için gelen hâli olduğu gibi alıyordu: n2
+   her yerden siliniyordu. Gelen manifest dayandığı hâli (`base`) söylüyor; o hâl bu cihazdan
+   eski olduğuna göre birleştirilmeli. */
+async function scenarioBlindWriteMerged() {
+  scene('başka cihaz son hâli görmeden yazarsa: iki tarafın değişikliği de kalıyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  const r0 = cloudRev(w);
+  out.setData(realState(2));
+  await sleep(1500);
+  check('cihaz senkron', out.sync.status === 'synced' && cloudState(w).includes('n2'), 'status=' + out.sync.status);
+
+  remoteWrite(w, withSecond(1, 5), Date.now() + 5000, r0);   // tablet: r0'ın üstüne, n2'yi görmeden
+  w.fake.emit({});
+  await sleep(3000);
+  const scr = JSON.stringify(out.data), cl = cloudState(w);
+  check('bu cihazın düzenlemesi (n2) ekranda duruyor', scr.includes('"n2"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('tabletin eklediği sporcu ekranda', scr.includes('"m5"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('ikisi de buluta yazıldı', cl.includes('"n2"') && cl.includes('"m5"'), 'buluttaki: ' + cl.slice(0, 200));
+  check('kullanıcıya not düşüldü', /birleştirildi/.test(out.sync.syncNote || ''), 'not=' + out.sync.syncNote);
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+/* Aynısı, ama tablet ÇOK eski bir hâlden yazmış: dayandığı hâl bu cihazda artık yok. Kesin
+   birleştirme yapılamıyor; yine de hiçbir şey silinmemeli. */
+async function scenarioBlindWriteNoAncestor() {
+  scene('çok eski bir hâlden körlemesine yazılırsa: hiçbir şey silinmiyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(2));
+  await sleep(1500);
+  remoteWrite(w, withSecond(1, 6), Date.now() + 5000, 1);
+  w.fake.emit({});
+  await sleep(3000);
+  const scr = JSON.stringify(out.data), cl = cloudState(w);
+  check('bu cihazın düzenlemesi duruyor', scr.includes('"n2"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('tabletin eklediği sporcu geldi', scr.includes('"m6"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('ikisi de bulutta', cl.includes('"n2"') && cl.includes('"m6"'), 'buluttaki: ' + cl.slice(0, 200));
+  endScene(); h.unmount();
+}
+/* AYNI ANDA YAZAN İKİ CİHAZ (kural yayında). Masaüstü yazdı; bu cihazın dinleyicisi onu henüz
+   teslim etmedi ve bu cihaz da tam o sırada yazdı. Eskiden geç kalan yazım öncekini eziyordu.
+   Kural `base`'i tutmayan manifesti reddediyor; cihaz buluttakini okuyup birleştirmeli. */
+async function scenarioConcurrentWriteRejected() {
+  scene('aynı anda iki cihaz yazınca: kural geç kalanı durduruyor, o da birleştirip yazıyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  w.fake.rules = true;
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  remoteWrite(w, withSecond(1, 7), Date.now() + 5000, cloudRev(w));   // masaüstü: emit YOK, henüz gelmedi
+  out.setData(realState(3));
+  await sleep(3000);
+  const scr = JSON.stringify(out.data), cl = cloudState(w);
+  check('bayat yazım reddedildi', w.fake.rejected > 0, 'reddedilen=' + w.fake.rejected);
+  check('masaüstünün sporcusu bulutta kaldı', cl.includes('"m7"'), 'buluttaki: ' + cl.slice(0, 200));
+  check('bu cihazın düzenlemesi de bulutta', cl.includes('"n3"'), 'buluttaki: ' + cl.slice(0, 200));
+  check('ekranda ikisi de var', scr.includes('"m7"') && scr.includes('"n3"'), 'ekrandaki: ' + scr.slice(0, 200));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+/* Manifestin gösterdiği bir parça buluttan silinmiş (başka bir cihazın çöp toplayıcısı). Öteki
+   cihazlar bu manifesti okuyamaz ve bir süre sonra kendi hâllerini üstüne yazarlar. İçeriği
+   elinde tutan cihaz eksik parçayı geri yüklemeli. */
+async function scenarioMissingChunkRepaired() {
+  scene('manifestin bir parçası silinmişse: içeriği bilen cihaz onu geri yüklüyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(4));
+  await sleep(1500);
+  const ids = w.fake.docs.get('coach1').ids;
+  w.fake.docs.delete('coach1_' + ids[0]);
+  w.fake.emit({});
+  await sleep(1500);
+  check('eksik parça geri yüklendi', ids.every(x => w.fake.docs.has('coach1_' + x)), 'eksik: ' + ids.filter(x => !w.fake.docs.has('coach1_' + x)).join(','));
+  check('bulut yeniden okunabiliyor', cloudState(w).includes('"n4"'));
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -545,6 +645,10 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
   await scenarioNeverReachesServer();
   await scenarioStaleOverwrite();
   await scenarioSingleDeleteSyncs();
+  await scenarioBlindWriteMerged();
+  await scenarioBlindWriteNoAncestor();
+  await scenarioConcurrentWriteRejected();
+  await scenarioMissingChunkRepaired();
   console.log('\n' + pass + ' geçti, ' + fail + ' kaldı');
   process.exit(fail ? 1 : 0);
 })();

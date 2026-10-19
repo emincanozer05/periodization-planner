@@ -32379,6 +32379,31 @@ function useCloudSync(data,setData){
   const subFresh=useRef(null);          // dinleyici en son hangi uid için SIFIRDAN kuruldu
   const lastEditAt=useRef(0);           // bu cihazda en son ne zaman düzenleme yapıldı (yerel saat)
   const skew=useRef(null);              // sunucu saati − cihaz saati (ms); ölçülene kadar null
+  /* HANGİ BULUT HÂLİNİN ÜSTÜNE YAZIYORUZ? Ekrandaki hâlin dayandığı manifestin rev'i. Her yazım
+     bunu manifeste `base` olarak koyar. İki şeye yarar:
+       • Firestore kuralı, `base`'i buluttaki rev'i tutmayan manifest yazımını REDDEDER: başka
+         bir cihazın arada yazdığı hâli görmeden üstüne yazmak artık mümkün değil. Reddedilen
+         cihaz buluttakini okur, kendi düzenlemesiyle birleştirir ve öyle yazar.
+       • Kural henüz yayınlanmamışsa (ya da eski bir sürüm yazdıysa) alan tarafta yakalanır:
+         gelen manifestin `base`'i bu cihazın bildiği hâlden ESKİYSE o yazım bu cihazdaki son
+         değişiklikleri görmemiştir (bkz. applyRemote, "kör yazım"). */
+  const curRev=useRef(null);
+  /* rev → JSON: son görülen bulut hâlleri. Kör bir yazım geldiğinde doğru üç yönlü birleştirme
+     için ORTAK ATA lazım: yazanın dayandığı hâl. O hâl burada duruyorsa birleştirme kesin olur. */
+  const hist=useRef(new Map());
+  const HIST_CHARS=12*1024*1024, HIST_MAX=16;
+  const histPut=(rev,json)=>{
+    if(typeof rev!=='number'||typeof json!=='string')return;
+    const h=hist.current;h.delete(rev);h.set(rev,json);
+    let total=0;h.forEach(v=>{total+=v.length;});
+    for(const k of Array.from(h.keys())){
+      if(h.size<=2||(h.size<=HIST_MAX&&total<=HIST_CHARS))break;
+      total-=h.get(k).length;h.delete(k);
+    }
+  };
+  const healBase=useRef(null);          // onarım yazımı: bilerek üstüne yazılan bozuk manifestin rev'i
+  const conflicts=useRef({n:0,at:0});   // art arda reddedilen manifest yazımı (sonsuz döngü olmasın)
+  const repairing=useRef(false);        // eksik parça onarımı uçuşta mı
   const COL='kullanici_verileri';
   const GC_GRACE_MS=5*60*1000;   // bu kadar yeni bir parça, kimse göstermiyor görünse bile silinmez
 
@@ -32473,6 +32498,47 @@ function useCloudSync(data,setData){
     }catch(e){console.warn('gc',e);}
   };
 
+  /* Buluttaki hâli SUNUCUDAN oku ve ekrandakiyle birleştir (yazmadan önce ya da yazımımız
+     reddedildiğinde). Buluttaki hâl bizim kendi yazımımızsa ya da içeriği zaten elimizdeyse
+     birleştirilecek bir şey yoktur: yalnızca hangi rev'in üstüne yazdığımız güncellenir. */
+  const pullMerge=async(fb,uid)=>{
+    const sv=await withTimeout(readServer(fb,uid),SERVER_READ_MS);
+    if(sv.json==null){if(sv.found)waitThenHeal(fb,uid);return;}
+    lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;
+    if(sv.json===lastSynced.current||sv.json===ancestor.current||myRevs.current.has(sv.rev)){
+      curRev.current=sv.rev;histPut(sv.rev,sv.json);return;
+    }
+    let sp=null;try{sp=migrate(JSON.parse(sv.json));}catch(e){}
+    if(sp)applyRemote(sv.json,sp,sv.at||0,sv);
+  };
+
+  /* EKSİK PARÇA ONARIMI. Manifest, içeriği bu cihazda duran bir hâli gösteriyor ama
+     parçalarından biri bulutta yok (ör. başka bir cihazın çöp toplayıcısı, bu manifest
+     yolda iken onu "artık kimse göstermiyor" diye sildi). Öteki cihazlar böyle bir manifesti
+     okuyamaz ve bir süre sonra kendi hâllerini üstüne yazarlar — bu cihazın değişiklikleri
+     de öyle giderdi. İçerik elimizde olduğu için eksik parçaları geri yüklemek yeter. */
+  const repairChunks=async(fb,uid,json,miss)=>{
+    if(repairing.current)return;
+    repairing.current=true;
+    try{
+      const want=new Set(miss);const rev=Date.now();const ops=[];
+      (await splitChunksAsync(json)).forEach(p=>{
+        if(!want.has(p.h))return;want.delete(p.h);
+        ops.push({id:chunkDocId(uid,p.h),data:{userId:uid,c:p.c,h:p.h,rev},bytes:p.b+CHUNK_OVERHEAD});
+      });
+      if(!ops.length)return;
+      slog('onarım: manifestin eksik parçaları yeniden yükleniyor','adet='+ops.length);
+      const col=fb.firestore().collection(COL);
+      let cur=[],bytes=0;
+      for(const o of ops){
+        if(cur.length&&(cur.length>=BATCH_OPS||bytes+o.bytes>BATCH_BYTES)){await commitOps(fb,col,cur);cur=[];bytes=0;}
+        cur.push(o);bytes+=o.bytes;
+      }
+      if(cur.length)await commitOps(fb,col,cur);
+    }catch(e){slog('onarım: parçalar yüklenemedi',(e&&e.code)||(e&&e.message)||'?');}
+    finally{repairing.current=false;}
+  };
+
   // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
@@ -32481,6 +32547,7 @@ function useCloudSync(data,setData){
     if(writing.current){queued.current=true;slog('write: kilitli, sıraya alındı');return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
     const gen=++writeGen.current;      // bu turun kimliği: bırakılmış bir tur dönerse artık hiçbir şeye dokunmaz
     const stale=()=>gen!==writeGen.current;
+    const hb=healBase.current;healBase.current=null;   // onarım turu mu (bozuk manifestin üstüne bilerek yazılır)
     /* Bağlantısız geçen bir aradan sonraki ilk yazım: önce sunucudaki hâli oku. Arada başka
        bir cihaz yazdıysa körlemesine üzerine yazmak yerine birleştir — böylece "tablet
        çevrimdışıyken çalıştı, dönünce laptopta yapılanları sildi" durumu olmaz.
@@ -32491,15 +32558,14 @@ function useCloudSync(data,setData){
     if(!fromServer.current&&ready.current&&!isHidden()){
       writing.current=true;writeStarted.current=Date.now();
       try{
-        // Önce yalnızca manifest okunur (tek doküman): rev bizimkinden yeni değilse
-        // arada kimse yazmamış demektir, parçaları çekmeye hiç gerek kalmaz.
+        // Önce yalnızca manifest okunur (tek doküman): ekrandaki hâlin dayandığı rev'se arada
+        // kimse yazmamış demektir, parçaları çekmeye hiç gerek kalmaz.
+        // "Daha BÜYÜK rev" değil "BAŞKA rev" sorulur: rev'ler cihaz saatinden üretildiği için
+        // saati geride olan bir cihazın yazımı daha küçük bir rev taşıyabilir — eskiden o yazım
+        // "yeni değil" sayılıp okunmadan üstüne yazılıyordu.
         const md=await withTimeout(fb.firestore().collection(COL).doc(u.uid).get({source:'server'}),SERVER_READ_MS);
         const mv=md.exists?md.data():null;
-        const sv=(mv&&typeof mv.rev==='number'&&mv.rev>lastRev.current)?await withTimeout(readServer(fb,u.uid),SERVER_READ_MS):{json:null};
-        if(sv.json!=null&&sv.json!==lastSynced.current&&sv.json!==ancestor.current){
-          let sp=null;try{sp=migrate(JSON.parse(sv.json));}catch(e){}
-          if(sp){lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;applyRemote(sv.json,sp,sv.at||0);}
-        }
+        if(mv&&typeof mv.rev==='number'&&mv.rev!==(curRev.current||0)&&!myRevs.current.has(mv.rev))await pullMerge(fb,u.uid);
         fromServer.current=true;   // sunucuyu şimdi okuduk; sıradaki yazımlar tekrar okumaz
       }catch(e){/* okunamadı ya da zamanında gelmedi → yazımı yine de dene, dinleyici dönüşte birleştirir */
         slog('write: ön-okuma başarısız',(e&&e.code)||(e&&e.message)||'?');}
@@ -32509,6 +32575,7 @@ function useCloudSync(data,setData){
       writing.current=false;
     }
     const json=ser(dataRef.current);
+    const base=hb!=null?hb:(curRev.current||0);   // bu hâl buluttaki hangi rev'in üstüne kuruldu
     if(json===lastSynced.current){dirty.current=false;setStatus('synced');return;}
     /* Boş/varsayılan veri buluttaki dolu veriyi SİLMESİN. Karşılaştırma yalnızca EKRAN
        boş göründüğünde yapılır: eskiden en son yazılan JSON her yazımda baştan sona
@@ -32576,13 +32643,38 @@ function useCloudSync(data,setData){
       slog('write: parçalar yazıldı, manifest gidiyor',acked?'':'(onay bekleniyor)');
       /* Manifeste SUNUCU SAATİ de yazılır. Kimin düzenlemesinin daha yeni olduğu ancak ortak
          bir saatle söylenebilir; cihaz saatleri birbirini tutmaz. Bkz. applyRemote. */
-      if(!await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,v:2,n,rev,ids,st:srvStamp()}}]))acked=false;
+      const mdata={userId:u.uid,v:2,n,rev,ids,base,st:srvStamp()};
+      if(hb!=null)mdata.heal=1;
+      let mOk;
+      try{mOk=await commitOps(fb,col,[{id:u.uid,data:mdata}]);}
+      catch(e){
+        /* REDDEDİLDİ: Firestore kuralı, `base`'i buluttaki rev'i tutmayan manifesti kabul
+           etmiyor — biz yazmaya hazırlanırken başka bir cihaz yazmış. Eskiden bu yazım o
+           cihazın hâlini sessizce eziyordu. Şimdi buluttakini okuyup birleştiriyor ve
+           birleşmiş hâli yeniden yazıyoruz. Art arda birkaç kez olursa (birleştirme okuması
+           gelmiyor) hata gösterilir; dakikada bir yeniden denenir. */
+        if(!(e&&e.code==='permission-denied'))throw e;
+        if(stale())return;
+        const c=conflicts.current;
+        if(Date.now()-c.at>60000)c.n=0;
+        if(c.n>=3)throw e;
+        c.n++;c.at=Date.now();
+        slog('write: bulutta bu cihazın görmediği bir hâl var → önce birleştiriliyor','tur='+c.n);
+        try{await pullMerge(fb,u.uid);}
+        catch(e2){slog('write: birleştirme okuması başarısız',(e2&&e2.code)||(e2&&e2.message)||'?');}
+        if(stale())return;
+        writing.current=false;queued.current=false;
+        dirty.current=true;writeNow();
+        return;
+      }
+      if(!mOk)acked=false;
       /* Bu tur bırakılmışsa (ağ takıldı sanıldı, yerine yenisi başladı) ve şimdi geç de olsa
          döndüyse: yazdığı hâl buluta gitti, ama ekrandaki hâl artık o değil. "Senkron" demek
          ya da lastSynced'i geriye çekmek, yeni turun yazacağını bastırıp cihazı yanlışlıkla
          yeşile boyardı. Bulutu bozmadan çekiliyor; sonucu yeni tur belirler. */
       if(stale())return;
       lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
+      curRev.current=rev;histPut(rev,json);conflicts.current.n=0;
       writeAcked.current=acked;
       /* The cloud has this state now, so any device file it no longer points at is safe to
          let go — checked against the state on screen too, since the coach may have edited
@@ -32625,10 +32717,32 @@ function useCloudSync(data,setData){
      Geri yazımı `data` değişiminin tetiklediği debounce turu üstlenir — bunun için birleşmiş
      hâl lastApplied'a YAZILMAZ (yazılsaydı "buluttan geldi, geri yazma" sanılırdı).
      true döner: geri yazılacak bir şey var (yeşil yakma). */
-  const applyRemote=(json,parsed,remoteAt)=>{
-    const base=ancestor.current;
+  const applyRemote=(json,parsed,remoteAt,meta)=>{
+    const m=meta||{};
+    let base=ancestor.current;
+    /* KÖR YAZIM. Gelen manifestin `base`'i bu cihazın bildiği hâlden ESKİYSE, onu yazan cihaz
+       bu cihazdaki son değişiklikleri hiç görmemiştir: çevrimdışıyken kuyruğa giren yazım ağ
+       dönünce gitti, ya da iki cihaz aynı anda yazdı ve geç kalan önce yazanı ezdi. (rev'ler
+       bir zincir boyunca hep artar; bizim hâlimizden türeyen bir yazımın `base`'i bizimkinden
+       küçük olamaz.) Eskiden bu cihaz, kendi tarafında yazılmamış bir şey yoksa gelen hâli
+       OLDUĞU GİBİ alıyordu: önceki kaydı yapan cihazın değişiklikleri böylece bütün cihazlardan
+       siliniyordu. Artık birleştirilir — yazanın dayandığı hâl elimizdeyse onunla (kesin üç
+       yönlü birleştirme), değilse tabansız (hiçbir şey silinmez, çakışmada bu cihaz kazanır;
+       gelen hâl eski bir tabandan geldiği için çakışan değeri büyük ihtimalle eskidir).
+       Bozuk bir manifestin üstüne yazılan onarım kaydı (`heal`) da, o manifesti okuyabilmiş
+       cihazda böyle karşılanır: üstüne yazılan şey bu cihazın hâliydi. */
+    const cr=curRev.current;
+    let blind=false;
+    if(typeof m.rev==='number'&&cr!=null&&m.rev!==cr&&!myRevs.current.has(m.rev)&&!hist.current.has(m.rev)
+       &&typeof m.base==='number'&&(m.base<cr||(m.heal&&m.base===cr))){
+      blind=true;
+      base=(!m.heal&&hist.current.has(m.base))?hist.current.get(m.base):null;
+      slog('kör yazım: gelen hâl bu cihazın son hâlini görmeden yazılmış → birleştiriliyor',
+        (base!=null?'ortak ata bulundu':'ortak ata yok')+' rev='+m.rev);
+    }
     const mine=lastSynced.current;   // buluta en son yazdığımız hâl (henüz atası olmadıysa yazımımız uçuşta demektir)
     lastSynced.current=json;ancestor.current=json;
+    if(typeof m.rev==='number'){curRev.current=m.rev;histPut(m.rev,json);}
     // Bulutta artık başka bir hâl var: onay bekleyen yazımımızın bekleyeni kalmadı. Ekrandaki
     // hâl bundan farklıysa bunu zaten dirty söyler ve yeni bir tur yazar.
     writeAcked.current=true;
@@ -32639,11 +32753,11 @@ function useCloudSync(data,setData){
        Ölçüm yoksa (henüz kendi yazımımızın yankısını görmedik) karar verilemez ve eski
        davranış sürer: ekrandaki kalır. */
     const myAt=(skew.current!=null&&lastEditAt.current)?lastEditAt.current+skew.current:0;
-    const preferRemote=!!(remoteAt&&myAt&&remoteAt>myAt);
+    const preferRemote=!!(remoteAt&&myAt&&remoteAt>myAt)&&!(blind&&base==null);
     /* Yazılmamış düzenleme YOKKEN bile birleştirmek gerekebilir: kendi yazımımız buluta
        gitmiş ama ortak ata olarak dönmemişse, gelen hâl bizimkiyle aynı tabandan yazılmış
        rakip bir yazım olabilir. */
-    const pending=dirty.current||writing.current||queued.current||(mine!=null&&mine!==base);
+    const pending=blind||dirty.current||writing.current||queued.current||(mine!=null&&mine!==base);
     /* ATA YOKKEN DE BİRLEŞTİR. Ortak ata yalnızca dinleyici yeniden kurulduğunda ya da
        kurtarma turundan sonra boş kalır; tam o anda buluttan gelen hâli ekrandakinin üstüne
        YAZMAK, o sırada yapılmış ama henüz gönderilmemiş düzenlemeyi sessizce siliyordu.
@@ -32671,7 +32785,8 @@ function useCloudSync(data,setData){
       if(changed){
         dataRef.current=state;setData(state);
         dirty.current=true;
-        if(stats.conflicts&&!g.n)setSyncNote(preferRemote
+        if(blind&&!g.n)setSyncNote('Başka bir cihaz bu cihazdaki son değişiklikleri görmeden kaydetmişti (çevrimdışıyken ya da aynı anda). İki cihazın değişiklikleri birleştirildi, hiçbiri silinmedi.');
+        else if(stats.conflicts&&!g.n)setSyncNote(preferRemote
           ?'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (diğer cihazdaki) değişiklik geçerli oldu.'
           :'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (bu cihazdaki) değişiklik geçerli oldu.');
         return true;
@@ -32787,14 +32902,15 @@ function useCloudSync(data,setData){
     const found=docs.some(v=>v&&typeof v.c==='string');
     if(manifest){
       const json=assembleFrom(manifest,byHash,byRev);
-      if(json!=null)return{json,n:manifest.n,rev:manifest.rev,at:stampMs(manifest.st),found,byRev};
+      if(json!=null)return{json,n:manifest.n,rev:manifest.rev,base:manifest.base,heal:manifest.heal,at:stampMs(manifest.st),found,byRev};
     }
     const rec=assembleAny(byRev);
     if(rec){
       try{await fb.firestore().collection(COL).doc(uid).set({userId:uid,n:rec.n,rev:rec.rev,st:srvStamp()});}catch(e){console.warn('manifest heal',e);}
       return{json:rec.json,n:rec.n,rev:rec.rev,at:0,found,byRev};
     }
-    return{json:null,n:0,rev:0,at:manifest?stampMs(manifest.st):0,found,byRev};
+    return{json:null,n:0,rev:0,at:manifest?stampMs(manifest.st):0,found,byRev,
+      mrev:(manifest&&typeof manifest.rev==='number')?manifest.rev:0};   // okunamayan manifestin rev'i (onarım onun üstüne yazar)
   };
   /* Bulut tutarsız ve elde bulutla mutabık bir hâl yokken eski kopyayı yazmadan önce kaç tur
      daha beklendiği. Manifest son birkaç dakikada yazılmışsa başka bir cihaz büyük bir kaydı
@@ -32809,13 +32925,14 @@ function useCloudSync(data,setData){
     if(writing.current||queued.current){waitThenHeal(fb,uid);return;}   // yazımımız sürüyor → ara durum bizim, tekrar bekle
     healing.current=true;
     try{
-      const{json,n,rev,at,byRev}=await readServer(fb,uid);
+      const sv=await readServer(fb,uid);
+      const{json,n,rev,at,byRev,mrev}=sv;
       if(json!=null){
         let parsed=null;try{parsed=migrate(JSON.parse(json));}catch(e){}
         if(parsed){
           prevN.current=n;lastRev.current=Math.max(lastRev.current,rev||0);
           ready.current=true;
-          const back=applyRemote(json,parsed,at||0);   // onarım turu da yereldeki düzenlemeyi ezmez
+          const back=applyRemote(json,parsed,at||0,sv);   // onarım turu da yereldeki düzenlemeyi ezmez
           lsSave(uid,json);
           setSyncErr('');
           if(!back){setStatus('synced');setSyncNote('');}
@@ -32824,7 +32941,10 @@ function useCloudSync(data,setData){
       }
       /* Buradan sonrası, ESKİ (üzerine-yazan) şemadan kalmış bozuk bulutlar içindir: hiçbir
          rev'den eksiksiz set çıkmıyor. Bulutu ne olursa olsun ezmeden önce sırayla dene.
-         Ne bulunduğunu konsola da yaz — sorun sürerse tanı koymayı kolaylaştırır. */
+         Ne bulunduğunu konsola da yaz — sorun sürerse tanı koymayı kolaylaştırır.
+         Aşağıdaki her yazım okunamayan manifestin ÜSTÜNE bilerek yazar: `base` onun rev'idir
+         (kural bunu kabul eder) ve kayıt `heal` diye işaretlenir — o manifesti okuyabilmiş
+         cihaz (genelde onu yazan) gelen hâli kendi hâliyle birleştirir, olduğu gibi almaz. */
       const revs=Object.keys(byRev||{});
       console.warn('cloud inconsistent · rev sayısı:',revs.length,
         revs.map(r=>r+': '+Object.keys(byRev[r]).length+' parça').join(' | '));
@@ -32837,7 +32957,7 @@ function useCloudSync(data,setData){
         slog('onarım: ekrandaki hâl buluta yeniden yazılıyor');
         healWaits.current=0;
         ready.current=true;lastSynced.current=null;
-        await writeNow();
+        healBase.current=mrev;await writeNow();
         return;
       }
       // Bulutta taze bir yazım yarıda → eski bir kopyayla üstüne yazma, biraz daha bekle.
@@ -32854,7 +32974,7 @@ function useCloudSync(data,setData){
         if(lp&&hasRealData(lp)){
           dataRef.current=lp;lastApplied.current=lp;setData(lp);
           ready.current=true;lastSynced.current=null;
-          await writeNow();                                   // bulutu bu kopyadan yeniden kur
+          healBase.current=mrev;await writeNow();                                   // bulutu bu kopyadan yeniden kur
           if(lastSynced.current!=null)setSyncNote('Buluttaki kayıt yarıda kalmıştı; bu cihazdaki son kopyadan geri yüklendi. Son değişikliklerini gözden geçir.');
           return;
         }
@@ -32863,7 +32983,7 @@ function useCloudSync(data,setData){
       // 3) Ekranda hâlâ gerçek veri duruyorsa onu yaz.
       if(hasRealData(dataRef.current)){
         ready.current=true;lastSynced.current=null;
-        await writeNow();
+        healBase.current=mrev;await writeNow();
         return;                                               // hata olduysa writeNow yazdı
       }
 
@@ -32873,7 +32993,7 @@ function useCloudSync(data,setData){
         const sp=migrate(JSON.parse(spliced.json));
         dataRef.current=sp;lastApplied.current=sp;setData(sp);
         ready.current=true;lastSynced.current=null;
-        await writeNow();
+        healBase.current=mrev;await writeNow();
         if(lastSynced.current!=null)setSyncNote('Buluttaki kayıt yarıda kalmıştı; veri parçalardan kurtarıldı. En son yaptığın birkaç değişiklik eksik olabilir — kontrol edip Backup al.');
         return;
       }
@@ -32897,7 +33017,8 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     let pulled=false;
     try{
-      const{json,n,rev,at,found}=await withTimeout(readServer(fb,u.uid),SERVER_READ_MS);   // manifest bozuksa parçalardan kurtarır
+      const sv=await withTimeout(readServer(fb,u.uid),SERVER_READ_MS);   // manifest bozuksa parçalardan kurtarır
+      const{json,n,rev,at,found}=sv;
       if(json==null){
         // Parçalar duruyor ama hiçbir tutarlı set çıkmıyor → onarım turu (asla üzerine yazma).
         if(found){await healInconsistent(fb,u.uid);return;}
@@ -32906,7 +33027,7 @@ function useCloudSync(data,setData){
         prevN.current=n;lastRev.current=Math.max(lastRev.current,rev||0);
         ready.current=true;
         const parsed=migrate(JSON.parse(json));
-        pulled=applyRemote(json,parsed,at||0);   // elle çekmek de yazılmamış düzenlemeyi silmez, birleştirir
+        pulled=applyRemote(json,parsed,at||0,sv);   // elle çekmek de yazılmamış düzenlemeyi silmez, birleştirir
         lsSave(u.uid,json);
       }
       ready.current=true;setSyncErr('');
@@ -32936,13 +33057,13 @@ function useCloudSync(data,setData){
          atıyoruz — kullanıcı giriş ekranını görür, bir kere girer ve slot temizlenir. */
       if(u&&u.isAnonymous){fb.auth().signOut().catch(()=>{});return;}
       if(!u){
-        ready.current=false;lastSynced.current=null;ancestor.current=null;prevUid.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];
+        ready.current=false;lastSynced.current=null;ancestor.current=null;prevUid.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];curRev.current=null;hist.current.clear();
         if(timer.current){clearTimeout(timer.current);timer.current=null;}
         clearSettle();
         setData(makeDefault());setStatus('offline');setSyncErr('');setUser(null);
         return;
       }
-      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;ancestor.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];setData(makeDefault());}
+      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;ancestor.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];curRev.current=null;hist.current.clear();setData(makeDefault());}
       prevUid.current=u.uid;
       setUser(u);
     });
@@ -32960,7 +33081,7 @@ function useCloudSync(data,setData){
     subFresh.current=user.uid;
     slog('dinleyici: kuruluyor',(fresh?'yeni':'yeniden')+' uid='+user.uid.slice(0,6));
     setStatus('syncing');ready.current=false;
-    if(fresh){lastSynced.current=null;ancestor.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];idsJson.current=[];skew.current=null;}
+    if(fresh){lastSynced.current=null;ancestor.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];idsJson.current=[];skew.current=null;curRev.current=null;hist.current.clear();}
     docCache.current=new Map();   // yeni dinleyici tüm dokümanları 'eklendi' olarak getirir
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     clearSettle();
@@ -33090,6 +33211,14 @@ function useCloudSync(data,setData){
             const hit=idsKey!=null?idsJson.current.find(e=>e.key===idsKey):null;
             let json=hit?hit.json:assembleFrom(manifest,byHash,chunks);
             if(!hit&&idsKey!=null&&json!=null)idsJson.current=[{key:idsKey,json},idsJson.current[0]].filter(Boolean);
+            /* Bu manifestin içeriği elimizde, ama sunucunun gösterdiği parçalardan biri eksik:
+               öteki cihazlar onu okuyamıyor. Eksikleri geri yükle (bkz. repairChunks). Yalnızca
+               sunucudan gelen, bekleyen yazımı olmayan bir görüntüde sorulur — önbellekteki ya da
+               yarıda kalmış bir görüntüde parça henüz gelmemiş olabilir. */
+            if(hit&&!_cache&&!_pend&&!writing.current&&!queued.current){
+              const miss=manifest.ids.filter(h=>byHash[h]==null);
+              if(miss.length)repairChunks(fb,user.uid,hit.json,miss);
+            }
             let healed=null;
             if(json==null){
               // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
@@ -33114,8 +33243,26 @@ function useCloudSync(data,setData){
             if(mAt&&typeof manifest.rev==='number'&&myRevs.current.has(manifest.rev))
               skew.current=mAt-manifest.rev;
             ready.current=true;prevN.current=healed?healed.n:manifest.n;
-            lastRev.current=Math.max(lastRev.current,(healed?healed.rev:manifest.rev)||0);
+            const mrev=healed?healed.rev:manifest.rev;
+            const meta=healed?{rev:mrev}:manifest;
+            lastRev.current=Math.max(lastRev.current,mrev||0);
+            /* KENDİ ESKİ YAZIMIMIZIN YANKISI. Takılan bir tur bırakılıp yerine yenisi yazdığında
+               eski turun manifesti sonradan gelebilir. Onun içeriği ekrandaki hâlin bir ÖNCEKİ
+               adımıdır; "uzak hâl" diye birleştirilirse aynı alanın eski ve yeni değeri çakışır
+               ve yazılan son harfler geri alınabilirdi. Ekrandaki hâl ondan türediği için yalnızca
+               hangi rev'in üstünde durduğumuz güncellenir.
+               Yeni yazımımız hiç oturmadıysa (bekleyen yazım kalmadı, onay da gelmedi → kural
+               reddetti) bulutta duran bu eski hâldir: gözcü ekrandakini onun üstüne yeniden yazsın. */
+            if(typeof mrev==='number'&&myRevs.current.has(mrev)&&mrev<lastRev.current&&json!==lastSynced.current){
+              if(!_pend&&!writeAcked.current&&!writing.current){
+                slog('snap: son yazımımız buluta oturmadı → bulutta kendi eski hâlimiz var, yeniden yazılacak','rev='+mrev);
+                lastSynced.current=json;ancestor.current=json;curRev.current=mrev;histPut(mrev,json);
+                writeAcked.current=true;dirty.current=true;
+              }else slog('snap: kendi eski yazımımızın yankısı → atlandı','rev='+mrev);
+              return;
+            }
             if(json===lastSynced.current){
+              if(typeof mrev==='number'){curRev.current=mrev;histPut(mrev,json);}
               // Kendi yazımımızın yankısı: bulut onu gösterdiğine göre artık ortak atadır
               // ve onay beklemesi de bitmiştir — bulutta duran şey bu.
               ancestor.current=json;writeAcked.current=true;
@@ -33125,7 +33272,7 @@ function useCloudSync(data,setData){
             }
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
             lsSave(user.uid,json);   // cihazda emniyet kopyası: bulut bir daha okunamazsa buradan dönülür
-            const back=applyRemote(json,parsed,mAt);   // yerel düzenleme varsa birleştirir, ezmez
+            const back=applyRemote(json,parsed,mAt,meta);   // yerel düzenleme varsa birleştirir, ezmez
             setSyncErr('');
             /* ZİNCİRİN NEREDE GEÇTİĞİNİ ÖLÇ. "Telefonda geç görünüyor" tek bir belirti ama
                arkasında iki ayrı süre var ve bunlar birbirinden ayrılmadan hiçbir düzeltme
@@ -33156,8 +33303,8 @@ function useCloudSync(data,setData){
             let back=false;
             if(rec.json!==lastSynced.current){
               let parsed;try{parsed=migrate(JSON.parse(rec.json));}catch(e){return;}
-              back=applyRemote(rec.json,parsed);
-            }
+              back=applyRemote(rec.json,parsed,0,{rev:rec.rev});
+            }else{curRev.current=rec.rev;histPut(rec.rev,rec.json);}
             setSyncErr('');
             // Yerelde yazılmamış değişiklik varken yeşil yakma
             if(!back&&!dirty.current&&!writing.current&&!fromPending.current)setStatus('synced');
@@ -33331,7 +33478,8 @@ function useCloudSync(data,setData){
         sawServer.current=true;lastServerAt.current=Date.now();
         const v=d.exists?d.data():null;
         const rev=(v&&typeof v.rev==='number')?v.rev:0;
-        if(rev>lastRev.current){slog('dönüş sınavı: bulutta daha yeni hâl → çekiliyor','rev='+rev);await forcePull();}
+        // "Daha büyük" değil "başka" rev: saati geride olan bir cihazın yazımı küçük rev taşır.
+        if(rev&&rev!==(curRev.current||0)&&!myRevs.current.has(rev)){slog('dönüş sınavı: bulutta başka bir hâl → çekiliyor','rev='+rev);await forcePull();}
         else slog('dönüş sınavı: güncel','rev='+rev);
       }catch(e){
         /* Sunucu yanıt vermedi: akış ölü ya da taşıma bu ağda geçmiyor. Dinleyiciyi
