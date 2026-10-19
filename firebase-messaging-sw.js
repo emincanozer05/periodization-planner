@@ -163,7 +163,7 @@ function isShell(url) {
 }
 function isApp(url) {
   const r = relPath(url);
-  return r !== null && (APP_FILES.indexOf(r) >= 0 || r.startsWith('fonts/'));
+  return r !== null && (APP_FILES.indexOf(r) >= 0 || r.startsWith('fonts/') || r.startsWith('fms/'));
 }
 function isLib(url) {
   if (url.protocol !== 'https:') return false;

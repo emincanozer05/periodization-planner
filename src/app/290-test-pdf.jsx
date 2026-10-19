@@ -366,6 +366,7 @@ ${TINFO_CSS}
 .fms-sheet{page-break-inside:avoid;break-inside:avoid}
 .fmsx-page{break-before:page;page-break-before:always}
 ${FMS_SHEET_CSS}
+${FMS_INFO_CSS}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:8px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
 /* Height and width are both capped and neither is set: the page keeps its own
@@ -597,6 +598,7 @@ ${fmsOn&&fmsR.any
      which is right when the report fits on page 1; when it does not, fmsToPage2 moves it in front
      of the first block that would spill over, and the report's own footer goes back at the end. */
   ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))+' · '+esc(setup.teamName)})}</div>
+${fmsInfoHtml()}
 <div class="footer" style="display:none">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`
   :`<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>`}
 
@@ -608,7 +610,7 @@ ${fmsOn&&fmsR.any
   // cap than the session sheets before the dialog opens regardless.
   printWhenImagesReady(w,{safety:15000,before:fmsToPage2});
 }
-/* Puts the FMS score sheet on page 2 of the report. The page is laid out at the printed width
+/* Puts the FMS score sheet on page 2 of the report (the movement-pattern page follows it as page 3). The page is laid out at the printed width
    (A4 less the 12mm margins) and the blocks after the athlete card are measured against one page
    height: the sheet goes in front of the first block that does not end on page 1, and that block
    follows on page 3. Images are loaded by now, so their heights are real. */
@@ -626,8 +628,10 @@ function fmsToPage2(w){
       if(el.getBoundingClientRect().bottom-top>pageH){cut=el;break;}
     }
     if(!cut)return;
+    const info=d.querySelector('.fmsi');
     b.insertBefore(sheet,cut);
     sheet.style.breakAfter='page';sheet.style.pageBreakAfter='always';
+    if(info){b.insertBefore(info,cut);info.style.breakAfter='page';info.style.pageBreakAfter='always';}   // page 3: what the movements are for
     const gen=sheet.querySelector('.fmsx-gen');if(gen)gen.remove();
     const foot=d.querySelector('body > .footer');if(foot)foot.style.display='';
   }finally{b.style.width=prevW;}
