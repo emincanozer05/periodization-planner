@@ -505,7 +505,15 @@ function guardSessions(before,after){
    değiştirmez; yalnızca eksik seansları ekler. */
 function restoreSessionsFrom(current,backup){
   const lost=sesMissing(backup,current);
-  return{state:sesPutBack(current,lost),n:lost.filter(sesPrimary).length};
+  const state=sesPutBack(current,lost);
+  /* Sayılan: gerçekten geri konan takım seansları, sporcunun kendi seansları ve Bireyselleştirme
+     programları. Takım seansının düz sporcu kopyası sayılmaz (kaynağıyla birlikte gelir). Koruma
+     sayımından (sesPrimary) farkı bilinçli: burada koç geri almayı kendisi istiyor ve yalnızca
+     Bireyselleştirme programları eksik olsa bile onlar geri gelmeli. */
+  const own=e=>e.ath==null||!(e.s&&e.s.sourceId)||!!(e.s&&e.s.indiv);
+  let n=0;const was=sesLocate(current);
+  sesLocate(state).forEach((e,k)=>{if(!was.has(k)&&own(e))n++;});
+  return{state,n};
 }
 const sesCount=state=>{let n=0;sesLocate(state).forEach(e=>{if(sesPrimary(e))n++;});return n;};
 
