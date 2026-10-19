@@ -1904,6 +1904,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const indivB = { teams: [{ id: 't1', days: {}, athletes: ['a1', 'a2', 'a3', 'a4'].map(id => ({ id, days: { '2026-10-12': day('2026-10-12', [ses('i' + id, { indiv: { srcKey: 'x' } })]) } })) }] };
     const indivA = { teams: [{ id: 't1', days: {}, athletes: ['a1', 'a2', 'a3', 'a4'].map(id => ({ id, days: {} })) }] };
     check('koruma: Bireyselleştirme\'nin birçok sporcudan programı kaldırması geri alınmıyor', A.guardSessions(indivB, indivA).n === 0);
+    const ri = A.restoreSessionsFrom(indivA, indivB);
+    check('yedekten geri alma: yalnızca Bireyselleştirme programları eksikse onlar da geri geliyor',
+      ri.n === 4 && ri.state.teams[0].athletes.every(a => (a.days['2026-10-12'] || {}).sessions?.length === 1), 'n=' + ri.n);
     const parkedLost = { teams: [{ ...before.teams[0], seasonData: { S1: { days: {} } }, days: {} }] };
     const gp = A.guardSessions(before, parkedLost);
     check('koruma: park edilmiş sezonun seansı kendi sezonuna dönüyor', gp.state.teams[0].seasonData.S1.days['2025-10-01'].sessions[0].id === 'old1' && !gp.state.teams[0].days['2025-10-01']);
