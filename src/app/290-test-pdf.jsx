@@ -36,8 +36,8 @@ function printBodyComp(ath,setup){
       <line x1="${padX}" y1="${baseY}" x2="${cw-padX}" y2="${baseY}" stroke="#e5e7eb" stroke-width="1"/>
       ${area?`<polygon points="${area}" fill="url(#${gid})"/>`:''}
       <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      ${valid.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${xs[i].toFixed(1)}" y="${(ys[i]-13).toFixed(1)}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="17" font-weight="700" fill="${color}">${p.v}</text>`).join('')}
-      ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-8}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#9ca3af">${labels[i]}</text>`).join('')}
+      ${valid.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${xs[i].toFixed(1)}" y="${(ys[i]-13).toFixed(1)}" text-anchor="middle" font-family="'Google Sans',Arial,sans-serif" font-size="17" font-weight="700" fill="${color}">${p.v}</text>`).join('')}
+      ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-8}" text-anchor="middle" font-family="'Google Sans',Arial,sans-serif" font-size="13" fill="#9ca3af">${labels[i]}</text>`).join('')}
     </svg>`;
   };
   const period=`${fdL(sorted[0].date)} → ${fdL(sorted[sorted.length-1].date)}`;
@@ -45,47 +45,47 @@ function printBodyComp(ath,setup){
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Body Composition — ${ath.name}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 html,body{height:auto}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 .hdr{display:flex;align-items:center;gap:18px;padding:16px 22px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:14px;margin-bottom:14px}
 .hdr .av{width:62px;height:62px;border-radius:14px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;font-weight:700;font-size:20px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden;padding:2px}
 .hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:11px;display:block}
 .hdr .info{min-width:0}
 .hdr .info h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
-.hdr .info .date{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
-.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .info .meta{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .info .date{display:inline-block;margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .mcards{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mcard{background:#fff;border:1px solid var(--border);border-radius:13px;padding:15px 17px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column}
 .mcard .mc-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--border)}
 .mcard .mc-t{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
-.mcard .mc-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.mcard .mc-u{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .mcard .mc-val{display:flex;align-items:baseline;gap:9px;margin-bottom:2px}
-.mcard .mc-val .mv{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1;font-family:'Space Grotesk',sans-serif}
+.mcard .mc-val .mv{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1;font-family:'Google Sans',Arial,sans-serif}
 .mcard .mc-val .mu{font-size:12px;font-weight:500;color:var(--dim);margin-left:-4px}
-.mcard .mc-val .md{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+.mcard .mc-val .md{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600}
 .mcard .mc-val .md.pos{color:#16a34a}.mcard .mc-val .md.neg{color:#dc2626}
 .mcard .mc-chart{margin-top:6px}
 .mcard .mc-chart svg{width:100%;height:auto;max-height:150px}
-.mcard .empty{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:40px 6px}
+.mcard .empty{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);text-align:center;padding:40px 6px}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:9px;overflow:hidden;border:1px solid var(--border);flex:none}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
-td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
-.section-h{position:relative;padding:0 0 6px 12px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:8px 0 6px;flex:none}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:6px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
+.section-h{position:relative;padding:0 0 6px 12px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:8px 0 6px;flex:none}
 .section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:14px;background:var(--accent);border-radius:2px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em;flex:none}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em;flex:none}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
-.empty{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:24px}
+.empty{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:var(--dim);text-align:center;padding:24px}
 </style>
 </head><body>
 <div class="print-bar">📄 ${L('Vücut Kompozisyonu raporu hazır','Body Composition report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
@@ -161,43 +161,43 @@ function printTeamBodyComp(athletes,setup){
     </tr>`;
   }).join('')).join('');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Body Composition — ${esc(setup.teamName)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:11mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#9aa0a8;--bg2:#f4f5f7}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 .ath-cell{display:flex;align-items:center;gap:9px}
 .av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex:none}
-.av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700}
+.av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700}
 .ath-nm{font-weight:600;line-height:1.2}
-.subm{padding-left:37px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
+.subm{padding-left:37px;color:var(--dim);font-family:'Google Sans',Arial,sans-serif}
 .hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#0a0b0d,#15171c);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
-.hdr .ttl{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .ttl{text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .stat{background:#fff;border:1px solid var(--border);border-radius:11px;padding:11px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
-.stat .k{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.stat .k{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 .stat .v{font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:4px}
 .stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:3px}
 table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:11px;overflow:hidden}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:9px 8px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:9px 8px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.l,td.l{text-align:left;padding-left:14px}
 td{padding:8px;text-align:center;font-size:11px;border-top:1px solid var(--border);color:var(--text)}
 td.l{font-weight:600}
 td.b{font-weight:700}
-td.mono,td .jn,.dim,.pos,.neg{font-family:'IBM Plex Mono',monospace}
+td.mono,td .jn,.dim,.pos,.neg{font-family:'Google Sans',Arial,sans-serif}
 td.mono{font-size:10px;color:var(--muted)}
 .jn{font-size:9px;color:var(--dim);margin-right:7px}
 .pos{color:#16a34a;font-weight:600}.neg{color:#dc2626;font-weight:600}.dim{color:#c2c6cc}
 tbody tr.grp td{border-top:2px solid #cbd5e1}
 tbody tr.grp:first-child td{border-top:none}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:10px;letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;z-index:9999}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:10px;letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;z-index:9999}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>
@@ -310,22 +310,22 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${ath.name}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:12mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--bg:#ffffff;--bg2:#f4f5f7;--panel:#ffffff;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 /* Tables — rounded, single dark header */
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-top:6px}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
-td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff;font-weight:500}
-.kv td{font-size:15px;font-weight:600;padding:14px 7px;color:var(--text);font-family:'Space Grotesk',Arial,sans-serif;letter-spacing:-.01em}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:11px 7px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff;font-weight:500}
+.kv td{font-size:15px;font-weight:600;padding:14px 7px;color:var(--text);font-family:'Google Sans',Arial,sans-serif;letter-spacing:-.01em}
 /* Team average under the score it belongs to — a footnote to the number, not a number of its own */
-.kv tr.tavg td{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--muted);padding:0 6px 10px;border-top:none;letter-spacing:0;line-height:1.35}
+.kv tr.tavg td{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;color:var(--muted);padding:0 6px 10px;border-top:none;letter-spacing:0;line-height:1.35}
 .kv tr.tavg td span{white-space:nowrap}
 /* Athlete header — dark card matching app theme */
 .athlete-header{display:flex;gap:20px;align-items:center;padding:18px 22px;margin-bottom:18px;background:#0a0b0d;color:#fff;border-radius:14px}
@@ -333,13 +333,13 @@ td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font
 .athlete-photo-x{width:90px;height:115px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;flex-shrink:0;letter-spacing:-.02em}
 .athlete-info{flex:1}
 .athlete-info h1{font-size:24px;margin-bottom:6px;color:#fff;font-weight:700;letter-spacing:-.01em;line-height:1.1}
-.athlete-info .meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6;letter-spacing:.02em}
-.athlete-info .date{display:inline-block;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.athlete-info .meta{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6;letter-spacing:.02em}
+.athlete-info .date{display:inline-block;margin-top:10px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
 .right-block{text-align:right}
-.right-block .ttl{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;line-height:1.4;text-transform:uppercase}
-.right-block .coach-line{margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:rgba(255,255,255,.75);letter-spacing:.03em;line-height:1.4}
+.right-block .ttl{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;line-height:1.4;text-transform:uppercase}
+.right-block .coach-line{margin-top:12px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:rgba(255,255,255,.75);letter-spacing:.03em;line-height:1.4}
 /* Section header — single lime accent bar, mono uppercase */
-.section-h{position:relative;padding:0 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
+.section-h{position:relative;padding:0 0 9px 14px;font-family:'Google Sans',Arial,sans-serif;font-weight:700;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
 .section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:16px;background:var(--accent);border-radius:2px}
 table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 ${TINFO_CSS}
@@ -359,7 +359,7 @@ ${TINFO_CSS}
 .ph{text-align:center;display:inline-block;margin:0 4px}
 .ph img{border-radius:8px;border:1px solid var(--border);display:block}
 .phx{background:var(--bg2);border:1px dashed var(--border);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:24px}
-.phl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
+.phl{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
 /* A scanned FMS sheet is kept whole on a single page and its pages are sized
    against what is left of that page, never split across two. The live sheet is its own
    page, after everything else. */
@@ -380,20 +380,20 @@ ${FMS_SHEET_CSS}
 .ohs-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px}
 .ohs-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .ohs-col{display:flex;align-items:stretch;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px;min-height:210px}
-.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
+.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
 .ohs-photo-box{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ohs-problems{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-.ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
+.ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
 .ohs-problem-c{background:#fff;min-height:50px;padding:8px 10px;font-size:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;white-space:pre-wrap;color:var(--text2);line-height:1.5}
 .sprint-panel{display:flex;align-items:stretch;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;gap:8px}
 .sprint-col{display:flex;flex-direction:column}
-.sprint-col-h{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);color:var(--muted);text-transform:uppercase}
+.sprint-col-h{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);color:var(--muted);text-transform:uppercase}
 .sprint-row{display:flex;justify-content:space-around;align-items:flex-start;gap:8px;flex:1}
 .sprint-sep{width:1px;background:var(--border);margin:8px 4px}
 .sprint-section{page-break-inside:avoid;break-inside:avoid}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);margin-top:22px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);margin-top:22px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 .print-bar button:hover{filter:brightness(1.07)}
 @media print{.print-bar{display:none}}

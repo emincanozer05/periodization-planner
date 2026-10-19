@@ -173,15 +173,15 @@ function printTestCompare(test,ath,setup,customTests,athletes){
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(L('Takım Karşılaştırma','Squad Comparison'))} — ${esc(ath.name||'')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:11mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--good:#16a34a;--poor:#c2410c;--flat:#94a3b8;--border:#e5e7eb;--bg2:#f4f5f7;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 
 /* Header — the same dark card the test report opens with, so the two sheets
    read as one pack when they are printed together. */
@@ -190,18 +190,18 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .hdr .photo-x{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
 .hdr .who{flex:1}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:#fff}
-.hdr .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
-.hdr .date{display:inline-block;margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
+.hdr .meta{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
+.hdr .date{display:inline-block;margin-top:9px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
 .hdr .rb{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .hdr .rb img{height:30px;width:auto;object-fit:contain}
-.hdr .ttl{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
+.hdr .ttl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
 
 /* At a glance — the counts first, then the five widest gaps either way. A coach
    who reads nothing else on the sheet has read this. */
 .glance{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
 .tile{border:1px solid var(--border);border-radius:11px;padding:9px 11px;background:#fff}
 .tile .n{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
-.tile .t{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.tile .t{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
 .tile.g .n{color:var(--good)} .tile.p .n{color:var(--poor)}
 /* The two counts are out of the readings that have a better side, not out of all
    of them — a height is neither above nor below, so the denominator says so. */
@@ -209,34 +209,34 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;break-inside:avoid;page-break-inside:avoid}
 .pcol{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff}
 .pcol.g{border-left:3px solid var(--good)} .pcol.p{border-left:3px solid var(--poor)}
-.pcol h3{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.pcol h3{font-family:'Google Sans',Arial,sans-serif;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
 .pk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-top:1px solid var(--border)}
 .pk:first-of-type{border-top:none}
 .pkn{font-size:10.5px;font-weight:600;color:var(--text)}
-.pkv{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600}
+.pkv{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:600}
 .pk.g .pkv{color:var(--good)} .pk.p .pkv{color:var(--poor)}
 .pk.none{color:var(--dim);font-size:10px;border:none}
 
 /* One block per group. The block is kept whole where the page allows it, so a
    heading never prints at the foot of a sheet with its rows overleaf. */
 .grp{margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
-.grp-h{display:flex;justify-content:space-between;align-items:baseline;position:relative;padding:0 0 6px 13px;margin-bottom:4px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;page-break-after:avoid;break-after:avoid-page}
+.grp-h{display:flex;justify-content:space-between;align-items:baseline;position:relative;padding:0 0 6px 13px;margin-bottom:4px;border-bottom:1px solid var(--border);font-family:'Google Sans',Arial,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;page-break-after:avoid;break-after:avoid-page}
 .grp-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grp-h .cnt{font-weight:400;font-size:8.5px;color:var(--muted);letter-spacing:.05em}
 table.mt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-table.mt th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.mt th{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 table.mt th.l{text-align:left}
 table.mt td{padding:5px 6px;border-top:1px solid var(--border);vertical-align:middle}
 .mrow:nth-child(even) td{background:#fafbfc}
 td.lbl{font-size:10.5px;font-weight:600;text-align:left;line-height:1.2}
-td.lbl .u{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:400;color:var(--muted);margin-left:4px}
-td.mine{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:center;letter-spacing:-.01em}
+td.lbl .u{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:400;color:var(--muted);margin-left:4px}
+td.mine{font-family:'Google Sans',Arial,sans-serif;font-size:14px;font-weight:600;text-align:center;letter-spacing:-.01em}
 td.mine.good{color:var(--good)} td.mine.poor{color:var(--poor)} td.mine.flat,td.mine.same{color:var(--text)}
-td.delta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;text-align:center}
+td.delta{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:600;text-align:center}
 td.delta.good{color:var(--good)} td.delta.poor{color:var(--poor)} td.delta.flat,td.delta.same{color:var(--muted)}
-td.avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:700;color:var(--text);text-align:center}
+td.avg{font-family:'Google Sans',Arial,sans-serif;font-size:11.5px;font-weight:700;color:var(--text);text-align:center}
 td.avg .nn{display:block;font-size:7.5px;font-weight:400;color:var(--dim);letter-spacing:.04em}
-td.rank{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);text-align:center}
+td.rank{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;color:var(--muted);text-align:center}
 td.rank b{font-size:12px;color:var(--text)}
 td.barc{padding:5px 4px}
 
@@ -257,17 +257,17 @@ td.barc{padding:5px 4px}
 .bar .fill.flat,.bar .fill.same{background:var(--flat)}
 .bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d;z-index:4;box-shadow:0 0 0 1px #fff}
 .bar .dot.good{background:#0f7a37} .bar .dot.poor{background:#8f3009}
-.bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em}
+.bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em}
 /* A reading that runs past the end of the axis. The bar can only reach the edge,
    so the caret says the real gap is wider than it is drawn — the Gap column has
    the number. */
 .bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d;z-index:4}
-.axis{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
-.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
+.axis{display:flex;justify-content:space-between;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.spacer{display:none}}
 ${TINFO_CSS}

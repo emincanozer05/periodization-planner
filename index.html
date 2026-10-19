@@ -8766,14 +8766,14 @@ window.addEventListener('load',()=>{
   setTimeout(()=>(window.requestIdleCallback||setTimeout)(go,{timeout:8000}),6000);
 });
 
-/* Report/print/PDF font — mirror the site's Archivo so exported outputs use
-   the same typeface as the web app. Uses an absolute URL so the font resolves in
-   both print windows (window.open) and offscreen iframes. */
-const RPT_FONT=`@font-face{font-family:'Archivo';src:url('${location.origin}/fonts/Archivo-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Archivo';src:url('${location.origin}/fonts/Archivo-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Archivo';src:url('${location.origin}/fonts/Archivo-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:'Archivo';src:url('${location.origin}/fonts/Archivo-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
-*{font-family:'Archivo','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important}
+/* Report/print/PDF font — Google Sans, served from this site's own fonts/ folder (Latin
+   subset, OFL) so exported outputs look the same offline and in print windows. Uses an
+   absolute URL so the font resolves in both print windows (window.open) and offscreen iframes. */
+const RPT_FONT=`@font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+*{font-family:'Google Sans','Segoe UI',system-ui,sans-serif !important;font-style:normal !important}
 h1,h2,h3,h4,h5,h6{font-weight:700 !important}`;
 
 /* =========================================================
@@ -9944,12 +9944,12 @@ const fmsTotalTone=t=>t==null?'':t>=17?'#16a34a':t>=14?'#d99a00':'#dc2626';
 /* ---- The sheet on paper: one A4 portrait page, drawn after the official score sheet. ---- */
 const FMS_RED='#ec1c24';
 const FMS_SHEET_CSS=`
-.fmsx{width:100%;color:#1b1b1b;font-family:'Space Grotesk',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
+.fmsx{width:100%;color:#1b1b1b;font-family:'Google Sans',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
 .fmsx *{box-sizing:border-box}
 .fmsx-head{display:flex;height:21mm;margin-bottom:5mm}
 .fmsx-head .lg{flex:none;width:21mm;background:${FMS_RED}}
 .fmsx-head .lg img{display:block;width:100%;height:100%;object-fit:cover}
-.fmsx-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 6mm;font-size:19pt;line-height:1.1;letter-spacing:.04em;font-weight:500}
+.fmsx-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 6mm;font-size:19pt;line-height:1.1;letter-spacing:.04em;font-weight:700}
 .fmsx-id{margin-bottom:5mm}
 .fmsx-id .rw{display:flex;gap:0;border-bottom:.3mm solid #666;margin-bottom:3.4mm;font-size:8pt;letter-spacing:.03em;text-transform:uppercase}
 .fmsx-id .rw:last-child{margin-bottom:0}
@@ -9957,7 +9957,7 @@ const FMS_SHEET_CSS=`
 .fmsx-id .fd b{font-weight:500;color:#333;white-space:nowrap}
 .fmsx-id .fd span{font-weight:600;text-transform:none;letter-spacing:0;font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fmsx table{width:100%;border-collapse:collapse;table-layout:fixed;border:.3mm solid #777;margin:0;border-radius:0;overflow:visible}
-.fmsx td,.fmsx th{font-family:'Space Grotesk',Arial,sans-serif}
+.fmsx td,.fmsx th{font-family:'Google Sans',Arial,sans-serif}
 .fmsx th{background:${FMS_RED};color:#fff;font-weight:400;font-size:9.5pt;letter-spacing:.05em;height:8.4mm;text-align:center;padding:0;border:none;text-transform:uppercase;border-left:.3mm solid #fff}
 .fmsx th:first-child{border-left:none}
 .fmsx td{border:.3mm solid #777;padding:0 2mm;height:7.6mm;font-size:9pt;vertical-align:middle;background:#fff;overflow:hidden}
@@ -10039,11 +10039,11 @@ function printFmsSheet(test,ath,opts){
   if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>FMS — ${String((ath&&ath.name)||'').replace(/</g,'&lt;')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+${RPT_FONT}
 @page{size:A4 portrait;margin:10mm}
 *{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{background:#fff;font-family:'Space Grotesk',Arial,sans-serif}
+body{background:#fff;font-family:'Google Sans',Arial,sans-serif}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:13px;z-index:9999}
 .print-bar button{background:#ec1c24;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .scr-sp{height:56px}
@@ -10227,11 +10227,11 @@ function testInfoTable(ids){
    table lands in the sheet it is printed on rather than beside it. */
 const TINFO_CSS=`
 .tinfo{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;page-break-inside:auto;break-inside:auto}
-.tinfo th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
-.tinfo td{font-family:'Space Grotesk',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
+.tinfo th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
+.tinfo td{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
 .tinfo tr{page-break-inside:avoid;break-inside:avoid}
 .tinfo td.tin{font-weight:700;color:var(--text)}
-.tinfo-h{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px;page-break-after:avoid;break-after:avoid-page}
+.tinfo-h{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px;page-break-after:avoid;break-after:avoid-page}
 /* The heading used to land at the foot of a sheet with the table it introduces
    starting on the next one, which reads as a block torn in half. So the whole
    block opens its own sheet: the heading, the sub-heading and the first rows
@@ -13359,56 +13359,56 @@ function printWeeklyReportTR(R){
   const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
     <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Haftalık Antrenman Raporu','Weekly Training Report')} — ${R.teamName}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:9mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--ac:#9aab3a;--accent:#9aab3a;--ink:#0a0b0d;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 .hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
 .hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
 .hd .hd-logo{height:26px;width:auto;flex:none}
 .hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
+.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
+.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
 .sec{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid;background:#fff}
 .matrix-sec.sec{page-break-before:always;break-before:page;page-break-inside:auto;break-inside:auto}
 .matrix-sec tbody tr{page-break-inside:avoid;break-inside:avoid}
 .matrix-sec thead{display:table-header-group}
 .sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
+.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
 .chart{display:flex;align-items:stretch;gap:5px;height:108px;padding:10px 10px 0}
 .chart.tall{height:220px;align-items:stretch}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
 .bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-self:stretch;padding:0 1px;margin-bottom:6px;min-height:30px}
 .wkchip{background:#fff;border:1px solid var(--border);border-left-width:3px;border-radius:7px;padding:5px 8px;color:var(--text);text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;box-shadow:0 1px 2px rgba(15,23,42,.05)}
 .wkchip .wn{font-size:9px;font-weight:600;color:var(--text);line-height:1.25}
-.wkchip .wm{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wkchip .wm{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
 .bar{width:74%;max-width:46px;border-radius:4px 4px 0 0;background:var(--accent)}
-.bv{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;margin-bottom:3px;color:var(--text);white-space:nowrap}
-.bl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);margin-top:6px;text-align:center;font-weight:500;line-height:1.1;flex:0 0 auto}
+.bv{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;margin-bottom:3px;color:var(--text);white-space:nowrap}
+.bl{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:6px;text-align:center;font-weight:500;line-height:1.1;flex:0 0 auto}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Space Grotesk',Arial,sans-serif;font-weight:600}
+td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
+td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
 tbody tr:nth-child(even) td{background:var(--bg2)}
 td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .z{color:var(--dim)}
 .tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
 .tr2 td.grand{background:var(--accent)!important;color:#0a0b0d}
-.note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
+.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
 .note b{color:var(--text);font-weight:600}
 .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
 .pt td.ath{width:42%}
 .pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
 .pbar>div{height:100%;border-radius:5px}
-.ft{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
+.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
 .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-bottom:12px;align-items:stretch}
 .grid2.top2{grid-template-columns:1.15fr .85fr;page-break-after:avoid;break-after:avoid}
 .grid2>.sec{margin-bottom:0;display:flex;flex-direction:column}
@@ -13454,46 +13454,46 @@ function printMonthlyReportTR(R){
     <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
 
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Aylık Antrenman Raporu','Monthly Training Report')} — ${R.teamName}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:9mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--ac:#9aab3a;--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
 .hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
 .hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
 .hd .hd-logo{height:26px;width:auto;flex:none}
 .hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
+.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
+.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
 .mt{display:flex;gap:10px;margin-bottom:16px}
 .mc{flex:1;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:11px 14px;background:#fff}
-.mk{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);font-weight:500;letter-spacing:.06em}
+.mk{font-family:'Google Sans',Arial,sans-serif;font-size:9px;text-transform:uppercase;color:var(--dim);font-weight:500;letter-spacing:.06em}
 .mv{font-size:23px;font-weight:700;color:var(--text);line-height:1.15;letter-spacing:-.01em}
-.mh{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);font-weight:500}
+.mh{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);font-weight:500}
 .sec{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid;background:#fff}
 .sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
+.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
 .chart{display:flex;align-items:flex-end;gap:5px;height:128px;padding:10px 10px 0}
 .chart.tall{height:158px}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
 .bar{width:72%;max-width:42px;border-radius:4px 4px 0 0;background:var(--accent)}
-.bv{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;margin-bottom:2px;white-space:nowrap;color:var(--text)}
-.bl{font-family:'IBM Plex Mono',monospace;font-size:7.5px;color:var(--dim);margin-top:5px;text-align:center;font-weight:500;line-height:1.1}
+.bv{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;margin-bottom:2px;white-space:nowrap;color:var(--text)}
+.bl{font-family:'Google Sans',Arial,sans-serif;font-size:7.5px;color:var(--dim);margin-top:5px;text-align:center;font-weight:500;line-height:1.1}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Space Grotesk',Arial,sans-serif;font-weight:600}
+td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
+td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
 tbody tr:nth-child(even) td{background:var(--bg2)}
 td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .z{color:var(--dim)}
 .tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
 .tr2 td.grand{background:var(--accent)!important;color:#0a0b0d}
-.note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
+.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
 .note b{color:var(--text);font-weight:600}
 .grid2{display:flex;gap:14px}
 .grid2>.sec{flex:1;margin-bottom:0}
@@ -13502,7 +13502,7 @@ td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .pt td.ath{width:42%}
 .pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
 .pbar>div{height:100%;border-radius:5px}
-.ft{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
+.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
 </style></head><body>
 <div class="hd"><div><h1>${L('Aylık Antrenman Raporu','Monthly Training Report')}</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
 ${weeklySec}
@@ -13541,7 +13541,7 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
 /* Deliberately quiet: it explains the mark for a parent or an athlete reading the sheet
    for the first time, and should not compete with the team name below it. */
 .doc-top .wm-sub{font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.4px;white-space:nowrap}
-.doc-top-date{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
+.doc-top-date{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
 .doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
@@ -13552,16 +13552,16 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
    stays at its own size instead of being blown up into a blurry one. */
 .doc-logo{height:auto;width:auto;max-height:56px;max-width:124px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
-.doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.doc-l .lbl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 /* The session's volume and target RPE, opposite the title — two quiet "label over value"
    pairs split by a hairline. They used to be two framed panels under the session banner;
    up here they take no height of their own, which is height handed back to exercises. */
 .doc-r{display:flex;align-items:flex-end;gap:12px;text-align:right;flex:none}
 .doc-kv{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.doc-kv-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.9px}
+.doc-kv-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.9px}
 .doc-kv-v{font-size:12.5px;font-weight:700;color:#0f172a;white-space:nowrap;letter-spacing:-.005em}
 .doc-kv-v small{font-size:9.5px;font-weight:600;color:#94a3b8}
-.doc-kv-v em{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:5px}
+.doc-kv-v em{font-style:normal;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:5px}
 .doc-kv-sep{color:#cbd5e1;font-weight:500;margin:0 4px}
 .doc-kv-div{width:1px;align-self:stretch;background:#e2e8f0}
 
@@ -13591,13 +13591,13 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
 .sh-r{display:flex;gap:14px;align-items:center}
 .sh-stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .sh-stat-v{font-size:14px;font-weight:800;letter-spacing:.2px}
-.sh-stat-k{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.7px}
+.sh-stat-k{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.7px}
 .sh-stat-div{width:1px;align-self:stretch;background:rgba(255,255,255,.16)}
 
 /* Metadata bar — stays with following content */
 .meta-bar{padding:7px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:20px;align-items:center;flex-wrap:wrap;break-after:avoid;page-break-after:avoid}
 .meta-item{display:flex;align-items:center;gap:6px;font-size:12px}
-.meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
+.meta-item .lbl{font-family:'Google Sans',Arial,sans-serif;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
 .meta-item .val{color:#0f172a;font-weight:600}`;
 /* A phase of the session as a card: its name on a grey bar with an accent rule, the kind
    of work it is as a quiet tag at the far end, and its exercises in a six-column table —
@@ -13901,8 +13901,8 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   </div>`:''}
 </div>`).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 /* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
    (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
@@ -13918,7 +13918,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
 @page{size:A4 portrait;margin:0}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
+body{font-family:'Google Sans',Arial,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
 /* The sides come from the body's padding above, but padding only ever falls at the two
    ends of the whole document — a program that runs to three pages would start pages two
    and three hard against the top of the paper, inside the strip most printers cannot
@@ -13946,12 +13946,12 @@ ${RPT_HEAD_CSS}
 /* Ball practice prints as cards, not rows: the diagram is the drill, so it gets real
    width on the page and the numbers sit beside it. */
 .ball-block .bh{border-bottom-color:#ea8c2a}
-.bh-kind{float:right;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;
+.bh-kind{float:right;font-family:'Google Sans',Arial,sans-serif;font-size:8px;letter-spacing:1px;
   color:#ea8c2a;border:1px solid #f0c79a;border-radius:4px;padding:1px 5px;vertical-align:middle}
 .drill-cards{display:flex;flex-direction:column;gap:9px;margin-top:6px}
 .drill-card{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .dc-hd{display:flex;align-items:center;gap:8px;background:#fff7ef;border-bottom:1px solid #f0e0cf;padding:5px 9px}
-.dc-no{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
+.dc-no{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
   border-radius:4px;padding:1px 6px}
 .dc-nm{font-size:13px;font-weight:700;color:#0f172a;flex:1}
 .dc-body{display:flex;gap:11px;padding:9px}
@@ -13960,7 +13960,7 @@ ${RPT_HEAD_CSS}
 .dc-nofig{padding:22px 8px;text-align:center;color:#cbd5e1;font-size:11px;border:1px dashed #e2e8f0;border-radius:6px}
 .dc-txt{flex:1;min-width:0}
 .dc-presc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-.dc-presc span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;color:#334155;
+.dc-presc span{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:700;color:#334155;
   background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:2px 8px}
 
 /* The exercises print as phase cards — the same cards the individualization panel's
@@ -13972,7 +13972,7 @@ ${RPT_PHASE_CSS}
 /* Superset rows get the green badge; a plain sequence number otherwise gets the same
    pill shape in neutral grey, so the column reads as one system either way. */
 .ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
-  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
 .ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
@@ -14002,11 +14002,11 @@ ${RPT_PHASE_CSS}
 /* Just the word: which exercise this replaces is already said by the badge in the number
    column and by the rule the whole block hangs off, and spelling the name out a third
    time cost two lines of paper per alternative. */
-.alt-for{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.09em;
+.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
   color:#b45309;line-height:1.35;margin-bottom:1px}
 .alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
 .alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
-.alt-why-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
   text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
@@ -14025,7 +14025,7 @@ ${RPT_PHASE_CSS}
 .dc-ph.pc3{border-left-color:#ea580c;background:rgba(234,88,12,.12)}
 .dc-ph.pc4{border-left-color:#7c3aed;background:rgba(124,58,237,.12)}
 .dc-ph.pc5{border-left-color:#db2777;background:rgba(219,39,119,.12)}
-.ph-nm{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;
+.ph-nm{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;
   text-transform:uppercase;color:#334155}
 .ph-note{font-size:9.5px;color:#94a3b8;margin-left:9px}
 
@@ -14034,8 +14034,8 @@ ${RPT_PHASE_CSS}
 /* Footer */
 .sf{padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:24px;align-items:stretch;border-radius:0 0 7px 7px;break-inside:avoid;page-break-inside:avoid}
 .sf-item{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:100px}
-.sf-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
-.sf-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:#0f172a;letter-spacing:-.01em;line-height:1.1}
+.sf-lbl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.sf-val{font-family:'Google Sans',Arial,sans-serif;font-size:18px;font-weight:600;color:#0f172a;letter-spacing:-.01em;line-height:1.1}
 .sf-val.placeholder{color:#cbd5e1;font-weight:700}
 .sf-val .unit{font-size:12px;color:#94a3b8;font-weight:600;margin-left:3px}
 .sf-divider{width:1px;background:#e2e8f0}
@@ -14043,7 +14043,7 @@ ${RPT_PHASE_CSS}
 .sf-plan-note{font-weight:400 !important;font-size:12px;color:#334155;line-height:1.55;white-space:pre-wrap}
 
 /* Page footer */
-.page-footer{font-family:'IBM Plex Mono',monospace;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
+.page-footer{font-family:'Google Sans',Arial,sans-serif;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
 </style></head><body>
 <table class="pg-frame"><thead><tr><td class="pg-pad"></td></tr></thead>
 <tfoot><tr><td class="pg-pad"></td></tr></tfoot>
@@ -14171,16 +14171,16 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const axMax=Math.max(step,Math.ceil(maxLoad/step)*step);
   const yOf=v=>cPad+cUsableH-(axMax>0?(v/axMax)*cUsableH:0);
   const ticks=[];for(let v=0;v<=axMax+.001;v+=step)ticks.push(v);
-  const grid=ticks.map(v=>`<line x1="${cGut}" y1="${yOf(v)}" x2="${cTotalW}" y2="${yOf(v)}" stroke="#e5e7eb" stroke-width="1"/><text x="${cGut-8}" y="${yOf(v)+3.5}" text-anchor="end" font-size="9" fill="#8b9099" font-family="'IBM Plex Mono',monospace">${Math.round(v)}</text>`).join('');
+  const grid=ticks.map(v=>`<line x1="${cGut}" y1="${yOf(v)}" x2="${cTotalW}" y2="${yOf(v)}" stroke="#e5e7eb" stroke-width="1"/><text x="${cGut-8}" y="${yOf(v)+3.5}" text-anchor="end" font-size="9" fill="#8b9099" font-family="'Google Sans',Arial,sans-serif">${Math.round(v)}</text>`).join('');
   const bars=rDay.map((load,i)=>{
     const h=Math.max(yOf(0)-yOf(load),0);
     const x=cGut+i*(cBarW+cGap);const y=yOf(load);
-    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/><text x="${x+cBarW/2}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text><text x="${x+cBarW/2}" y="${cH-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${dnL(i)}</text>`;
+    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/><text x="${x+cBarW/2}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text><text x="${x+cBarW/2}" y="${cH-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'Google Sans',Arial,sans-serif">${dnL(i)}</text>`;
   }).join('');
   const meanY=chartMean>0?yOf(chartMean):0;
   const meanTx=`${L('Ort.','Mean')} ${Math.round(chartMean)} AU`;
   const meanW=meanTx.length*5.6+14;
-  const meanLine=chartMean>0?`<line x1="${cGut}" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#334155" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.8"/><rect x="${cTotalW-meanW}" y="${meanY-9.5}" width="${meanW}" height="17" rx="5" fill="#f4f5f7" stroke="#cbd5e1" stroke-width="1"/><text x="${cTotalW-meanW/2}" y="${meanY+2.5}" text-anchor="middle" font-size="9" fill="#3b4252" font-weight="700" font-family="'IBM Plex Mono',monospace">${meanTx}</text>`:'';
+  const meanLine=chartMean>0?`<line x1="${cGut}" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#334155" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.8"/><rect x="${cTotalW-meanW}" y="${meanY-9.5}" width="${meanW}" height="17" rx="5" fill="#f4f5f7" stroke="#cbd5e1" stroke-width="1"/><text x="${cTotalW-meanW/2}" y="${meanY+2.5}" text-anchor="middle" font-size="9" fill="#3b4252" font-weight="700" font-family="'Google Sans',Arial,sans-serif">${meanTx}</text>`:'';
   const chartSvg=`<svg viewBox="0 0 ${cTotalW} ${cH}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:190px">${grid}${bars}${meanLine}</svg>`;
   // Monotony flag
   const mF=!monotony?{c:'#8b9099',t:'—'}:monotony>2?{c:'#ff6b5b',t:L('YÜKSEK','HIGH')}:monotony>=1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>=1?{c:'#9aab3a',t:L('NORMAL','NORMAL')}:{c:'#5b8cff',t:L('DÜŞÜK','LOW')};
@@ -14283,8 +14283,8 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const crest=hasMedia(rawCrest)?escHTML(mediaSrc(rawCrest)):'';
   const club=escHTML(clubNameNow());
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Haftalık Plan','Weekly Plan')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:6mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
@@ -14293,19 +14293,19 @@ html,body{height:100%}
 /* The sheet is a picture as often as it is a page, and a picture that runs edge to edge
    reads as a screenshot of something cut off. The page padding is the white frame around
    it — the same on all four sides — and it is what the shared PNG is captured with. */
-body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column;padding:16px 18px}
+body{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column;padding:16px 18px}
 .fit{display:flex;flex-direction:column}
-.mono{font-family:'IBM Plex Mono',monospace}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:11px;padding:13px 18px;background:#0a0b0d;color:#fff;border-radius:14px;flex:none}
 .hdr-l{min-width:0;display:flex;align-items:center;gap:14px}
 /* The app's own mark, small, before the team's title — the crest on the right is the club's. */
 .hdr-logo{height:18px;width:auto;flex:none;display:block}
 .hdr-tx{min-width:0}
 .hdr h1{font-size:20px;font-weight:700;letter-spacing:-.015em;line-height:1.1}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.66;margin-top:4px;letter-spacing:.02em}
+.hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;opacity:.66;margin-top:4px;letter-spacing:.02em}
 .hdr-r{display:flex;align-items:center;gap:10px;flex:none}
 .hstat{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 12px}
-.hstat-l{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.hstat-l{font-family:'Google Sans',Arial,sans-serif;color:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
 .hstat-v{background:var(--accent);color:#0a0b0d;padding:3px 10px;border-radius:7px;font-weight:700;font-size:11.5px;white-space:nowrap}
 .hdr-div{width:1px;align-self:stretch;background:rgba(255,255,255,.18);margin:0 2px}
 .hdr-club{display:flex;align-items:center;gap:10px;max-width:190px}
@@ -14315,69 +14315,69 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .day-cell{vertical-align:top;background:#fff;border:1px solid var(--border);border-radius:12px;padding:0;width:14.28%;overflow:hidden}
 .day-head{padding:9px 11px 5px;display:flex;justify-content:space-between;align-items:baseline}
 .day-name{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
-.day-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);font-weight:500}
+.day-date{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);font-weight:500}
 /* A rest day is not an empty cell: it says what it is. */
 .rest-box{padding:26px 10px 30px;text-align:center}
-.rest-tag{color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.24em}
+.rest-tag{color:var(--dim);font-family:'Google Sans',Arial,sans-serif;font-size:11px;letter-spacing:.24em}
 .sess{background:var(--bg2);border:3px solid var(--border2);border-radius:11px;padding:8px 10px;margin:5px;overflow:hidden}
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
-.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted)}
 .sess-sep{width:1px;height:11px;background:var(--border2);flex:none}
 .sess-time{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em}
 .sess-dur{font-size:10px;font-weight:600;color:var(--text2)}
 .au-pill{background:var(--accent);color:#0a0b0d;padding:1px 7px;border-radius:4px;font-weight:600}
 .blk{margin-top:6px}
-.blk-h{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9.5px;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+.blk-h{font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9.5px;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--border)}
 .ex{margin-bottom:3px;font-size:9.5px;line-height:1.4;padding-left:2px;color:var(--text)}
 .exn{font-weight:500;color:var(--text)}
-.ex-no{display:inline-block;min-width:20px;padding:1px 5px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;text-align:center;margin-right:5px;background:var(--bg2);color:var(--muted)}
+.ex-no{display:inline-block;min-width:20px;padding:1px 5px;border-radius:4px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;text-align:center;margin-right:5px;background:var(--bg2);color:var(--muted)}
 .ex-no.ss{background:var(--accent);color:#0a0b0d}
-.exr{margin-left:5px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:9.5px}
-.exl{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:500}
-.exd{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
-.ext{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
-.exrr{margin-left:4px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
+.exr{margin-left:5px;color:var(--text);font-family:'Google Sans',Arial,sans-serif;font-weight:600;font-size:9.5px}
+.exl{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif;font-weight:500}
+.exd{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif}
+.ext{margin-left:4px;color:var(--muted);font-family:'Google Sans',Arial,sans-serif;font-size:8.5px}
+.exrr{margin-left:4px;color:var(--dim);font-family:'Google Sans',Arial,sans-serif;font-size:8.5px}
 .exdesc{font-size:8.5px;color:var(--dim);line-height:1.35;margin-top:2px;padding-left:4px}
 .day-total{margin:5px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;text-align:left}
-.day-total u{display:block;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.day-total u{display:block;text-decoration:none;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
 .day-total b{display:block;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-top:2px}
 .day-notes{margin:0 4px 4px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:7px;color:var(--text2);line-height:1.3}
 /* Monotony block */
 .mono-row{display:flex;gap:12px;margin-top:11px;padding:15px;background:#fff;border:1px solid var(--border);border-radius:14px;page-break-inside:avoid;break-inside:avoid}
 .mono-chart{flex:2.2;min-width:0}
-.mono-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.mono-h{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .mono-side{flex:1.6;display:flex;flex-direction:column;gap:8px;min-width:0}
 .mono-stats{display:flex;gap:7px}
 .stat{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;text-align:left}
-.stat-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-weight:500}
+.stat-l{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-weight:500}
 .stat-v{font-size:19px;font-weight:700;color:var(--text);margin-top:3px;line-height:1;letter-spacing:-.015em}
-.stat-u{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;margin-left:3px}
+.stat-u{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);font-weight:500;margin-left:3px}
 /* The verdict beside the number that produced it, tinted by the zone it lands in. */
 .mono-big{display:flex;align-items:center;gap:14px;border:1px solid var(--border2);border-radius:11px;padding:11px 13px}
 .mono-big-in{flex:none;text-align:center;min-width:76px}
-.mono-big-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.09em;text-transform:uppercase}
+.mono-big-l{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.09em;text-transform:uppercase}
 .mono-big-v{font-size:30px;font-weight:700;line-height:1;margin:2px 0 4px;color:var(--text);letter-spacing:-.02em}
-.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 10px;border-radius:7px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
+.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:3px 10px;border-radius:7px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
 .mono-big-s{font-size:10px;color:var(--text2);line-height:1.5}
-.mono-big-s span{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.mono-big-s span{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted)}
 .mono-help{background:var(--bg2);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font-size:9px;line-height:1.6;color:var(--text2)}
-.mono-help-h{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
+.mono-help-h{font-family:'Google Sans',Arial,sans-serif;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
 .mono-help-line{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
 .mono-help-line .dot{display:inline-block;width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .mono-help-line .tr{color:var(--dim);font-size:8px;margin-left:2px}
 .mono-help-line.tr-note{display:block;color:var(--dim);font-size:8px;line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
 /* Athletes table */
 .ath-tbl-wrap{margin-top:12px;page-break-inside:avoid;break-inside:avoid}
-.ath-tbl-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--accent);line-height:1.5}
+.ath-tbl-h{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--accent);line-height:1.5}
 .ath-tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;table-layout:fixed}
-.ath-tbl th{background:#0a0b0d;color:#fff;padding:7px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.08em;text-align:center;text-transform:uppercase}
+.ath-tbl th{background:#0a0b0d;color:#fff;padding:7px 8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;letter-spacing:.08em;text-align:center;text-transform:uppercase}
 .ath-tbl td{padding:6px 8px;font-size:10px;border-top:1px solid var(--border);background:#fff;text-align:center;color:var(--text)}
 .ath-tbl tr:nth-child(even) td{background:var(--bg2)}
-.srpe-cell{display:inline-block;background:#0a0b0d;color:#fff;padding:1px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px}
+.srpe-cell{display:inline-block;background:#0a0b0d;color:#fff;padding:1px 8px;border-radius:6px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9px}
 .load-bar-wrap{background:var(--bg2);border:1px solid var(--border);height:10px;border-radius:5px;overflow:hidden;position:relative}
 .load-bar{height:100%;background:var(--accent);border-radius:5px}
-.footer{margin-top:10px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.06em}
+.footer{margin-top:10px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.06em}
 </style></head><body>
 <div class="fit">
 <div class="hdr">
@@ -14653,22 +14653,22 @@ function buildMonthHTMLDoc(title,yr,mo,days){
   </div></div>`;
   const dn=Array.from({length:7},(_,i)=>`<th>${dnL(i)}</th>`).join('');
   return`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHTML(title)} — ${monthName}</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+<style>
 @page{size:A4 landscape;margin:6mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 :root{--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.35;background:#fff;padding:14px 16px}
+body{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.35;background:#fff;padding:14px 16px}
 .pg{break-after:page;page-break-after:always}
 .pg:last-child{break-after:auto;page-break-after:auto}
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:10px;padding:12px 18px;background:#0a0b0d;color:#fff;border-radius:14px}
 .hdr-l{min-width:0;display:flex;align-items:center;gap:14px}
 .hdr-logo{height:18px;width:auto;flex:none;display:block}
 .hdr h1{font-size:19px;font-weight:700;letter-spacing:-.015em;line-height:1.1}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.66;margin-top:4px}
+.hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;opacity:.66;margin-top:4px}
 .hdr-r{display:flex;align-items:center;gap:9px;flex:none}
 .hstat{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px 11px}
-.hstat-l{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.62);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase}
+.hstat-l{font-family:'Google Sans',Arial,sans-serif;color:rgba(255,255,255,.62);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase}
 .hstat-v{background:var(--accent);color:#0a0b0d;padding:3px 9px;border-radius:7px;font-weight:700;font-size:11px;white-space:nowrap}
 .hdr-div{width:1px;align-self:stretch;background:rgba(255,255,255,.18);margin:0 2px}
 .hdr-club{display:flex;align-items:center;gap:10px;max-width:190px}
@@ -14676,22 +14676,22 @@ body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--tex
 .hdr-club span{font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1.2;text-transform:uppercase}
 /* The grid */
 .cal{width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed}
-.cal th{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:0 8px 2px}
+.cal th{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:0 8px 2px}
 .mc{vertical-align:top;border:1px solid var(--border);border-radius:10px;padding:6px 6px 7px;height:80px;background:#fff}
 .mc.wk{background:#fafbfc}
 .mc.out{border:none;background:none}
 .mc-d{font-size:12px;font-weight:700;margin:0 2px 4px}
 .ms{border:2px solid var(--border2);border-radius:7px;padding:3px 6px;margin-top:3px;background:var(--bg2)}
 .ms-n{display:block;font-size:9.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-t{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px}
-.ms-more{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin:3px 2px 0}
-.mc-rest{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.2em;color:var(--dim);text-align:center;margin-top:18px}
+.ms-t{display:block;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--muted);margin-top:1px}
+.ms-more{font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin:3px 2px 0}
+.mc-rest{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;letter-spacing:.2em;color:var(--dim);text-align:center;margin-top:18px}
 /* The loading table */
 .lt-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 2px 9px}
 .lt-h h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
 .lt-h p{font-size:9.5px;color:var(--muted);max-width:560px;text-align:right}
 .lt{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;table-layout:fixed}
-.lt th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:8px 6px;text-align:center}
+.lt th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:8px 6px;text-align:center}
 .lt th.q{text-align:left;padding-left:12px;width:30%}
 .lt th small{display:block;opacity:.6;font-size:8px;letter-spacing:.02em;text-transform:none;margin-top:2px}
 .lt td{border-top:1px solid var(--border);padding:7px 6px;text-align:center;vertical-align:middle}
@@ -14700,16 +14700,16 @@ body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--tex
 .qd{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;vertical-align:0}
 .subs{display:flex;flex-wrap:wrap;gap:3px 5px;margin:4px 0 0 16px}
 .subs span{font-size:8.5px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
-.subs i{font-style:normal;color:var(--dim);font-family:'IBM Plex Mono',monospace}
+.subs i{font-style:normal;color:var(--dim);font-family:'Google Sans',Arial,sans-serif}
 .wc{color:var(--dim)}
 .wc b{display:block;font-size:12px;color:var(--text)}
-.wc small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted)}
+.wc small{display:block;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--muted)}
 .tot{font-size:10.5px;white-space:nowrap}
 .tot b{font-size:12px}
 .shr{white-space:nowrap}
 .shr .bar{display:inline-block;width:62%;height:7px;border-radius:4px;background:var(--bg2);border:1px solid var(--border);overflow:hidden;vertical-align:middle}
 .shr .bar i{display:block;height:100%;border-radius:4px}
-.shr span{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;margin-left:6px;vertical-align:middle}
+.shr span{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;margin-left:6px;vertical-align:middle}
 .lt tr.sum td{background:var(--bg2);font-weight:600}
 .lt-none{border:1px dashed var(--border2);border-radius:12px;padding:30px;text-align:center;color:var(--muted);font-size:11px}
 .lt-foot{margin-top:8px;font-size:8.5px;color:var(--dim);line-height:1.5}
@@ -14761,7 +14761,7 @@ function printMonthA4Land(title,yr,mo,days){
 }
 
 /* =========================================================
-   UNICODE FONT LOADER (Roboto via CDN)
+   UNICODE FONT LOADER (Google Sans, Roboto via CDN as fallback)
    jsPDF's default Helvetica only supports WinAnsi (CP1252) which
    lacks Turkish-specific glyphs (İ, ı, Ğ, ğ, Ş, ş). Loading a
    real TTF via fetch + addFileToVFS gives us full Unicode support.
@@ -14783,7 +14783,26 @@ async function _fetchUnicodeFont(){
   }
   throw new Error('All font CDNs failed');
 }
-async function applyTurkishFont(doc){
+/* Google Sans — the same typeface as the HTML print-outs, served from this site's fonts/ folder
+   (Latin subset: Turkish letters, a real bold). If it cannot be loaded the CDN Roboto below stands in. */
+let _gsansB64=null;
+async function pdfUseGoogleSans(doc){
+  try{
+    if(!_gsansB64)_gsansB64=Promise.all(['Regular','Bold'].map(w=>
+      fetch(`${location.origin}/fonts/GoogleSans-${w}.ttf`)
+        .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();}).then(_b64FromBuffer)));
+    const[reg,bold]=await _gsansB64;
+    doc.addFileToVFS('GoogleSans-Regular.ttf',reg);doc.addFont('GoogleSans-Regular.ttf','GoogleSans','normal');
+    doc.addFileToVFS('GoogleSans-Bold.ttf',bold);doc.addFont('GoogleSans-Bold.ttf','GoogleSans','bold');
+    doc.setFont('GoogleSans','normal');
+    return'GoogleSans';
+  }catch(e){
+    _gsansB64=null;
+    console.warn('Google Sans unavailable for the PDF, falling back:',e.message);
+    return applyFallbackFont(doc);
+  }
+}
+async function applyFallbackFont(doc){
   try{
     if(!_ttfCache){
       if(!_ttfPending)_ttfPending=_fetchUnicodeFont();
@@ -14820,7 +14839,7 @@ async function buildSessionPDFBlob(title,subtitle,sessions){
     idoc.open();idoc.write(html);idoc.close();
     // Wait for the iframe to settle and any images to load
     await new Promise(r=>setTimeout(r,50));
-    // Make sure the Archivo webfont is loaded before capture so the PDF matches the site.
+    // Make sure the Google Sans webfont is loaded before capture so the PDF matches the site.
     try{if(idoc.fonts&&idoc.fonts.ready)await idoc.fonts.ready;}catch(e){}
     const imgs=Array.from(idoc.images||[]);
     await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(rs=>{im.onload=rs;im.onerror=rs;})));
@@ -14900,7 +14919,7 @@ const ShareIcon=({size=14})=>(<svg width={size} height={size} viewBox="0 0 24 24
 async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pMix,acwrVal){
   await needLibs('jspdf','autotable');
   const{jsPDF}=window.jspdf;const doc=new jsPDF();
-  const fontName=await applyTurkishFont(doc);
+  const fontName=await pdfUseGoogleSans(doc);
   // header
   doc.setFillColor(8,145,178);doc.rect(0,0,210,28,'F');
   doc.setTextColor(255);doc.setFontSize(18);doc.text(teamName,14,14);
@@ -17888,14 +17907,14 @@ function printTeamInsights(R){
 
   const html=`<!DOCTYPE html>
 <html lang="${REPORT_LANG}"><head><meta charset="utf-8"><title>${L('Takım Analizi','Team Insights')} — ${esc(R.teamName)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f7f8fa}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 /* The sheet is laid out at the printed page's own width, on screen as well, so the
    height measured in the window is the height the printer will see. #fit is given that
    measured height once the sheet has been scaled into it — the document is then exactly
@@ -17917,13 +17936,13 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
 .hdr h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .date{display:inline-block;margin-top:5px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
-.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .date{display:inline-block;margin-top:5px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:8px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:var(--bg2)}
 .kpi .kv{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
-.kpi .kv u{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
-.kpi .kk{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
+.kpi .kv u{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
+.kpi .kk{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
 .card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px;display:flex;flex-direction:column}
 /* WHAT IS IN THE CARD FOLLOWS THE CARD. A frame stretched to the foot of the sheet with
@@ -17952,9 +17971,9 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--border)}
 .ct{font-size:12px;font-weight:700;letter-spacing:-.01em}
 .cs{font-size:9px;color:var(--dim);margin-top:2px}
-.tot{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;white-space:nowrap}
+.tot{font-family:'Google Sans',Arial,sans-serif;font-size:15px;font-weight:600;white-space:nowrap}
 .tot u{font-size:8.5px;color:var(--dim);text-decoration:none;margin-left:3px;letter-spacing:.06em}
-.count{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)}
+.count{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;background:var(--bg2);color:var(--muted)}
 .count.on{background:#fee2e2;color:#be123c}
 /* The three columns end on ONE line at the foot of the sheet. A column is a flex
    column and its LAST card takes whatever height the column was given over and above
@@ -17965,11 +17984,11 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;align-items:stretch}
 .cols>div{display:flex;flex-direction:column;min-width:0}
 .cols>div>.card:last-child{flex:1 1 auto;margin-bottom:0}
-.none{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
+.none{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
 .algrid{display:grid;gap:6px}
 .al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;padding:6px 8px;background:#fffdf7}
 .al.high{border-left-color:#be123c;background:#fff7f8}
-.al .k{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
+.al .k{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
 .al.high .k{color:#be123c}
 .al .w{font-size:10px;font-weight:700;margin:2px 0 2px;letter-spacing:-.01em}
 .al .t{font-size:8.5px;color:var(--text2);line-height:1.4}
@@ -17978,8 +17997,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .sd-r:last-child{border-bottom:none}
 .sd-r .l{font-size:10px;font-weight:500;display:flex;align-items:center;gap:6px;min-width:0}
 .sd-r .l i{width:7px;height:7px;border-radius:2px;flex:none}
-.sd-r .n{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600}
-.sd-r .m{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);white-space:nowrap}
+.sd-r .n{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600}
+.sd-r .m{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);white-space:nowrap}
 .mini{display:inline-block;width:100%;min-width:34px;height:5px;border-radius:3px;background:#eceef1;overflow:hidden;vertical-align:middle}
 .mini i{display:block;height:100%;border-radius:3px}
 .fl{display:flex;flex-direction:column}
@@ -17987,9 +18006,9 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .fl-r:last-child{border-bottom:none}
 .fl-r.hot .nm{color:#be123c}
 .fl-r .nm{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
-.fl-r .nm u{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
+.fl-r .nm u{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
 .fl-r .tg{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-.tag{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
+.tag{font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
 /* A pain chip is graded by colour as well as by word — grey for a region that was
    ticked on a question that never asked how bad it is, then amber, orange, red. The
    small figure on the end is how many days of the week the region came back. */
@@ -17999,12 +18018,12 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .tag.p3{background:#fff1f2;border-color:#fecdd3;color:#be123c}
 .tag b{font-weight:600;margin-left:5px;padding-left:5px;border-left:1px solid currentColor;opacity:.65}
 .tbl{width:100%;border-collapse:collapse}
-.tbl th{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);text-align:left;padding:0 5px 5px;border-bottom:1px solid var(--border)}
-.tbl td{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
+.tbl th{font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);text-align:left;padding:0 5px 5px;border-bottom:1px solid var(--border)}
+.tbl td{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
 .tbl tbody tr:last-child td{border-bottom:none}
 .tbl .r{text-align:right}
 .tbl .rk{width:20px;color:var(--dim)}
-.tbl .d{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:500}
+.tbl .d{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500}
 .tbl .ac{font-weight:600}
 .tbl .ac .mini{width:42px;margin-left:6px}
 .tbl tfoot td{border-top:1.5px solid var(--border);border-bottom:none;font-weight:700;padding-top:6px}
@@ -18013,13 +18032,13 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .tr .bar{width:100%;max-width:34px;height:100%;background:#f1f2f4;border-radius:5px;display:flex;align-items:flex-end;overflow:hidden}
 .tr .bar i{display:block;width:100%;background:#c9cfd6;border-radius:5px}
 .tr .c.on .bar i{background:var(--accent)}
-.tr .v{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600}
-.tr .l{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
-.tr .dd{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600}
-.legend{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);letter-spacing:.03em;padding-top:6px;border-top:1px solid #f1f2f4;margin-top:6px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:4px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.tr .v{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600}
+.tr .l{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
+.tr .dd{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:600}
+.legend{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.03em;padding-top:6px;border-top:1px solid #f1f2f4;margin-top:6px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:4px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>
@@ -23571,8 +23590,8 @@ function printBodyComp(ath,setup){
       <line x1="${padX}" y1="${baseY}" x2="${cw-padX}" y2="${baseY}" stroke="#e5e7eb" stroke-width="1"/>
       ${area?`<polygon points="${area}" fill="url(#${gid})"/>`:''}
       <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      ${valid.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${xs[i].toFixed(1)}" y="${(ys[i]-13).toFixed(1)}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="17" font-weight="700" fill="${color}">${p.v}</text>`).join('')}
-      ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-8}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#9ca3af">${labels[i]}</text>`).join('')}
+      ${valid.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${xs[i].toFixed(1)}" y="${(ys[i]-13).toFixed(1)}" text-anchor="middle" font-family="'Google Sans',Arial,sans-serif" font-size="17" font-weight="700" fill="${color}">${p.v}</text>`).join('')}
+      ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-8}" text-anchor="middle" font-family="'Google Sans',Arial,sans-serif" font-size="13" fill="#9ca3af">${labels[i]}</text>`).join('')}
     </svg>`;
   };
   const period=`${fdL(sorted[0].date)} → ${fdL(sorted[sorted.length-1].date)}`;
@@ -23580,47 +23599,47 @@ function printBodyComp(ath,setup){
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Body Composition — ${ath.name}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 html,body{height:auto}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 .hdr{display:flex;align-items:center;gap:18px;padding:16px 22px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:14px;margin-bottom:14px}
 .hdr .av{width:62px;height:62px;border-radius:14px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;font-weight:700;font-size:20px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden;padding:2px}
 .hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:11px;display:block}
 .hdr .info{min-width:0}
 .hdr .info h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
-.hdr .info .date{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
-.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .info .meta{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .info .date{display:inline-block;margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .mcards{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mcard{background:#fff;border:1px solid var(--border);border-radius:13px;padding:15px 17px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column}
 .mcard .mc-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--border)}
 .mcard .mc-t{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
-.mcard .mc-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.mcard .mc-u{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .mcard .mc-val{display:flex;align-items:baseline;gap:9px;margin-bottom:2px}
-.mcard .mc-val .mv{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1;font-family:'Space Grotesk',sans-serif}
+.mcard .mc-val .mv{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1;font-family:'Google Sans',Arial,sans-serif}
 .mcard .mc-val .mu{font-size:12px;font-weight:500;color:var(--dim);margin-left:-4px}
-.mcard .mc-val .md{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+.mcard .mc-val .md{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600}
 .mcard .mc-val .md.pos{color:#16a34a}.mcard .mc-val .md.neg{color:#dc2626}
 .mcard .mc-chart{margin-top:6px}
 .mcard .mc-chart svg{width:100%;height:auto;max-height:150px}
-.mcard .empty{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:40px 6px}
+.mcard .empty{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--dim);text-align:center;padding:40px 6px}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:9px;overflow:hidden;border:1px solid var(--border);flex:none}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
-td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
-.section-h{position:relative;padding:0 0 6px 12px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:8px 0 6px;flex:none}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:6px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
+.section-h{position:relative;padding:0 0 6px 12px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:8px 0 6px;flex:none}
 .section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:14px;background:var(--accent);border-radius:2px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em;flex:none}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em;flex:none}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
-.empty{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:24px}
+.empty{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:var(--dim);text-align:center;padding:24px}
 </style>
 </head><body>
 <div class="print-bar">📄 ${L('Vücut Kompozisyonu raporu hazır','Body Composition report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
@@ -23696,43 +23715,43 @@ function printTeamBodyComp(athletes,setup){
     </tr>`;
   }).join('')).join('');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Body Composition — ${esc(setup.teamName)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:11mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#9aa0a8;--bg2:#f4f5f7}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 .ath-cell{display:flex;align-items:center;gap:9px}
 .av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex:none}
-.av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700}
+.av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700}
 .ath-nm{font-weight:600;line-height:1.2}
-.subm{padding-left:37px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
+.subm{padding-left:37px;color:var(--dim);font-family:'Google Sans',Arial,sans-serif}
 .hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#0a0b0d,#15171c);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
-.hdr .ttl{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .ttl{text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .stat{background:#fff;border:1px solid var(--border);border-radius:11px;padding:11px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
-.stat .k{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.stat .k{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 .stat .v{font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:4px}
 .stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:3px}
 table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:11px;overflow:hidden}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:9px 8px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:9px 8px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.l,td.l{text-align:left;padding-left:14px}
 td{padding:8px;text-align:center;font-size:11px;border-top:1px solid var(--border);color:var(--text)}
 td.l{font-weight:600}
 td.b{font-weight:700}
-td.mono,td .jn,.dim,.pos,.neg{font-family:'IBM Plex Mono',monospace}
+td.mono,td .jn,.dim,.pos,.neg{font-family:'Google Sans',Arial,sans-serif}
 td.mono{font-size:10px;color:var(--muted)}
 .jn{font-size:9px;color:var(--dim);margin-right:7px}
 .pos{color:#16a34a;font-weight:600}.neg{color:#dc2626;font-weight:600}.dim{color:#c2c6cc}
 tbody tr.grp td{border-top:2px solid #cbd5e1}
 tbody tr.grp:first-child td{border-top:none}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:10px;letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;z-index:9999}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:10px;letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;z-index:9999}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>
@@ -23845,22 +23864,22 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${ath.name}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:12mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--bg:#ffffff;--bg2:#f4f5f7;--panel:#ffffff;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 /* Tables — rounded, single dark header */
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-top:6px}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
-td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff;font-weight:500}
-.kv td{font-size:15px;font-weight:600;padding:14px 7px;color:var(--text);font-family:'Space Grotesk',Arial,sans-serif;letter-spacing:-.01em}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:11px 7px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff;font-weight:500}
+.kv td{font-size:15px;font-weight:600;padding:14px 7px;color:var(--text);font-family:'Google Sans',Arial,sans-serif;letter-spacing:-.01em}
 /* Team average under the score it belongs to — a footnote to the number, not a number of its own */
-.kv tr.tavg td{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--muted);padding:0 6px 10px;border-top:none;letter-spacing:0;line-height:1.35}
+.kv tr.tavg td{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;color:var(--muted);padding:0 6px 10px;border-top:none;letter-spacing:0;line-height:1.35}
 .kv tr.tavg td span{white-space:nowrap}
 /* Athlete header — dark card matching app theme */
 .athlete-header{display:flex;gap:20px;align-items:center;padding:18px 22px;margin-bottom:18px;background:#0a0b0d;color:#fff;border-radius:14px}
@@ -23868,13 +23887,13 @@ td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font
 .athlete-photo-x{width:90px;height:115px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;flex-shrink:0;letter-spacing:-.02em}
 .athlete-info{flex:1}
 .athlete-info h1{font-size:24px;margin-bottom:6px;color:#fff;font-weight:700;letter-spacing:-.01em;line-height:1.1}
-.athlete-info .meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6;letter-spacing:.02em}
-.athlete-info .date{display:inline-block;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.athlete-info .meta{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6;letter-spacing:.02em}
+.athlete-info .date{display:inline-block;margin-top:10px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
 .right-block{text-align:right}
-.right-block .ttl{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;line-height:1.4;text-transform:uppercase}
-.right-block .coach-line{margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:rgba(255,255,255,.75);letter-spacing:.03em;line-height:1.4}
+.right-block .ttl{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;line-height:1.4;text-transform:uppercase}
+.right-block .coach-line{margin-top:12px;font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;color:rgba(255,255,255,.75);letter-spacing:.03em;line-height:1.4}
 /* Section header — single lime accent bar, mono uppercase */
-.section-h{position:relative;padding:0 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
+.section-h{position:relative;padding:0 0 9px 14px;font-family:'Google Sans',Arial,sans-serif;font-weight:700;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
 .section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:16px;background:var(--accent);border-radius:2px}
 table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 ${TINFO_CSS}
@@ -23894,7 +23913,7 @@ ${TINFO_CSS}
 .ph{text-align:center;display:inline-block;margin:0 4px}
 .ph img{border-radius:8px;border:1px solid var(--border);display:block}
 .phx{background:var(--bg2);border:1px dashed var(--border);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:24px}
-.phl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
+.phl{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
 /* A scanned FMS sheet is kept whole on a single page and its pages are sized
    against what is left of that page, never split across two. The live sheet is its own
    page, after everything else. */
@@ -23915,20 +23934,20 @@ ${FMS_SHEET_CSS}
 .ohs-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px}
 .ohs-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .ohs-col{display:flex;align-items:stretch;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px;min-height:210px}
-.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
+.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
 .ohs-photo-box{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ohs-problems{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-.ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
+.ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'Google Sans',Arial,sans-serif;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
 .ohs-problem-c{background:#fff;min-height:50px;padding:8px 10px;font-size:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;white-space:pre-wrap;color:var(--text2);line-height:1.5}
 .sprint-panel{display:flex;align-items:stretch;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;gap:8px}
 .sprint-col{display:flex;flex-direction:column}
-.sprint-col-h{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);color:var(--muted);text-transform:uppercase}
+.sprint-col-h{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:10px;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);color:var(--muted);text-transform:uppercase}
 .sprint-row{display:flex;justify-content:space-around;align-items:flex-start;gap:8px;flex:1}
 .sprint-sep{width:1px;background:var(--border);margin:8px 4px}
 .sprint-section{page-break-inside:avoid;break-inside:avoid}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);margin-top:22px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);margin-top:22px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 .print-bar button:hover{filter:brightness(1.07)}
 @media print{.print-bar{display:none}}
@@ -24343,15 +24362,15 @@ function printTestCompare(test,ath,setup,customTests,athletes){
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(L('Takım Karşılaştırma','Squad Comparison'))} — ${esc(ath.name||'')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 @page{size:A4 portrait;margin:11mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--good:#16a34a;--poor:#c2410c;--flat:#94a3b8;--border:#e5e7eb;--bg2:#f4f5f7;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 
 /* Header — the same dark card the test report opens with, so the two sheets
    read as one pack when they are printed together. */
@@ -24360,18 +24379,18 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .hdr .photo-x{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
 .hdr .who{flex:1}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:#fff}
-.hdr .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
-.hdr .date{display:inline-block;margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
+.hdr .meta{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
+.hdr .date{display:inline-block;margin-top:9px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
 .hdr .rb{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .hdr .rb img{height:30px;width:auto;object-fit:contain}
-.hdr .ttl{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
+.hdr .ttl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
 
 /* At a glance — the counts first, then the five widest gaps either way. A coach
    who reads nothing else on the sheet has read this. */
 .glance{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
 .tile{border:1px solid var(--border);border-radius:11px;padding:9px 11px;background:#fff}
 .tile .n{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
-.tile .t{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.tile .t{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
 .tile.g .n{color:var(--good)} .tile.p .n{color:var(--poor)}
 /* The two counts are out of the readings that have a better side, not out of all
    of them — a height is neither above nor below, so the denominator says so. */
@@ -24379,34 +24398,34 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;break-inside:avoid;page-break-inside:avoid}
 .pcol{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff}
 .pcol.g{border-left:3px solid var(--good)} .pcol.p{border-left:3px solid var(--poor)}
-.pcol h3{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.pcol h3{font-family:'Google Sans',Arial,sans-serif;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
 .pk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-top:1px solid var(--border)}
 .pk:first-of-type{border-top:none}
 .pkn{font-size:10.5px;font-weight:600;color:var(--text)}
-.pkv{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600}
+.pkv{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:600}
 .pk.g .pkv{color:var(--good)} .pk.p .pkv{color:var(--poor)}
 .pk.none{color:var(--dim);font-size:10px;border:none}
 
 /* One block per group. The block is kept whole where the page allows it, so a
    heading never prints at the foot of a sheet with its rows overleaf. */
 .grp{margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
-.grp-h{display:flex;justify-content:space-between;align-items:baseline;position:relative;padding:0 0 6px 13px;margin-bottom:4px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;page-break-after:avoid;break-after:avoid-page}
+.grp-h{display:flex;justify-content:space-between;align-items:baseline;position:relative;padding:0 0 6px 13px;margin-bottom:4px;border-bottom:1px solid var(--border);font-family:'Google Sans',Arial,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;page-break-after:avoid;break-after:avoid-page}
 .grp-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grp-h .cnt{font-weight:400;font-size:8.5px;color:var(--muted);letter-spacing:.05em}
 table.mt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-table.mt th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.mt th{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 table.mt th.l{text-align:left}
 table.mt td{padding:5px 6px;border-top:1px solid var(--border);vertical-align:middle}
 .mrow:nth-child(even) td{background:#fafbfc}
 td.lbl{font-size:10.5px;font-weight:600;text-align:left;line-height:1.2}
-td.lbl .u{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:400;color:var(--muted);margin-left:4px}
-td.mine{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:center;letter-spacing:-.01em}
+td.lbl .u{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:400;color:var(--muted);margin-left:4px}
+td.mine{font-family:'Google Sans',Arial,sans-serif;font-size:14px;font-weight:600;text-align:center;letter-spacing:-.01em}
 td.mine.good{color:var(--good)} td.mine.poor{color:var(--poor)} td.mine.flat,td.mine.same{color:var(--text)}
-td.delta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;text-align:center}
+td.delta{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:600;text-align:center}
 td.delta.good{color:var(--good)} td.delta.poor{color:var(--poor)} td.delta.flat,td.delta.same{color:var(--muted)}
-td.avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:700;color:var(--text);text-align:center}
+td.avg{font-family:'Google Sans',Arial,sans-serif;font-size:11.5px;font-weight:700;color:var(--text);text-align:center}
 td.avg .nn{display:block;font-size:7.5px;font-weight:400;color:var(--dim);letter-spacing:.04em}
-td.rank{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);text-align:center}
+td.rank{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;color:var(--muted);text-align:center}
 td.rank b{font-size:12px;color:var(--text)}
 td.barc{padding:5px 4px}
 
@@ -24427,17 +24446,17 @@ td.barc{padding:5px 4px}
 .bar .fill.flat,.bar .fill.same{background:var(--flat)}
 .bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d;z-index:4;box-shadow:0 0 0 1px #fff}
 .bar .dot.good{background:#0f7a37} .bar .dot.poor{background:#8f3009}
-.bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em}
+.bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em}
 /* A reading that runs past the end of the axis. The bar can only reach the edge,
    so the caret says the real gap is wider than it is drawn — the Gap column has
    the number. */
 .bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d;z-index:4}
-.axis{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
-.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
+.axis{display:flex;justify-content:space-between;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.spacer{display:none}}
 ${TINFO_CSS}
@@ -25611,7 +25630,7 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#0094ff;--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Archivo',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
 .hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:10px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
@@ -25830,7 +25849,7 @@ function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool,refLabel,refNor
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Archivo',Arial,sans-serif;color:var(--text);background:#fff;font-size:9.5px;line-height:1.4}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:9.5px;line-height:1.4}
 .hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:11px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
@@ -35273,7 +35292,7 @@ function printResearch(rec){
 @page{size:A4 portrait;margin:18mm}
 ${RPT_FONT}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
+body{font-family:'Google Sans',Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
 h1{font-size:23px;font-weight:800;margin-bottom:8px;line-height:1.2}
 .meta{font-size:12px;color:#475569;margin-bottom:2px}
 .apa{font-size:12px;color:#334155;background:#f1f5f9;border-left:3px solid #0891b2;padding:10px 12px;border-radius:6px;margin:14px 0;word-break:break-word}
@@ -35873,26 +35892,6 @@ function exLibraryPDF(doc,lib,opts){
   }
   return doc;
 }
-/* Archivo — the app's own font, served from this site — for the PDF. It carries the
-   Turkish letters jsPDF's built-in Helvetica cannot draw, and a real bold. If it cannot be
-   loaded the CDN Roboto that the coach report uses stands in. */
-let _archivoB64=null;
-async function pdfUseArchivo(doc){
-  try{
-    if(!_archivoB64)_archivoB64=Promise.all(['Regular','Bold'].map(w=>
-      fetch(`${location.origin}/fonts/Archivo-${w}.ttf`)
-        .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();}).then(_b64FromBuffer)));
-    const[reg,bold]=await _archivoB64;
-    doc.addFileToVFS('Archivo-Regular.ttf',reg);doc.addFont('Archivo-Regular.ttf','Archivo','normal');
-    doc.addFileToVFS('Archivo-Bold.ttf',bold);doc.addFont('Archivo-Bold.ttf','Archivo','bold');
-    doc.setFont('Archivo','normal');
-    return'Archivo';
-  }catch(e){
-    _archivoB64=null;
-    console.warn('Archivo unavailable for the PDF, falling back:',e.message);
-    return applyTurkishFont(doc);
-  }
-}
 /* Each exercise's picture (exPicture — the one its library card shows), cropped from its centre to the PDF's frame and read
    into a JPEG data URL, six at a time. A picture that cannot be read is simply missing:
    its card gets the empty frame. */
@@ -35936,7 +35935,7 @@ async function downloadExLibraryPDF(exercises,{ball,libTab}){
   const lib=exLibraryEntries(exercises,{ball,lang,descOf:e=>map[String(e.purpose||'').trim()]||e.purpose||''});
   const images=await exLibraryImages(lib);
   const doc=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
-  const font=await pdfUseArchivo(doc);
+  const font=await pdfUseGoogleSans(doc);
   exLibraryPDF(doc,lib,{ball,lang,untranslated,font,logo:COACHOS_LOGO,imageOf:e=>images.get(e)||''});
   doc.save(`exercise_library_${libTab}_${lang}_${new Date().toISOString().slice(0,10)}.pdf`);
 }

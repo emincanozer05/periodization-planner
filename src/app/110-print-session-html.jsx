@@ -24,7 +24,7 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
 /* Deliberately quiet: it explains the mark for a parent or an athlete reading the sheet
    for the first time, and should not compete with the team name below it. */
 .doc-top .wm-sub{font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.4px;white-space:nowrap}
-.doc-top-date{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
+.doc-top-date{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
 .doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
@@ -35,16 +35,16 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
    stays at its own size instead of being blown up into a blurry one. */
 .doc-logo{height:auto;width:auto;max-height:56px;max-width:124px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
-.doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.doc-l .lbl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 /* The session's volume and target RPE, opposite the title — two quiet "label over value"
    pairs split by a hairline. They used to be two framed panels under the session banner;
    up here they take no height of their own, which is height handed back to exercises. */
 .doc-r{display:flex;align-items:flex-end;gap:12px;text-align:right;flex:none}
 .doc-kv{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.doc-kv-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.9px}
+.doc-kv-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.9px}
 .doc-kv-v{font-size:12.5px;font-weight:700;color:#0f172a;white-space:nowrap;letter-spacing:-.005em}
 .doc-kv-v small{font-size:9.5px;font-weight:600;color:#94a3b8}
-.doc-kv-v em{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:5px}
+.doc-kv-v em{font-style:normal;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:5px}
 .doc-kv-sep{color:#cbd5e1;font-weight:500;margin:0 4px}
 .doc-kv-div{width:1px;align-self:stretch;background:#e2e8f0}
 
@@ -74,13 +74,13 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
 .sh-r{display:flex;gap:14px;align-items:center}
 .sh-stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .sh-stat-v{font-size:14px;font-weight:800;letter-spacing:.2px}
-.sh-stat-k{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.7px}
+.sh-stat-k{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.7px}
 .sh-stat-div{width:1px;align-self:stretch;background:rgba(255,255,255,.16)}
 
 /* Metadata bar — stays with following content */
 .meta-bar{padding:7px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:20px;align-items:center;flex-wrap:wrap;break-after:avoid;page-break-after:avoid}
 .meta-item{display:flex;align-items:center;gap:6px;font-size:12px}
-.meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
+.meta-item .lbl{font-family:'Google Sans',Arial,sans-serif;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
 .meta-item .val{color:#0f172a;font-weight:600}`;
 /* A phase of the session as a card: its name on a grey bar with an accent rule, the kind
    of work it is as a quiet tag at the far end, and its exercises in a six-column table —
@@ -384,8 +384,8 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   </div>`:''}
 </div>`).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
 <style>
 /* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
    (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
@@ -401,7 +401,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
 @page{size:A4 portrait;margin:0}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
+body{font-family:'Google Sans',Arial,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
 /* The sides come from the body's padding above, but padding only ever falls at the two
    ends of the whole document — a program that runs to three pages would start pages two
    and three hard against the top of the paper, inside the strip most printers cannot
@@ -429,12 +429,12 @@ ${RPT_HEAD_CSS}
 /* Ball practice prints as cards, not rows: the diagram is the drill, so it gets real
    width on the page and the numbers sit beside it. */
 .ball-block .bh{border-bottom-color:#ea8c2a}
-.bh-kind{float:right;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;
+.bh-kind{float:right;font-family:'Google Sans',Arial,sans-serif;font-size:8px;letter-spacing:1px;
   color:#ea8c2a;border:1px solid #f0c79a;border-radius:4px;padding:1px 5px;vertical-align:middle}
 .drill-cards{display:flex;flex-direction:column;gap:9px;margin-top:6px}
 .drill-card{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .dc-hd{display:flex;align-items:center;gap:8px;background:#fff7ef;border-bottom:1px solid #f0e0cf;padding:5px 9px}
-.dc-no{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
+.dc-no{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
   border-radius:4px;padding:1px 6px}
 .dc-nm{font-size:13px;font-weight:700;color:#0f172a;flex:1}
 .dc-body{display:flex;gap:11px;padding:9px}
@@ -443,7 +443,7 @@ ${RPT_HEAD_CSS}
 .dc-nofig{padding:22px 8px;text-align:center;color:#cbd5e1;font-size:11px;border:1px dashed #e2e8f0;border-radius:6px}
 .dc-txt{flex:1;min-width:0}
 .dc-presc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-.dc-presc span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;color:#334155;
+.dc-presc span{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:700;color:#334155;
   background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:2px 8px}
 
 /* The exercises print as phase cards — the same cards the individualization panel's
@@ -455,7 +455,7 @@ ${RPT_PHASE_CSS}
 /* Superset rows get the green badge; a plain sequence number otherwise gets the same
    pill shape in neutral grey, so the column reads as one system either way. */
 .ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
-  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
 .ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
@@ -485,11 +485,11 @@ ${RPT_PHASE_CSS}
 /* Just the word: which exercise this replaces is already said by the badge in the number
    column and by the rule the whole block hangs off, and spelling the name out a third
    time cost two lines of paper per alternative. */
-.alt-for{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.09em;
+.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
   color:#b45309;line-height:1.35;margin-bottom:1px}
 .alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
 .alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
-.alt-why-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
   text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
@@ -508,7 +508,7 @@ ${RPT_PHASE_CSS}
 .dc-ph.pc3{border-left-color:#ea580c;background:rgba(234,88,12,.12)}
 .dc-ph.pc4{border-left-color:#7c3aed;background:rgba(124,58,237,.12)}
 .dc-ph.pc5{border-left-color:#db2777;background:rgba(219,39,119,.12)}
-.ph-nm{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;
+.ph-nm{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;
   text-transform:uppercase;color:#334155}
 .ph-note{font-size:9.5px;color:#94a3b8;margin-left:9px}
 
@@ -517,8 +517,8 @@ ${RPT_PHASE_CSS}
 /* Footer */
 .sf{padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:24px;align-items:stretch;border-radius:0 0 7px 7px;break-inside:avoid;page-break-inside:avoid}
 .sf-item{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:100px}
-.sf-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
-.sf-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:#0f172a;letter-spacing:-.01em;line-height:1.1}
+.sf-lbl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.sf-val{font-family:'Google Sans',Arial,sans-serif;font-size:18px;font-weight:600;color:#0f172a;letter-spacing:-.01em;line-height:1.1}
 .sf-val.placeholder{color:#cbd5e1;font-weight:700}
 .sf-val .unit{font-size:12px;color:#94a3b8;font-weight:600;margin-left:3px}
 .sf-divider{width:1px;background:#e2e8f0}
@@ -526,7 +526,7 @@ ${RPT_PHASE_CSS}
 .sf-plan-note{font-weight:400 !important;font-size:12px;color:#334155;line-height:1.55;white-space:pre-wrap}
 
 /* Page footer */
-.page-footer{font-family:'IBM Plex Mono',monospace;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
+.page-footer{font-family:'Google Sans',Arial,sans-serif;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
 </style></head><body>
 <table class="pg-frame"><thead><tr><td class="pg-pad"></td></tr></thead>
 <tfoot><tr><td class="pg-pad"></td></tr></tfoot>

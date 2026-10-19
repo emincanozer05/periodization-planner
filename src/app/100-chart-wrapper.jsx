@@ -301,56 +301,56 @@ function printWeeklyReportTR(R){
   const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
     <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Haftalık Antrenman Raporu','Weekly Training Report')} — ${R.teamName}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:9mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--ac:#9aab3a;--accent:#9aab3a;--ink:#0a0b0d;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
-.mono{font-family:'IBM Plex Mono',monospace}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
+.mono{font-family:'Google Sans',Arial,sans-serif}
 .hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
 .hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
 .hd .hd-logo{height:26px;width:auto;flex:none}
 .hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
+.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
+.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
 .sec{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid;background:#fff}
 .matrix-sec.sec{page-break-before:always;break-before:page;page-break-inside:auto;break-inside:auto}
 .matrix-sec tbody tr{page-break-inside:avoid;break-inside:avoid}
 .matrix-sec thead{display:table-header-group}
 .sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
+.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
 .chart{display:flex;align-items:stretch;gap:5px;height:108px;padding:10px 10px 0}
 .chart.tall{height:220px;align-items:stretch}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
 .bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-self:stretch;padding:0 1px;margin-bottom:6px;min-height:30px}
 .wkchip{background:#fff;border:1px solid var(--border);border-left-width:3px;border-radius:7px;padding:5px 8px;color:var(--text);text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;box-shadow:0 1px 2px rgba(15,23,42,.05)}
 .wkchip .wn{font-size:9px;font-weight:600;color:var(--text);line-height:1.25}
-.wkchip .wm{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wkchip .wm{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
 .bar{width:74%;max-width:46px;border-radius:4px 4px 0 0;background:var(--accent)}
-.bv{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;margin-bottom:3px;color:var(--text);white-space:nowrap}
-.bl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);margin-top:6px;text-align:center;font-weight:500;line-height:1.1;flex:0 0 auto}
+.bv{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;margin-bottom:3px;color:var(--text);white-space:nowrap}
+.bl{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:6px;text-align:center;font-weight:500;line-height:1.1;flex:0 0 auto}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Space Grotesk',Arial,sans-serif;font-weight:600}
+td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
+td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
 tbody tr:nth-child(even) td{background:var(--bg2)}
 td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .z{color:var(--dim)}
 .tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
 .tr2 td.grand{background:var(--accent)!important;color:#0a0b0d}
-.note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
+.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
 .note b{color:var(--text);font-weight:600}
 .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
 .pt td.ath{width:42%}
 .pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
 .pbar>div{height:100%;border-radius:5px}
-.ft{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
+.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
 .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-bottom:12px;align-items:stretch}
 .grid2.top2{grid-template-columns:1.15fr .85fr;page-break-after:avoid;break-after:avoid}
 .grid2>.sec{margin-bottom:0;display:flex;flex-direction:column}
@@ -396,46 +396,46 @@ function printMonthlyReportTR(R){
     <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
 
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Aylık Antrenman Raporu','Monthly Training Report')} — ${R.teamName}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+
+<style>
 @page{size:A4 landscape;margin:9mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--ac:#9aab3a;--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
 .hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
 .hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
 .hd .hd-logo{height:26px;width:auto;flex:none}
 .hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
+.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
+.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:5px 14px;border-radius:7px;white-space:nowrap;letter-spacing:.04em}
 .mt{display:flex;gap:10px;margin-bottom:16px}
 .mc{flex:1;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:11px 14px;background:#fff}
-.mk{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--dim);font-weight:500;letter-spacing:.06em}
+.mk{font-family:'Google Sans',Arial,sans-serif;font-size:9px;text-transform:uppercase;color:var(--dim);font-weight:500;letter-spacing:.06em}
 .mv{font-size:23px;font-weight:700;color:var(--text);line-height:1.15;letter-spacing:-.01em}
-.mh{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);font-weight:500}
+.mh{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);font-weight:500}
 .sec{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid;background:#fff}
 .sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
+.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
 .chart{display:flex;align-items:flex-end;gap:5px;height:128px;padding:10px 10px 0}
 .chart.tall{height:158px}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
 .bar{width:72%;max-width:42px;border-radius:4px 4px 0 0;background:var(--accent)}
-.bv{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;margin-bottom:2px;white-space:nowrap;color:var(--text)}
-.bl{font-family:'IBM Plex Mono',monospace;font-size:7.5px;color:var(--dim);margin-top:5px;text-align:center;font-weight:500;line-height:1.1}
+.bv{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;margin-bottom:2px;white-space:nowrap;color:var(--text)}
+.bl{font-family:'Google Sans',Arial,sans-serif;font-size:7.5px;color:var(--dim);margin-top:5px;text-align:center;font-weight:500;line-height:1.1}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
 th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Space Grotesk',Arial,sans-serif;font-weight:600}
+td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
+td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
 tbody tr:nth-child(even) td{background:var(--bg2)}
 td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .z{color:var(--dim)}
 .tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
 .tr2 td.grand{background:var(--accent)!important;color:#0a0b0d}
-.note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
+.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
 .note b{color:var(--text);font-weight:600}
 .grid2{display:flex;gap:14px}
 .grid2>.sec{flex:1;margin-bottom:0}
@@ -444,7 +444,7 @@ td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .pt td.ath{width:42%}
 .pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
 .pbar>div{height:100%;border-radius:5px}
-.ft{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
+.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
 </style></head><body>
 <div class="hd"><div><h1>${L('Aylık Antrenman Raporu','Monthly Training Report')}</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
 ${weeklySec}

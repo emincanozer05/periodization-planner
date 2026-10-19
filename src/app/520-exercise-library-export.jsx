@@ -262,26 +262,6 @@ function exLibraryPDF(doc,lib,opts){
   }
   return doc;
 }
-/* Archivo — the app's own font, served from this site — for the PDF. It carries the
-   Turkish letters jsPDF's built-in Helvetica cannot draw, and a real bold. If it cannot be
-   loaded the CDN Roboto that the coach report uses stands in. */
-let _archivoB64=null;
-async function pdfUseArchivo(doc){
-  try{
-    if(!_archivoB64)_archivoB64=Promise.all(['Regular','Bold'].map(w=>
-      fetch(`${location.origin}/fonts/Archivo-${w}.ttf`)
-        .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();}).then(_b64FromBuffer)));
-    const[reg,bold]=await _archivoB64;
-    doc.addFileToVFS('Archivo-Regular.ttf',reg);doc.addFont('Archivo-Regular.ttf','Archivo','normal');
-    doc.addFileToVFS('Archivo-Bold.ttf',bold);doc.addFont('Archivo-Bold.ttf','Archivo','bold');
-    doc.setFont('Archivo','normal');
-    return'Archivo';
-  }catch(e){
-    _archivoB64=null;
-    console.warn('Archivo unavailable for the PDF, falling back:',e.message);
-    return applyTurkishFont(doc);
-  }
-}
 /* Each exercise's picture (exPicture — the one its library card shows), cropped from its centre to the PDF's frame and read
    into a JPEG data URL, six at a time. A picture that cannot be read is simply missing:
    its card gets the empty frame. */
@@ -325,7 +305,7 @@ async function downloadExLibraryPDF(exercises,{ball,libTab}){
   const lib=exLibraryEntries(exercises,{ball,lang,descOf:e=>map[String(e.purpose||'').trim()]||e.purpose||''});
   const images=await exLibraryImages(lib);
   const doc=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
-  const font=await pdfUseArchivo(doc);
+  const font=await pdfUseGoogleSans(doc);
   exLibraryPDF(doc,lib,{ball,lang,untranslated,font,logo:COACHOS_LOGO,imageOf:e=>images.get(e)||''});
   doc.save(`exercise_library_${libTab}_${lang}_${new Date().toISOString().slice(0,10)}.pdf`);
 }

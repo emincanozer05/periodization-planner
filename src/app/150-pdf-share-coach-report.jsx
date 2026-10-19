@@ -1,5 +1,5 @@
 /* =========================================================
-   UNICODE FONT LOADER (Roboto via CDN)
+   UNICODE FONT LOADER (Google Sans, Roboto via CDN as fallback)
    jsPDF's default Helvetica only supports WinAnsi (CP1252) which
    lacks Turkish-specific glyphs (İ, ı, Ğ, ğ, Ş, ş). Loading a
    real TTF via fetch + addFileToVFS gives us full Unicode support.
@@ -21,7 +21,26 @@ async function _fetchUnicodeFont(){
   }
   throw new Error('All font CDNs failed');
 }
-async function applyTurkishFont(doc){
+/* Google Sans — the same typeface as the HTML print-outs, served from this site's fonts/ folder
+   (Latin subset: Turkish letters, a real bold). If it cannot be loaded the CDN Roboto below stands in. */
+let _gsansB64=null;
+async function pdfUseGoogleSans(doc){
+  try{
+    if(!_gsansB64)_gsansB64=Promise.all(['Regular','Bold'].map(w=>
+      fetch(`${location.origin}/fonts/GoogleSans-${w}.ttf`)
+        .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();}).then(_b64FromBuffer)));
+    const[reg,bold]=await _gsansB64;
+    doc.addFileToVFS('GoogleSans-Regular.ttf',reg);doc.addFont('GoogleSans-Regular.ttf','GoogleSans','normal');
+    doc.addFileToVFS('GoogleSans-Bold.ttf',bold);doc.addFont('GoogleSans-Bold.ttf','GoogleSans','bold');
+    doc.setFont('GoogleSans','normal');
+    return'GoogleSans';
+  }catch(e){
+    _gsansB64=null;
+    console.warn('Google Sans unavailable for the PDF, falling back:',e.message);
+    return applyFallbackFont(doc);
+  }
+}
+async function applyFallbackFont(doc){
   try{
     if(!_ttfCache){
       if(!_ttfPending)_ttfPending=_fetchUnicodeFont();
@@ -58,7 +77,7 @@ async function buildSessionPDFBlob(title,subtitle,sessions){
     idoc.open();idoc.write(html);idoc.close();
     // Wait for the iframe to settle and any images to load
     await new Promise(r=>setTimeout(r,50));
-    // Make sure the Archivo webfont is loaded before capture so the PDF matches the site.
+    // Make sure the Google Sans webfont is loaded before capture so the PDF matches the site.
     try{if(idoc.fonts&&idoc.fonts.ready)await idoc.fonts.ready;}catch(e){}
     const imgs=Array.from(idoc.images||[]);
     await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(rs=>{im.onload=rs;im.onerror=rs;})));
@@ -138,7 +157,7 @@ const ShareIcon=({size=14})=>(<svg width={size} height={size} viewBox="0 0 24 24
 async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pMix,acwrVal){
   await needLibs('jspdf','autotable');
   const{jsPDF}=window.jspdf;const doc=new jsPDF();
-  const fontName=await applyTurkishFont(doc);
+  const fontName=await pdfUseGoogleSans(doc);
   // header
   doc.setFillColor(8,145,178);doc.rect(0,0,210,28,'F');
   doc.setTextColor(255);doc.setFontSize(18);doc.text(teamName,14,14);
