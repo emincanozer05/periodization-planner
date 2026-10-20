@@ -156,7 +156,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           </div>
         </div>
         <div className="en-pane en-pane-cat">
-          <div className="en-phd"><span>{cat?L('Tür','Type'):L('Kategori','Category')}</span></div>
+          <div className="en-phd"><span>{cat?L(...mvTypeLab(cat)):L('Kategori','Category')}</span></div>
           <div className="en-plist">
             {catList.map(c=>
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
@@ -165,7 +165,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
                 <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
-            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L('Yön','Direction')}</span></div>}
+            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L(...mvDirLab(cat))}</span></div>}
             {dirList.map(c=>
               <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>

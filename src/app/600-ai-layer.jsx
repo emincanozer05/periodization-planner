@@ -260,13 +260,13 @@ function diVolumeAdj(adj,instr){
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
   core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
-  {k:'type',label:['Tür','Type'],opts:c.types},
-  ...(c.dirs.length?[{k:'direction',label:['Yön','Direction'],opts:c.dirs}]:[])]}));
+  {k:'type',label:mvTypeLab(c.k),opts:c.types},
+  ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
 /* Briefs written before the taxonomy: the four push / pull patterns became the type of one
    push and one pull category, and the old facet ids ("step_up", "anti_rotation") are read as
    the values they name. */
-const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push','Horizontal'],vertical_push:['upper_push','Vertical Push','Vertical'],
-  horizontal_pull:['upper_pull','Horizontal Pull','Horizontal'],vertical_pull:['upper_pull','Vertical Pull','Vertical']};
+const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push'],vertical_push:['upper_push','Vertical Push'],
+  horizontal_pull:['upper_pull','Horizontal Pull'],vertical_pull:['upper_pull','Vertical Pull']};
 const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional'};
 /* The table the picker draws: one column per facet kind, the same five for every
    pattern. A pattern's facet sits in the column of its kind (the core's task is its
@@ -322,7 +322,7 @@ function diMovePatterns(v){
        id is dropped. */
     if(!row&&id!=='')return;
     let obj=x&&typeof x==='object'?x:{};
-    if(old)obj={...obj,type:[old[1]],direction:[old[2]]};
+    if(old)obj={...obj,type:[old[1]],direction:[]};
     /* The core's old "task" box is its type now. */
     else if(id==='core'&&!(Array.isArray(obj.type)&&obj.type.length)&&Array.isArray(obj.task))obj={...obj,type:obj.task};
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
