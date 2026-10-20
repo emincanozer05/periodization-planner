@@ -715,12 +715,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                   five lines of capacities pushed the time, the length and the RPE badge
                   off the bottom of the card. */}
               <div className="pr">{sesKindLine(s)||sesGoalLine(s)}</div>
+              {/* A match shows no length: each athlete plays their own minutes, so the game's 90 would
+                  read as everyone's. */}
               {/* Clock, length, and the intensity the coach planned for the day — the third
                   number belongs on this line because the first two only say when and how
                   long, never how hard. It is the same target the session editor's scale
                   sets and the printed program prints, in the same band colour, so the day
                   column reads how hard the week is without opening a single session. */}
-              <div className="mt"><span>{s.time}</span><span className="sep"/><span>{Number(s.duration)||0}m</span>{(()=>{
+              <div className="mt"><span>{s.time}</span>{!isMatchSes(s)&&<><span className="sep"/><span>{Number(s.duration)||0}m</span></>}{(()=>{
                 const[rlo,rhi]=sesRpeRange(s);const rz=rpeZone(sesRpeTarget(s));
                 return<span className="rpe" style={{color:rz.c,background:rz.soft,borderColor:`color-mix(in srgb,${rz.c} 60%,transparent)`}}
                   title={L(`Hedeflenen RPE ${rlo}-${rhi} — ${rz.tr}`,`Target RPE ${rlo}-${rhi} — ${rz.en}`)}>RPE {rlo}-{rhi}</span>;
