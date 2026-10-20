@@ -443,6 +443,25 @@ function FmsPdfPanel({pdf,onChange}){
    comment against a movement. Final scores and the total are worked out as you go. The
    header is not typed: it is read off the athlete and the test (and the two
    measurements are carried forward from the last screen). */
+/* "Tespit Edilen Problemler" cell: a multi-select that opens in place (the table scrolls
+   sideways on a phone, so a floating list would be clipped). Closed, it shows what is ticked. */
+function FmsProblemPick({opts,value,onChange,legacy}){
+  const[open,setOpen]=useState(false);
+  const sel=Array.isArray(value)?value:[];
+  const toggle=id=>onChange(sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]);
+  const chosen=opts.filter(o=>sel.includes(o[0]));
+  return(<div className="fmsp">
+    <button type="button" className={'fmsp-btn'+(open?' open':'')} aria-expanded={open} onClick={()=>setOpen(o=>!o)}>
+      <span>{chosen.length?`${chosen.length} ${L('problem seçildi','selected')}`:L('Problem seç…','Select problems…')}</span><i aria-hidden="true">▾</i>
+    </button>
+    {open
+      ?<div className="fmsp-list" role="group" aria-label={L('Tespit Edilen Problemler','Identified Problems')}>
+        {opts.map(o=>(<label key={o[0]}><input type="checkbox" checked={sel.includes(o[0])} onChange={()=>toggle(o[0])}/><span>{L(o[1],o[2])}</span></label>))}
+      </div>
+      :chosen.length>0&&<ul className="fmsp-chosen">{chosen.map(o=><li key={o[0]}>{L(o[1],o[2])}</li>)}</ul>}
+    {legacy&&<div className="fmsp-old">{L('Önceki yorum: ','Earlier comment: ')}{legacy}</div>}
+  </div>);
+}
 function FmsSheetCard({test,ath,onUpdate}){
   const f=test.fms||{};
   const c=fmsCalc(f);
@@ -458,6 +477,7 @@ function FmsSheetCard({test,ath,onUpdate}){
     return{fms:{...o,[r.f]:{...base,[r.side]:v}}};
   });
   const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
+  const setProblems=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),problems:{...((t.fms||{}).problems||{}),[id]:v}}}));
   const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
   const sideLbl=r=>r.side==='right'?L('Sağ','Right'):L('Sol','Left');
   // The words a screen reader gets for a line: its group's label, carried down to the second side.
@@ -484,7 +504,7 @@ function FmsSheetCard({test,ath,onUpdate}){
     </div>
     <div className="fmsl-scroll"><table className="fmsl-t">
       <colgroup><col className="c-lab"/><col className="c-sd"/><col className="c-raw"/><col className="c-fin"/><col className="c-cm"/></colgroup>
-      <thead><tr><th colSpan="2">{L('Test','Screen')}</th><th>{L('Ham Skor','Raw Score')}</th><th>{L('Nihai Skor','Final Score')}</th><th>{L('Yorumlar','Comments')}</th></tr></thead>
+      <thead><tr><th colSpan="2">{L('Test','Screen')}</th><th>{L('Ham Skor','Raw Score')}</th><th>{L('Nihai Skor','Final Score')}</th><th>{L('Tespit Edilen Problemler','Identified Problems')}</th></tr></thead>
       <tbody>
         {FMS_SHEET.map((r,i)=>{
           const v=fmsCell(f,r);
@@ -513,7 +533,10 @@ function FmsSheetCard({test,ath,onUpdate}){
               {it&&it.cleared==='pos'&&<div className="fmsl-flag">{L('ağrı → 0','pain → 0')}</div>}
               {it&&it.asym!=null&&it.cleared!=='pos'&&<div className="fmsl-flag am">{L('asimetri','asym.')} {it.asym}</div>}
             </td>}
-            {r.cm&&<td className="cm" rowSpan={r.cm.n}>
+            {r.cm&&FMS_PROBLEMS[r.cm.id]&&<td className="cm pk" rowSpan={r.cm.n}>
+              <FmsProblemPick opts={FMS_PROBLEMS[r.cm.id]} value={(f.problems||{})[r.cm.id]} onChange={v=>setProblems(r.cm.id,v)} legacy={(f.comments||{})[r.cm.id]}/>
+            </td>}
+            {r.cm&&!FMS_PROBLEMS[r.cm.id]&&<td className="cm" rowSpan={r.cm.n}>
               <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)+(r.rh||0)}
                 placeholder={L('Yorum…','Comment…')} aria-label={L('Yorum','Comment')}/>
             </td>}

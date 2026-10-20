@@ -3915,6 +3915,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .fmsl-t td.cm{padding:0;vertical-align:stretch}
 .fmsl-t td.cm textarea{display:block;width:100%;height:100%;min-height:40px;resize:none;border:0;border-radius:0;background:transparent;color:var(--text);font:inherit;font-size:12px;line-height:1.4;padding:7px 9px;outline:none}
 .fmsl-t td.cm textarea:focus{background:var(--bg2)}
+.fmsl-t td.cm.pk{padding:6px 8px;vertical-align:top}
+.fmsp-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:32px;padding:0 10px;border:1px solid var(--border2,var(--border));border-radius:8px;background:var(--bg2);color:var(--text2,var(--text));font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-align:left}
+.fmsp-btn:hover{background:var(--hover,var(--bg2))}
+.fmsp-btn:focus-visible{outline:2px solid var(--fm-red);outline-offset:-2px}
+.fmsp-btn i{font-style:normal;font-size:11px;transition:transform .12s ease}
+.fmsp-btn.open i{transform:rotate(180deg)}
+.fmsp-list{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.fmsp-list label{display:flex;align-items:flex-start;gap:8px;padding:5px 4px;border-radius:6px;font-size:12px;line-height:1.35;cursor:pointer}
+.fmsp-list label:hover{background:var(--bg2)}
+.fmsp-list input{flex:none;margin-top:2px;accent-color:var(--fm-red)}
+.fmsp-chosen{list-style:none;margin:6px 0 0;padding:0;font-size:12px;line-height:1.4}
+.fmsp-chosen li{padding:1px 0 1px 12px;position:relative}
+.fmsp-chosen li::before{content:'';position:absolute;left:2px;top:7px;width:5px;height:5px;border-radius:50%;background:var(--fm-red)}
+.fmsp-old{margin-top:6px;font-size:11px;line-height:1.4;color:var(--dim)}
 .fmsl-t tfoot td{border-top:2px solid var(--fm-red)}
 .fmsl-t td.tot{background:var(--fm-red);color:#fff;font-size:11.5px;letter-spacing:.05em;border-color:var(--fm-red)}
 .fmsl-t td.tot-v{font-size:22px;font-weight:700;padding:6px 14px}
@@ -9655,7 +9669,7 @@ const makeTest=(period='pre')=>({
     aslr:{right:'',left:''},
     trunkPushup:'',pushupClear:'',
     rotary:{right:'',left:''},rotaryClear:'',
-    tibia:null,hand:null,comments:{},   // null = not typed on this screen yet → carried from the last one
+    tibia:null,hand:null,comments:{},problems:{},   // null = not typed on this screen yet → carried from the last one
     /* A sheet scanned before the live one existed is still attached here:
        {name,size,at,pages:[dataURL],data} — `pages` are the rasterised pages the
        report prints, `data` the original file. */
@@ -9867,12 +9881,49 @@ function fmsCalc(f){
   const scored=items.filter(i=>i.filled);
   const mob=o.ankleMob||{};
   const cm=o.comments||{};
+  const pr=o.problems||{};
   return{items,n:scored.length,
     total:scored.length?scored.reduce((a,i)=>a+i.score,0):null,
     asym:items.some(i=>i.asym!=null),
     zeros:items.filter(i=>i.filled&&i.score===0).length,
-    any:scored.length>0||items.some(i=>i.cleared)||!!(mob.right||mob.left)||!!o.observations||Object.keys(cm).some(k=>cm[k])}
+    any:scored.length>0||items.some(i=>i.cleared)||!!(mob.right||mob.left)||!!o.observations||Object.keys(cm).some(k=>cm[k])||Object.keys(pr).some(k=>pr[k]&&pr[k].length)}
 }
+/* "Tespit Edilen Problemler": the findings a coach can tick against a movement, keyed by the
+   movement's comment id (FMS_SHEET `cm.id`). Only these four movements have a list; the others
+   keep a free-text comment. The record stores the option ids (`problems[id]=['heel',…]`), so a
+   rewording here never orphans a saved screen. [id, tr, en] */
+const FMS_PROBLEMS={
+  deepSquat:[
+    ['depth','Yetersiz squat derinliği','Insufficient squat depth'],
+    ['heels','Topukların kalkması','Heels lift off the floor'],
+    ['valgus','Diz valgusu','Knee valgus'],
+    ['trunkFlex','Gövdenin öne fleksiyonu','Forward trunk flexion'],
+    ['armsDrop','Kolların öne düşmesi','Arms fall forward'],
+    ['pelvisR','Pelvisin sağa kayması','Pelvis shifts to the right'],
+    ['pelvisL','Pelvisin sola kayması','Pelvis shifts to the left']],
+  hurdleStep:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['lumbar','Lomber omurgada hareket','Movement in the lumbar spine'],
+    ['trunkSide','Gövdenin yana eğilmesi','Trunk leans sideways'],
+    ['trunkFwd','Gövdenin öne eğilmesi','Trunk leans forward'],
+    ['hurdleTouch','Engelle temas','Contact with the hurdle']],
+  inlineLunge:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['noContact','Sopa teması sağlanmıyor','Dowel contact is not maintained'],
+    ['notVertical','Sopa dikey değil','Dowel is not vertical'],
+    ['sagittal','Sopa ve ayaklar sagital düzlemde kalmıyor','Dowel and feet do not stay in the sagittal plane'],
+    ['kneeBoard','Diz tahtanın ortasına değmiyor','Knee does not touch the board behind the heel']],
+  rotary:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['liftTogether','El ve diz aynı anda yerden ayrılmadı','Hand and knee did not leave the floor together'],
+    ['noExtend','Diz ve dirsek tam uzanmıyor','Knee and elbow do not fully extend'],
+    ['noTouch','Malleole dokunamadı','Could not touch the malleolus']],
+};
+/* The ticked findings of one movement, as words in the report language. */
+const fmsProblemLabels=(f,id)=>{
+  const sel=((f||{}).problems||{})[id];
+  return(FMS_PROBLEMS[id]||[]).filter(o=>Array.isArray(sel)&&sel.includes(o[0])).map(o=>L(o[1],o[2]));
+};
 const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
 
 /* The sheet's own layout — one entry per line of the official score sheet, top to
@@ -10013,7 +10064,9 @@ function fmsSheetHtml(test,ath,opts){
     }
     if(r.cm){
       const h=FMS_SHEET.slice(i,i+r.cm.n).reduce((a,x)=>a+(x.rh||1)*RH,0);
-      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
+      // A movement with a findings list prints what was ticked (and a comment typed before the list existed).
+      const txt=FMS_PROBLEMS[r.cm.id]?[fmsProblemLabels(f,r.cm.id).join(' · '),cm[r.cm.id]].filter(Boolean).join(' · '):(cm[r.cm.id]||'');
+      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(txt)}</div></td>`;
     }
     return`<tr${r.rh?` style="height:${r.rh*RH}mm"`:''}>${td}</tr>`;
   }).join('');
@@ -10026,7 +10079,7 @@ function fmsSheetHtml(test,ath,opts){
   </div>
   <table>
     <colgroup><col style="width:27.5%"/><col style="width:6.5%"/><col style="width:16%"/><col style="width:15%"/><col style="width:35%"/></colgroup>
-    <tr><th colspan="2">${L('Test','Screen')}</th><th>${L('Ham Skor','Raw Score')}</th><th>${L('Nihai Skor','Final Score')}</th><th>${L('Yorumlar','Comments')}</th></tr>
+    <tr><th colspan="2">${L('Test','Screen')}</th><th>${L('Ham Skor','Raw Score')}</th><th>${L('Nihai Skor','Final Score')}</th><th>${L('Tespit Edilen Problemler','Identified Problems')}</th></tr>
     ${rows}
     <tr class="tot"><td class="red" colspan="2">${L('Toplam Tarama Skoru','Total Screen Score')}</td><td class="v" colspan="3"${c.total!=null?` style="color:${fmsTotalTone(c.total)}"`:''}>${c.total!=null?c.total+' / 21':''}</td></tr>
   </table>
@@ -25167,6 +25220,25 @@ function FmsPdfPanel({pdf,onChange}){
    comment against a movement. Final scores and the total are worked out as you go. The
    header is not typed: it is read off the athlete and the test (and the two
    measurements are carried forward from the last screen). */
+/* "Tespit Edilen Problemler" cell: a multi-select that opens in place (the table scrolls
+   sideways on a phone, so a floating list would be clipped). Closed, it shows what is ticked. */
+function FmsProblemPick({opts,value,onChange,legacy}){
+  const[open,setOpen]=useState(false);
+  const sel=Array.isArray(value)?value:[];
+  const toggle=id=>onChange(sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]);
+  const chosen=opts.filter(o=>sel.includes(o[0]));
+  return(<div className="fmsp">
+    <button type="button" className={'fmsp-btn'+(open?' open':'')} aria-expanded={open} onClick={()=>setOpen(o=>!o)}>
+      <span>{chosen.length?`${chosen.length} ${L('problem seçildi','selected')}`:L('Problem seç…','Select problems…')}</span><i aria-hidden="true">▾</i>
+    </button>
+    {open
+      ?<div className="fmsp-list" role="group" aria-label={L('Tespit Edilen Problemler','Identified Problems')}>
+        {opts.map(o=>(<label key={o[0]}><input type="checkbox" checked={sel.includes(o[0])} onChange={()=>toggle(o[0])}/><span>{L(o[1],o[2])}</span></label>))}
+      </div>
+      :chosen.length>0&&<ul className="fmsp-chosen">{chosen.map(o=><li key={o[0]}>{L(o[1],o[2])}</li>)}</ul>}
+    {legacy&&<div className="fmsp-old">{L('Önceki yorum: ','Earlier comment: ')}{legacy}</div>}
+  </div>);
+}
 function FmsSheetCard({test,ath,onUpdate}){
   const f=test.fms||{};
   const c=fmsCalc(f);
@@ -25182,6 +25254,7 @@ function FmsSheetCard({test,ath,onUpdate}){
     return{fms:{...o,[r.f]:{...base,[r.side]:v}}};
   });
   const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
+  const setProblems=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),problems:{...((t.fms||{}).problems||{}),[id]:v}}}));
   const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
   const sideLbl=r=>r.side==='right'?L('Sağ','Right'):L('Sol','Left');
   // The words a screen reader gets for a line: its group's label, carried down to the second side.
@@ -25208,7 +25281,7 @@ function FmsSheetCard({test,ath,onUpdate}){
     </div>
     <div className="fmsl-scroll"><table className="fmsl-t">
       <colgroup><col className="c-lab"/><col className="c-sd"/><col className="c-raw"/><col className="c-fin"/><col className="c-cm"/></colgroup>
-      <thead><tr><th colSpan="2">{L('Test','Screen')}</th><th>{L('Ham Skor','Raw Score')}</th><th>{L('Nihai Skor','Final Score')}</th><th>{L('Yorumlar','Comments')}</th></tr></thead>
+      <thead><tr><th colSpan="2">{L('Test','Screen')}</th><th>{L('Ham Skor','Raw Score')}</th><th>{L('Nihai Skor','Final Score')}</th><th>{L('Tespit Edilen Problemler','Identified Problems')}</th></tr></thead>
       <tbody>
         {FMS_SHEET.map((r,i)=>{
           const v=fmsCell(f,r);
@@ -25237,7 +25310,10 @@ function FmsSheetCard({test,ath,onUpdate}){
               {it&&it.cleared==='pos'&&<div className="fmsl-flag">{L('ağrı → 0','pain → 0')}</div>}
               {it&&it.asym!=null&&it.cleared!=='pos'&&<div className="fmsl-flag am">{L('asimetri','asym.')} {it.asym}</div>}
             </td>}
-            {r.cm&&<td className="cm" rowSpan={r.cm.n}>
+            {r.cm&&FMS_PROBLEMS[r.cm.id]&&<td className="cm pk" rowSpan={r.cm.n}>
+              <FmsProblemPick opts={FMS_PROBLEMS[r.cm.id]} value={(f.problems||{})[r.cm.id]} onChange={v=>setProblems(r.cm.id,v)} legacy={(f.comments||{})[r.cm.id]}/>
+            </td>}
+            {r.cm&&!FMS_PROBLEMS[r.cm.id]&&<td className="cm" rowSpan={r.cm.n}>
               <LiveTextarea value={(f.comments||{})[r.cm.id]||''} onChange={x=>setComment(r.cm.id,x)} rows={Math.max(1,r.cm.n)+(r.rh||0)}
                 placeholder={L('Yorum…','Comment…')} aria-label={L('Yorum','Comment')}/>
             </td>}

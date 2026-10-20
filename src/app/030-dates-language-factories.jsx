@@ -298,7 +298,7 @@ const makeTest=(period='pre')=>({
     aslr:{right:'',left:''},
     trunkPushup:'',pushupClear:'',
     rotary:{right:'',left:''},rotaryClear:'',
-    tibia:null,hand:null,comments:{},   // null = not typed on this screen yet → carried from the last one
+    tibia:null,hand:null,comments:{},problems:{},   // null = not typed on this screen yet → carried from the last one
     /* A sheet scanned before the live one existed is still attached here:
        {name,size,at,pages:[dataURL],data} — `pages` are the rasterised pages the
        report prints, `data` the original file. */
