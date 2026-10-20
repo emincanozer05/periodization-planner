@@ -16915,10 +16915,21 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
    Every value is stored in English (`k`) — saved sessions, library cards and the load
    distribution key off these exact strings — and shown in the app's language through the
    labels beside it. A category without a direction list has no Yön box. `id` is the slug the
-   individualization brief stores its rows under. */
+   individualization brief stores its rows under.
+
+   The two boxes are called Tür and Yön unless a category names them otherwise: the push and the
+   pull read Düzlem (Plane: horizontal / vertical) and Duruş (Stance: standing, seated, supine …)
+   — `typeLab` / `dirLab`, as [tr, en]. A plane is stored under its own English value
+   ("Horizontal Push") and shown as Yatay / Dikey. */
 const MV_DIR_GROUND=[['In Place','Yerinde','In place'],['Forward','Öne','Forward'],['Backward','Geriye','Backward'],
   ['Lateral','Yana','Lateral'],['Diagonal','Çapraz','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']];
-const MV_DIR_ARM=[['Horizontal','Yatay','Horizontal'],['Vertical','Dikey','Vertical'],['Angled','Açılı','Angled']];
+const MV_PLANE_PUSH=[['Horizontal Push','Yatay','Horizontal'],['Vertical Push','Dikey','Vertical']];
+const MV_PLANE_PULL=[['Horizontal Pull','Yatay','Horizontal'],['Vertical Pull','Dikey','Vertical']];
+const MV_STANCE=[['Standing','Ayakta','Standing'],['Seated','Oturarak','Seated'],['Tall Kneeling','Diz Üstü','Tall Kneeling'],
+  ['Half Kneeling','Tek Diz Üstü','Half Kneeling'],['Split Stance','Bölünmüş Duruş','Split Stance'],
+  ['Single-Leg Stance','Tek Ayak Üzerinde','Single-Leg Stance'],['Bent-Over','Öne Eğilerek','Bent-Over'],
+  ['Supine','Sırtüstü Yatarak','Supine'],['Prone','Yüzüstü Yatarak','Prone'],['Incline','Eğimli Yatarak','Incline'],
+  ['Chest-Supported','Göğüs Destekli','Chest-Supported'],['Hanging','Asılı Pozisyonda','Hanging']];
 const MV_CATS=[
   {k:'Knee Dominant',id:'knee_dominant',tr:'Diz Dominant',en:'Knee Dominant',color:'#3987e5',
     types:[['Squat','Squat','Squat'],['Split Squat','Split Squat','Split Squat'],['Lunge','Lunge','Lunge'],
@@ -16930,11 +16941,11 @@ const MV_CATS=[
       ['Pull-through','Pull-through','Pull-through'],['Swing','Swing','Swing']],
     dirs:[]},
   {k:'Upper Body Push',id:'upper_push',tr:'Üst Vücut İtiş',en:'Upper Body Push',color:'#d55181',
-    types:[['Horizontal Push','Yatay İtiş','Horizontal Push'],['Vertical Push','Dikey İtiş','Vertical Push']],
-    dirs:MV_DIR_ARM},
+    types:MV_PLANE_PUSH,typeLab:['Düzlem','Plane'],
+    dirs:MV_STANCE,dirLab:['Duruş','Stance']},
   {k:'Upper Body Pull',id:'upper_pull',tr:'Üst Vücut Çekiş',en:'Upper Body Pull',color:'#c98500',
-    types:[['Horizontal Pull','Yatay Çekiş','Horizontal Pull'],['Vertical Pull','Dikey Çekiş','Vertical Pull']],
-    dirs:MV_DIR_ARM},
+    types:MV_PLANE_PULL,typeLab:['Düzlem','Plane'],
+    dirs:MV_STANCE,dirLab:['Duruş','Stance']},
   {k:'Core',id:'core',tr:'Core',en:'Core',color:'#8b5cf6',
     types:[['Anti-Extension','Anti-ekstansiyon','Anti-extension'],['Anti-Flexion','Anti-fleksiyon','Anti-flexion'],
       ['Anti-Rotation','Anti-rotasyon','Anti-rotation'],['Anti-Lateral Flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],
@@ -16981,6 +16992,9 @@ const mvCatById=id=>MV_CATS.find(c=>c.id===id)||null;
 const mvCatLabel=k=>{const c=mvCat(k);return c?L(c.tr,c.en):String(k||'');};
 const mvTypes=k=>{const c=mvCat(k);return c?c.types.map(t=>t[0]):[];};
 const mvDirs=k=>{const c=mvCat(k);return c?c.dirs.map(t=>t[0]):[];};
+/* What the category calls its two boxes, as [tr, en]. */
+const mvTypeLab=k=>(mvCat(k)||{}).typeLab||['Tür','Type'];
+const mvDirLab=k=>(mvCat(k)||{}).dirLab||['Yön','Direction'];
 /* A type or a direction of a category, in the app's language. The same English word can
    read differently under two categories ("Lateral" is Yana for a lunge and Yanal for a
    jump), so the category is part of the question. */
@@ -17028,21 +17042,30 @@ const MV_TYPE_WORDS={
     [/curl|bicep|tricep|skull|pushdown|kickback/,'Arm'],[/raise|delt|shoulder|\bfly\b/,'Shoulder'],
     [/glute|hip (ext|abd|flex)|kick ?back|fire hydrant/,'Hip Isolation']],
 };
+const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
+  [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
+  [/incline/,'Incline'],[/seated|\bsit\b/,'Seated'],[/bent[- ]?over/,'Bent-Over'],[/prone/,'Prone'],
+  [/bench|floor press|supine|\bfly\b|\bdb press\b|chest press|skull|lying|decline/,'Supine'],
+  [/standing|overhead|shoulder press|military|\bohp\b|push press|\bjerk\b|landmine/,'Standing']];
+const MV_STANCE_WORDS_PULL=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
+  [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
+  [/chest[- ]?supported|seal row|\bsupported\b/,'Chest-Supported'],[/pull[- ]?up|chin[- ]?up|\bhang|toes ?to ?bar/,'Hanging'],
+  [/incline/,'Incline'],[/bent[- ]?over|\bbo\b|barbell row|pendlay|t[- ]?bar/,'Bent-Over'],
+  [/seated|\bsit\b|pulldown|pull ?down|low row|cable row/,'Seated'],[/prone|\by[- ]?t[- ]?w\b|\bytw\b/,'Prone'],
+  [/inverted|supine|\bring row\b|body ?weight row/,'Supine'],[/standing|face ?pull|\bpull[- ]?apart|\bstraight[- ]?arm/,'Standing']];
 const MV_DIR_WORDS={
   'Knee Dominant':[[/lateral|side|cossack|skater/,'Lateral'],[/reverse|backward|rear(?![- ]?foot)/,'Backward'],[/curtsy|crossover|diagonal/,'Diagonal'],
     [/walking|forward/,'Forward'],[/clock|multi/,'Multi-Directional']],
-  'Upper Body Push':[[/incline|decline|landmine/,'Angled']],
-  'Upper Body Pull':[[/high row|low row|incline/,'Angled']],
+  'Upper Body Push':MV_STANCE_WORDS_PUSH,
+  'Upper Body Pull':MV_STANCE_WORDS_PULL,
   'Plyometric':[[/lateral|skater|side/,'Lateral'],[/backward|reverse/,'Backward'],[/diagonal|zig ?zag/,'Diagonal'],
     [/broad|forward|horizontal|\bbound/,'Forward'],[/multi/,'Multi-Directional'],[/box|tuck|vertical|cmj|squat jump|depth|drop|pogo/,'Vertical']],
   'Medicine Ball':[[/slam/,'Down'],[/scoop|backward|overhead back/,'Backward'],[/rotational|side|twist/,'Rotational'],
     [/vertical|up/,'Up'],[/chest|shot ?put|forward/,'Forward']],
   'Full Body':[[/lateral|side/,'Lateral'],[/reverse|backward/,'Backward'],[/walking|forward/,'Forward']],
 };
-/* What a direction follows from its type when the name says nothing else: a vertical push is
-   pressed vertically. */
-const MV_DIR_FROM_TYPE={'Horizontal Push':'Horizontal','Vertical Push':'Vertical','Horizontal Pull':'Horizontal','Vertical Pull':'Vertical',
-  'Slam':'Down','Chest Pass':'Forward','Rotational Throw':'Rotational','Scoop Toss':'Backward','Overhead Throw':'Backward','Shot Put Throw':'Rotational'};
+/* What a direction follows from its type when the name says nothing else: a slam goes down. */
+const MV_DIR_FROM_TYPE={'Slam':'Down','Chest Pass':'Forward','Rotational Throw':'Rotational','Scoop Toss':'Backward','Overhead Throw':'Backward','Shot Put Throw':'Rotational'};
 function mvGuessType(k,name){
   const nm=String(name||'').toLowerCase();
   if(!nm)return'';
@@ -17064,7 +17087,10 @@ const MV_TYPE_ALIAS={
   'Upper Body Push':{Horizontal:'Horizontal Push',Vertical:'Vertical Push'},
   'Upper Body Pull':{Horizontal:'Horizontal Pull',Vertical:'Vertical Pull'},
 };
-const MV_DIR_ALIAS={'Upper Body Push':{Horizontal:'Horizontal',Vertical:'Vertical'},'Upper Body Pull':{Horizontal:'Horizontal',Vertical:'Vertical'}};
+/* The push and the pull were once filed by the direction of the arm (Horizontal / Vertical /
+   Angled); that is their plane now, so only an angled press carries over — as an incline. */
+const MV_DIR_RETIRED={Horizontal:'',Vertical:'',Angled:'Incline'};
+const MV_DIR_RETIRED_CATS=['Upper Body Push','Upper Body Pull'];
 function mvNormType(k,v,name){
   const ok=mvTypes(k);if(!ok.length)return'';
   const s=String(v||'').trim();
@@ -17073,11 +17099,11 @@ function mvNormType(k,v,name){
   if(al)return al;
   return mvGuessType(k,name);
 }
-function mvNormDir(k,v,name,type,plane){
+function mvNormDir(k,v,name,type){
   const ok=mvDirs(k);if(!ok.length)return'';
   const s=String(v||'').trim();
   if(ok.includes(s))return s;
-  const al=(MV_DIR_ALIAS[k]||{})[String(plane||'').trim()];
+  const al=MV_DIR_RETIRED_CATS.includes(k)?MV_DIR_RETIRED[s]:'';
   if(al&&ok.includes(al))return al;
   return mvGuessDir(k,name,type);
 }
@@ -17115,6 +17141,7 @@ const MV_OLD_ACC={'Shoulder & Scapula':'Shoulder','Arms':'Arm','Forearm & Grip':
   'Glutes':'Hip Isolation','Quadriceps':'Knee Extension','Adductors & Abductors':'Adductor'};
 function mvMigrateLibCard(e){
   if(!e||typeof e!=='object')return e;
+  if(MV_DIR_RETIRED_CATS.includes(e.type)&&Object.prototype.hasOwnProperty.call(MV_DIR_RETIRED,e.dir))e={...e,dir:MV_DIR_RETIRED[e.dir]};
   let type=e.type;
   const sub=String(e.subType||'').trim();
   if(sub==='Olympic Lift'&&type==='Full Body')type='Olympic Lift';
@@ -17123,7 +17150,7 @@ function mvMigrateLibCard(e){
   if(!sub||ok.includes(sub))return type===e.type?e:{...e,type};
   const out={...e,type};
   const nm=String(e.name||'');
-  const oldDir=(MV_OLD_DIR[type]||{})[sub]||(MV_DIR_ALIAS[type]||{})[sub]||'';
+  const oldDir=(MV_OLD_DIR[type]||{})[sub]||'';
   if(oldDir&&!e.dir&&mvDirs(type).includes(oldDir))out.dir=oldDir;
   if(['Concentric','Eccentric','Isometric'].includes(sub)){
     const cur=Array.isArray(e.contraction)?e.contraction:(e.contraction?[e.contraction]:[]);
@@ -20154,7 +20181,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           </div>
         </div>
         <div className="en-pane en-pane-cat">
-          <div className="en-phd"><span>{cat?L('Tür','Type'):L('Kategori','Category')}</span></div>
+          <div className="en-phd"><span>{cat?L(...mvTypeLab(cat)):L('Kategori','Category')}</span></div>
           <div className="en-plist">
             {catList.map(c=>
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
@@ -20163,7 +20190,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
                 <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
-            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L('Yön','Direction')}</span></div>}
+            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L(...mvDirLab(cat))}</span></div>}
             {dirList.map(c=>
               <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>
@@ -20796,8 +20823,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
         {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
           onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
         {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
-          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} ph={L('Tür…','Type…')} onChange={v=>cb.onType(k,v)}/>
-          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L('Yön','Direction'))} ph={L('Yön…','Direction…')} onChange={v=>cb.onDir(k,v)}/>
+          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))} ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>
+          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L(...mvDirLab(grp.pat)))} ph={L(mvDirLab(grp.pat)[0]+'…',mvDirLab(grp.pat)[1]+'…')} onChange={v=>cb.onDir(k,v)}/>
         </span>}
       </div>
       <div className="pt-td pt-ex" role="cell">
@@ -21059,7 +21086,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
         typeOpts:ptTypeOpts(run.pat),typeVal:ty,
-        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty,ex.plane):'',
+        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
   const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
@@ -34451,7 +34478,7 @@ const ACTIONS_FOR={};
 const DIFFICULTIES=['Level 1','Level 2','Level 3'];
 const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each category is filtered by its own types (Tür).
-const SUB_TYPES=Object.fromEntries(MV_CATS.map(c=>[c.k,{label:'Type',values:c.types.map(t=>t[0])}]));
+const SUB_TYPES=Object.fromEntries(MV_CATS.map(c=>[c.k,{label:mvTypeLab(c.k)[1],values:c.types.map(t=>t[0])}]));
 /* The filters a category carries beyond its sub-type (and, for Hip / Knee Dominant, the
    Action and Movement Pattern above): each is its own field on the library entry, set
    on the exercise card and filtered on in the library. */
@@ -34468,7 +34495,7 @@ const EX_PLYO_EQUIPMENT=['No Equipment','Box','Resistance Band','Hurdle','Mini H
 const EX_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
   'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
 const EX_EXTRA_FILTERS=Object.fromEntries(MV_CATS.map(c=>[c.k,[
-  ...(c.dirs.length?[{key:'dir',label:'Direction',values:c.dirs.map(d=>d[0])}]:[]),
+  ...(c.dirs.length?[{key:'dir',label:mvDirLab(c.k)[1],values:c.dirs.map(d=>d[0])}]:[]),
   {key:'equipment',label:'Equipment',values:c.k==='Plyometric'?EX_PLYO_EQUIPMENT:EX_GENERAL_EQUIPMENT,multi:true}]]));
 const EX_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
 const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion','contraction','dir'];
@@ -34521,7 +34548,7 @@ const EX_TERM_TR={
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
-  'Type':'Tür','Return to Performance':'Performansa Dönüş',
+  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Return to Performance':'Performansa Dönüş',
   'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
   'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
@@ -37283,7 +37310,7 @@ function planToSession(plan,src,dateKey,srcKey){
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
       ...(r.noPat?{pattern:'',plane:'',dir:'',noPat:true}:(()=>{const x=exResolveTags(t(r.name),t(r.pattern),t(r.plane));
-        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane,t(r.plane)):''};})()),
+        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane):''};})()),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option
@@ -40324,13 +40351,13 @@ function diVolumeAdj(adj,instr){
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
   core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
-  {k:'type',label:['Tür','Type'],opts:c.types},
-  ...(c.dirs.length?[{k:'direction',label:['Yön','Direction'],opts:c.dirs}]:[])]}));
+  {k:'type',label:mvTypeLab(c.k),opts:c.types},
+  ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
 /* Briefs written before the taxonomy: the four push / pull patterns became the type of one
    push and one pull category, and the old facet ids ("step_up", "anti_rotation") are read as
    the values they name. */
-const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push','Horizontal'],vertical_push:['upper_push','Vertical Push','Vertical'],
-  horizontal_pull:['upper_pull','Horizontal Pull','Horizontal'],vertical_pull:['upper_pull','Vertical Pull','Vertical']};
+const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push'],vertical_push:['upper_push','Vertical Push'],
+  horizontal_pull:['upper_pull','Horizontal Pull'],vertical_pull:['upper_pull','Vertical Pull']};
 const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional'};
 /* The table the picker draws: one column per facet kind, the same five for every
    pattern. A pattern's facet sits in the column of its kind (the core's task is its
@@ -40386,7 +40413,7 @@ function diMovePatterns(v){
        id is dropped. */
     if(!row&&id!=='')return;
     let obj=x&&typeof x==='object'?x:{};
-    if(old)obj={...obj,type:[old[1]],direction:[old[2]]};
+    if(old)obj={...obj,type:[old[1]],direction:[]};
     /* The core's old "task" box is its type now. */
     else if(id==='core'&&!(Array.isArray(obj.type)&&obj.type.length)&&Array.isArray(obj.task))obj={...obj,type:obj.task};
     /* One pattern may stand in several phases; the cap is per pattern per phase. */

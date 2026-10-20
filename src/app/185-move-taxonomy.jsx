@@ -9,10 +9,21 @@
    Every value is stored in English (`k`) — saved sessions, library cards and the load
    distribution key off these exact strings — and shown in the app's language through the
    labels beside it. A category without a direction list has no Yön box. `id` is the slug the
-   individualization brief stores its rows under. */
+   individualization brief stores its rows under.
+
+   The two boxes are called Tür and Yön unless a category names them otherwise: the push and the
+   pull read Düzlem (Plane: horizontal / vertical) and Duruş (Stance: standing, seated, supine …)
+   — `typeLab` / `dirLab`, as [tr, en]. A plane is stored under its own English value
+   ("Horizontal Push") and shown as Yatay / Dikey. */
 const MV_DIR_GROUND=[['In Place','Yerinde','In place'],['Forward','Öne','Forward'],['Backward','Geriye','Backward'],
   ['Lateral','Yana','Lateral'],['Diagonal','Çapraz','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']];
-const MV_DIR_ARM=[['Horizontal','Yatay','Horizontal'],['Vertical','Dikey','Vertical'],['Angled','Açılı','Angled']];
+const MV_PLANE_PUSH=[['Horizontal Push','Yatay','Horizontal'],['Vertical Push','Dikey','Vertical']];
+const MV_PLANE_PULL=[['Horizontal Pull','Yatay','Horizontal'],['Vertical Pull','Dikey','Vertical']];
+const MV_STANCE=[['Standing','Ayakta','Standing'],['Seated','Oturarak','Seated'],['Tall Kneeling','Diz Üstü','Tall Kneeling'],
+  ['Half Kneeling','Tek Diz Üstü','Half Kneeling'],['Split Stance','Bölünmüş Duruş','Split Stance'],
+  ['Single-Leg Stance','Tek Ayak Üzerinde','Single-Leg Stance'],['Bent-Over','Öne Eğilerek','Bent-Over'],
+  ['Supine','Sırtüstü Yatarak','Supine'],['Prone','Yüzüstü Yatarak','Prone'],['Incline','Eğimli Yatarak','Incline'],
+  ['Chest-Supported','Göğüs Destekli','Chest-Supported'],['Hanging','Asılı Pozisyonda','Hanging']];
 const MV_CATS=[
   {k:'Knee Dominant',id:'knee_dominant',tr:'Diz Dominant',en:'Knee Dominant',color:'#3987e5',
     types:[['Squat','Squat','Squat'],['Split Squat','Split Squat','Split Squat'],['Lunge','Lunge','Lunge'],
@@ -24,11 +35,11 @@ const MV_CATS=[
       ['Pull-through','Pull-through','Pull-through'],['Swing','Swing','Swing']],
     dirs:[]},
   {k:'Upper Body Push',id:'upper_push',tr:'Üst Vücut İtiş',en:'Upper Body Push',color:'#d55181',
-    types:[['Horizontal Push','Yatay İtiş','Horizontal Push'],['Vertical Push','Dikey İtiş','Vertical Push']],
-    dirs:MV_DIR_ARM},
+    types:MV_PLANE_PUSH,typeLab:['Düzlem','Plane'],
+    dirs:MV_STANCE,dirLab:['Duruş','Stance']},
   {k:'Upper Body Pull',id:'upper_pull',tr:'Üst Vücut Çekiş',en:'Upper Body Pull',color:'#c98500',
-    types:[['Horizontal Pull','Yatay Çekiş','Horizontal Pull'],['Vertical Pull','Dikey Çekiş','Vertical Pull']],
-    dirs:MV_DIR_ARM},
+    types:MV_PLANE_PULL,typeLab:['Düzlem','Plane'],
+    dirs:MV_STANCE,dirLab:['Duruş','Stance']},
   {k:'Core',id:'core',tr:'Core',en:'Core',color:'#8b5cf6',
     types:[['Anti-Extension','Anti-ekstansiyon','Anti-extension'],['Anti-Flexion','Anti-fleksiyon','Anti-flexion'],
       ['Anti-Rotation','Anti-rotasyon','Anti-rotation'],['Anti-Lateral Flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],
@@ -75,6 +86,9 @@ const mvCatById=id=>MV_CATS.find(c=>c.id===id)||null;
 const mvCatLabel=k=>{const c=mvCat(k);return c?L(c.tr,c.en):String(k||'');};
 const mvTypes=k=>{const c=mvCat(k);return c?c.types.map(t=>t[0]):[];};
 const mvDirs=k=>{const c=mvCat(k);return c?c.dirs.map(t=>t[0]):[];};
+/* What the category calls its two boxes, as [tr, en]. */
+const mvTypeLab=k=>(mvCat(k)||{}).typeLab||['Tür','Type'];
+const mvDirLab=k=>(mvCat(k)||{}).dirLab||['Yön','Direction'];
 /* A type or a direction of a category, in the app's language. The same English word can
    read differently under two categories ("Lateral" is Yana for a lunge and Yanal for a
    jump), so the category is part of the question. */
@@ -122,21 +136,30 @@ const MV_TYPE_WORDS={
     [/curl|bicep|tricep|skull|pushdown|kickback/,'Arm'],[/raise|delt|shoulder|\bfly\b/,'Shoulder'],
     [/glute|hip (ext|abd|flex)|kick ?back|fire hydrant/,'Hip Isolation']],
 };
+const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
+  [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
+  [/incline/,'Incline'],[/seated|\bsit\b/,'Seated'],[/bent[- ]?over/,'Bent-Over'],[/prone/,'Prone'],
+  [/bench|floor press|supine|\bfly\b|\bdb press\b|chest press|skull|lying|decline/,'Supine'],
+  [/standing|overhead|shoulder press|military|\bohp\b|push press|\bjerk\b|landmine/,'Standing']];
+const MV_STANCE_WORDS_PULL=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
+  [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
+  [/chest[- ]?supported|seal row|\bsupported\b/,'Chest-Supported'],[/pull[- ]?up|chin[- ]?up|\bhang|toes ?to ?bar/,'Hanging'],
+  [/incline/,'Incline'],[/bent[- ]?over|\bbo\b|barbell row|pendlay|t[- ]?bar/,'Bent-Over'],
+  [/seated|\bsit\b|pulldown|pull ?down|low row|cable row/,'Seated'],[/prone|\by[- ]?t[- ]?w\b|\bytw\b/,'Prone'],
+  [/inverted|supine|\bring row\b|body ?weight row/,'Supine'],[/standing|face ?pull|\bpull[- ]?apart|\bstraight[- ]?arm/,'Standing']];
 const MV_DIR_WORDS={
   'Knee Dominant':[[/lateral|side|cossack|skater/,'Lateral'],[/reverse|backward|rear(?![- ]?foot)/,'Backward'],[/curtsy|crossover|diagonal/,'Diagonal'],
     [/walking|forward/,'Forward'],[/clock|multi/,'Multi-Directional']],
-  'Upper Body Push':[[/incline|decline|landmine/,'Angled']],
-  'Upper Body Pull':[[/high row|low row|incline/,'Angled']],
+  'Upper Body Push':MV_STANCE_WORDS_PUSH,
+  'Upper Body Pull':MV_STANCE_WORDS_PULL,
   'Plyometric':[[/lateral|skater|side/,'Lateral'],[/backward|reverse/,'Backward'],[/diagonal|zig ?zag/,'Diagonal'],
     [/broad|forward|horizontal|\bbound/,'Forward'],[/multi/,'Multi-Directional'],[/box|tuck|vertical|cmj|squat jump|depth|drop|pogo/,'Vertical']],
   'Medicine Ball':[[/slam/,'Down'],[/scoop|backward|overhead back/,'Backward'],[/rotational|side|twist/,'Rotational'],
     [/vertical|up/,'Up'],[/chest|shot ?put|forward/,'Forward']],
   'Full Body':[[/lateral|side/,'Lateral'],[/reverse|backward/,'Backward'],[/walking|forward/,'Forward']],
 };
-/* What a direction follows from its type when the name says nothing else: a vertical push is
-   pressed vertically. */
-const MV_DIR_FROM_TYPE={'Horizontal Push':'Horizontal','Vertical Push':'Vertical','Horizontal Pull':'Horizontal','Vertical Pull':'Vertical',
-  'Slam':'Down','Chest Pass':'Forward','Rotational Throw':'Rotational','Scoop Toss':'Backward','Overhead Throw':'Backward','Shot Put Throw':'Rotational'};
+/* What a direction follows from its type when the name says nothing else: a slam goes down. */
+const MV_DIR_FROM_TYPE={'Slam':'Down','Chest Pass':'Forward','Rotational Throw':'Rotational','Scoop Toss':'Backward','Overhead Throw':'Backward','Shot Put Throw':'Rotational'};
 function mvGuessType(k,name){
   const nm=String(name||'').toLowerCase();
   if(!nm)return'';
@@ -158,7 +181,10 @@ const MV_TYPE_ALIAS={
   'Upper Body Push':{Horizontal:'Horizontal Push',Vertical:'Vertical Push'},
   'Upper Body Pull':{Horizontal:'Horizontal Pull',Vertical:'Vertical Pull'},
 };
-const MV_DIR_ALIAS={'Upper Body Push':{Horizontal:'Horizontal',Vertical:'Vertical'},'Upper Body Pull':{Horizontal:'Horizontal',Vertical:'Vertical'}};
+/* The push and the pull were once filed by the direction of the arm (Horizontal / Vertical /
+   Angled); that is their plane now, so only an angled press carries over — as an incline. */
+const MV_DIR_RETIRED={Horizontal:'',Vertical:'',Angled:'Incline'};
+const MV_DIR_RETIRED_CATS=['Upper Body Push','Upper Body Pull'];
 function mvNormType(k,v,name){
   const ok=mvTypes(k);if(!ok.length)return'';
   const s=String(v||'').trim();
@@ -167,11 +193,11 @@ function mvNormType(k,v,name){
   if(al)return al;
   return mvGuessType(k,name);
 }
-function mvNormDir(k,v,name,type,plane){
+function mvNormDir(k,v,name,type){
   const ok=mvDirs(k);if(!ok.length)return'';
   const s=String(v||'').trim();
   if(ok.includes(s))return s;
-  const al=(MV_DIR_ALIAS[k]||{})[String(plane||'').trim()];
+  const al=MV_DIR_RETIRED_CATS.includes(k)?MV_DIR_RETIRED[s]:'';
   if(al&&ok.includes(al))return al;
   return mvGuessDir(k,name,type);
 }
@@ -209,6 +235,7 @@ const MV_OLD_ACC={'Shoulder & Scapula':'Shoulder','Arms':'Arm','Forearm & Grip':
   'Glutes':'Hip Isolation','Quadriceps':'Knee Extension','Adductors & Abductors':'Adductor'};
 function mvMigrateLibCard(e){
   if(!e||typeof e!=='object')return e;
+  if(MV_DIR_RETIRED_CATS.includes(e.type)&&Object.prototype.hasOwnProperty.call(MV_DIR_RETIRED,e.dir))e={...e,dir:MV_DIR_RETIRED[e.dir]};
   let type=e.type;
   const sub=String(e.subType||'').trim();
   if(sub==='Olympic Lift'&&type==='Full Body')type='Olympic Lift';
@@ -217,7 +244,7 @@ function mvMigrateLibCard(e){
   if(!sub||ok.includes(sub))return type===e.type?e:{...e,type};
   const out={...e,type};
   const nm=String(e.name||'');
-  const oldDir=(MV_OLD_DIR[type]||{})[sub]||(MV_DIR_ALIAS[type]||{})[sub]||'';
+  const oldDir=(MV_OLD_DIR[type]||{})[sub]||'';
   if(oldDir&&!e.dir&&mvDirs(type).includes(oldDir))out.dir=oldDir;
   if(['Concentric','Eccentric','Isometric'].includes(sub)){
     const cur=Array.isArray(e.contraction)?e.contraction:(e.contraction?[e.contraction]:[]);

@@ -17,7 +17,7 @@ const ACTIONS_FOR={};
 const DIFFICULTIES=['Level 1','Level 2','Level 3'];
 const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each category is filtered by its own types (Tür).
-const SUB_TYPES=Object.fromEntries(MV_CATS.map(c=>[c.k,{label:'Type',values:c.types.map(t=>t[0])}]));
+const SUB_TYPES=Object.fromEntries(MV_CATS.map(c=>[c.k,{label:mvTypeLab(c.k)[1],values:c.types.map(t=>t[0])}]));
 /* The filters a category carries beyond its sub-type (and, for Hip / Knee Dominant, the
    Action and Movement Pattern above): each is its own field on the library entry, set
    on the exercise card and filtered on in the library. */
@@ -34,7 +34,7 @@ const EX_PLYO_EQUIPMENT=['No Equipment','Box','Resistance Band','Hurdle','Mini H
 const EX_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
   'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
 const EX_EXTRA_FILTERS=Object.fromEntries(MV_CATS.map(c=>[c.k,[
-  ...(c.dirs.length?[{key:'dir',label:'Direction',values:c.dirs.map(d=>d[0])}]:[]),
+  ...(c.dirs.length?[{key:'dir',label:mvDirLab(c.k)[1],values:c.dirs.map(d=>d[0])}]:[]),
   {key:'equipment',label:'Equipment',values:c.k==='Plyometric'?EX_PLYO_EQUIPMENT:EX_GENERAL_EQUIPMENT,multi:true}]]));
 const EX_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
 const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion','contraction','dir'];
@@ -87,7 +87,7 @@ const EX_TERM_TR={
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
-  'Type':'Tür','Return to Performance':'Performansa Dönüş',
+  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Return to Performance':'Performansa Dönüş',
   'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
   'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',

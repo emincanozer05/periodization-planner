@@ -313,7 +313,7 @@ function planToSession(plan,src,dateKey,srcKey){
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
       ...(r.noPat?{pattern:'',plane:'',dir:'',noPat:true}:(()=>{const x=exResolveTags(t(r.name),t(r.pattern),t(r.plane));
-        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane,t(r.plane)):''};})()),
+        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane):''};})()),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option

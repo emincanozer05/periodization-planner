@@ -156,8 +156,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
         {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
           onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
         {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
-          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} ph={L('Tür…','Type…')} onChange={v=>cb.onType(k,v)}/>
-          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L('Yön','Direction'))} ph={L('Yön…','Direction…')} onChange={v=>cb.onDir(k,v)}/>
+          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))} ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>
+          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L(...mvDirLab(grp.pat)))} ph={L(mvDirLab(grp.pat)[0]+'…',mvDirLab(grp.pat)[1]+'…')} onChange={v=>cb.onDir(k,v)}/>
         </span>}
       </div>
       <div className="pt-td pt-ex" role="cell">
@@ -419,7 +419,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
         typeOpts:ptTypeOpts(run.pat),typeVal:ty,
-        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty,ex.plane):'',
+        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
   const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
