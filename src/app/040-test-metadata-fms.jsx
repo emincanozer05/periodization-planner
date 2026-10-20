@@ -157,12 +157,49 @@ function fmsCalc(f){
   const scored=items.filter(i=>i.filled);
   const mob=o.ankleMob||{};
   const cm=o.comments||{};
+  const pr=o.problems||{};
   return{items,n:scored.length,
     total:scored.length?scored.reduce((a,i)=>a+i.score,0):null,
     asym:items.some(i=>i.asym!=null),
     zeros:items.filter(i=>i.filled&&i.score===0).length,
-    any:scored.length>0||items.some(i=>i.cleared)||!!(mob.right||mob.left)||!!o.observations||Object.keys(cm).some(k=>cm[k])}
+    any:scored.length>0||items.some(i=>i.cleared)||!!(mob.right||mob.left)||!!o.observations||Object.keys(cm).some(k=>cm[k])||Object.keys(pr).some(k=>pr[k]&&pr[k].length)}
 }
+/* "Tespit Edilen Problemler": the findings a coach can tick against a movement, keyed by the
+   movement's comment id (FMS_SHEET `cm.id`). Only these four movements have a list; the others
+   keep a free-text comment. The record stores the option ids (`problems[id]=['heel',…]`), so a
+   rewording here never orphans a saved screen. [id, tr, en] */
+const FMS_PROBLEMS={
+  deepSquat:[
+    ['depth','Yetersiz squat derinliği','Insufficient squat depth'],
+    ['heels','Topukların kalkması','Heels lift off the floor'],
+    ['valgus','Diz valgusu','Knee valgus'],
+    ['trunkFlex','Gövdenin öne fleksiyonu','Forward trunk flexion'],
+    ['armsDrop','Kolların öne düşmesi','Arms fall forward'],
+    ['pelvisR','Pelvisin sağa kayması','Pelvis shifts to the right'],
+    ['pelvisL','Pelvisin sola kayması','Pelvis shifts to the left']],
+  hurdleStep:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['lumbar','Lomber omurgada hareket','Movement in the lumbar spine'],
+    ['trunkSide','Gövdenin yana eğilmesi','Trunk leans sideways'],
+    ['trunkFwd','Gövdenin öne eğilmesi','Trunk leans forward'],
+    ['hurdleTouch','Engelle temas','Contact with the hurdle']],
+  inlineLunge:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['noContact','Sopa teması sağlanmıyor','Dowel contact is not maintained'],
+    ['notVertical','Sopa dikey değil','Dowel is not vertical'],
+    ['sagittal','Sopa ve ayaklar sagital düzlemde kalmıyor','Dowel and feet do not stay in the sagittal plane'],
+    ['kneeBoard','Diz tahtanın ortasına değmiyor','Knee does not touch the board behind the heel']],
+  rotary:[
+    ['balance','Denge kaybı','Loss of balance'],
+    ['liftTogether','El ve diz aynı anda yerden ayrılmadı','Hand and knee did not leave the floor together'],
+    ['noExtend','Diz ve dirsek tam uzanmıyor','Knee and elbow do not fully extend'],
+    ['noTouch','Malleole dokunamadı','Could not touch the malleolus']],
+};
+/* The ticked findings of one movement, as words in the report language. */
+const fmsProblemLabels=(f,id)=>{
+  const sel=((f||{}).problems||{})[id];
+  return(FMS_PROBLEMS[id]||[]).filter(o=>Array.isArray(sel)&&sel.includes(o[0])).map(o=>L(o[1],o[2]));
+};
 const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
 
 /* The sheet's own layout — one entry per line of the official score sheet, top to
@@ -303,7 +340,9 @@ function fmsSheetHtml(test,ath,opts){
     }
     if(r.cm){
       const h=FMS_SHEET.slice(i,i+r.cm.n).reduce((a,x)=>a+(x.rh||1)*RH,0);
-      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(cm[r.cm.id]||'')}</div></td>`;
+      // A movement with a findings list prints what was ticked (and a comment typed before the list existed).
+      const txt=FMS_PROBLEMS[r.cm.id]?[fmsProblemLabels(f,r.cm.id).join(' · '),cm[r.cm.id]].filter(Boolean).join(' · '):(cm[r.cm.id]||'');
+      td+=`<td class="cm" rowspan="${r.cm.n}"><div style="max-height:${h-2}mm">${esc(txt)}</div></td>`;
     }
     return`<tr${r.rh?` style="height:${r.rh*RH}mm"`:''}>${td}</tr>`;
   }).join('');
@@ -316,7 +355,7 @@ function fmsSheetHtml(test,ath,opts){
   </div>
   <table>
     <colgroup><col style="width:27.5%"/><col style="width:6.5%"/><col style="width:16%"/><col style="width:15%"/><col style="width:35%"/></colgroup>
-    <tr><th colspan="2">${L('Test','Screen')}</th><th>${L('Ham Skor','Raw Score')}</th><th>${L('Nihai Skor','Final Score')}</th><th>${L('Yorumlar','Comments')}</th></tr>
+    <tr><th colspan="2">${L('Test','Screen')}</th><th>${L('Ham Skor','Raw Score')}</th><th>${L('Nihai Skor','Final Score')}</th><th>${L('Tespit Edilen Problemler','Identified Problems')}</th></tr>
     ${rows}
     <tr class="tot"><td class="red" colspan="2">${L('Toplam Tarama Skoru','Total Screen Score')}</td><td class="v" colspan="3"${c.total!=null?` style="color:${fmsTotalTone(c.total)}"`:''}>${c.total!=null?c.total+' / 21':''}</td></tr>
   </table>
