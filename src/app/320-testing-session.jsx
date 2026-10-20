@@ -443,23 +443,44 @@ function FmsPdfPanel({pdf,onChange}){
    comment against a movement. Final scores and the total are worked out as you go. The
    header is not typed: it is read off the athlete and the test (and the two
    measurements are carried forward from the last screen). */
-/* "Tespit Edilen Problemler" cell: a multi-select that opens in place (the table scrolls
-   sideways on a phone, so a floating list would be clipped). Closed, it shows what is ticked. */
+/* "Tespit Edilen Problemler" cell: a multi-select dropdown. The cell stays one line (what is
+   ticked, ellipsised); the list floats over the page from <body>, because the table sits in a
+   scroller that would clip it and a list opened in place would stretch the row. */
 function FmsProblemPick({opts,value,onChange,legacy}){
-  const[open,setOpen]=useState(false);
+  const[pos,setPos]=useState(null);   // null = closed, else the popup's fixed placement
+  const btn=useRef(null),pop=useRef(null);
   const sel=Array.isArray(value)?value:[];
-  const toggle=id=>onChange(sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]);
   const chosen=opts.filter(o=>sel.includes(o[0]));
+  const text=chosen.map(o=>L(o[1],o[2])).join(', ');
+  const toggle=id=>onChange(sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]);
+  const openList=()=>{
+    const r=btn.current.getBoundingClientRect();
+    const w=Math.min(Math.max(r.width,300),window.innerWidth-16);
+    const left=Math.max(8,Math.min(r.left,window.innerWidth-w-8));
+    const below=window.innerHeight-r.bottom-8,above=r.top-8,want=opts.length*38+(legacy?44:0)+12;
+    setPos(below>=want||below>=above?{left,width:w,top:r.bottom+4,maxHeight:Math.max(140,below)}:{left,width:w,bottom:window.innerHeight-r.top+4,maxHeight:Math.max(140,above)});
+  };
+  useEffect(()=>{
+    if(!pos)return;
+    const close=()=>setPos(null);
+    const away=e=>{if(!(pop.current&&pop.current.contains(e.target))&&!(btn.current&&btn.current.contains(e.target)))close();};
+    const key=e=>{if(e.key==='Escape'){close();btn.current&&btn.current.focus();}};
+    const scroll=e=>{if(!(pop.current&&pop.current.contains(e.target)))close();};
+    document.addEventListener('mousedown',away);document.addEventListener('keydown',key);
+    window.addEventListener('scroll',scroll,true);window.addEventListener('resize',close);
+    return()=>{document.removeEventListener('mousedown',away);document.removeEventListener('keydown',key);
+      window.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',close);};
+  },[pos]);
   return(<div className="fmsp">
-    <button type="button" className={'fmsp-btn'+(open?' open':'')} aria-expanded={open} onClick={()=>setOpen(o=>!o)}>
-      <span>{chosen.length?`${chosen.length} ${L('problem seçildi','selected')}`:L('Problem seç…','Select problems…')}</span><i aria-hidden="true">▾</i>
+    <button type="button" ref={btn} className={'fmsp-btn'+(pos?' open':'')+(chosen.length?' has':'')} aria-haspopup="true" aria-expanded={!!pos}
+      title={text||undefined} onClick={()=>pos?setPos(null):openList()}>
+      <span>{text||L('Problem seç…','Select problems…')}</span><i aria-hidden="true">▾</i>
     </button>
-    {open
-      ?<div className="fmsp-list" role="group" aria-label={L('Tespit Edilen Problemler','Identified Problems')}>
+    {pos&&ReactDOM.createPortal(
+      <div className="fmsp-pop" ref={pop} style={pos} role="group" aria-label={L('Tespit Edilen Problemler','Identified Problems')}>
         {opts.map(o=>(<label key={o[0]}><input type="checkbox" checked={sel.includes(o[0])} onChange={()=>toggle(o[0])}/><span>{L(o[1],o[2])}</span></label>))}
-      </div>
-      :chosen.length>0&&<ul className="fmsp-chosen">{chosen.map(o=><li key={o[0]}>{L(o[1],o[2])}</li>)}</ul>}
-    {legacy&&<div className="fmsp-old">{L('Önceki yorum: ','Earlier comment: ')}{legacy}</div>}
+        {legacy&&<div className="fmsp-old">{L('Önceki yorum: ','Earlier comment: ')}{legacy}</div>}
+      </div>,document.body)}
   </div>);
 }
 function FmsSheetCard({test,ath,onUpdate}){
