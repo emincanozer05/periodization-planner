@@ -44,6 +44,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Wellness + Uyku ve HRV. Düz yüzey, gradyan yok |
 | `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
 | `19e-program-bank.css` | Program bankası: kayıtlı program seçici penceresi (`pbk-*`) ve Sporcu Profili → Antrenman Programları paneli; önizleme satırları 19d'nin `ph-*` biçimini kullanır |
+| `19f-wellness.css` | Wellness sekmesi (`wv-*`): Higgsfield görselli koyu başlık bandı (aurora, nabız çizgisi), halka göstergeler, sporcu kutuları, sporcunun ay takvimi ve gün ayrıntısı; az-hareket koruması |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -95,6 +96,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/422-injury-surveillance.jsx` | SAKATLIK SÜRVEYANSI — maruziyet, insidans/1000 sa, burden, şiddet, nüks; Yük Takibi altında ve sporcunun Sakatlıklar sekmesinde |
 | `app/425-athlete-wellness-hrv.jsx` | WELLNESS TAB — wellness kaydı, uyku, HRV izleme (CoachOS_HRV_Monitoring v1.0: ln RMSSD, 7/28 günlük pencereler, 3 seviyeli uyarı) |
 | `app/426-athlete-info-report.jsx` | BİLGİLERİ AL — sporcunun A4 dikey bilgi formu (Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil, Sakatlıklar) |
+| `app/428-wellness-view.jsx` | WELLNESS — kenar çubuğundaki sekme: takımın o günkü ortalaması, fotoğraflı sporcu kutuları ve altında günün değerleri, sporcuya tıklayınca ay takvimi + gün ayrıntısı + AthWellness; RHR Takibi paneli |
 | `app/430-staff-roster-backup.jsx` | STAFF — the other half of the roster · ATHLETES ROSTER · ROSTER NAME MATCHING · BACKUP |
 | `app/440-sync-infra-chunking-merge.jsx` | ROOT · CLOUD SYNC — Firestore parçalı, İÇERİK ADRESLİ (Storage YOK) · ÜÇ YÖNLÜ BİRLEŞTİRME (3-way merge) |
 | `app/450-use-cloud-sync.jsx` | — |
