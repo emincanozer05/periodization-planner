@@ -1,11 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    GÜVENLİK BAŞLIKLARI SINAMASI
 
-   Başlıklar iki yerde tanımlı: vercel.json (canlı site) ve _headers (Netlify
-   önizlemesi). Bu sınama üç şeyi denetliyor:
-     1) iki dosyadaki güvenlik başlıkları birebir aynı mı;
-     2) politikada olması gereken sert direktifler yerinde mi;
-     3) sayfaların yüklediği her <script>/<link rel=stylesheet> adresi politikanın izin
+   Başlıklar vercel.json'da (canlı site) tanımlı. Bu sınama iki şeyi denetliyor:
+     1) politikada olması gereken sert direktifler yerinde mi;
+     2) sayfaların yüklediği her <script>/<link rel=stylesheet> adresi politikanın izin
         listesinde mi — yeni bir CDN eklenip politika unutulursa burada kırmızı olur.
 
    Çalıştırma:  node headers-test.js
@@ -21,22 +19,13 @@ const vercel = {};
 for (const rule of JSON.parse(read('vercel.json')).headers)
   if (rule.source === '/(.*)') for (const h of rule.headers) vercel[h.key] = h.value;
 
-const netlify = {};
-for (const line of read('_headers').split('\n')) {
-  const m = /^\s+([A-Za-z-]+):\s*(.+)$/.exec(line);
-  if (m) netlify[m[1]] = m[2].trim();
-}
-
 let failed = 0;
 const test = (name, fn) => {
   try { fn(); console.log('  ok   ' + name); } catch (e) { failed++; console.error('  HATA ' + name + '\n       ' + e.message); }
 };
 
-test('vercel.json ve _headers aynı güvenlik başlıklarını taşıyor', () => {
-  for (const k of SEC) {
-    assert.ok(vercel[k], 'vercel.json\'da yok: ' + k);
-    assert.strictEqual(netlify[k], vercel[k], '_headers farklı: ' + k);
-  }
+test('vercel.json tüm güvenlik başlıklarını taşıyor', () => {
+  for (const k of SEC) assert.ok(vercel[k], 'vercel.json\'da yok: ' + k);
 });
 
 const csp = {};

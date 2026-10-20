@@ -76,7 +76,7 @@ function LoginPage({sync}){
     catch(e){
       const msgs={
         'auth/operation-not-allowed':L('Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.','Google sign-in is not enabled in the Firebase Console. Authentication → Sign-in method → Google → Enable.'),
-        'auth/unauthorized-domain':L('Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.','This domain is not authorized in Firebase. Add this site\'s address (e.g. ...netlify.app) to Authentication → Settings → Authorized domains.'),
+        'auth/unauthorized-domain':L('Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...vercel.app) ekle.','This domain is not authorized in Firebase. Add this site\'s address (e.g. ...vercel.app) to Authentication → Settings → Authorized domains.'),
         'auth/network-request-failed':L('İnternet bağlantısı hatası.','Network connection error.'),
         'auth/popup-blocked':L('Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.','The browser blocked the popup. Click the permission icon in the address bar.'),
       };
