@@ -443,8 +443,8 @@ function FmsPdfPanel({pdf,onChange}){
    comment against a movement. Final scores and the total are worked out as you go. The
    header is not typed: it is read off the athlete and the test (and the two
    measurements are carried forward from the last screen). */
-/* "Tespit Edilen Problemler" cell: a multi-select dropdown. The cell stays one line (what is
-   ticked, ellipsised); the list floats over the page from <body>, because the table sits in a
+/* "Tespit Edilen Problemler" cell: a multi-select dropdown. The button lists what is ticked and
+   grows to fit it (wrapping onto more lines); the list floats over the page from <body>, because the table sits in a
    scroller that would clip it and a list opened in place would stretch the row. */
 function FmsProblemPick({opts,value,onChange,legacy}){
   const[pos,setPos]=useState(null);   // null = closed, else the popup's fixed placement
@@ -453,13 +453,15 @@ function FmsProblemPick({opts,value,onChange,legacy}){
   const chosen=opts.filter(o=>sel.includes(o[0]));
   const text=chosen.map(o=>L(o[1],o[2])).join(', ');
   const toggle=id=>onChange(sel.includes(id)?sel.filter(x=>x!==id):[...sel,id]);
-  const openList=()=>{
+  const place=()=>{
     const r=btn.current.getBoundingClientRect();
     const w=Math.min(Math.max(r.width,300),window.innerWidth-16);
     const left=Math.max(8,Math.min(r.left,window.innerWidth-w-8));
     const below=window.innerHeight-r.bottom-8,above=r.top-8,want=opts.length*38+(legacy?44:0)+12;
-    setPos(below>=want||below>=above?{left,width:w,top:r.bottom+4,maxHeight:Math.max(140,below)}:{left,width:w,bottom:window.innerHeight-r.top+4,maxHeight:Math.max(140,above)});
+    return below>=want||below>=above?{left,width:w,top:r.bottom+4,maxHeight:Math.max(140,below)}:{left,width:w,bottom:window.innerHeight-r.top+4,maxHeight:Math.max(140,above)};
   };
+  // The button grows as problems are ticked, so an open list follows its bottom edge.
+  useLayoutEffect(()=>{if(pos)setPos(place());},[sel.length]);
   useEffect(()=>{
     if(!pos)return;
     const close=()=>setPos(null);
@@ -473,7 +475,7 @@ function FmsProblemPick({opts,value,onChange,legacy}){
   },[pos]);
   return(<div className="fmsp">
     <button type="button" ref={btn} className={'fmsp-btn'+(pos?' open':'')+(chosen.length?' has':'')} aria-haspopup="true" aria-expanded={!!pos}
-      title={text||undefined} onClick={()=>pos?setPos(null):openList()}>
+      onClick={()=>setPos(pos?null:place())}>
       <span>{text||L('Problem seç…','Select problems…')}</span><i aria-hidden="true">▾</i>
     </button>
     {pos&&ReactDOM.createPortal(
