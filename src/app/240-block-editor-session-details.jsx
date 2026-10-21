@@ -53,10 +53,14 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
-  const[dirs,setDirs]=useState([]);   // directions ticked (empty = no filter)
-  /* A different category on the row is a different list: what was ticked for the last one
-     does not carry over. */
-  useEffect(()=>{setCats([]);setDirs([]);},[cat]);
+  /* The row's own Tür and Yön (Split Squat, Geriye …) tick the picker's filters by themselves,
+     so a split-squat row lists split squats only, not every knee-dominant exercise. The coach
+     can still untick them inside the picker; a different category, type or direction on the
+     row starts the filters over from it. */
+  const rowType=cat&&tags&&mvTypes(cat).includes(tags.plane)?tags.plane:'';
+  const rowDir=cat&&tags&&mvDirs(cat).includes(tags.dir)?tags.dir:'';
+  const[dirs,setDirs]=useState(()=>rowDir?[rowDir]:[]);   // directions ticked (empty = no filter)
+  useEffect(()=>{setCats(rowType?[rowType]:[]);setDirs(rowDir?[rowDir]:[]);},[cat,rowType,rowDir]);
   const libAll=focus?getLibItems():[];
   /* The row's category narrows the library first, so nothing of another category is offered. */
   const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);

@@ -1,15 +1,14 @@
 /* =========================================================
    THE PATTERN TABLE — where a session is written
    =========================================================
-   One table, two homes: the calendar's block editor and the individualization brief. A row
-   of chips picks the movement patterns; every picked pattern is a row of the table: the
+   One table, two homes: the calendar's block editor and the individualization brief. "Egzersiz
+   Ekle" opens a row and its Kategori box files it; every category is a group of the table: the
    exercise (with its superset tag and an alternative under it), how many exercises of that
    pattern, then the prescription — sets, reps, time, tempo, RPE, load, rest — and a note.
 
    PlanTable draws it and knows nothing about where the rows live. A host (CalPlanGrid below
    for a calendar block, DiPatternPlan in the brief) hands in plain `groups` of `slots` and
    gets every edit back through `handlers`, addressed by the slot's own `key`:
-     onChip(id)               a pattern chip was pressed
      onCount(gid,n)           the "how many" stepper of a group
      onSlot(key,patch)        fields of one slot changed (name, link, sets, reps, duration,
                               tempo, rpe, load, rest, note, superset; the alternative's own
@@ -241,7 +240,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
 
-function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
+function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
   const ids=useMemo(()=>({tempo:`pt-tempo-${uid.current}`,rpe:`pt-rpe-${uid.current}`,load:`pt-load-${uid.current}`,rest:`pt-rest-${uid.current}`}),[]);
   const sug=ptSuggest();
@@ -267,19 +266,6 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
-    {chips.length>0&&<div className="pt-top">
-      <div className="pt-top-hd">
-        <span className="pt-chipl">{L('Kategori','Category')}</span>
-        {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-          <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
-      </div>
-      <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
-        {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
-          className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
-          style={c.color?{'--chip-c':c.color}:undefined}
-          onClick={()=>handlers.onChip(c.id)}><i className="pt-chip-dot" aria-hidden="true"/><span>{c.label}</span>{c.warn?<i className="pt-chip-w">!</i>:null}</button>)}
-      </div>
-    </div>}
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
         <datalist id={ids.tempo}>{sug.tempo.map(o=><option key={o} value={o}/>)}</datalist>
@@ -438,8 +424,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
-  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),color:ML_PIE_COLS[p],on:rows.some(r=>catOf(r.ex)===p)}));
-  const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(
     `${list.length} egzersiz silinecek. Devam edilsin mi?`,`${list.length} exercise${list.length>1?'s':''} will be deleted. Continue?`));
@@ -456,17 +440,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     return{...rest,pattern:v,plane,dir};
   };
   const handlers={
-    onChip:p=>{
-      const hit=rowsRef.current.filter(r=>catOf(r.ex)===p);
-      if(!hit.length){
-        /* A block opens with one blank row: the first category picked takes it over rather
-           than leaving it behind as an orphan above the real rows. */
-        const blank=rowsRef.current.find(r=>!r.ex.pattern&&!named(r.ex)&&!String(r.ex.description||'').trim());
-        if(blank){edit(blank.i,ex=>setPattern(ex,p));return;}
-        onAdd(phase,p,null);return;
-      }
-      if(confirmDrop(hit))onRemoveIdx(hit.map(r=>r.i));
-    },
     onCount:(gid,n)=>{
       const rs=rowsOfGroup(gid);if(!rs.length)return;
       const want=Math.max(1,Math.min(12,Math.round(n)||1));
@@ -539,7 +512,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
-    <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}
+    <PlanTable groups={groups} handlers={handlers}
       max={12} hasDetail detail={k=>{const ex=byI[k];
         return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange}/>:null;}}
       onAdd={loose?undefined:()=>onAdd(phase,'',null)} addLabel={L('Egzersiz Ekle','Add Exercise')}
