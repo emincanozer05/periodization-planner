@@ -6769,10 +6769,10 @@ html,body{overscroll-behavior-y:none}
 :root[data-theme="light"] .ln-logo{filter:invert(1) hue-rotate(180deg) saturate(1.4)}
 
 /* Bireyselleştirme talimatı: koyu zemin için açık renkli seçili yazılar açık zeminde okunmuyordu. */
-:root[data-theme="light"] .pt-chip.on{color:var(--low-t)}
+:root[data-theme="light"] .pt-chip.on{color:var(--text)}
 :root[data-theme="light"] .pt-altadd{color:var(--low-t)}
 :root[data-theme="light"] .pt-tag.on{color:var(--accent)}
-:root[data-theme="light"] .pt-chip i{color:var(--med-t)}
+:root[data-theme="light"] .pt-chip-w{color:var(--med-t)}
 :root[data-theme="light"] .di-numb.on{color:var(--med-t)}
 :root[data-theme="light"] .di-tag.prio{color:var(--peak-t)}
 :root[data-theme="light"] .di-tag.avoid{color:var(--high-t)}
@@ -8316,53 +8316,82 @@ main .panel,main .ap-head{animation:none}
   .lift-rm-r,.lift-rm-r:last-child{grid-template-columns:minmax(0,1fr) 80px auto}
   .lift-rm-r .help{display:none}
 }
+
+/* ═════════════ Takvim → Yük Dağılımı altı: RPE Scores düğmesi ve penceresi ═════════════ */
+.mld-foot{display:flex;justify-content:flex-end;margin-top:14px}
+.modal.rpes{max-width:760px;width:95vw}
+.rpes-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.rpes-b{padding:14px 20px 20px;overflow:auto}
+.rpes-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;border:1px dashed var(--border);border-radius:10px;margin-bottom:14px}
+.rpes-add input,.rpes-add select{width:auto;min-width:0;flex:0 1 auto}
+.rpes-add input[type=number]{width:84px}
+.rpes-t{width:100%;border-collapse:collapse;font-size:13px}
+.rpes-t th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+.rpes-t td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.rpes-t td.d,.rpes-t td.l{font-variant-numeric:tabular-nums;white-space:nowrap}
+.rpes-t td.l{color:var(--text);font-weight:700}
+.rpes-t input{width:72px;padding:4px 8px;font-weight:700;font-variant-numeric:tabular-nums}
+.rpes-t tr:hover td{background:var(--hover)}
+.rpes-k{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 6px;margin-right:4px;border:1px solid var(--border2)}
+.rpes-k.k-sc{color:#3b82f6}.rpes-k.k-tp{color:#f59e0b}.rpes-k.k-game{color:#ef4444}
+.rpes .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 /* ---- The pattern table ---------------------------------------------------
    Chips across the top pick the movement patterns; every picked pattern is a row of the
    grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
    time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
-   individualization brief (PlanTable). It is a full-width grid only where its eleven columns fit
-   (1260px of its own width and up); below that each exercise folds into a card — pattern, exercise
-   and note across the top, the dose boxes wrapping underneath — so it never scrolls sideways. */
+   individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
+   library) on the left, and on the right Kategori · Tür · Yön, the exercise, the dose boxes and
+   the alternative / note — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
-.pt-top{display:flex;align-items:center;gap:12px}
-/* "KATEGORİ" in front of the chips: the chips are the categories a row can be written under. */
-.pt-chipl{flex:none;align-self:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
+/* The category chips: a header line ("KATEGORİ" and how many are picked), then one even grid of
+   chips, each with its category's colour as a dot; a picked one fills with a tint of that colour. */
+.pt-top{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--elevated)}
+.pt-top-hd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pt-chipl{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
   letter-spacing:.11em;text-transform:uppercase;color:var(--muted,var(--dim))}
-.pt-chips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
-.pt-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:10px;padding:7px 15px;
-  font-size:13px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
-.pt-chip:hover{border-color:var(--accent);color:var(--text)}
-.pt-chip.on{border-color:rgba(45,212,167,.6);background:rgba(45,212,167,.12);color:#7ee7c7;font-weight:700}
+.pt-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;min-width:0}
+.pt-chip{--chip-c:var(--accent);position:relative;display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--border);
+  background:var(--panel);color:var(--text2);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:600;text-align:left;
+  cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+.pt-chip>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt-chip-dot{flex:none;width:9px;height:9px;border-radius:3px;background:var(--chip-c);opacity:.55;transition:opacity .15s}
+.pt-chip:hover{border-color:var(--chip-c);color:var(--text)}
+.pt-chip:hover .pt-chip-dot{opacity:1}
+.pt-chip.on{border-color:var(--chip-c);background:color-mix(in srgb,var(--chip-c) 14%,var(--panel));color:var(--text);font-weight:700}
+.pt-chip.on .pt-chip-dot{opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--chip-c) 25%,transparent)}
 .pt-chip.warn{border-style:dashed}
-.pt-chip i{font-style:normal;font-weight:800;color:#fbbf24;margin-left:6px}
+.pt-chip-w{flex:none;font-style:normal;font-weight:800;color:#fbbf24}
 .pt-chip:focus-visible,.pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pt-n{flex:none;font-size:12px;font-weight:600;color:var(--dim);padding:5px 13px;border-radius:999px;border:1px solid var(--border);
   white-space:nowrap}
 .pt-n b{font-weight:700}
 .pt-n.on{color:var(--text2);border-color:var(--border2)}
 .pt-n.on b{color:var(--text)}
-.pt-scroll{overflow-x:auto;padding-bottom:2px}
-.pt-grid{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
-.pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
-  grid-template-columns:minmax(170px,1fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
-.pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
-.pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
-.pt-grp+.pt-grp{border-top:1px solid var(--border)}
-.pt-tr+.pt-tr:not(.pt-sec){border-top:1px dashed var(--border)}
-/* The second and third line of an exercise: its alternative (with a dose of its own) and the
-   note, in the space beside them — they belong to the exercise above and have no rule between. */
-.pt-tr.pt-sec{padding-top:0;margin-top:-2px}
-.pt-sec .pt-note{grid-column:3/-1}
+.pt-scroll{min-width:0}
+.pt-grid{min-width:0;display:flex;flex-direction:column;gap:10px}
+.pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
+/* One exercise: the picture on the left, everything written about it on the right. */
+.pt-item{display:grid;grid-template-columns:128px minmax(0,1fr);gap:14px;padding:12px;align-items:start}
+.pt-item+.pt-item{border-top:1px dashed var(--border)}
+.pt-item:hover{background:rgba(255,255,255,.012)}
+.pt-img{position:relative;aspect-ratio:1/1;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 0 0 var(--pat-c)}
+.pt-img img{width:100%;height:100%;object-fit:cover;display:block}
+.pt-img.has{background:#fff}
+.pt-img-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim);text-align:center;padding:6px}
+.pt-img-ph em{font-style:normal;font-size:10.5px;font-weight:600;line-height:1.25}
+.pt-body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.pt-tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end}
+/* The second and third line of an exercise: its alternative (with a dose of its own) and the note. */
 .pt-sec.alt .pt-ex .pt-exname.alt .en{border-color:var(--border)}
-.pt-sec .pt-pat{min-height:0}
-.pt-tr:hover{background:rgba(255,255,255,.012)}
-.pt-cl{display:none}
+.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 /* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
    group's first row, then the row's own type and direction boxes. */
-.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:6px;min-height:36px;
-  color:var(--text)}
+.pt-pat{position:relative;grid-column:1/-1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+  gap:6px 8px;min-height:0;color:var(--text)}
+.pt-pat:empty{display:none}
 .pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
 .pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
@@ -8378,7 +8407,9 @@ main .panel,main .ap-head{animation:none}
 .pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:.55;transition:opacity .12s,background .12s,color .12s}
 .pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
-.pt-tdr{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pt-cat{flex:0 1 230px}
+.pt-tdr{flex:1 1 260px;display:flex;flex-direction:row;gap:8px;min-width:0}
+.pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
 .pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
@@ -8396,7 +8427,7 @@ main .panel,main .ap-head{animation:none}
 .pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
 .pt-x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:0;transition:opacity .12s,background .12s,color .12s;margin-left:auto}
-.pt-tr:hover .pt-x,.pt-x:focus-visible{opacity:1}
+.pt-item:hover .pt-x,.pt-x:focus-visible{opacity:1}
 .pt-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
 /* The exercise: tag and name are one joined box; the alternative sits under it. */
 .pt-exmain{display:flex;align-items:stretch;gap:0;min-width:0}
@@ -8476,45 +8507,32 @@ main .panel,main .ap-head{animation:none}
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-@container (max-width:1260px){
-  .pt-scroll{overflow:visible}
-  .pt-grid{background:none;border:0;border-radius:0;display:flex;flex-direction:column;gap:10px;overflow:visible}
-  .pt-th{display:none}
-  .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
-  .pt-grp+.pt-grp{border-top:1px solid var(--border)}
-  /* A folded row is kept short: pattern beside the exercise on one line, the dose boxes under
-     them, and the alternative button beside the note. Only the number boxes carry a caption —
-     the others say what they are in their own placeholder. */
-  .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
-  /* Kategori · Tür · Yön read as one line across the top of the exercise's card. */
-  .pt-pat{grid-column:1/-1}
-  .pt-ex{grid-column:1/-1}
-  .pt-pat:empty{display:none}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 8px;min-height:0}
-  .pt-cat{flex:0 1 240px}
-  .pt-tdr{flex:1 1 260px;flex-direction:row;gap:8px}
-  .pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
-  .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
-  /* The link box has no caption of its own, but keeps the room for one so it sits level with the
-     boxes beside it. */
-  .pt-link .pt-cl{visibility:hidden}
-  .pt-cnt{grid-column:span 1}
-  .pt-link{grid-column:span 3}
-  .pt-note,.pt-sec .pt-note{grid-column:span 9}
-  .pt-sec:not(.alt) .pt-ex{grid-column:span 3}
-  .pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
-  .pt-sec.note .pt-note{grid-column:1/-1}
-  .pt-sec .pt-pat{display:none}
-  .pt-tr.pt-sec{margin-top:0;padding-top:0}
-  .pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
-  .pt-x{opacity:.7}
-}
-@container (max-width:760px){
+/* Where each box sits on the 12-column line: the exercise across the card, then the count and
+   the seven dose boxes one column each and the link in the last four; under them the
+   alternative button beside the note. The link and the note say what they are in their own
+   placeholder, so only the number boxes carry a caption (the link keeps the room for one). */
+.pt-ex{grid-column:1/-1}
+.pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
+.pt-link .pt-cl{visibility:hidden}
+.pt-cnt{grid-column:span 1}
+.pt-link{grid-column:span 4}
+.pt-note,.pt-sec .pt-note{grid-column:span 9}
+.pt-sec:not(.alt) .pt-ex{grid-column:span 3}
+.pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
+.pt-sec.note .pt-note{grid-column:1/-1}
+.pt-sec .pt-pat,.pt-sec.note .pt-ex:empty{display:none}
+.pt-x{opacity:.7}
+@container (max-width:900px){
+  .pt-item{grid-template-columns:96px minmax(0,1fr);gap:12px}
   .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .pt-pat,.pt-ex,.pt-sec:not(.alt) .pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
-  .pt-link{grid-column:span 3}
+  .pt-link{grid-column:span 4}
+  .pt-sec:not(.alt) .pt-ex{grid-column:span 2}
+  .pt-note,.pt-sec .pt-note{grid-column:span 4}
+  .pt-sec.note .pt-note{grid-column:1/-1}
 }
-@container (max-width:480px){
+@container (max-width:560px){
+  .pt-item{grid-template-columns:1fr}
+  .pt-img{width:96px}
   .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
   .pt-link{grid-column:1/-1}
 }
@@ -9078,6 +9096,60 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
   .ev2-card:hover .ev2-card-av,.lm-mini .m:hover,.ev2-card:active,.ev2-tile:active,.ev2-foot .btn:active{transform:none!important}
   .ev2-cat:not(.on):hover{padding-left:revert}
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAKIM VERİLERİ (`td-*`) — Test ve Değerlendirme → "Takım Verileri" ekranı
+   Koyu, ışıklı bir başlık bandı (ızgara + yavaş parıltı) ve altında grafik kartları.
+   Grafik yüzeyleri düz panel; renk çizgide ve çubukta. Az-hareket korumalı.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes tdGlow{0%{transform:translate(-8%,0) scale(1)}50%{transform:translate(6%,-6%) scale(1.12)}100%{transform:translate(-8%,0) scale(1)}}
+@keyframes tdRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.td-wrap{display:flex;flex-direction:column;gap:16px;margin-top:6px}
+.td-hero{position:relative;overflow:hidden;border-radius:16px;padding:26px 26px 22px;color:#e6edf7;
+  background:#0a1222;border:1px solid rgba(56,189,248,.22);
+  background-image:linear-gradient(rgba(56,189,248,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.07) 1px,transparent 1px);
+  background-size:34px 34px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;
+  animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
+.td-hero-glow{position:absolute;inset:-40% -10% auto auto;width:70%;height:180%;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(56,189,248,.35),rgba(139,92,246,.18) 55%,transparent 75%);
+  filter:blur(10px);animation:tdGlow 14s ease-in-out infinite}
+.td-hero-tx,.td-kpis{position:relative}
+.td-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7dd3fc}
+.td-hero-t{font-size:24px;font-weight:800;line-height:1.2;margin-top:6px;max-width:520px;color:#fff}
+.td-kpis{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px}
+.td-kpi{background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.18);border-radius:12px;padding:12px 14px;
+  animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
+.td-kpi:nth-child(2){animation-delay:60ms}.td-kpi:nth-child(3){animation-delay:120ms}.td-kpi:nth-child(4){animation-delay:180ms}
+.td-kpi-v{font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1}
+.td-kpi-v.sm{font-size:15px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.td-kpi-v.up{color:#34d399}.td-kpi-v.dn{color:#f87171}
+.td-kpi-l{font-size:11.5px;color:#94a3b8;margin-top:4px}
+.td-chips{display:flex;flex-wrap:wrap;gap:6px}
+.td-chip{border:1px solid var(--border);background:var(--panel);color:var(--text2);border-radius:999px;padding:6px 12px;
+  font-size:12.5px;font-weight:600;cursor:pointer;transition:background var(--dur-2,.18s),border-color var(--dur-2,.18s),color var(--dur-2,.18s)}
+.td-chip:hover{border-color:var(--accent)}
+.td-chip.on{background:var(--accent);border-color:var(--accent);color:#06121f}
+.td-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.td-span2{grid-column:1/-1}
+.td-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;min-width:0;
+  animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
+.td-card:nth-child(2){animation-delay:80ms}.td-card:nth-child(3){animation-delay:140ms}
+.td-card-hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}
+.td-card-t{font-size:15px;font-weight:800;color:var(--text)}
+.td-card-s{font-size:12px;color:var(--muted)}
+.td-chart{position:relative;height:280px}
+.td-chart.tall{height:340px}
+.td-empty{padding:30px 10px;text-align:center;color:var(--muted);font-size:13px}
+.td-ath{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.td-ath-b{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;color:var(--text2);
+  border-radius:8px;padding:4px 9px;font-size:12px;cursor:pointer;transition:background var(--dur-2,.18s),border-color var(--dur-2,.18s)}
+.td-ath-b i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.td-ath-b:hover{background:var(--hover)}
+.td-ath-b.on{border-color:var(--accent);background:var(--hover);color:var(--text);font-weight:700}
+.td-cmp{border-top:1px solid var(--border);padding-top:12px}
+.td-cmp-tg{border:0;background:none;color:var(--text2);font-weight:700;font-size:14px;cursor:pointer;padding:4px 0}
+.td-cmp-tg:hover{color:var(--accent)}
+@media (max-width:900px){.td-grid{grid-template-columns:1fr}.td-kpis{grid-template-columns:repeat(2,1fr)}.td-hero-t{font-size:20px}}
+@media (prefers-reduced-motion:reduce){.td-hero-glow{animation:none}.td-hero,.td-kpi,.td-card{animation:none}}
 </style>
 </head>
 <body>
@@ -16856,6 +16928,21 @@ const MV_CATS=[
       ['Neck','Boyun','Neck'],['Scapula','Skapula','Scapula'],['Rotator Cuff','Rotator Cuff','Rotator Cuff'],
       ['Adductor','Adduktor','Adductor'],['Abductor','Abduktor','Abductor']],
     dirs:[]},
+  /* FMS — the screen's movement patterns, so a corrective drill is filed under the pattern it
+     works on (the SFMA's cervical / upper-extremity / multi-segmental patterns included). */
+  {k:'FMS',id:'fms',tr:'FMS',en:'FMS',color:'#d946ef',
+    types:[['Active Straight Leg Raise','Aktif Düz Bacak Kaldırma','Active Straight Leg Raise'],
+      ['Cervical Patterns','Servikal Paternler','Cervical Patterns'],['Deep Squat','Derin Squat','Deep Squat'],
+      ['Hurdle Step','Engel Adımı','Hurdle Step'],['Inline Lunge','Tek Hat Lunge','Inline Lunge'],
+      ['Multi-Segmental Extension','Çok Segmentli Ekstansiyon','Multi-Segmental Extension'],
+      ['Multi-Segmental Flexion','Çok Segmentli Fleksiyon','Multi-Segmental Flexion'],
+      ['Multi-Segmental Rotation','Çok Segmentli Rotasyon','Multi-Segmental Rotation'],
+      ['Rotary Stability','Rotasyonel Stabilite','Rotary Stability'],['Shoulder Mobility','Omuz Mobilitesi','Shoulder Mobility'],
+      ['Single Leg Stance','Tek Ayak Duruşu','Single Leg Stance'],
+      ['Trunk Stability Pushup','Gövde Stabilite Şınavı','Trunk Stability Pushup'],
+      ['Upper Extremity Patterns','Üst Ekstremite Paternleri','Upper Extremity Patterns']],
+    typeLab:['Patern','Pattern'],
+    dirs:[]},
 ];
 const MV_KEYS=MV_CATS.map(c=>c.k);
 const mvCat=k=>MV_CATS.find(c=>c.k===k)||null;
@@ -16912,6 +16999,11 @@ const MV_TYPE_WORDS={
     [/abduct|clam|band walk|monster walk|lateral walk/,'Abductor'],[/grip|wrist|forearm|plate pinch/,'Forearm / Grip'],
     [/curl|bicep|tricep|skull|pushdown|kickback/,'Arm'],[/raise|delt|shoulder|\bfly\b/,'Shoulder'],
     [/glute|hip (ext|abd|flex)|kick ?back|fire hydrant/,'Hip Isolation']],
+  'FMS':[[/straight[- ]?leg raise|\baslr\b|leg lower/,'Active Straight Leg Raise'],[/cervical|neck/,'Cervical Patterns'],
+    [/deep squat|overhead squat/,'Deep Squat'],[/hurdle/,'Hurdle Step'],[/in[- ]?line lunge/,'Inline Lunge'],
+    [/rotary|bird ?dog|quadruped/,'Rotary Stability'],[/trunk stability|push[- ]?up/,'Trunk Stability Pushup'],
+    [/shoulder mobility|reach/,'Shoulder Mobility'],[/single[- ]?leg stance|single[- ]?leg balance/,'Single Leg Stance'],
+    [/upper extremity/,'Upper Extremity Patterns']],
 };
 const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
   [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
@@ -17126,7 +17218,7 @@ const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
    with the category it trains (Kategori), its type (Tür) and, where the category has one,
-   its direction (Yön) — the eleven categories of the MOVEMENT TAXONOMY. */
+   its direction (Yön) — the twelve categories of the MOVEMENT TAXONOMY. */
 const EX_PATTERNS=MV_KEYS;
 /* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
    execution — is one of its category's own types (MOVEMENT TAXONOMY). */
@@ -17521,7 +17613,7 @@ function LoadDistBars({entries}){
       </div>);})}
   </div>);
 }
-function MuscleLoadDistribution({days,title,refDate}){
+function MuscleLoadDistribution({days,title,refDate,footer}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
   useEffect(()=>{if(refDate)setAnchor(refDate);},[refDate]);
@@ -17590,6 +17682,8 @@ function MuscleLoadDistribution({days,title,refDate}){
       <div className="mld-sub">{L('Kategori · tür — çubuk dönemin payını, renkler türleri gösterir; egzersizler her satırın altında','Category · type — the bar is the share of the period, the colours its types; the exercises are listed under each row')}</div>
       <LoadDistBars entries={entries}/>
       </>}
+    {/* What the owner puts under the bars, at the panel's bottom right (the athlete's RPE Scores). */}
+    {footer&&<div className="mld-foot">{footer}</div>}
   </div>);
 }
 
@@ -18700,6 +18794,19 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   </div>);
 }
 
+/* The exercises written in a session card, for its hover note: [{id,name,parts}], empty when
+   the card carries none. */
+function sesTipLines(s){
+  const out=[];
+  ((s&&s.blocks)||[]).forEach(b=>(b.exercises||[]).forEach((ex,i)=>{
+    const name=String(ex&&ex.name||'').trim();if(!name)return;
+    const cat=!ex.noPat&&MV_KEYS.includes(ex.pattern)?ex.pattern:'';
+    const ty=cat?mvTerm(cat,ex.plane):'';
+    const dose=[ex.sets&&ex.reps?`${ex.sets}×${ex.reps}`:(ex.sets?`${ex.sets} set`:''),ex.duration||''].filter(Boolean).join(' · ');
+    out.push({id:`${b.id||''}:${ex.id||i}`,name,parts:[cat?mvCatLabel(cat)+(ty?` — ${ty}`:''):'',dose].filter(Boolean)});
+  }));
+  return out;
+}
 function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
@@ -18720,11 +18827,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // the moment it is copied — from this calendar or from another athlete's.
   const sesClip=useSessionClipboard();
   const[copied,setCopied]=useState(false);
-  /* A session card's hover note, when the owner of the calendar has one to give: sesTip(dateKey)
-     returns [{id,name,parts}] — drawn in a small box beside the card, outside the scrolling grid. */
+  /* A session card's hover note, on calendars that ask for one (`sesTip`): what is written IN
+     that card — its exercises, each with its category and dose — drawn in a small box beside
+     the card, outside the scrolling grid. A card with no exercise written (a match, a team
+     practice) shows nothing. */
   const[tipBox,setTipBox]=useState(null);
-  const showTip=(ev,k)=>{
-    const lines=sesTip?sesTip(k):null;
+  const showTip=(ev,s)=>{
+    const lines=sesTip?sesTipLines(s):null;
     if(!lines||!lines.length){setTipBox(null);return;}
     const r=ev.currentTarget.getBoundingClientRect();
     const half=150,vw=window.innerWidth||0;
@@ -19187,7 +19296,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     <div className="calw-grid">
       {tipBox&&ReactDOM.createPortal(
         <div className="calw-pat-tip" style={{left:tipBox.x,top:tipBox.y}}>
-          <div className="h">{L('Hareket paterni','Movement pattern')}</div>
+          <div className="h">{L('Egzersizler','Exercises')}</div>
           {tipBox.lines.map(l=><div key={l.id} className="r"><b>{l.name}</b>{l.parts.length>0&&<span>{l.parts.join(' · ')}</span>}</div>)}
         </div>,document.body)}
       {dayCells.map((d,i)=>{
@@ -19263,7 +19372,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               style={s.color?{'--sc':cardCol(s.color)}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
-              onMouseEnter={sesTip?(ev=>showTip(ev,k)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
+              onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
@@ -20646,6 +20755,21 @@ function PtCat({value,color,options,onChange,label}){
       title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
   </span>);
 }
+/* The exercise's picture, on the left of its card: the one the library carries for that name
+   (its cover, else the video's thumbnail), else the one put on the row itself. */
+function PtImg({name,image}){
+  const hit=exLibHit(name);
+  const pic=(hit&&hit.image)||image||'';
+  const[bad,setBad]=useState(false);
+  useEffect(()=>{setBad(false);},[pic]);
+  return(<div className={'pt-img'+(pic&&!bad?' has':'')}>
+    {pic&&!bad
+      ?<img src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={()=>setBad(true)}/>
+      :<span className="pt-img-ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
+        <em>{String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em></span>}
+  </div>);
+}
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
   /* `typeOpts` is a fresh array on every draw of the host; it counts as the same when it holds the same. */
@@ -20688,7 +20812,9 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
     <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
       placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>;
-  return(<>
+  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+    <PtImg name={slot.name} image={slot.image}/>
+    <div className="pt-body">
     <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
       <div className="pt-pat" role="rowheader">
         {/* A category covers its whole group and is set on its first row; an uncategorised row is
@@ -20758,7 +20884,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     {showAlt&&<div className="pt-tr pt-sec note" role="row" style={style}>
       <div className="pt-pat" role="rowheader"/><div className="pt-td pt-ex" role="cell"/>{noteBox}
     </div>}
-  </>);
+    </div>
+  </div>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
@@ -20789,27 +20916,25 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
-    <div className="pt-top">
-      <span className="pt-chipl">{L('Kategori','Category')}</span>
+    {chips.length>0&&<div className="pt-top">
+      <div className="pt-top-hd">
+        <span className="pt-chipl">{L('Kategori','Category')}</span>
+        {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
+          <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
+      </div>
       <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
         {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
           className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
-          onClick={()=>handlers.onChip(c.id)}>{c.label}{c.warn?<i>!</i>:null}</button>)}
+          style={c.color?{'--chip-c':c.color}:undefined}
+          onClick={()=>handlers.onChip(c.id)}><i className="pt-chip-dot" aria-hidden="true"/><span>{c.label}</span>{c.warn?<i className="pt-chip-w">!</i>:null}</button>)}
       </div>
-      {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
-    </div>
+    </div>}
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
         <datalist id={ids.tempo}>{sug.tempo.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rpe}>{sug.rpe.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
-        <div className="pt-tr pt-th" role="row">
-          {[L('Kategori · Tür · Yön','Category · Type · Direction'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
-            L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),'Link']
-            .map((h,i)=><span key={i} role="columnheader">{h}</span>)}
-        </div>
         {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
           {g.slots.map((s,ix)=><React.Fragment key={s.key}>
             <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
@@ -20954,7 +21079,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       const a=alt||{};
       const ty=run.pat?mvNormType(run.pat,ex.plane,ex.name):'';
       return{key:r.i,tag:tg.replace(/\.$/,''),tagVal:String(ex.superset||'').toUpperCase(),
-        name:ex.name||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
+        name:ex.name||'',image:ex.image||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
@@ -20962,7 +21087,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
-  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
+  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),color:ML_PIE_COLS[p],on:rows.some(r=>catOf(r.ex)===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(
@@ -25485,7 +25610,6 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
       <div className="tcard-col">
         <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
         <MkTeamAvg id={id} value={test[id]} athletes={athletes} athId={athId}/>
-        {id==='squatJump'&&<FvVerticalInput test={test} onUpdate={onUpdate} ath={(athletes||[]).find(a=>a.id===athId)}/>}
         <MkObs value={obsVal} onChange={setObs}/>
       </div>
     </div>);
@@ -26472,30 +26596,8 @@ const fvWhyText=(why)=>({
   fit:L('Model bu zamanlara uymuyor: zamanları kontrol et.','The model does not fit these times: check the splits.'),
 }[why]||'');
 
-/* ---- Test kartı içi: dikey profil girişi + sonuç ---- */
-function FvVerticalInput({test,onUpdate,ath}){
-  const rows=test.sjLoaded||[];
-  const mass=fvBodyMass(test,ath);
-  const res=useMemo(()=>fvVertical(mass,test.sjHpo,fvVerticalPoints(test)),[mass,test.sjHpo,test.squatJump,test.sjLoaded]);
-  const setRow=(i,k,v)=>onUpdate({sjLoaded:rows.map((r,j)=>j===i?{...r,[k]:v}:r)});
-  return(<div className="fv-box">
-    <div className="fv-h">{L('F-V profili (yüklü sıçrama)','F-V profile (loaded jump)')}</div>
-    <div className="help" style={{marginBottom:8}}>{L('Yukarıdaki kutu 0 kg (vücut ağırlığı) noktasıdır. Ek yükle yapılan sıçramaları ekle.','The box above is the 0 kg (bodyweight) point. Add jumps made with extra load.')}</div>
-    <div className="fv-grid">
-      {rows.map((r,i)=><div key={i} className="fv-row">
-        <MkInput value={r.load} onChange={v=>setRow(i,'load',v)} unit="kg" step="1"/>
-        <MkInput value={r.h} onChange={v=>setRow(i,'h',v)} unit="cm"/>
-        <button type="button" className="btn xs danger" onClick={()=>onUpdate({sjLoaded:rows.filter((_,j)=>j!==i)})} aria-label={L('Satırı sil','Delete row')}>✕</button>
-      </div>)}
-    </div>
-    <div className="row" style={{gap:8,alignItems:'flex-end',flexWrap:'wrap',marginTop:6}}>
-      <button type="button" className="btn xs sec" onClick={()=>onUpdate({sjLoaded:[...rows,{load:'',h:''}]})}>+ {L('Yüklü sıçrama','Loaded jump')}</button>
-      <div className="mk-field" style={{margin:0}}><div className="mk-flbl">{L('İtiş mesafesi (hpo)','Push-off distance (hpo)')}</div><MkInput value={test.sjHpo} onChange={v=>onUpdate({sjHpo:v})} unit="cm" step="0.5"/></div>
-      <div className="help">{L('Vücut ağırlığı','Body mass')}: {mass?`${mass} kg`:'—'}</div>
-    </div>
-    <FvVerticalResult res={res}/>
-  </div>);
-}
+/* ---- Dikey profilin sonucu (Atletik Profil özeti). Squat Jump kartındaki yüklü sıçrama girişi
+   kaldırıldı; daha önce girilmiş `sjLoaded` / `sjHpo` verisi olan kayıtlar burada okunmaya devam eder. ---- */
 function FvVerticalResult({res}){
   if(!res.ok){
     /* Henüz veri girilmemişken uyarı gösterme; sadece neden eksik olduğunu sakin söyle. */
@@ -26564,6 +26666,170 @@ function FvSummaryCard({ath}){
         <div className="ath-stat"><div className="k">τ</div><div className="v">{s.tau.toFixed(2)}<span className="u">s</span></div></div>
       </div>
     </div>}
+  </div>);
+}
+/* =========================================================
+   TAKIM VERİLERİ — Test ve Değerlendirme'deki "Takım Verileri" düğmesinin açtığı ekran
+   ---------------------------------------------------------
+   Sporcuların test kayıtlarından gelişimi okur: bir metrik seçilir (CMP_METRICS'in yönü
+   olanları + FMS toplamı), ekranda üç grafik ve özet kutuları çıkar:
+     1) Gelişim eğrisi — ay ay takım ortalaması (dolgulu kalın çizgi) ve her sporcunun
+        ince çizgisi; seçilen sporcu öne çıkar.
+     2) Gelişim sıralaması — her sporcunun ilk ve son testi arasındaki % değişim; yön
+        düzeltilmiş (sprint süresinin düşmesi gelişmedir), yeşil iyi, kırmızı geri.
+     3) Gelişim haritası — her metrikte iki testi olan sporculardan gelişenlerin oranı.
+   Altında eski "Sporcuları Karşılaştır" tablosu (CompareAthletes) aynen durur. */
+const TD_FMS={id:'fmsTotal',g:'mob',tr:'FMS Toplam',en:'FMS Total',u:'/21',dir:'hi',st:'FMS',se:'FMS',
+  get:t=>{const f=fmsCalc(t.fms);return f.n?f.total:null;}};
+const TD_COLORS=['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444','#84cc16','#f97316','#14b8a6',
+  '#a855f7','#eab308','#0ea5e9','#22c55e','#e11d48','#6366f1','#d946ef','#64748b'];
+const tdVal=(m,t)=>{try{const v=m.get(t);return v==null||!isFinite(v)?null:v;}catch(e){return null;}};
+/* Bir sporcunun bu metrikteki tarihli değerleri, eskiden yeniye. */
+function tdSeries(ath,m){
+  return(ath.tests||[]).filter(t=>t.date).map(t=>({d:t.date,v:tdVal(m,t)})).filter(x=>x.v!=null)
+    .sort((a,b)=>a.d.localeCompare(b.d));
+}
+/* İlk → son % değişim, yön düzeltilmiş: pozitif her zaman gelişme. */
+function tdGain(s,dir){
+  if(s.length<2)return null;
+  const a=s[0].v,b=s[s.length-1].v;
+  if(!a)return null;
+  const pct=(b-a)/Math.abs(a)*100;
+  return+(dir==='lo'?-pct:pct).toFixed(1);
+}
+function TeamData({athletes,setup,customTests,Lx}){
+  const metrics=useMemo(()=>[TD_FMS,...CMP_METRICS.filter(m=>m.dir&&m.g!=='anthro')]
+    .filter(m=>athletes.some(a=>tdSeries(a,m).length)),[athletes]);
+  const[mid,setMid]=useState(null);
+  const[focus,setFocus]=useState(null);
+  const[showCmp,setShowCmp]=useState(false);
+  /* Varsayılan metrik: en çok sporcunun iki ölçümü olan. */
+  const best=useMemo(()=>{
+    let top=null,n=-1;
+    metrics.forEach(m=>{const k=athletes.filter(a=>tdSeries(a,m).length>1).length;if(k>n){n=k;top=m;}});
+    return top;},[metrics,athletes]);
+  const m=metrics.find(x=>x.id===mid)||best;
+  const colorOf=useMemo(()=>{const map={};[...athletes].sort(byAthleteName).forEach((a,i)=>{map[a.id]=TD_COLORS[i%TD_COLORS.length];});
+    return id=>map[id]||'#94a3b8';},[athletes]);
+
+  const view=useMemo(()=>{
+    if(!m)return null;
+    const rows=athletes.map(a=>({a,s:tdSeries(a,m)})).filter(r=>r.s.length);
+    const months=[...new Set(rows.flatMap(r=>r.s.map(x=>x.d.slice(0,7))))].sort();
+    // Bir sporcunun o aydaki değeri: o ayın son testi.
+    const at=(r,mo)=>{const h=r.s.filter(x=>x.d.slice(0,7)===mo);return h.length?h[h.length-1].v:null;};
+    const avg=months.map(mo=>{const v=rows.map(r=>at(r,mo)).filter(x=>x!=null);
+      return v.length?+(v.reduce((s,x)=>s+x,0)/v.length).toFixed(2):null;});
+    const gains=rows.map(r=>({a:r.a,g:tdGain(r.s,m.dir),first:r.s[0],last:r.s[r.s.length-1]}))
+      .filter(x=>x.g!=null).sort((x,y)=>y.g-x.g);
+    return{rows,months,at,avg,gains};
+  },[athletes,m]);
+
+  /* Her metrikte gelişen sporcuların oranı (en az iki ölçümü olanlar arasında). */
+  const radar=useMemo(()=>metrics.map(x=>{
+    const gs=athletes.map(a=>tdGain(tdSeries(a,x),x.dir)).filter(g=>g!=null);
+    return{m:x,n:gs.length,pct:gs.length?Math.round(gs.filter(g=>g>0).length/gs.length*100):null};
+  }).filter(r=>r.n>0),[metrics,athletes]);
+
+  const totalTests=athletes.reduce((s,a)=>s+(a.tests||[]).filter(t=>t.date).length,0);
+  const multi=athletes.filter(a=>(a.tests||[]).filter(t=>t.date).length>1).length;
+  const unit=m&&m.u?` ${m.u}`:'';
+  const monLbl=mo=>{const[y,mm]=mo.split('-');return`${MN[Number(mm)-1]} ${y.slice(2)}`;};
+  const avgGain=view&&view.gains.length?+(view.gains.reduce((s,x)=>s+x.g,0)/view.gains.length).toFixed(1):null;
+  const top=view&&view.gains[0];
+  const sign=v=>v==null?'—':`${v>0?'+':''}${v}%`;
+
+  const theme=useAppTheme();
+  const grid='rgba(255,255,255,.07)',tick='rgba(255,255,255,.55)';
+  // datalabels are drawn as given in both themes (ChartC leaves them alone), so they pick their own colour.
+  const dlC=theme==='light'?'#334155':'rgba(255,255,255,.8)';
+  const lineData=view&&{labels:view.months.map(monLbl),datasets:[
+    {label:Lx('Takım ortalaması','Team average'),data:view.avg,borderColor:'#38bdf8',borderWidth:3.5,pointRadius:4,
+      pointBackgroundColor:'#38bdf8',pointBorderColor:'#0b1220',pointBorderWidth:2,tension:.35,spanGaps:true,fill:true,
+      backgroundColor:vGrad('rgba(56,189,248,.32)','rgba(56,189,248,0)'),order:0},
+    ...view.rows.map(r=>{const on=focus===r.a.id,dim=focus&&!on;const c=colorOf(r.a.id);
+      return{label:r.a.name||'—',data:view.months.map(mo=>view.at(r,mo)),borderColor:dim?c+'26':(on?c:c+'8c'),
+        borderWidth:on?3:1.4,pointRadius:on?4:2,pointBackgroundColor:c,tension:.3,spanGaps:true,fill:false,order:on?-1:1};})]};
+  const lineOpts={responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+    animation:{duration:900,easing:'easeOutQuart'},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y}${unit}`}}},
+    scales:{x:{grid:{color:grid},ticks:{color:tick}},
+      y:{reverse:false,grid:{color:grid},ticks:{color:tick},title:{display:true,text:`${cmpLabel(m||TD_FMS)}${unit}`,color:tick}}}};
+  const barData=view&&{labels:view.gains.map(x=>x.a.name||'—'),datasets:[{data:view.gains.map(x=>x.g),
+    backgroundColor:view.gains.map(x=>x.a.id===focus?(x.g>=0?'#34d399':'#f87171'):(x.g>=0?'rgba(52,211,153,.55)':'rgba(248,113,113,.55)')),
+    borderColor:view.gains.map(x=>x.g>=0?'#34d399':'#f87171'),borderWidth:1,borderRadius:6,barThickness:16}]};
+  const barOpts={indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:900,easing:'easeOutQuart'},
+    onClick:(e,els)=>{if(els&&els[0]&&view){const a=view.gains[els[0].index].a;setFocus(f=>f===a.id?null:a.id);}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const x=view.gains[c.dataIndex];
+      return`${sign(x.g)} · ${cmpFmt(x.first.v)} → ${cmpFmt(x.last.v)}${unit}`;}}},
+      datalabels:{display:true,anchor:'end',align:c=>c.dataset.data[c.dataIndex]>=0?'right':'left',color:dlC,
+        font:{weight:'700',size:11},formatter:v=>sign(v)}},
+    layout:{padding:{right:46,left:8}},
+    scales:{x:{grid:{color:grid},ticks:{color:tick,callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:'rgba(255,255,255,.8)'}}}};
+  const radarData={labels:radar.map(r=>cmpShort(r.m)),datasets:[{label:Lx('Gelişen sporcu oranı','Share improving'),
+    data:radar.map(r=>r.pct),backgroundColor:'rgba(167,139,250,.25)',borderColor:'#a78bfa',borderWidth:2,
+    pointBackgroundColor:radar.map(r=>m&&r.m.id===m.id?'#f472b6':'#a78bfa'),pointRadius:radar.map(r=>m&&r.m.id===m.id?6:3)}]};
+  const radarOpts={responsive:true,maintainAspectRatio:false,animation:{duration:900},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const r=radar[c.dataIndex];return`%${r.pct} · ${r.n} ${Lx('sporcu','athletes')}`;}}}},
+    scales:{r:{min:0,max:100,angleLines:{color:grid},grid:{color:grid},pointLabels:{color:'rgba(255,255,255,.75)',font:{size:11}},
+      ticks:{display:false,stepSize:25}}}};
+
+  return(<div className="td-wrap">
+    <div className="td-hero">
+      <div className="td-hero-glow" aria-hidden="true"/>
+      <div className="td-hero-tx">
+        <div className="td-eyebrow">{Lx('Takım Verileri','Team Data')} · {setup.teamName}</div>
+        <div className="td-hero-t">{Lx('Sporcuların gelişimi, test test','How the squad is developing, test by test')}</div>
+      </div>
+      <div className="td-kpis">
+        <div className="td-kpi"><div className="td-kpi-v">{totalTests}</div><div className="td-kpi-l">{Lx('Test kaydı','Test records')}</div></div>
+        <div className="td-kpi"><div className="td-kpi-v">{multi}</div><div className="td-kpi-l">{Lx('2+ testi olan sporcu','Athletes with 2+ tests')}</div></div>
+        <div className="td-kpi"><div className={'td-kpi-v'+(avgGain>0?' up':avgGain<0?' dn':'')}>{sign(avgGain)}</div><div className="td-kpi-l">{Lx('Ort. gelişim','Avg. change')}{m?` · ${cmpShort(m)}`:''}</div></div>
+        <div className="td-kpi"><div className="td-kpi-v sm">{top&&top.g>0?top.a.name:'—'}</div><div className="td-kpi-l">{Lx('En çok gelişen','Most improved')}{top&&top.g>0?` · ${sign(top.g)}`:''}</div></div>
+      </div>
+    </div>
+
+    {metrics.length===0&&<div className="empty-st">{Lx('Grafik için tarihli test sonucu yok. Bir sporcuya test girince burada görünür.','No dated test results to chart yet. They show here once tests are entered.')}</div>}
+
+    {m&&view&&<>
+      <div className="td-chips">
+        {metrics.map(x=><button key={x.id} type="button" className={'td-chip'+(x.id===m.id?' on':'')} onClick={()=>setMid(x.id)}>
+          {cmpLabel(x)}</button>)}
+      </div>
+
+      <div className="td-grid">
+        <div className="td-card td-span2">
+          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim eğrisi','Development curve')}</span>
+            <span className="td-card-s">{cmpLabel(m)}{unit} · {m.dir==='lo'?Lx('düşük daha iyi','lower is better'):Lx('yüksek daha iyi','higher is better')}</span></div>
+          <div className="td-chart tall">{view.months.length>0&&<ChartC type="line" chartData={lineData} options={lineOpts}/>}</div>
+          <div className="td-ath">
+            {view.rows.map(r=><button key={r.a.id} type="button" className={'td-ath-b'+(focus===r.a.id?' on':'')}
+              onClick={()=>setFocus(f=>f===r.a.id?null:r.a.id)}>
+              <i style={{background:colorOf(r.a.id)}}/>{r.a.name||'—'}</button>)}
+          </div>
+        </div>
+        <div className="td-card">
+          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim sıralaması','Improvement ranking')}</span>
+            <span className="td-card-s">{Lx('ilk → son test','first → latest test')}</span></div>
+          {view.gains.length===0
+            ?<div className="td-empty">{Lx('Bu metrikte iki testi olan sporcu yok.','No athlete has two tests in this metric.')}</div>
+            :<div className="td-chart" style={{height:Math.max(220,view.gains.length*30+40)}}><ChartC type="bar" chartData={barData} options={barOpts}/></div>}
+        </div>
+        <div className="td-card">
+          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim haritası','Development map')}</span>
+            <span className="td-card-s">{Lx('her metrikte gelişen sporcuların oranı','share of athletes improving per metric')}</span></div>
+          {radar.length<3
+            ?<div className="td-empty">{Lx('Harita için en az üç metrikte iki test gerekir.','The map needs two tests in at least three metrics.')}</div>
+            :<div className="td-chart" style={{height:320}}><ChartC type="radar" chartData={radarData} options={radarOpts}/></div>}
+        </div>
+      </div>
+    </>}
+
+    <div className="td-cmp">
+      <button type="button" className="td-cmp-tg" onClick={()=>setShowCmp(v=>!v)}>
+        {showCmp?'▾':'▸'} {Lx('Sporcuları karşılaştır (tablo)','Compare athletes (table)')}</button>
+      {showCmp&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
+    </div>
   </div>);
 }
 /* =========================================================
@@ -27245,15 +27511,15 @@ function EvaluationView({team,updateTeam,data,setData}){
               {v:athletes.length,l:Lx('Sporcu','Athletes')},
               {v:totalTests,l:Lx('Tamamlanan Test','Tests Recorded')}]}>
       {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
-        {compare?Lx('Testlere dön','Back to tests'):Lx('Sporcuları Karşılaştır','Compare Athletes')}
+        {compare?Lx('Testlere dön','Back to tests'):Lx('Takım Verileri','Team Data')}
       </button>}
     </PageHero>
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Kadro sekmesinden ekle.','No athletes yet — add them in the Roster tab.')}</div>}
 
-    {/* The comparison is a mode, not a panel: it reads the whole roster at once, so
-        it takes the screen while it is open and gives it back when it is closed. */}
-    {compare&&athletes.length>0&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
+    {/* Takım Verileri is a mode, not a panel: it reads the whole roster at once (development
+        charts, and the comparison table under them), so it takes the screen while it is open. */}
+    {compare&&athletes.length>0&&<TeamData athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
 
     {!compare&&athletes.length>0&&<>
     {/* ---- filter bar: position, search, order, and how the roster is drawn ---- */}
@@ -29753,6 +30019,7 @@ const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
+  const[rpeOpen,setRpeOpen]=useState(false);
   /* Open at the top. The page scrolls as one, so without this the profile kept the
      scroll of the list it was opened from and hid its own header and tabs. The roster
      remounts this per athlete (key), so it runs once per athlete opened. */
@@ -29883,8 +30150,95 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises} ownerAth={ath}/>
-    <AthPrograms ath={ath} updAth={updAth}/>
-    <MuscleLoadDistribution days={ath.days||{}} refDate={athSel.date}/></>}
+    <MuscleLoadDistribution days={ath.days||{}} refDate={athSel.date}
+      footer={<button type="button" className="btn sm white" onClick={()=>setRpeOpen(true)}>RPE Scores</button>}/>
+    {rpeOpen&&<AthRpeScores ath={ath} updAth={updAth} onClose={()=>setRpeOpen(false)}/>}</>}
+  </div>);
+}
+
+/* ---- RPE Scores: every RPE the athlete has given, newest first, editable ----
+   One row per score on the athlete's sRPE log (`srpeLog`): an entry from a check-in can carry
+   a ball-practice, an S&C and a match score at once, and each is its own row. Changing the
+   score or the minutes rewrites that slot's load and the entry's total; deleting the last
+   score of an entry drops the entry — one that came from a form is remembered as deleted
+   (`deletedSrpeSrcIds`) so the next sync does not bring it back. */
+const RPE_SLOT_LAB={tp:['Top Antrenmanı','Ball Practice'],sc:['S&C','S&C'],game:['Maç','Match']};
+function AthRpeScores({ath,updAth,onClose}){
+  const log=ath.srpeLog||[];
+  const has=v=>v!==''&&v!=null&&!isNaN(Number(v));
+  const rows=[];
+  log.forEach(e=>Object.keys(SRPE_KINDS).forEach(k=>{const[rk,du]=SRPE_KINDS[k];
+    if(has(e[rk]))rows.push({e,k,rpe:Number(e[rk]),dur:Number(e[du])||0});}));
+  rows.sort((a,b)=>String(b.e.date||'').localeCompare(String(a.e.date||''))||a.k.localeCompare(b.k));
+  const sesName=(e,k)=>{const s=(((ath.days||{})[e.date]||{}).sessions||[]).find(x=>x.id===e.sessionId);
+    return s&&s.name?s.name:'';};
+  const total=e=>Object.keys(SRPE_KINDS).reduce((t,k)=>{const[rk,du]=SRPE_KINDS[k];
+    return t+(has(e[rk])?Math.round(Number(e[rk])*(Number(e[du])||0)):0);},0);
+  const setSlot=(id,k,patch)=>{
+    const[rk,du]=SRPE_KINDS[k];
+    updAth(ath.id,{srpeLog:log.map(e=>{if(e.id!==id)return e;
+      const n={...e};
+      if('rpe' in patch)n[rk]=patch.rpe===''?'':Math.max(0,Math.min(10,Number(patch.rpe)));
+      if('dur' in patch)n[du]=patch.dur===''?'':Math.max(0,Number(patch.dur));
+      n[k+'Load']=has(n[rk])&&Number(n[du])?Math.round(Number(n[rk])*Number(n[du])):'';
+      n.totalLoad=total(n)||'';
+      return n;})});
+  };
+  const delSlot=(id,k)=>{
+    if(!confirm(L('Bu RPE puanı silinsin mi?','Delete this RPE score?')))return;
+    const[rk,du]=SRPE_KINDS[k];
+    const e0=log.find(e=>e.id===id);if(!e0)return;
+    const n={...e0,[rk]:'',[du]:'',[k+'Load']:''};n.totalLoad=total(n)||'';
+    const empty=!Object.values(SRPE_KINDS).some(([r])=>has(n[r]));
+    const patch={srpeLog:empty?log.filter(e=>e.id!==id):log.map(e=>e.id===id?n:e)};
+    if(empty&&e0.srcId)patch.deletedSrpeSrcIds=[...(ath.deletedSrpeSrcIds||[]),e0.srcId];
+    updAth(ath.id,patch);
+  };
+  const[nd,setNd]=useState({date:fmt(today),k:'sc',rpe:'',dur:''});
+  const add=()=>{
+    if(!has(nd.rpe)||nd.rpe===''){alert(L('RPE puanını yaz (0–10).','Enter the RPE score (0–10).'));return;}
+    const rpe=Math.max(0,Math.min(10,Number(nd.rpe))),dur=Number(nd.dur)||0,load=dur?Math.round(rpe*dur):'';
+    const e={id:uid(),srcId:null,sessionId:null,date:nd.date,tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',
+      gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
+    e[nd.k+'RPE']=rpe;e[nd.k+'Duration']=dur||'';e[nd.k+'Load']=load;
+    updAth(ath.id,{srpeLog:[...log,e]});
+    setNd(x=>({...x,rpe:'',dur:''}));
+  };
+  const avg=rows.length?rows.reduce((t,r)=>t+r.rpe,0)/rows.length:null;
+  return(<div className="modal-bg" onClick={onClose}>
+    <div className="modal rpes" onClick={e=>e.stopPropagation()}>
+      <div className="modal-head">
+        <div><h2 style={{margin:0,fontSize:18}}>RPE Scores — {ath.name}</h2>
+          <div className="rpes-sub">{rows.length} {L('puan','scores')}{avg!=null?` · ${L('ortalama','average')} ${avg.toFixed(1)}`:''}</div></div>
+        <button className="x-btn" onClick={onClose}>✕</button>
+      </div>
+      <div className="rpes-b">
+        <div className="rpes-add">
+          <input type="date" value={nd.date} onChange={e=>setNd(x=>({...x,date:e.target.value}))}/>
+          <select value={nd.k} onChange={e=>setNd(x=>({...x,k:e.target.value}))}>
+            {Object.keys(RPE_SLOT_LAB).map(k=><option key={k} value={k}>{L(RPE_SLOT_LAB[k][0],RPE_SLOT_LAB[k][1])}</option>)}
+          </select>
+          <input type="number" min="0" max="10" step="0.5" placeholder="RPE" value={nd.rpe} onChange={e=>setNd(x=>({...x,rpe:e.target.value}))}/>
+          <input type="number" min="0" placeholder={L('dk','min')} value={nd.dur} onChange={e=>setNd(x=>({...x,dur:e.target.value}))}/>
+          <button type="button" className="btn sm" onClick={add}>＋ {L('Ekle','Add')}</button>
+        </div>
+        {rows.length===0
+          ?<div className="empty-st">{L('Bu sporcunun henüz RPE puanı yok.','This athlete has no RPE scores yet.')}</div>
+          :<table className="rpes-t">
+            <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Seans','Session')}</th><th>RPE</th><th>{L('Süre (dk)','Minutes')}</th><th>{L('Yük','Load')}</th><th/></tr></thead>
+            <tbody>{rows.map(r=>{const d=r.e.date?parseD(r.e.date):null;
+              return(<tr key={r.e.id+r.k}>
+                <td className="d">{d?`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`:'—'}</td>
+                <td><span className={'rpes-k k-'+r.k}>{L(RPE_SLOT_LAB[r.k][0],RPE_SLOT_LAB[r.k][1])}</span> {sesName(r.e,r.k)}</td>
+                <td><input type="number" min="0" max="10" step="0.5" value={r.e[SRPE_KINDS[r.k][0]]}
+                  style={{color:rpeColor(r.rpe)||undefined}} onChange={e=>setSlot(r.e.id,r.k,{rpe:e.target.value})}/></td>
+                <td><input type="number" min="0" value={r.e[SRPE_KINDS[r.k][1]]??''} onChange={e=>setSlot(r.e.id,r.k,{dur:e.target.value})}/></td>
+                <td className="l">{r.dur?`${Math.round(r.rpe*r.dur)} AU`:'—'}</td>
+                <td><button type="button" className="x-btn" title={L('Sil','Delete')} onClick={()=>delSlot(r.e.id,r.k)}>✕</button></td>
+              </tr>);})}</tbody>
+          </table>}
+      </div>
+    </div>
   </div>);
 }
 
@@ -34715,7 +35069,7 @@ function PrivacyLink({className,children}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-/* The library's shelves are the eleven categories of the MOVEMENT TAXONOMY (185): the same
+/* The library's shelves are the twelve categories of the MOVEMENT TAXONOMY (185): the same
    Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
    shelf an older version had (Mobility, Stability …) keeps its value and is listed under
    "Kategorisiz" until it is given one of these. */
@@ -34801,7 +35155,7 @@ const EX_TERM_TR={
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
-  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Return to Performance':'Performansa Dönüş',
+  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Pattern':'Patern','Return to Performance':'Performansa Dönüş',
   'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
   'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
@@ -36726,7 +37080,7 @@ function ProgramHistory({team,updateTeam}){
    değilse (takım takvimi, Hafta/Gün planı) hangi sporcunun programı olduğunu seçtirir. Okunan liste
    `registerProgramBank` ile uygulamanın tepesinden verilir (kütüphane listesiyle aynı yol:
    setLibItems); yazma da aynı yoldan, `_pbWrite` ile, sporcunun güncel hâline uygulanır.
-   Profil paneli (`AthPrograms`) sporcunun Takvim sekmesinde, takvimin hemen altında durur. */
+   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur. */
 let _pbTeams=[];
 let _pbWrite=null;
 function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
@@ -36849,11 +37203,6 @@ function pbToSession(row){
 const pbBlankBlock=b=>!String(b.name||'').trim()&&!(b.exercises||[]).some(e=>pbNamed(e)||String(e.sets||e.reps||e.duration||'').trim())&&!((b.athletes||[]).length);
 /* Seansın boş, ilk açılan bloğu yapıştırılan programın yerini alır; dolu bloklar yerinde kalır. */
 const pbAppendBlocks=(blocks,row)=>[...(blocks||[]).filter(b=>!pbBlankBlock(b)),...pbFreshBlocks(row.blocks)];
-/* Sporcunun takvimine: seçilen güne yeni seans. */
-function pbDaysWith(days,date,row){
-  const d=(days||{})[date]||EDAY(date);
-  return{...(days||{}),[date]:{...d,date,sessions:[...(d.sessions||[]),pbToSession(row)]}};
-}
 
 /* Bireyselleştirme'nin Antrenman tablosuna: bloklar satırlara çevrilir. Kategorisi olan egzersiz kendi
    kategorisinin satırına, olmayan "Kategorisiz"e düşer; bölümler (Hazırlık / Ana / Soğuma ve koçun
@@ -36991,88 +37340,6 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
       title={title||L('Önceden yazılmış bir programı bul ve yapıştır','Find a programme written before and paste it')}>📋 {label||L('Kayıtlı program','Saved programme')}</button>
     {open&&<ProgramPicker athId={athId} onClose={()=>setOpen(false)} onPick={onPick}/>}
   </>);
-}
-
-/* Sporcu detayı → Takvim sekmesi → Antrenman Programları: bu sporcunun kayıtlı programları ve takvimde yazdıkları. */
-function AthPrograms({ath,updAth}){
-  const[q,setQ]=useState('');
-  const[src,setSrc]=useState('saved');
-  const[open,setOpen]=useState(null);
-  const[limit,setLimit]=useState(20);
-  const[dayFor,setDayFor]=useState(null);
-  const[day,setDay]=useState(fmt(today));
-  const[msg,setMsg]=useState('');
-  const flash=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
-  const rows=useMemo(()=>pbRowsOf(ath,''),[ath.programs,ath.days]);
-  const nSaved=rows.filter(r=>r.kind==='saved').length,nDay=rows.length-nSaved;
-  const shown=useMemo(()=>pbFilter(rows,{q,ath:'',src}),[rows,q,src]);
-  const saveRow=r=>{
-    const nm=prompt(L('Programın adı','Programme name'),r.name||'');
-    if(nm==null)return;
-    if(pbHasSame(ath.programs,r.blocks)){flash(L('Bu program zaten kayıtlı.','This programme is already saved.'));return;}
-    const p=pbMakeProgram(nm,r.blocks,{date:r.date,session:r.name});
-    if(!p)return;
-    updAth(ath.id,a=>({programs:[p,...(a.programs||[])]}));
-    flash(L(`"${p.name}" profile kaydedildi.`,`"${p.name}" saved to the profile.`));
-    setSrc('saved');
-  };
-  const rename=r=>{
-    const nm=prompt(L('Programın adı','Programme name'),r.name);
-    if(nm==null||!nm.trim())return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,name:nm.trim(),from:p.from?{...p.from,auto:false}:p.from}:p)}));
-  };
-  const note=r=>{
-    const n=prompt(L('Not (örn. hangi dönem, kime iyi geldi)','Note (e.g. which period, what it suited)'),r.note||'');
-    if(n==null)return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,note:n.trim()}:p)}));
-  };
-  const del=r=>{
-    if(!confirm(L('Bu kayıtlı program silinsin mi? Takvimdeki seanslar etkilenmez.','Delete this saved programme? Sessions on the calendar are not affected.')))return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).filter(p=>p.id!==r.id)}));setOpen(null);
-  };
-  const toDay=r=>{
-    if(!day)return;
-    updAth(ath.id,a=>({days:pbDaysWith(a.days,day,r)}));
-    setDayFor(null);
-    flash(L(`${fd(day)} tarihine seans olarak eklendi.`,`Added to ${fd(day)} as a session.`));
-  };
-  return(<div className="panel pbk-panel">
-    <div className="pbk-head">
-      <h2>{L('Antrenman Programları','Training Programmes')}</h2>
-      <span className="help">{L('Sporcunun takviminde yazdığın her seans buraya kendiliğinden kaydedilir (aynı içerik bir kez). Takvimde, Hafta/Gün planında ve Bireyselleştirme\'de "Kayıtlı program" düğmesiyle yapıştırılır.',
-        'Every session you write on this athlete\'s calendar is kept here automatically (identical content once). Paste them from the "Saved programme" button on the calendar, the Week/Day plan and Individualization.')}</span>
-    </div>
-    <div className="row" style={{gap:6,flexWrap:'wrap',marginBottom:10}}>
-      <button type="button" className={'btn sm'+(src==='saved'?'':' sec')} onClick={()=>{setSrc('saved');setLimit(20);}}>{L('Kayıtlı','Saved')} ({nSaved})</button>
-      <button type="button" className={'btn sm'+(src==='day'?'':' sec')} onClick={()=>{setSrc('day');setLimit(20);}}>{L('Takvimde yazılanlar','Written on calendar')} ({nDay})</button>
-      <input type="search" className="pbk-q" placeholder={L('Ara: egzersiz, program adı, tarih…','Search: exercise, programme, date…')} value={q}
-        onChange={e=>{setQ(e.target.value);setLimit(20);}} aria-label={L('Ara','Search')}/>
-    </div>
-    {msg&&<div className="iv-toast" style={{marginBottom:10}}>{msg}</div>}
-    {shown.length===0&&<div className="ex-empty">{rows.length===0
-      ?L('Henüz program yok. Sporcunun takvimine bir antrenman yaz; burada kendiliğinden görünür.','No programmes yet. Write a training session on the athlete\'s calendar; it appears here by itself.')
-      :src==='saved'&&!q&&nSaved===0
-        ?L('Kayıtlı program yok. Bundan sonra takvimde yazdığın seanslar kendiliğinden buraya girer; eskilerden birini "Takvimde yazılanlar"dan "Profile kaydet" ile alabilirsin.','No saved programmes yet. Sessions you write on the calendar from now on land here by themselves; keep an older one from "Written on calendar" with "Save to profile".')
-        :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
-    {shown.slice(0,limit).map(r=><div key={r.key}>
-      <PbRow r={r} open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
-        {r.kind==='day'&&<button type="button" className="btn xs" onClick={()=>saveRow(r)}>{L('Profile kaydet','Save to profile')}</button>}
-        <button type="button" className="btn xs sec" onClick={()=>{setDayFor(dayFor===r.key?null:r.key);setDay(fmt(today));}}>{L('Takvime ekle…','Add to calendar…')}</button>
-        {r.kind==='saved'&&<>
-          <button type="button" className="btn xs sec" onClick={()=>rename(r)}>{L('Adlandır','Rename')}</button>
-          <button type="button" className="btn xs sec" onClick={()=>note(r)}>{L('Not','Note')}</button>
-          <button type="button" className="btn xs sec iv-rmb" onClick={()=>del(r)}>✕</button>
-        </>}
-      </PbRow>
-      {dayFor===r.key&&<div className="pbk-day">
-        <label>{L('Hangi güne eklensin?','Which day?')}</label>
-        <input type="date" value={day} onChange={e=>setDay(e.target.value)}/>
-        <button type="button" className="btn sm" disabled={!day} onClick={()=>toDay(r)}>{L('Ekle','Add')}</button>
-        <span className="help">{L('Seçilen günün planına yeni bir seans olarak girer; orada düzenlenir.','It enters that day\'s plan as a new session, where it is edited.')}</span>
-      </div>}
-    </div>)}
-    {shown.length>limit&&<button type="button" className="btn sm sec" onClick={()=>setLimit(n=>n+20)}>{L(`Daha göster (${shown.length-limit})`,`Show more (${shown.length-limit})`)}</button>}
-  </div>);
 }
 const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Advanced'};
 
@@ -40596,13 +40863,13 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-/* The coach's patterns are the eleven categories of the MOVEMENT TAXONOMY — the same chips,
+/* The coach's patterns are the twelve categories of the MOVEMENT TAXONOMY — the same chips,
    the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
    category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
    throws and full-body lifts have no movement_pattern of their own: they are matched on their
    coach_pattern tag only, and picking one opens no pain-closed pattern. */
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
-  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
   {k:'type',label:mvTypeLab(c.k),opts:c.types},
   ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
@@ -40712,35 +40979,6 @@ function diMoveVocab(pick){
   const lower=row.id==='knee_dominant'||row.id==='hip_dominant';
   const fast=(pick.goal||[]).some(g=>g==='power'||g==='reactive');
   return lower&&fast?[...row.vocab,'Jump / Plyo']:[...row.vocab];
-}
-const diMoveLabel=id=>{const r=diMoveRow(id);return r?L(r.label[0],r.label[1]):String(id||'');};
-/* The values of one facet of a pick, as words. */
-function diMoveFacetText(pick,facet){
-  const byId=new Map(facet.opts.map(op=>[op[0],op]));
-  return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
-}
-/* The coach's pattern picks for one athlete and day, one line per exercise asked for — "Diz
-   dominant: Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the
-   form lists them, then the extra filters); a pattern asked for twice is numbered "Diz dominant 1", "… 2". The calendar shows it on hover; a day with no pick has no lines. When the day
-   has been briefed from more than one source session, the most recently saved brief is read. */
-function diPatternTipLines(team,athId,dateKey){
-  const store=(team&&team.indiv&&team.indiv.ai)||{};
-  let best=null;
-  Object.keys(store).forEach(k=>{
-    const bits=k.split('|');
-    if(bits[0]!==dateKey||bits.slice(2).join('|')!==athId)return;
-    const rec=store[k];
-    if(!rec||!rec.instr||!Array.isArray(rec.instr.patterns)||!rec.instr.patterns.length)return;
-    if(!best||String(rec.updated_at||'')>String(best.updated_at||''))best=rec;
-  });
-  if(!best)return[];
-  const picks=diMovePatterns(best.instr.patterns);
-  return picks.map((p,i)=>{
-    const row=diMoveRow(p.id);
-    const same=picks.filter(x=>x.id===p.id);
-    return{id:`${p.id}:${i}`,name:(row?diMoveLabel(p.id):L('Patern yok','No pattern'))+(same.length>1?` ${same.indexOf(p)+1}`:''),
-      parts:[...(p.exercise?[p.exercise]:[]),...(row?[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f)):[])]};
-  });
 }
 /* The phases the coach opened on the movement-pattern table — each a section of the session
    with a name of its own. Items name theirs by id. */
@@ -42054,7 +42292,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
-    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
+    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),color:(mvCat(row.k)||{}).color,
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     /* What a library exercise says about the row it lands on: its category, type and direction.
        `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
@@ -42202,7 +42440,7 @@ function DiInstructionForm({instr,save,onBuild,closed,athId}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
-        <div className="di-fhd"><i className="di-num">3</i>
+        <div className="di-fhd">
           <label>{L('Antrenman tablosu','Training table')}</label>
           <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
             title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
@@ -42822,7 +43060,7 @@ function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date,show
      it survives the calendar being hidden and shown again. */
   return<>{showCal&&<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
     weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
-    coachAthlete={ath} ownerAth={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>}
+    coachAthlete={ath} ownerAth={ath} sesTip/>}
     {showLoad&&<MuscleLoadDistribution days={ath.days||{}} refDate={sel.date}/>}</>;
 }
 

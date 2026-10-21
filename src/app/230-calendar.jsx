@@ -141,6 +141,19 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   </div>);
 }
 
+/* The exercises written in a session card, for its hover note: [{id,name,parts}], empty when
+   the card carries none. */
+function sesTipLines(s){
+  const out=[];
+  ((s&&s.blocks)||[]).forEach(b=>(b.exercises||[]).forEach((ex,i)=>{
+    const name=String(ex&&ex.name||'').trim();if(!name)return;
+    const cat=!ex.noPat&&MV_KEYS.includes(ex.pattern)?ex.pattern:'';
+    const ty=cat?mvTerm(cat,ex.plane):'';
+    const dose=[ex.sets&&ex.reps?`${ex.sets}×${ex.reps}`:(ex.sets?`${ex.sets} set`:''),ex.duration||''].filter(Boolean).join(' · ');
+    out.push({id:`${b.id||''}:${ex.id||i}`,name,parts:[cat?mvCatLabel(cat)+(ty?` — ${ty}`:''):'',dose].filter(Boolean)});
+  }));
+  return out;
+}
 function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
@@ -161,11 +174,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // the moment it is copied — from this calendar or from another athlete's.
   const sesClip=useSessionClipboard();
   const[copied,setCopied]=useState(false);
-  /* A session card's hover note, when the owner of the calendar has one to give: sesTip(dateKey)
-     returns [{id,name,parts}] — drawn in a small box beside the card, outside the scrolling grid. */
+  /* A session card's hover note, on calendars that ask for one (`sesTip`): what is written IN
+     that card — its exercises, each with its category and dose — drawn in a small box beside
+     the card, outside the scrolling grid. A card with no exercise written (a match, a team
+     practice) shows nothing. */
   const[tipBox,setTipBox]=useState(null);
-  const showTip=(ev,k)=>{
-    const lines=sesTip?sesTip(k):null;
+  const showTip=(ev,s)=>{
+    const lines=sesTip?sesTipLines(s):null;
     if(!lines||!lines.length){setTipBox(null);return;}
     const r=ev.currentTarget.getBoundingClientRect();
     const half=150,vw=window.innerWidth||0;
@@ -628,7 +643,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     <div className="calw-grid">
       {tipBox&&ReactDOM.createPortal(
         <div className="calw-pat-tip" style={{left:tipBox.x,top:tipBox.y}}>
-          <div className="h">{L('Hareket paterni','Movement pattern')}</div>
+          <div className="h">{L('Egzersizler','Exercises')}</div>
           {tipBox.lines.map(l=><div key={l.id} className="r"><b>{l.name}</b>{l.parts.length>0&&<span>{l.parts.join(' · ')}</span>}</div>)}
         </div>,document.body)}
       {dayCells.map((d,i)=>{
@@ -704,7 +719,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               style={s.color?{'--sc':cardCol(s.color)}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
-              onMouseEnter={sesTip?(ev=>showTip(ev,k)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
+              onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>

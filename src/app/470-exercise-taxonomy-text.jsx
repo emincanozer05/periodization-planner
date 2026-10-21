@@ -1,7 +1,7 @@
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-/* The library's shelves are the eleven categories of the MOVEMENT TAXONOMY (185): the same
+/* The library's shelves are the twelve categories of the MOVEMENT TAXONOMY (185): the same
    Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
    shelf an older version had (Mobility, Stability …) keeps its value and is listed under
    "Kategorisiz" until it is given one of these. */
@@ -87,7 +87,7 @@ const EX_TERM_TR={
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
-  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Return to Performance':'Performansa Dönüş',
+  'Type':'Tür','Plane':'Düzlem','Stance':'Duruş','Pattern':'Patern','Return to Performance':'Performansa Dönüş',
   'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
   'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',

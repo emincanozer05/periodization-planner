@@ -252,13 +252,13 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-/* The coach's patterns are the eleven categories of the MOVEMENT TAXONOMY — the same chips,
+/* The coach's patterns are the twelve categories of the MOVEMENT TAXONOMY — the same chips,
    the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
    category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
    throws and full-body lifts have no movement_pattern of their own: they are matched on their
    coach_pattern tag only, and picking one opens no pain-closed pattern. */
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
-  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
   {k:'type',label:mvTypeLab(c.k),opts:c.types},
   ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
@@ -368,35 +368,6 @@ function diMoveVocab(pick){
   const lower=row.id==='knee_dominant'||row.id==='hip_dominant';
   const fast=(pick.goal||[]).some(g=>g==='power'||g==='reactive');
   return lower&&fast?[...row.vocab,'Jump / Plyo']:[...row.vocab];
-}
-const diMoveLabel=id=>{const r=diMoveRow(id);return r?L(r.label[0],r.label[1]):String(id||'');};
-/* The values of one facet of a pick, as words. */
-function diMoveFacetText(pick,facet){
-  const byId=new Map(facet.opts.map(op=>[op[0],op]));
-  return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
-}
-/* The coach's pattern picks for one athlete and day, one line per exercise asked for — "Diz
-   dominant: Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the
-   form lists them, then the extra filters); a pattern asked for twice is numbered "Diz dominant 1", "… 2". The calendar shows it on hover; a day with no pick has no lines. When the day
-   has been briefed from more than one source session, the most recently saved brief is read. */
-function diPatternTipLines(team,athId,dateKey){
-  const store=(team&&team.indiv&&team.indiv.ai)||{};
-  let best=null;
-  Object.keys(store).forEach(k=>{
-    const bits=k.split('|');
-    if(bits[0]!==dateKey||bits.slice(2).join('|')!==athId)return;
-    const rec=store[k];
-    if(!rec||!rec.instr||!Array.isArray(rec.instr.patterns)||!rec.instr.patterns.length)return;
-    if(!best||String(rec.updated_at||'')>String(best.updated_at||''))best=rec;
-  });
-  if(!best)return[];
-  const picks=diMovePatterns(best.instr.patterns);
-  return picks.map((p,i)=>{
-    const row=diMoveRow(p.id);
-    const same=picks.filter(x=>x.id===p.id);
-    return{id:`${p.id}:${i}`,name:(row?diMoveLabel(p.id):L('Patern yok','No pattern'))+(same.length>1?` ${same.indexOf(p)+1}`:''),
-      parts:[...(p.exercise?[p.exercise]:[]),...(row?[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f)):[])]};
-  });
 }
 /* The phases the coach opened on the movement-pattern table — each a section of the session
    with a name of its own. Items name theirs by id. */

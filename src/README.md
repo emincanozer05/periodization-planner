@@ -42,10 +42,11 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19-profile-tests-load.css` | Sporcu Profili (Joint by Joint, Atletik Profil), Test ve Değerlendirme ve Sporcu Yük Panosu: düz/opak yüzeyler (gradyan ve yarı saydam katman yok), renk yalnızca küçük işaretlerde, seçim ve gelişte kısa hareketler. `:is(:root,:root[data-theme])` öneki açık temanın otomatik kurallarını aynı özgüllükte geçer |
 | `19b-notebook.css` | "Açık Defter" tasarımı, son stil katmanı: açık tema renkleri (varsayılan), masaüstü üst çubuğu + yalnız menüden oluşan kenar çubuğu, kutusuz sayfa başlığı, tek ana/ikincil düğme stili, tek panelli takvim haftası. Cam ve gradyan yok |
 | `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Uyku ve HRV. Düz yüzey, gradyan yok |
-| `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
+| `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): renk noktalı kategori çipleri ızgarası, her egzersiz bir kart — solda kütüphaneden gelen görsel, sağda Kategori · Tür · Yön, egzersiz, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, link, alternatif ve not |
 | `19e-program-bank.css` | Program bankası: kayıtlı program seçici penceresi (`pbk-*`) ve Sporcu Profili → Antrenman Programları paneli; önizleme satırları 19d'nin `ph-*` biçimini kullanır |
 | `19f-wellness.css` | Wellness sekmesi (`wv-*`): sade koyu başlık bandı (yavaş ışıklar, silik nokta deseni), halka göstergeler, sporcu kutuları, sporcunun ay takvimi ve gün ayrıntısı; az-hareket koruması |
 | `19g-motion-tabs.css` | Joint by Joint, Test ve Değerlendirme ve Yük Takibi: düz tonlu rozetler, seçim vurguları, kategori/metrik renk şeritleri, eklem değerlendirme çubuğu ve yumuşak geçişler: sekme/bölüm gelişi, seçimde renk-kenar geçişi, monotoni işaretinin kayması, Higgsfield ile netleştirilmiş manken görselinin sabit oranı; az-hareket koruması |
+| `19h-team-data.css` | Takım Verileri (`td-*`): koyu ışıklı başlık bandı, özet kutuları, metrik çipleri, gelişim grafik kartları; az-hareket korumalı |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -84,6 +85,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/320-testing-session.jsx` | TESTING SESSION — every test renders its own purpose-built, |
 | `app/330-test-progression-compare.jsx` | TEST PROGRESSION CHARTS · COMPARE ATHLETES — the printout. Landscape A4, and the same table the screen |
 | `app/335-fv-profile.jsx` | KUVVET-HIZ (F-V) PROFİLİ — Samozino dikey (yüklü SJ + hpo) ve sprint (ara zamanlar); Squat Jump / Sprint kartı içi girdi, Atletik Profil özeti |
+| `app/337-team-data.jsx` | TAKIM VERİLERİ — Test ve Değerlendirme → "Takım Verileri": takımın gelişim eğrisi, sporcuların ilk→son test gelişim sıralaması, metrik başına gelişim haritası; altında karşılaştırma tablosu |
 | `app/340-evaluation-tryouts.jsx` | TESTING & ASSESSMENT — dedicated section · TRYOUTS (Seçmeler) — the pool of players who are not on the |
 | `app/350-athlete-detail-snapshot.jsx` | ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests) · ATHLETE SNAPSHOT — compact text summary of an athlete's body |
 | `app/360-program-design-assistant.jsx` | PROGRAM DESIGN ASSISTANT — analyses the athlete's profile |

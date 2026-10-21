@@ -677,15 +677,15 @@ function EvaluationView({team,updateTeam,data,setData}){
               {v:athletes.length,l:Lx('Sporcu','Athletes')},
               {v:totalTests,l:Lx('Tamamlanan Test','Tests Recorded')}]}>
       {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
-        {compare?Lx('Testlere dön','Back to tests'):Lx('Sporcuları Karşılaştır','Compare Athletes')}
+        {compare?Lx('Testlere dön','Back to tests'):Lx('Takım Verileri','Team Data')}
       </button>}
     </PageHero>
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Kadro sekmesinden ekle.','No athletes yet — add them in the Roster tab.')}</div>}
 
-    {/* The comparison is a mode, not a panel: it reads the whole roster at once, so
-        it takes the screen while it is open and gives it back when it is closed. */}
-    {compare&&athletes.length>0&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
+    {/* Takım Verileri is a mode, not a panel: it reads the whole roster at once (development
+        charts, and the comparison table under them), so it takes the screen while it is open. */}
+    {compare&&athletes.length>0&&<TeamData athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
 
     {!compare&&athletes.length>0&&<>
     {/* ---- filter bar: position, search, order, and how the roster is drawn ---- */}

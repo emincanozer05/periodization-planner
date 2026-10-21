@@ -125,7 +125,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
-    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
+    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),color:(mvCat(row.k)||{}).color,
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     /* What a library exercise says about the row it lands on: its category, type and direction.
        `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
@@ -273,7 +273,7 @@ function DiInstructionForm({instr,save,onBuild,closed,athId}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
-        <div className="di-fhd"><i className="di-num">3</i>
+        <div className="di-fhd">
           <label>{L('Antrenman tablosu','Training table')}</label>
           <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
             title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>

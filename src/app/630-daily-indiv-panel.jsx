@@ -361,7 +361,7 @@ function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date,show
      it survives the calendar being hidden and shown again. */
   return<>{showCal&&<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
     weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
-    coachAthlete={ath} ownerAth={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>}
+    coachAthlete={ath} ownerAth={ath} sesTip/>}
     {showLoad&&<MuscleLoadDistribution days={ath.days||{}} refDate={sel.date}/>}</>;
 }
 
