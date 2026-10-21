@@ -79,6 +79,21 @@ const MV_CATS=[
       ['Neck','Boyun','Neck'],['Scapula','Skapula','Scapula'],['Rotator Cuff','Rotator Cuff','Rotator Cuff'],
       ['Adductor','Adduktor','Adductor'],['Abductor','Abduktor','Abductor']],
     dirs:[]},
+  /* FMS — the screen's movement patterns, so a corrective drill is filed under the pattern it
+     works on (the SFMA's cervical / upper-extremity / multi-segmental patterns included). */
+  {k:'FMS',id:'fms',tr:'FMS',en:'FMS',color:'#d946ef',
+    types:[['Active Straight Leg Raise','Aktif Düz Bacak Kaldırma','Active Straight Leg Raise'],
+      ['Cervical Patterns','Servikal Paternler','Cervical Patterns'],['Deep Squat','Derin Squat','Deep Squat'],
+      ['Hurdle Step','Engel Adımı','Hurdle Step'],['Inline Lunge','Tek Hat Lunge','Inline Lunge'],
+      ['Multi-Segmental Extension','Çok Segmentli Ekstansiyon','Multi-Segmental Extension'],
+      ['Multi-Segmental Flexion','Çok Segmentli Fleksiyon','Multi-Segmental Flexion'],
+      ['Multi-Segmental Rotation','Çok Segmentli Rotasyon','Multi-Segmental Rotation'],
+      ['Rotary Stability','Rotasyonel Stabilite','Rotary Stability'],['Shoulder Mobility','Omuz Mobilitesi','Shoulder Mobility'],
+      ['Single Leg Stance','Tek Ayak Duruşu','Single Leg Stance'],
+      ['Trunk Stability Pushup','Gövde Stabilite Şınavı','Trunk Stability Pushup'],
+      ['Upper Extremity Patterns','Üst Ekstremite Paternleri','Upper Extremity Patterns']],
+    typeLab:['Patern','Pattern'],
+    dirs:[]},
 ];
 const MV_KEYS=MV_CATS.map(c=>c.k);
 const mvCat=k=>MV_CATS.find(c=>c.k===k)||null;
@@ -135,6 +150,11 @@ const MV_TYPE_WORDS={
     [/abduct|clam|band walk|monster walk|lateral walk/,'Abductor'],[/grip|wrist|forearm|plate pinch/,'Forearm / Grip'],
     [/curl|bicep|tricep|skull|pushdown|kickback/,'Arm'],[/raise|delt|shoulder|\bfly\b/,'Shoulder'],
     [/glute|hip (ext|abd|flex)|kick ?back|fire hydrant/,'Hip Isolation']],
+  'FMS':[[/straight[- ]?leg raise|\baslr\b|leg lower/,'Active Straight Leg Raise'],[/cervical|neck/,'Cervical Patterns'],
+    [/deep squat|overhead squat/,'Deep Squat'],[/hurdle/,'Hurdle Step'],[/in[- ]?line lunge/,'Inline Lunge'],
+    [/rotary|bird ?dog|quadruped/,'Rotary Stability'],[/trunk stability|push[- ]?up/,'Trunk Stability Pushup'],
+    [/shoulder mobility|reach/,'Shoulder Mobility'],[/single[- ]?leg stance|single[- ]?leg balance/,'Single Leg Stance'],
+    [/upper extremity/,'Upper Extremity Patterns']],
 };
 const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
   [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],

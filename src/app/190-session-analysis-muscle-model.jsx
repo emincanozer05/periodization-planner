@@ -92,7 +92,7 @@ const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
    with the category it trains (Kategori), its type (Tür) and, where the category has one,
-   its direction (Yön) — the eleven categories of the MOVEMENT TAXONOMY. */
+   its direction (Yön) — the twelve categories of the MOVEMENT TAXONOMY. */
 const EX_PATTERNS=MV_KEYS;
 /* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
    execution — is one of its category's own types (MOVEMENT TAXONOMY). */
@@ -487,7 +487,7 @@ function LoadDistBars({entries}){
       </div>);})}
   </div>);
 }
-function MuscleLoadDistribution({days,title,refDate}){
+function MuscleLoadDistribution({days,title,refDate,footer}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
   useEffect(()=>{if(refDate)setAnchor(refDate);},[refDate]);
@@ -556,6 +556,8 @@ function MuscleLoadDistribution({days,title,refDate}){
       <div className="mld-sub">{L('Kategori · tür — çubuk dönemin payını, renkler türleri gösterir; egzersizler her satırın altında','Category · type — the bar is the share of the period, the colours its types; the exercises are listed under each row')}</div>
       <LoadDistBars entries={entries}/>
       </>}
+    {/* What the owner puts under the bars, at the panel's bottom right (the athlete's RPE Scores). */}
+    {footer&&<div className="mld-foot">{footer}</div>}
   </div>);
 }
 

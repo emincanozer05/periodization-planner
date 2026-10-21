@@ -2,49 +2,59 @@
    Chips across the top pick the movement patterns; every picked pattern is a row of the
    grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
    time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
-   individualization brief (PlanTable). It is a full-width grid only where its eleven columns fit
-   (1260px of its own width and up); below that each exercise folds into a card — pattern, exercise
-   and note across the top, the dose boxes wrapping underneath — so it never scrolls sideways. */
+   individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
+   library) on the left, and on the right Kategori · Tür · Yön, the exercise, the dose boxes and
+   the alternative / note — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
-.pt-top{display:flex;align-items:center;gap:12px}
-/* "KATEGORİ" in front of the chips: the chips are the categories a row can be written under. */
-.pt-chipl{flex:none;align-self:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
+/* The category chips: a header line ("KATEGORİ" and how many are picked), then one even grid of
+   chips, each with its category's colour as a dot; a picked one fills with a tint of that colour. */
+.pt-top{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--elevated)}
+.pt-top-hd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pt-chipl{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
   letter-spacing:.11em;text-transform:uppercase;color:var(--muted,var(--dim))}
-.pt-chips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
-.pt-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:10px;padding:7px 15px;
-  font-size:13px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
-.pt-chip:hover{border-color:var(--accent);color:var(--text)}
-.pt-chip.on{border-color:rgba(45,212,167,.6);background:rgba(45,212,167,.12);color:#7ee7c7;font-weight:700}
+.pt-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;min-width:0}
+.pt-chip{--chip-c:var(--accent);position:relative;display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--border);
+  background:var(--panel);color:var(--text2);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:600;text-align:left;
+  cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+.pt-chip>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt-chip-dot{flex:none;width:9px;height:9px;border-radius:3px;background:var(--chip-c);opacity:.55;transition:opacity .15s}
+.pt-chip:hover{border-color:var(--chip-c);color:var(--text)}
+.pt-chip:hover .pt-chip-dot{opacity:1}
+.pt-chip.on{border-color:var(--chip-c);background:color-mix(in srgb,var(--chip-c) 14%,var(--panel));color:var(--text);font-weight:700}
+.pt-chip.on .pt-chip-dot{opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--chip-c) 25%,transparent)}
 .pt-chip.warn{border-style:dashed}
-.pt-chip i{font-style:normal;font-weight:800;color:#fbbf24;margin-left:6px}
+.pt-chip-w{flex:none;font-style:normal;font-weight:800;color:#fbbf24}
 .pt-chip:focus-visible,.pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pt-n{flex:none;font-size:12px;font-weight:600;color:var(--dim);padding:5px 13px;border-radius:999px;border:1px solid var(--border);
   white-space:nowrap}
 .pt-n b{font-weight:700}
 .pt-n.on{color:var(--text2);border-color:var(--border2)}
 .pt-n.on b{color:var(--text)}
-.pt-scroll{overflow-x:auto;padding-bottom:2px}
-.pt-grid{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
-.pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
-  grid-template-columns:minmax(170px,1fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
-.pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
-.pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
-.pt-grp+.pt-grp{border-top:1px solid var(--border)}
-.pt-tr+.pt-tr:not(.pt-sec){border-top:1px dashed var(--border)}
-/* The second and third line of an exercise: its alternative (with a dose of its own) and the
-   note, in the space beside them — they belong to the exercise above and have no rule between. */
-.pt-tr.pt-sec{padding-top:0;margin-top:-2px}
-.pt-sec .pt-note{grid-column:3/-1}
+.pt-scroll{min-width:0}
+.pt-grid{min-width:0;display:flex;flex-direction:column;gap:10px}
+.pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
+/* One exercise: the picture on the left, everything written about it on the right. */
+.pt-item{display:grid;grid-template-columns:128px minmax(0,1fr);gap:14px;padding:12px;align-items:start}
+.pt-item+.pt-item{border-top:1px dashed var(--border)}
+.pt-item:hover{background:rgba(255,255,255,.012)}
+.pt-img{position:relative;aspect-ratio:1/1;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 0 0 var(--pat-c)}
+.pt-img img{width:100%;height:100%;object-fit:cover;display:block}
+.pt-img.has{background:#fff}
+.pt-img-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim);text-align:center;padding:6px}
+.pt-img-ph em{font-style:normal;font-size:10.5px;font-weight:600;line-height:1.25}
+.pt-body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.pt-tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end}
+/* The second and third line of an exercise: its alternative (with a dose of its own) and the note. */
 .pt-sec.alt .pt-ex .pt-exname.alt .en{border-color:var(--border)}
-.pt-sec .pt-pat{min-height:0}
-.pt-tr:hover{background:rgba(255,255,255,.012)}
-.pt-cl{display:none}
+.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 /* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
    group's first row, then the row's own type and direction boxes. */
-.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:6px;min-height:36px;
-  color:var(--text)}
+.pt-pat{position:relative;grid-column:1/-1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+  gap:6px 8px;min-height:0;color:var(--text)}
+.pt-pat:empty{display:none}
 .pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
 .pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
@@ -60,7 +70,9 @@
 .pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:.55;transition:opacity .12s,background .12s,color .12s}
 .pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
-.pt-tdr{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pt-cat{flex:0 1 230px}
+.pt-tdr{flex:1 1 260px;display:flex;flex-direction:row;gap:8px;min-width:0}
+.pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
 .pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
@@ -78,7 +90,7 @@
 .pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
 .pt-x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:0;transition:opacity .12s,background .12s,color .12s;margin-left:auto}
-.pt-tr:hover .pt-x,.pt-x:focus-visible{opacity:1}
+.pt-item:hover .pt-x,.pt-x:focus-visible{opacity:1}
 .pt-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
 /* The exercise: tag and name are one joined box; the alternative sits under it. */
 .pt-exmain{display:flex;align-items:stretch;gap:0;min-width:0}
@@ -158,45 +170,32 @@
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-@container (max-width:1260px){
-  .pt-scroll{overflow:visible}
-  .pt-grid{background:none;border:0;border-radius:0;display:flex;flex-direction:column;gap:10px;overflow:visible}
-  .pt-th{display:none}
-  .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
-  .pt-grp+.pt-grp{border-top:1px solid var(--border)}
-  /* A folded row is kept short: pattern beside the exercise on one line, the dose boxes under
-     them, and the alternative button beside the note. Only the number boxes carry a caption —
-     the others say what they are in their own placeholder. */
-  .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
-  /* Kategori · Tür · Yön read as one line across the top of the exercise's card. */
-  .pt-pat{grid-column:1/-1}
-  .pt-ex{grid-column:1/-1}
-  .pt-pat:empty{display:none}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 8px;min-height:0}
-  .pt-cat{flex:0 1 240px}
-  .pt-tdr{flex:1 1 260px;flex-direction:row;gap:8px}
-  .pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
-  .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
-  /* The link box has no caption of its own, but keeps the room for one so it sits level with the
-     boxes beside it. */
-  .pt-link .pt-cl{visibility:hidden}
-  .pt-cnt{grid-column:span 1}
-  .pt-link{grid-column:span 3}
-  .pt-note,.pt-sec .pt-note{grid-column:span 9}
-  .pt-sec:not(.alt) .pt-ex{grid-column:span 3}
-  .pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
-  .pt-sec.note .pt-note{grid-column:1/-1}
-  .pt-sec .pt-pat{display:none}
-  .pt-tr.pt-sec{margin-top:0;padding-top:0}
-  .pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
-  .pt-x{opacity:.7}
-}
-@container (max-width:760px){
+/* Where each box sits on the 12-column line: the exercise across the card, then the count and
+   the seven dose boxes one column each and the link in the last four; under them the
+   alternative button beside the note. The link and the note say what they are in their own
+   placeholder, so only the number boxes carry a caption (the link keeps the room for one). */
+.pt-ex{grid-column:1/-1}
+.pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
+.pt-link .pt-cl{visibility:hidden}
+.pt-cnt{grid-column:span 1}
+.pt-link{grid-column:span 4}
+.pt-note,.pt-sec .pt-note{grid-column:span 9}
+.pt-sec:not(.alt) .pt-ex{grid-column:span 3}
+.pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
+.pt-sec.note .pt-note{grid-column:1/-1}
+.pt-sec .pt-pat,.pt-sec.note .pt-ex:empty{display:none}
+.pt-x{opacity:.7}
+@container (max-width:900px){
+  .pt-item{grid-template-columns:96px minmax(0,1fr);gap:12px}
   .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .pt-pat,.pt-ex,.pt-sec:not(.alt) .pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
-  .pt-link{grid-column:span 3}
+  .pt-link{grid-column:span 4}
+  .pt-sec:not(.alt) .pt-ex{grid-column:span 2}
+  .pt-note,.pt-sec .pt-note{grid-column:span 4}
+  .pt-sec.note .pt-note{grid-column:1/-1}
 }
-@container (max-width:480px){
+@container (max-width:560px){
+  .pt-item{grid-template-columns:1fr}
+  .pt-img{width:96px}
   .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
   .pt-link{grid-column:1/-1}
 }

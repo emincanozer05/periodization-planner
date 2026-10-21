@@ -147,30 +147,8 @@ const fvWhyText=(why)=>({
   fit:L('Model bu zamanlara uymuyor: zamanları kontrol et.','The model does not fit these times: check the splits.'),
 }[why]||'');
 
-/* ---- Test kartı içi: dikey profil girişi + sonuç ---- */
-function FvVerticalInput({test,onUpdate,ath}){
-  const rows=test.sjLoaded||[];
-  const mass=fvBodyMass(test,ath);
-  const res=useMemo(()=>fvVertical(mass,test.sjHpo,fvVerticalPoints(test)),[mass,test.sjHpo,test.squatJump,test.sjLoaded]);
-  const setRow=(i,k,v)=>onUpdate({sjLoaded:rows.map((r,j)=>j===i?{...r,[k]:v}:r)});
-  return(<div className="fv-box">
-    <div className="fv-h">{L('F-V profili (yüklü sıçrama)','F-V profile (loaded jump)')}</div>
-    <div className="help" style={{marginBottom:8}}>{L('Yukarıdaki kutu 0 kg (vücut ağırlığı) noktasıdır. Ek yükle yapılan sıçramaları ekle.','The box above is the 0 kg (bodyweight) point. Add jumps made with extra load.')}</div>
-    <div className="fv-grid">
-      {rows.map((r,i)=><div key={i} className="fv-row">
-        <MkInput value={r.load} onChange={v=>setRow(i,'load',v)} unit="kg" step="1"/>
-        <MkInput value={r.h} onChange={v=>setRow(i,'h',v)} unit="cm"/>
-        <button type="button" className="btn xs danger" onClick={()=>onUpdate({sjLoaded:rows.filter((_,j)=>j!==i)})} aria-label={L('Satırı sil','Delete row')}>✕</button>
-      </div>)}
-    </div>
-    <div className="row" style={{gap:8,alignItems:'flex-end',flexWrap:'wrap',marginTop:6}}>
-      <button type="button" className="btn xs sec" onClick={()=>onUpdate({sjLoaded:[...rows,{load:'',h:''}]})}>+ {L('Yüklü sıçrama','Loaded jump')}</button>
-      <div className="mk-field" style={{margin:0}}><div className="mk-flbl">{L('İtiş mesafesi (hpo)','Push-off distance (hpo)')}</div><MkInput value={test.sjHpo} onChange={v=>onUpdate({sjHpo:v})} unit="cm" step="0.5"/></div>
-      <div className="help">{L('Vücut ağırlığı','Body mass')}: {mass?`${mass} kg`:'—'}</div>
-    </div>
-    <FvVerticalResult res={res}/>
-  </div>);
-}
+/* ---- Dikey profilin sonucu (Atletik Profil özeti). Squat Jump kartındaki yüklü sıçrama girişi
+   kaldırıldı; daha önce girilmiş `sjLoaded` / `sjHpo` verisi olan kayıtlar burada okunmaya devam eder. ---- */
 function FvVerticalResult({res}){
   if(!res.ok){
     /* Henüz veri girilmemişken uyarı gösterme; sadece neden eksik olduğunu sakin söyle. */

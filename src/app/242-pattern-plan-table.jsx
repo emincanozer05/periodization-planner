@@ -106,6 +106,21 @@ function PtCat({value,color,options,onChange,label}){
       title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
   </span>);
 }
+/* The exercise's picture, on the left of its card: the one the library carries for that name
+   (its cover, else the video's thumbnail), else the one put on the row itself. */
+function PtImg({name,image}){
+  const hit=exLibHit(name);
+  const pic=(hit&&hit.image)||image||'';
+  const[bad,setBad]=useState(false);
+  useEffect(()=>{setBad(false);},[pic]);
+  return(<div className={'pt-img'+(pic&&!bad?' has':'')}>
+    {pic&&!bad
+      ?<img src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={()=>setBad(true)}/>
+      :<span className="pt-img-ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
+        <em>{String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em></span>}
+  </div>);
+}
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
   /* `typeOpts` is a fresh array on every draw of the host; it counts as the same when it holds the same. */
@@ -148,7 +163,9 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
     <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
       placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>;
-  return(<>
+  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+    <PtImg name={slot.name} image={slot.image}/>
+    <div className="pt-body">
     <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
       <div className="pt-pat" role="rowheader">
         {/* A category covers its whole group and is set on its first row; an uncategorised row is
@@ -218,7 +235,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     {showAlt&&<div className="pt-tr pt-sec note" role="row" style={style}>
       <div className="pt-pat" role="rowheader"/><div className="pt-td pt-ex" role="cell"/>{noteBox}
     </div>}
-  </>);
+    </div>
+  </div>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
@@ -249,27 +267,25 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
-    <div className="pt-top">
-      <span className="pt-chipl">{L('Kategori','Category')}</span>
+    {chips.length>0&&<div className="pt-top">
+      <div className="pt-top-hd">
+        <span className="pt-chipl">{L('Kategori','Category')}</span>
+        {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
+          <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
+      </div>
       <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
         {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
           className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
-          onClick={()=>handlers.onChip(c.id)}>{c.label}{c.warn?<i>!</i>:null}</button>)}
+          style={c.color?{'--chip-c':c.color}:undefined}
+          onClick={()=>handlers.onChip(c.id)}><i className="pt-chip-dot" aria-hidden="true"/><span>{c.label}</span>{c.warn?<i className="pt-chip-w">!</i>:null}</button>)}
       </div>
-      {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
-    </div>
+    </div>}
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
         <datalist id={ids.tempo}>{sug.tempo.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rpe}>{sug.rpe.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
-        <div className="pt-tr pt-th" role="row">
-          {[L('Kategori · Tür · Yön','Category · Type · Direction'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
-            L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),'Link']
-            .map((h,i)=><span key={i} role="columnheader">{h}</span>)}
-        </div>
         {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
           {g.slots.map((s,ix)=><React.Fragment key={s.key}>
             <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
@@ -414,7 +430,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       const a=alt||{};
       const ty=run.pat?mvNormType(run.pat,ex.plane,ex.name):'';
       return{key:r.i,tag:tg.replace(/\.$/,''),tagVal:String(ex.superset||'').toUpperCase(),
-        name:ex.name||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
+        name:ex.name||'',image:ex.image||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
@@ -422,7 +438,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
-  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
+  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),color:ML_PIE_COLS[p],on:rows.some(r=>catOf(r.ex)===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(

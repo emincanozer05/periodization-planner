@@ -20,6 +20,7 @@ const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
+  const[rpeOpen,setRpeOpen]=useState(false);
   /* Open at the top. The page scrolls as one, so without this the profile kept the
      scroll of the list it was opened from and hid its own header and tabs. The roster
      remounts this per athlete (key), so it runs once per athlete opened. */
@@ -150,8 +151,95 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises} ownerAth={ath}/>
-    <AthPrograms ath={ath} updAth={updAth}/>
-    <MuscleLoadDistribution days={ath.days||{}} refDate={athSel.date}/></>}
+    <MuscleLoadDistribution days={ath.days||{}} refDate={athSel.date}
+      footer={<button type="button" className="btn sm white" onClick={()=>setRpeOpen(true)}>RPE Scores</button>}/>
+    {rpeOpen&&<AthRpeScores ath={ath} updAth={updAth} onClose={()=>setRpeOpen(false)}/>}</>}
+  </div>);
+}
+
+/* ---- RPE Scores: every RPE the athlete has given, newest first, editable ----
+   One row per score on the athlete's sRPE log (`srpeLog`): an entry from a check-in can carry
+   a ball-practice, an S&C and a match score at once, and each is its own row. Changing the
+   score or the minutes rewrites that slot's load and the entry's total; deleting the last
+   score of an entry drops the entry — one that came from a form is remembered as deleted
+   (`deletedSrpeSrcIds`) so the next sync does not bring it back. */
+const RPE_SLOT_LAB={tp:['Top Antrenmanı','Ball Practice'],sc:['S&C','S&C'],game:['Maç','Match']};
+function AthRpeScores({ath,updAth,onClose}){
+  const log=ath.srpeLog||[];
+  const has=v=>v!==''&&v!=null&&!isNaN(Number(v));
+  const rows=[];
+  log.forEach(e=>Object.keys(SRPE_KINDS).forEach(k=>{const[rk,du]=SRPE_KINDS[k];
+    if(has(e[rk]))rows.push({e,k,rpe:Number(e[rk]),dur:Number(e[du])||0});}));
+  rows.sort((a,b)=>String(b.e.date||'').localeCompare(String(a.e.date||''))||a.k.localeCompare(b.k));
+  const sesName=(e,k)=>{const s=(((ath.days||{})[e.date]||{}).sessions||[]).find(x=>x.id===e.sessionId);
+    return s&&s.name?s.name:'';};
+  const total=e=>Object.keys(SRPE_KINDS).reduce((t,k)=>{const[rk,du]=SRPE_KINDS[k];
+    return t+(has(e[rk])?Math.round(Number(e[rk])*(Number(e[du])||0)):0);},0);
+  const setSlot=(id,k,patch)=>{
+    const[rk,du]=SRPE_KINDS[k];
+    updAth(ath.id,{srpeLog:log.map(e=>{if(e.id!==id)return e;
+      const n={...e};
+      if('rpe' in patch)n[rk]=patch.rpe===''?'':Math.max(0,Math.min(10,Number(patch.rpe)));
+      if('dur' in patch)n[du]=patch.dur===''?'':Math.max(0,Number(patch.dur));
+      n[k+'Load']=has(n[rk])&&Number(n[du])?Math.round(Number(n[rk])*Number(n[du])):'';
+      n.totalLoad=total(n)||'';
+      return n;})});
+  };
+  const delSlot=(id,k)=>{
+    if(!confirm(L('Bu RPE puanı silinsin mi?','Delete this RPE score?')))return;
+    const[rk,du]=SRPE_KINDS[k];
+    const e0=log.find(e=>e.id===id);if(!e0)return;
+    const n={...e0,[rk]:'',[du]:'',[k+'Load']:''};n.totalLoad=total(n)||'';
+    const empty=!Object.values(SRPE_KINDS).some(([r])=>has(n[r]));
+    const patch={srpeLog:empty?log.filter(e=>e.id!==id):log.map(e=>e.id===id?n:e)};
+    if(empty&&e0.srcId)patch.deletedSrpeSrcIds=[...(ath.deletedSrpeSrcIds||[]),e0.srcId];
+    updAth(ath.id,patch);
+  };
+  const[nd,setNd]=useState({date:fmt(today),k:'sc',rpe:'',dur:''});
+  const add=()=>{
+    if(!has(nd.rpe)||nd.rpe===''){alert(L('RPE puanını yaz (0–10).','Enter the RPE score (0–10).'));return;}
+    const rpe=Math.max(0,Math.min(10,Number(nd.rpe))),dur=Number(nd.dur)||0,load=dur?Math.round(rpe*dur):'';
+    const e={id:uid(),srcId:null,sessionId:null,date:nd.date,tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',
+      gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
+    e[nd.k+'RPE']=rpe;e[nd.k+'Duration']=dur||'';e[nd.k+'Load']=load;
+    updAth(ath.id,{srpeLog:[...log,e]});
+    setNd(x=>({...x,rpe:'',dur:''}));
+  };
+  const avg=rows.length?rows.reduce((t,r)=>t+r.rpe,0)/rows.length:null;
+  return(<div className="modal-bg" onClick={onClose}>
+    <div className="modal rpes" onClick={e=>e.stopPropagation()}>
+      <div className="modal-head">
+        <div><h2 style={{margin:0,fontSize:18}}>RPE Scores — {ath.name}</h2>
+          <div className="rpes-sub">{rows.length} {L('puan','scores')}{avg!=null?` · ${L('ortalama','average')} ${avg.toFixed(1)}`:''}</div></div>
+        <button className="x-btn" onClick={onClose}>✕</button>
+      </div>
+      <div className="rpes-b">
+        <div className="rpes-add">
+          <input type="date" value={nd.date} onChange={e=>setNd(x=>({...x,date:e.target.value}))}/>
+          <select value={nd.k} onChange={e=>setNd(x=>({...x,k:e.target.value}))}>
+            {Object.keys(RPE_SLOT_LAB).map(k=><option key={k} value={k}>{L(RPE_SLOT_LAB[k][0],RPE_SLOT_LAB[k][1])}</option>)}
+          </select>
+          <input type="number" min="0" max="10" step="0.5" placeholder="RPE" value={nd.rpe} onChange={e=>setNd(x=>({...x,rpe:e.target.value}))}/>
+          <input type="number" min="0" placeholder={L('dk','min')} value={nd.dur} onChange={e=>setNd(x=>({...x,dur:e.target.value}))}/>
+          <button type="button" className="btn sm" onClick={add}>＋ {L('Ekle','Add')}</button>
+        </div>
+        {rows.length===0
+          ?<div className="empty-st">{L('Bu sporcunun henüz RPE puanı yok.','This athlete has no RPE scores yet.')}</div>
+          :<table className="rpes-t">
+            <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Seans','Session')}</th><th>RPE</th><th>{L('Süre (dk)','Minutes')}</th><th>{L('Yük','Load')}</th><th/></tr></thead>
+            <tbody>{rows.map(r=>{const d=r.e.date?parseD(r.e.date):null;
+              return(<tr key={r.e.id+r.k}>
+                <td className="d">{d?`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`:'—'}</td>
+                <td><span className={'rpes-k k-'+r.k}>{L(RPE_SLOT_LAB[r.k][0],RPE_SLOT_LAB[r.k][1])}</span> {sesName(r.e,r.k)}</td>
+                <td><input type="number" min="0" max="10" step="0.5" value={r.e[SRPE_KINDS[r.k][0]]}
+                  style={{color:rpeColor(r.rpe)||undefined}} onChange={e=>setSlot(r.e.id,r.k,{rpe:e.target.value})}/></td>
+                <td><input type="number" min="0" value={r.e[SRPE_KINDS[r.k][1]]??''} onChange={e=>setSlot(r.e.id,r.k,{dur:e.target.value})}/></td>
+                <td className="l">{r.dur?`${Math.round(r.rpe*r.dur)} AU`:'—'}</td>
+                <td><button type="button" className="x-btn" title={L('Sil','Delete')} onClick={()=>delSlot(r.e.id,r.k)}>✕</button></td>
+              </tr>);})}</tbody>
+          </table>}
+      </div>
+    </div>
   </div>);
 }
 

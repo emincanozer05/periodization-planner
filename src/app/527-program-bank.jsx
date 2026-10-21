@@ -16,7 +16,7 @@
    değilse (takım takvimi, Hafta/Gün planı) hangi sporcunun programı olduğunu seçtirir. Okunan liste
    `registerProgramBank` ile uygulamanın tepesinden verilir (kütüphane listesiyle aynı yol:
    setLibItems); yazma da aynı yoldan, `_pbWrite` ile, sporcunun güncel hâline uygulanır.
-   Profil paneli (`AthPrograms`) sporcunun Takvim sekmesinde, takvimin hemen altında durur. */
+   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur. */
 let _pbTeams=[];
 let _pbWrite=null;
 function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
@@ -139,11 +139,6 @@ function pbToSession(row){
 const pbBlankBlock=b=>!String(b.name||'').trim()&&!(b.exercises||[]).some(e=>pbNamed(e)||String(e.sets||e.reps||e.duration||'').trim())&&!((b.athletes||[]).length);
 /* Seansın boş, ilk açılan bloğu yapıştırılan programın yerini alır; dolu bloklar yerinde kalır. */
 const pbAppendBlocks=(blocks,row)=>[...(blocks||[]).filter(b=>!pbBlankBlock(b)),...pbFreshBlocks(row.blocks)];
-/* Sporcunun takvimine: seçilen güne yeni seans. */
-function pbDaysWith(days,date,row){
-  const d=(days||{})[date]||EDAY(date);
-  return{...(days||{}),[date]:{...d,date,sessions:[...(d.sessions||[]),pbToSession(row)]}};
-}
 
 /* Bireyselleştirme'nin Antrenman tablosuna: bloklar satırlara çevrilir. Kategorisi olan egzersiz kendi
    kategorisinin satırına, olmayan "Kategorisiz"e düşer; bölümler (Hazırlık / Ana / Soğuma ve koçun
@@ -281,86 +276,4 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
       title={title||L('Önceden yazılmış bir programı bul ve yapıştır','Find a programme written before and paste it')}>📋 {label||L('Kayıtlı program','Saved programme')}</button>
     {open&&<ProgramPicker athId={athId} onClose={()=>setOpen(false)} onPick={onPick}/>}
   </>);
-}
-
-/* Sporcu detayı → Takvim sekmesi → Antrenman Programları: bu sporcunun kayıtlı programları ve takvimde yazdıkları. */
-function AthPrograms({ath,updAth}){
-  const[q,setQ]=useState('');
-  const[src,setSrc]=useState('saved');
-  const[open,setOpen]=useState(null);
-  const[limit,setLimit]=useState(20);
-  const[dayFor,setDayFor]=useState(null);
-  const[day,setDay]=useState(fmt(today));
-  const[msg,setMsg]=useState('');
-  const flash=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
-  const rows=useMemo(()=>pbRowsOf(ath,''),[ath.programs,ath.days]);
-  const nSaved=rows.filter(r=>r.kind==='saved').length,nDay=rows.length-nSaved;
-  const shown=useMemo(()=>pbFilter(rows,{q,ath:'',src}),[rows,q,src]);
-  const saveRow=r=>{
-    const nm=prompt(L('Programın adı','Programme name'),r.name||'');
-    if(nm==null)return;
-    if(pbHasSame(ath.programs,r.blocks)){flash(L('Bu program zaten kayıtlı.','This programme is already saved.'));return;}
-    const p=pbMakeProgram(nm,r.blocks,{date:r.date,session:r.name});
-    if(!p)return;
-    updAth(ath.id,a=>({programs:[p,...(a.programs||[])]}));
-    flash(L(`"${p.name}" profile kaydedildi.`,`"${p.name}" saved to the profile.`));
-    setSrc('saved');
-  };
-  const rename=r=>{
-    const nm=prompt(L('Programın adı','Programme name'),r.name);
-    if(nm==null||!nm.trim())return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,name:nm.trim(),from:p.from?{...p.from,auto:false}:p.from}:p)}));
-  };
-  const note=r=>{
-    const n=prompt(L('Not (örn. hangi dönem, kime iyi geldi)','Note (e.g. which period, what it suited)'),r.note||'');
-    if(n==null)return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).map(p=>p.id===r.id?{...p,note:n.trim()}:p)}));
-  };
-  const del=r=>{
-    if(!confirm(L('Bu kayıtlı program silinsin mi? Takvimdeki seanslar etkilenmez.','Delete this saved programme? Sessions on the calendar are not affected.')))return;
-    updAth(ath.id,a=>({programs:(a.programs||[]).filter(p=>p.id!==r.id)}));setOpen(null);
-  };
-  const toDay=r=>{
-    if(!day)return;
-    updAth(ath.id,a=>({days:pbDaysWith(a.days,day,r)}));
-    setDayFor(null);
-    flash(L(`${fd(day)} tarihine seans olarak eklendi.`,`Added to ${fd(day)} as a session.`));
-  };
-  return(<div className="panel pbk-panel">
-    <div className="pbk-head">
-      <h2>{L('Antrenman Programları','Training Programmes')}</h2>
-      <span className="help">{L('Sporcunun takviminde yazdığın her seans buraya kendiliğinden kaydedilir (aynı içerik bir kez). Takvimde, Hafta/Gün planında ve Bireyselleştirme\'de "Kayıtlı program" düğmesiyle yapıştırılır.',
-        'Every session you write on this athlete\'s calendar is kept here automatically (identical content once). Paste them from the "Saved programme" button on the calendar, the Week/Day plan and Individualization.')}</span>
-    </div>
-    <div className="row" style={{gap:6,flexWrap:'wrap',marginBottom:10}}>
-      <button type="button" className={'btn sm'+(src==='saved'?'':' sec')} onClick={()=>{setSrc('saved');setLimit(20);}}>{L('Kayıtlı','Saved')} ({nSaved})</button>
-      <button type="button" className={'btn sm'+(src==='day'?'':' sec')} onClick={()=>{setSrc('day');setLimit(20);}}>{L('Takvimde yazılanlar','Written on calendar')} ({nDay})</button>
-      <input type="search" className="pbk-q" placeholder={L('Ara: egzersiz, program adı, tarih…','Search: exercise, programme, date…')} value={q}
-        onChange={e=>{setQ(e.target.value);setLimit(20);}} aria-label={L('Ara','Search')}/>
-    </div>
-    {msg&&<div className="iv-toast" style={{marginBottom:10}}>{msg}</div>}
-    {shown.length===0&&<div className="ex-empty">{rows.length===0
-      ?L('Henüz program yok. Sporcunun takvimine bir antrenman yaz; burada kendiliğinden görünür.','No programmes yet. Write a training session on the athlete\'s calendar; it appears here by itself.')
-      :src==='saved'&&!q&&nSaved===0
-        ?L('Kayıtlı program yok. Bundan sonra takvimde yazdığın seanslar kendiliğinden buraya girer; eskilerden birini "Takvimde yazılanlar"dan "Profile kaydet" ile alabilirsin.','No saved programmes yet. Sessions you write on the calendar from now on land here by themselves; keep an older one from "Written on calendar" with "Save to profile".')
-        :L('Bu aramaya uyan program yok.','No programme matches this search.')}</div>}
-    {shown.slice(0,limit).map(r=><div key={r.key}>
-      <PbRow r={r} open={open===r.key} onToggle={()=>setOpen(open===r.key?null:r.key)}>
-        {r.kind==='day'&&<button type="button" className="btn xs" onClick={()=>saveRow(r)}>{L('Profile kaydet','Save to profile')}</button>}
-        <button type="button" className="btn xs sec" onClick={()=>{setDayFor(dayFor===r.key?null:r.key);setDay(fmt(today));}}>{L('Takvime ekle…','Add to calendar…')}</button>
-        {r.kind==='saved'&&<>
-          <button type="button" className="btn xs sec" onClick={()=>rename(r)}>{L('Adlandır','Rename')}</button>
-          <button type="button" className="btn xs sec" onClick={()=>note(r)}>{L('Not','Note')}</button>
-          <button type="button" className="btn xs sec iv-rmb" onClick={()=>del(r)}>✕</button>
-        </>}
-      </PbRow>
-      {dayFor===r.key&&<div className="pbk-day">
-        <label>{L('Hangi güne eklensin?','Which day?')}</label>
-        <input type="date" value={day} onChange={e=>setDay(e.target.value)}/>
-        <button type="button" className="btn sm" disabled={!day} onClick={()=>toDay(r)}>{L('Ekle','Add')}</button>
-        <span className="help">{L('Seçilen günün planına yeni bir seans olarak girer; orada düzenlenir.','It enters that day\'s plan as a new session, where it is edited.')}</span>
-      </div>}
-    </div>)}
-    {shown.length>limit&&<button type="button" className="btn sm sec" onClick={()=>setLimit(n=>n+20)}>{L(`Daha göster (${shown.length-limit})`,`Show more (${shown.length-limit})`)}</button>}
-  </div>);
 }
