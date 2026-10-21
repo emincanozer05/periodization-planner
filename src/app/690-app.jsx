@@ -228,6 +228,7 @@ function App(){
       {id:'athletes',label:L('Kadro','Roster'),icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
       {id:'evaluation',label:L('Test ve Değerlendirme','Testing & Assessment'),icon:NAV_ICONS.evaluation},
       {id:'reports',label:L('Yük Takibi','Load Monitoring'),icon:NAV_ICONS.reports},
+      {id:'wellness',label:'Wellness',icon:NAV_ICONS.wellness},
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
       {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
@@ -345,6 +346,7 @@ function App(){
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
       {view==='reports'&&<><TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>
         <InjurySurveillance key={team.id} athletes={team.athletes||[]} setup={team.setup}/></>}
+      {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {/* No `team` prop and no `key` off the team: the pool is the same list whichever
           squad is selected, so switching teams must not remount or refilter it. */}

@@ -310,8 +310,6 @@ function TeamReports({team,weeks,selected,setSelected}){
 
     <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
 
-    <WellnessHeatmap athletes={team.athletes}/>
-
     {(()=>{
       const mv=mWeeks.filter(w=>w.monotony>0);
       const avgMono=mv.length?mv.reduce((s,w)=>s+w.monotony,0)/mv.length:0;

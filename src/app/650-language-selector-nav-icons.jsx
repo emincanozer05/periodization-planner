@@ -53,6 +53,7 @@ const NAV_ICONS={
   calendar:<NIc><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/></NIc>,
   allcal:<NIc><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/><path d="M7 13.5h4"/><path d="M13 13.5h4"/><path d="M7 17h4"/></NIc>,
   athletes:<NIc><circle cx="9" cy="8" r="3"/><path d="M3.6 19.4c.6-3 2.8-4.7 5.4-4.7s4.8 1.7 5.4 4.7"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.6 14.9c1.9.5 3.3 2.1 3.7 4.5"/></NIc>,
+  wellness:<NIc><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/><path d="M6.5 12.5h3l1.3-2.4 2 4.4 1.3-2h3.4"/></NIc>,
   reports:<NIc><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V8"/><path d="M17 20v-9"/></NIc>,
   exercises:<NIc><path d="M6 8v8"/><path d="M9 6v12"/><path d="M15 6v12"/><path d="M18 8v8"/><path d="M9 12h6"/></NIc>,
   templates:<NIc><rect x="8" y="8" width="12.5" height="12.5" rx="2"/><path d="M4.5 15.5V5.5a2 2 0 0 1 2-2h9"/></NIc>,

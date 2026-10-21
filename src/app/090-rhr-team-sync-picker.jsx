@@ -1,7 +1,7 @@
 /* =========================================================
    RHR MONITOR — resting heart rate, week over week
-   The heatmap next door answers "what did this morning look like"; this answers
-   "which way is it going". One point per week, Monday to Sunday, and the point is
+   The Wellness tab's athlete cards answer "what did this morning look like"; this
+   answers "which way is it going". One point per week, Monday to Sunday, and the point is
    the mean of the days that were actually measured: the week's readings added up
    and divided by the number of days carrying one, never by seven. An athlete who
    checked in twice that week has an average of two mornings — dividing that by the
@@ -23,7 +23,7 @@ const RHR_WEEKS=12;         /* three months of weeks on screen at a time */
 
 /* One athlete's week → {avg,days}, or null when the week carries no reading.
    Two check-ins on the same day count as one day, the later one winning, exactly
-   as the heatmap's cell resolves them — a double entry can't weigh a week twice. */
+   as the Wellness tab's day resolves them (wvDay) — a double entry can't weigh a week twice. */
 function rhrWeekAvg(ath,wkStart,wkEnd){
   const byDay=new Map();
   (ath.wellness||[]).forEach(e=>{
@@ -265,177 +265,10 @@ function wellReadiness(w){
   return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;
 }
 /* The 1-5 colours of the check-in form's own buttons (checkin.html SCORE_COLORS) and of
-   the staff phone page: 1 red · 2 orange · 3 yellow · 4 green · 5 blue. The heatmap
-   paints a score in the colour the athlete tapped, so the two never disagree. */
+   the staff phone page: 1 red · 2 orange · 3 yellow · 4 green · 5 blue. The Wellness
+   tab paints a score in the colour the athlete tapped, so the two never disagree. */
 const SCORE5_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
 const score5Color=v=>{if(v==null||isNaN(Number(v)))return null;return SCORE5_COLORS[Math.min(5,Math.max(1,Math.round(Number(v))))-1];};
-
-/* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
-function WellnessHeatmap({athletes}){
-  /* One button per question on the morning check-in, in the form's order, so what the
-     athlete answered and what the coach reads are the same list. Readiness is their
-     mean; RHR is the form's optional first box. The pain map rides on every metric as
-     the ring and pip on the day's cell. */
-  const METRICS=[
-    {id:'readiness',label:L('Hazır Oluş','Readiness'),hi:true,scale:5},
-    {id:'sleep',label:L('Uyku','Sleep'),hi:true,scale:5},
-    {id:'mentalFatigue',label:L('Zihinsel Yorgunluk','Mental Fatigue'),hi:true,scale:5},
-    {id:'physicalFatigue',label:L('Fiziksel Yorgunluk','Physical Fatigue'),hi:true,scale:5},
-    {id:'soreness',label:L('Kas Ağrısı','Muscle Soreness'),hi:true,scale:5},
-    {id:'RHR',label:'RHR',hi:false,scale:null},
-  ];
-  /* The segment's last button is not a fifth metric — it swaps the grid for the RHR
-     Monitor: the same athletes, but week by week instead of day by day. It rides here
-     rather than in a panel of its own because it answers the question the RHR column
-     raises ("is this morning's 54 a drift or a day?") and the coach should not have to
-     go looking for the answer somewhere else. */
-  const[metric,setMetric]=useState('readiness');
-  const mon=metric==='mon';
-  const M=METRICS.find(m=>m.id===metric)||METRICS[0];
-  const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-  // Two-week (14-day) window ending at `winEnd`; navigate by week from the header.
-  const[winEnd,setWinEnd]=useState(()=>fmt(today));
-  const dates=useMemo(()=>Array.from({length:14},(_,i)=>fmt(addD(parseD(winEnd),-13+i))),[winEnd]);
-  const shiftWk=d=>setWinEnd(w=>fmt(addD(parseD(w),d*7)));
-  /* The monitor spans twelve weeks, so its stepper moves a month at a time — a
-     one-week nudge across a quarter-long chart is a lot of clicking for one point. */
-  const monWeeks=useMemo(()=>rhrWeeks(winEnd,RHR_WEEKS),[winEnd]);
-  const step=mon?4:1;
-  const rangeLabel=mon
-    ?fd(monWeeks[0].start).slice(0,5)+' – '+fd(monWeeks[monWeeks.length-1].end).slice(0,5)
-    :fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
-  const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null&&!isNaN(Number(w[M.id])));return e.length?Number(e[e.length-1][M.id]):null;};
-  // Free-text the athlete typed into the check-in's "Area of Pain" box ("dizlerim ağrıyor"…).
-  // Independent of the selected metric — it flags the day, whichever metric is on screen.
-  const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&painFreeText(w.areaOfPain));
-    return e.length?painFreeText(e[e.length-1].areaOfPain):'';};
-  /* The pain grid the athlete ticked that day. Like the note it is independent of the
-     selected metric — a marked region flags the day whichever metric is on screen.
-     A check-in written before the grid existed still parses out of its free-text box,
-     so an old "Bel: Fazla" is not lost just because it arrived under the old key. */
-  const painOf=(a,dk)=>{
-    const e=(a.wellness||[]).filter(w=>w.date===dk);
-    for(let i=e.length-1;i>=0;i--){
-      // Stored maps go back through the parser too: one written before the ids were
-      // resolved keeps them as its keys, and only the parser knows to fold those away.
-      const m=parsePainMap(e[i].painMap&&typeof e[i].painMap==='object'?e[i].painMap:e[i].areaOfPain);
-      const list=painEntries(m);
-      if(list.length)return{list,max:list[0].sev};
-    }
-    return null;
-  };
-  const[tip,setTip]=useState(null);   // hovered note cell → {x,y,name,date,note,val,pain}
-  // The heatmap sits inside a horizontally scrolling wrapper, so the bubble is rendered
-  // fixed-position into <body> instead of absolutely inside the cell (which would clip).
-  const showTip=(e,p)=>{const r=e.currentTarget.getBoundingClientRect();
-    setTip({...p,x:Math.max(120,Math.min(window.innerWidth-120,r.left+r.width/2)),y:r.top});};
-  // Normalised quality 0 (kötü) → 1 (iyi), then a smooth red→amber→green colour ramp.
-  const goodT=v=>{if(v==null)return null;
-    if(M.id==='RHR')return Math.max(0,Math.min(1,1-(v-48)/24));
-    return Math.max(0,Math.min(1,(v-1)/4));};
-  const mix=(a,b,t)=>a.map((x,i)=>Math.round(x+(b[i]-x)*t));
-  const RED=[244,63,94],AMB=[245,158,11],GRN=[45,212,167];
-  const scaleRGB=t=>t==null?null:(t<0.5?mix(RED,AMB,t/0.5):mix(AMB,GRN,(t-0.5)/0.5));
-  // Every 1-5 score is painted in the check-in form's own colours (1 red … 5 blue);
-  // only RHR, a heart rate with no fixed scale, keeps the continuous ramp.
-  const isDiscrete=M.scale===5;
-  const cellBg=v=>{if(isDiscrete)return score5Color(v);const c=scaleRGB(goodT(v));return c?`rgb(${c[0]},${c[1]},${c[2]})`:null;};
-  const dotCol=v=>{if(isDiscrete)return score5Color(v)||'var(--dim)';const t=goodT(v);return t==null?'var(--dim)':t>=0.66?'#2dd4a7':t>=0.33?'#f59e0b':'#f43f5e';};
-  const rows=(athletes||[]).map(a=>{
-    const cells=dates.map(dk=>valOf(a,dk));
-    const notes=dates.map(dk=>noteOf(a,dk));
-    const pains=dates.map(dk=>painOf(a,dk));
-    const vals=cells.filter(v=>v!=null);
-    const avg=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
-    return{a,cells,notes,pains,avg};
-  /* An athlete who only reported pain, with no scores behind it, still belongs on the
-     grid — dropping the row would hide the one thing on it worth seeing. Rows without
-     an average sort to the bottom, since there is no average to rank them by. */
-  }).filter(r=>r.avg!=null||r.pains.some(Boolean))
-    .sort((x,y)=>(x.avg==null)-(y.avg==null)||(x.avg==null?0:(M.hi?(y.avg-x.avg):(x.avg-y.avg))));
-  const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
-  const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
-  return(<div className="panel lb-wrap">
-    {/* The board's own head and week selector are the ones this tab already uses —
-        the Athlete Load Board's title block above it, and the Load Monitoring
-        header's week stepper — so the three read as one page rather than three. */}
-    <div className="lb-head">
-      <div className="lb-title">{mon?L('RHR Takibi','RHR Monitor'):L('Wellness Isı Haritası','Wellness Heatmap')}<span className="lb-sub">{mon?L('haftalık ortalama dinlenik nabız · Pzt–Paz','weekly average resting HR · Mon–Sun'):L('son 2 hafta · ortalamaya göre sıralı','last 2 weeks · sorted by average')}</span></div>
-      <div className="wh-hm-tools">
-        <div className="lm-wksel">
-          <button onClick={()=>shiftWk(-step)} title={mon?L('Önceki 4 hafta','Back 4 weeks'):L('Önceki hafta','Previous week')}>‹</button>
-          <span className="lm-wklbl">{rangeLabel}</span>
-          <button onClick={()=>shiftWk(step)} title={mon?L('Sonraki 4 hafta','Forward 4 weeks'):L('Sonraki hafta','Next week')}>›</button>
-          <button className="lm-wknow" onClick={()=>setWinEnd(fmt(today))} title={L('Bugüne git','Jump to today')}>{L('Bugün','Today')}</button>
-        </div>
-        <div className="lb-seg">
-          {METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}
-          {/* Hairline before the last button: it changes the view, not the metric. */}
-          <span className="lb-seg-sep"/>
-          <button className={mon?'on':''} onClick={()=>setMetric('mon')}
-            title={L('Haftalık dinlenik nabız trendi','Weekly resting-HR trend')}>RHR Monitor</button>
-        </div>
-      </div>
-    </div>
-    {mon?<RHRMonitor athletes={athletes} weeks={monWeeks}/>
-    :rows.length===0?<div className="empty-st">{L('Bu 2 haftalık aralıkta wellness verisi yok.','No wellness data in this 2-week range.')}</div>:<>
-      <div className="wh-legend">
-        <span className="wh-leg-cap">{M.id==='RHR'?L('yüksek','high'):L('düşük','low')}</span>
-        {isDiscrete
-          ?<span className="wh-leg-steps">{SCORE5_COLORS.map((c,i)=><i key={i} style={{background:c}}>{i+1}</i>)}</span>
-          :<span className="wh-leg-bar"/>}
-        <span className="wh-leg-cap">{M.id==='RHR'?L('düşük','low'):L('yüksek','high')}</span>
-        {teamAvg!=null&&<span className="wh-leg-team"><span className="wh-adot" style={{background:dotCol(teamAvg)}}/>{L('takım ort.','team avg')} <b>{fmtV(teamAvg)}</b></span>}
-      </div>
-      <div className="wh-scroll">
-        <table className="wh-hm">
-          <thead><tr>
-            <th className="wh-ath-h wh-frozen">{L('Sporcu','Athlete')}</th>
-            {dates.map((d,i)=>{const dt=parseD(d);const prev=i>0?parseD(dates[i-1]):null;const showMonth=!prev||prev.getMonth()!==dt.getMonth();
-              return<th key={d} className="wh-day"><div className="wh-mon">{showMonth?MN[dt.getMonth()]:''}</div><div className="wh-wd">{DN[(dt.getDay()+6)%7][0]}</div><div className="wh-dd">{dt.getDate()}</div></th>;})}
-            <th className="wh-avg-h">{L('Ort.','Avg')}</th>
-          </tr></thead>
-          <tbody>{rows.map((r,ri)=><tr key={ri} className="wh-row" style={{animationDelay:(ri*45)+'ms'}}>
-            <td className="wh-ath wh-frozen"><div className="wh-ath-in"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</div></td>
-            {r.cells.map((v,ci)=>{
-              const note=r.notes[ci];
-              const pain=r.pains[ci];
-              const dl=(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})();
-              const vl=v!=null?`${M.label}: ${fmtV(v)}${M.scale?'/5':''}`:L('Veri yok','No data');
-              /* A day carrying a complaint — a ticked region or a written one — gets a
-                 ring in the worst reported severity's colour, and the regions themselves
-                 ride in the hover bubble, so the native title tooltip is dropped there
-                 (it would double up). */
-              const flag=!!(note||pain);
-              const ringC=pain?PAIN_SEV_COL[pain.max]:'#f43f5e';
-              const hov=flag?{onMouseEnter:e=>showTip(e,{name:r.a.name,date:dl,val:vl,note,pain}),onMouseLeave:()=>setTip(null)}:{};
-              /* The marker sits INSIDE the day's own box: a pip in the worst severity's
-                 colour, carrying how many regions were ticked when it was more than one. */
-              const pip=pain?<i className="wh-pain" style={{background:PAIN_SEV_COL[pain.max]}}>{pain.list.length>1?pain.list.length:''}</i>:null;
-              return<td key={ci} className="wh-cell">{v!=null
-                ?<span className={'wh-box'+(flag?' wh-alert':'')} style={{background:cellBg(v),'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\n${vl}`} {...hov}>{fmtV(v)}{pip}</span>
-                :<span className={'wh-empty'+(flag?' wh-alert':'')} style={{'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\nNo data`} {...hov}>{flag?(pain?'':'!'):'·'}{pip}</span>}</td>;})}
-            <td className="wh-avg"><div className="wh-avg-in"><span className="wh-aval" style={{color:dotCol(r.avg)}}>{fmtV(r.avg)}</span><span className="wh-abar"><i style={{width:Math.round((goodT(r.avg)||0)*100)+'%',background:cellBg(r.avg)}}/></span></div></td>
-          </tr>)}</tbody>
-        </table>
-      </div>
-    </>}
-    {tip&&ReactDOM.createPortal(
-      <div className="wh-note-tip" style={{left:tip.x,top:tip.y,'--wh-ring':tip.pain?PAIN_SEV_COL[tip.pain.max]:'#f43f5e'}}>
-        <div className="wh-nt-h"><b>{tip.name}</b><span>{tip.date}</span></div>
-        <div className="wh-nt-v">{tip.val}</div>
-        {/* Every region the athlete ticked, worst first, each with its own severity —
-            the grid's whole answer, not just that something hurt. */}
-        {tip.pain&&<div className="wh-nt-p">
-          {tip.pain.list.map(p=><span key={p.region} className="wh-nt-pr">
-            <i style={{background:PAIN_SEV_COL[p.sev]}}/>{p.region}
-            <b style={{color:PAIN_SEV_COL[p.sev]}}>{PAIN_SEV_LABEL()[p.sev]}</b>
-          </span>)}
-        </div>}
-        {tip.note&&<div className="wh-nt-n"><span className="wh-nt-ic">⚠</span>{tip.note}</div>}
-      </div>,document.body)}
-  </div>);
-}
 
 /* =========================================================
    TEAM → ATHLETE SESSION SYNC
