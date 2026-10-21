@@ -2,9 +2,8 @@
    WELLNESS — kenar çubuğundaki kendi sekmesi: kadronun bütün sabah check-in'leri
 
    Yük Takibi'ndeki Wellness Isı Haritası'nın yerini aldı. Üç katman:
-     1. Başlık bandı — Higgsfield ile üretilmiş aurora görseli (yavaş Ken Burns kayması),
-        üstünde CSS aurora ve kendini çizen nabız çizgisi; seçili gün ve kaç sporcunun
-        o gün form doldurduğu.
+     1. Başlık bandı — sade koyu zemin: yavaşça kayan iki hafif ışık ve sağa doğru
+        silikleşen ince nokta deseni; seçili gün ve kaç sporcunun o gün form doldurduğu.
      2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, RHR bpm, hazır
         oluşun 1-5 dağılımı ve son 14 günün takım hazır oluş eğrisi.
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
@@ -15,9 +14,6 @@
    formla ekran hiçbir zaman farklı renk söylemez. Haftalık RHR trendi (RHRMonitor) eski
    ısı haritasının son düğmesiydi; burada kendi paneli olarak duruyor.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* Higgsfield (gpt_image_2) ile bu sekme için üretilen başlık görseli. Yüklenemezse alttaki
-   CSS aurora tek başına kalır; görsel yalnızca süs, hiçbir bilgi taşımaz. */
-const WV_HERO_IMG='https://d8j0ntlcm91z4.cloudfront.net/user_3F9zE2joTDdJeqasMFFis8cYF8B/hf_20261020_234707_ab5147c3-9f4a-4320-be44-4805c6b21f76.png';
 const WV_METRICS=()=>[
   {id:'readiness',label:L('Hazır Oluş','Readiness'),short:L('Hazır','Ready'),five:true},
   {id:'sleep',label:L('Uyku','Sleep'),short:L('Uyku','Sleep'),five:true},
@@ -121,12 +117,8 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name}){
   const isToday=dayKey===fmt(today);
   return(<div className="wv-hero">
     <div className="wv-hero-bg" aria-hidden="true">
-      <img src={WV_HERO_IMG} alt="" onError={e=>{e.currentTarget.style.display='none';}}/>
-      <div className="wv-aurora a1"/><div className="wv-aurora a2"/><div className="wv-aurora a3"/>
-      <svg className="wv-ecg" viewBox="0 0 600 60" preserveAspectRatio="none">
-        <path d="M0 30 H170 L182 30 L190 14 L198 46 L206 6 L214 52 L222 30 H330 L342 30 L350 18 L358 42 L366 30 H600" pathLength="1"/>
-      </svg>
-      <div className="wv-grain"/>
+      <div className="wv-glow g1"/><div className="wv-glow g2"/>
+      <div className="wv-dots"/>
     </div>
     <div className="wv-hero-in">
       <div className="wv-hero-l">
