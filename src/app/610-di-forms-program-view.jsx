@@ -21,7 +21,7 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
-function DiPatternPlan({plan,onChange:emit,closed}){
+function DiPatternPlan({plan,onChange:emit}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
   /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
@@ -47,14 +47,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     sent.current=[...sent.current.slice(-30),sig(nl,np)];
     emit({patterns:nl,phases:np});
   };
-  const shut=closed instanceof Set?closed:new Set();
-  const isClosed=row=>row.vocab.some(v=>shut.has(v));
   /* Phase sections fold shut to a bar ("Hazırlık Bölümü · 6 egzersiz"); what is written in one is
      kept, only not drawn. Keyed by phase id, '_loose' for the unplaced tray. */
   const[folded,setFolded]=useState(()=>new Set());
   const toggleFold=id=>setFolded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
-  const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçersen yine programa girer; ağrısız ve modifiye bir varyasyon yazmayı düşün.',
-    'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
   const known=ph=>latest.current.phases.some(x=>x.id===ph);
   const phOf=p=>(known(p.phase||'')?p.phase:'');
   /* Rows are addressed by their place in the phase's own running order: key `phase|n`. */
@@ -125,8 +121,6 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
-    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),color:(mvCat(row.k)||{}).color,
-      on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     /* What a library exercise says about the row it lands on: its category, type and direction.
        `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
        without it (a typed name) only an uncategorised row takes the category, and a type or a
@@ -156,11 +150,6 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
     const handlers={
-      onChip:id=>{
-        const items=itemsOf(id,ph);
-        if(!items.length)setList([...latest.current.list,fresh(id,ph)]);
-        else if(confirmDrop(items))setList(latest.current.list.filter(p=>!(p.id===id&&phOf(p)===ph)));
-      },
       /* The stepper of a run adds or drops rows at its end. */
       onCount:(gid,n)=>{
         const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
@@ -225,8 +214,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
         const l=[...latest.current.list];[l[a],l[b]]=[l[b],l[a]];setList(l);},
     };
     const addBlank=()=>setList([...latest.current.list,fresh('',ph)]);
-    const picked=new Set(runs.map(r=>r.id).filter(Boolean)).size;
-    return(<PlanTable chips={chips} groups={groups} selected={picked} total={loose?null:DI_MOVE_PATTERNS.length}
+    return(<PlanTable groups={groups}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
       onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
       empty={L('Fazsız satır yok.','No unplaced rows.')}/>);
@@ -254,7 +242,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed,athId}){
+function DiInstructionForm({instr,save,onBuild,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
      its next render, so a paste redraws it from scratch (same batch as the write, so it opens on the new rows). */
@@ -280,7 +268,7 @@ function DiInstructionForm({instr,save,onBuild,closed,athId}){
           {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
-        <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
+        <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>

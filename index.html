@@ -6769,10 +6769,8 @@ html,body{overscroll-behavior-y:none}
 :root[data-theme="light"] .ln-logo{filter:invert(1) hue-rotate(180deg) saturate(1.4)}
 
 /* Bireyselleştirme talimatı: koyu zemin için açık renkli seçili yazılar açık zeminde okunmuyordu. */
-:root[data-theme="light"] .pt-chip.on{color:var(--text)}
 :root[data-theme="light"] .pt-altadd{color:var(--low-t)}
 :root[data-theme="light"] .pt-tag.on{color:var(--accent)}
-:root[data-theme="light"] .pt-chip-w{color:var(--med-t)}
 :root[data-theme="light"] .di-numb.on{color:var(--med-t)}
 :root[data-theme="light"] .di-tag.prio{color:var(--peak-t)}
 :root[data-theme="light"] .di-tag.avoid{color:var(--high-t)}
@@ -8336,7 +8334,7 @@ main .panel,main .ap-head{animation:none}
 .rpes-k.k-sc{color:#3b82f6}.rpes-k.k-tp{color:#f59e0b}.rpes-k.k-game{color:#ef4444}
 .rpes .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 /* ---- The pattern table ---------------------------------------------------
-   Chips across the top pick the movement patterns; every picked pattern is a row of the
+   "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
    grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
    time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
    individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
@@ -8344,30 +8342,7 @@ main .panel,main .ap-head{animation:none}
    the alternative / note — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
-/* The category chips: a header line ("KATEGORİ" and how many are picked), then one even grid of
-   chips, each with its category's colour as a dot; a picked one fills with a tint of that colour. */
-.pt-top{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--elevated)}
-.pt-top-hd{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.pt-chipl{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
-  letter-spacing:.11em;text-transform:uppercase;color:var(--muted,var(--dim))}
-.pt-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;min-width:0}
-.pt-chip{--chip-c:var(--accent);position:relative;display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--border);
-  background:var(--panel);color:var(--text2);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:600;text-align:left;
-  cursor:pointer;transition:border-color .15s,background .15s,color .15s}
-.pt-chip>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pt-chip-dot{flex:none;width:9px;height:9px;border-radius:3px;background:var(--chip-c);opacity:.55;transition:opacity .15s}
-.pt-chip:hover{border-color:var(--chip-c);color:var(--text)}
-.pt-chip:hover .pt-chip-dot{opacity:1}
-.pt-chip.on{border-color:var(--chip-c);background:color-mix(in srgb,var(--chip-c) 14%,var(--panel));color:var(--text);font-weight:700}
-.pt-chip.on .pt-chip-dot{opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--chip-c) 25%,transparent)}
-.pt-chip.warn{border-style:dashed}
-.pt-chip-w{flex:none;font-style:normal;font-weight:800;color:#fbbf24}
-.pt-chip:focus-visible,.pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
-.pt-n{flex:none;font-size:12px;font-weight:600;color:var(--dim);padding:5px 13px;border-radius:999px;border:1px solid var(--border);
-  white-space:nowrap}
-.pt-n b{font-weight:700}
-.pt-n.on{color:var(--text2);border-color:var(--border2)}
-.pt-n.on b{color:var(--text)}
+.pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pt-scroll{min-width:0}
 .pt-grid{min-width:0;display:flex;flex-direction:column;gap:10px}
 .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
@@ -20061,10 +20036,14 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
-  const[dirs,setDirs]=useState([]);   // directions ticked (empty = no filter)
-  /* A different category on the row is a different list: what was ticked for the last one
-     does not carry over. */
-  useEffect(()=>{setCats([]);setDirs([]);},[cat]);
+  /* The row's own Tür and Yön (Split Squat, Geriye …) tick the picker's filters by themselves,
+     so a split-squat row lists split squats only, not every knee-dominant exercise. The coach
+     can still untick them inside the picker; a different category, type or direction on the
+     row starts the filters over from it. */
+  const rowType=cat&&tags&&mvTypes(cat).includes(tags.plane)?tags.plane:'';
+  const rowDir=cat&&tags&&mvDirs(cat).includes(tags.dir)?tags.dir:'';
+  const[dirs,setDirs]=useState(()=>rowDir?[rowDir]:[]);   // directions ticked (empty = no filter)
+  useEffect(()=>{setCats(rowType?[rowType]:[]);setDirs(rowDir?[rowDir]:[]);},[cat,rowType,rowDir]);
   const libAll=focus?getLibItems():[];
   /* The row's category narrows the library first, so nothing of another category is offered. */
   const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);
@@ -20651,15 +20630,14 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
 /* =========================================================
    THE PATTERN TABLE — where a session is written
    =========================================================
-   One table, two homes: the calendar's block editor and the individualization brief. A row
-   of chips picks the movement patterns; every picked pattern is a row of the table: the
+   One table, two homes: the calendar's block editor and the individualization brief. "Egzersiz
+   Ekle" opens a row and its Kategori box files it; every category is a group of the table: the
    exercise (with its superset tag and an alternative under it), how many exercises of that
    pattern, then the prescription — sets, reps, time, tempo, RPE, load, rest — and a note.
 
    PlanTable draws it and knows nothing about where the rows live. A host (CalPlanGrid below
    for a calendar block, DiPatternPlan in the brief) hands in plain `groups` of `slots` and
    gets every edit back through `handlers`, addressed by the slot's own `key`:
-     onChip(id)               a pattern chip was pressed
      onCount(gid,n)           the "how many" stepper of a group
      onSlot(key,patch)        fields of one slot changed (name, link, sets, reps, duration,
                               tempo, rpe, load, rest, note, superset; the alternative's own
@@ -20891,7 +20869,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
 
-function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
+function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
   const ids=useMemo(()=>({tempo:`pt-tempo-${uid.current}`,rpe:`pt-rpe-${uid.current}`,load:`pt-load-${uid.current}`,rest:`pt-rest-${uid.current}`}),[]);
   const sug=ptSuggest();
@@ -20917,19 +20895,6 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
-    {chips.length>0&&<div className="pt-top">
-      <div className="pt-top-hd">
-        <span className="pt-chipl">{L('Kategori','Category')}</span>
-        {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-          <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
-      </div>
-      <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
-        {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
-          className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
-          style={c.color?{'--chip-c':c.color}:undefined}
-          onClick={()=>handlers.onChip(c.id)}><i className="pt-chip-dot" aria-hidden="true"/><span>{c.label}</span>{c.warn?<i className="pt-chip-w">!</i>:null}</button>)}
-      </div>
-    </div>}
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
         <datalist id={ids.tempo}>{sug.tempo.map(o=><option key={o} value={o}/>)}</datalist>
@@ -21088,8 +21053,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
-  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),color:ML_PIE_COLS[p],on:rows.some(r=>catOf(r.ex)===p)}));
-  const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(
     `${list.length} egzersiz silinecek. Devam edilsin mi?`,`${list.length} exercise${list.length>1?'s':''} will be deleted. Continue?`));
@@ -21106,17 +21069,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     return{...rest,pattern:v,plane,dir};
   };
   const handlers={
-    onChip:p=>{
-      const hit=rowsRef.current.filter(r=>catOf(r.ex)===p);
-      if(!hit.length){
-        /* A block opens with one blank row: the first category picked takes it over rather
-           than leaving it behind as an orphan above the real rows. */
-        const blank=rowsRef.current.find(r=>!r.ex.pattern&&!named(r.ex)&&!String(r.ex.description||'').trim());
-        if(blank){edit(blank.i,ex=>setPattern(ex,p));return;}
-        onAdd(phase,p,null);return;
-      }
-      if(confirmDrop(hit))onRemoveIdx(hit.map(r=>r.i));
-    },
     onCount:(gid,n)=>{
       const rs=rowsOfGroup(gid);if(!rs.length)return;
       const want=Math.max(1,Math.min(12,Math.round(n)||1));
@@ -21189,7 +21141,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
-    <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}
+    <PlanTable groups={groups} handlers={handlers}
       max={12} hasDetail detail={k=>{const ex=byI[k];
         return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange}/>:null;}}
       onAdd={loose?undefined:()=>onAdd(phase,'',null)} addLabel={L('Egzersiz Ekle','Add Exercise')}
@@ -42189,7 +42141,7 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
-function DiPatternPlan({plan,onChange:emit,closed}){
+function DiPatternPlan({plan,onChange:emit}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
   /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
@@ -42215,14 +42167,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     sent.current=[...sent.current.slice(-30),sig(nl,np)];
     emit({patterns:nl,phases:np});
   };
-  const shut=closed instanceof Set?closed:new Set();
-  const isClosed=row=>row.vocab.some(v=>shut.has(v));
   /* Phase sections fold shut to a bar ("Hazırlık Bölümü · 6 egzersiz"); what is written in one is
      kept, only not drawn. Keyed by phase id, '_loose' for the unplaced tray. */
   const[folded,setFolded]=useState(()=>new Set());
   const toggleFold=id=>setFolded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
-  const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçersen yine programa girer; ağrısız ve modifiye bir varyasyon yazmayı düşün.',
-    'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
   const known=ph=>latest.current.phases.some(x=>x.id===ph);
   const phOf=p=>(known(p.phase||'')?p.phase:'');
   /* Rows are addressed by their place in the phase's own running order: key `phase|n`. */
@@ -42293,8 +42241,6 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
-    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),color:(mvCat(row.k)||{}).color,
-      on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     /* What a library exercise says about the row it lands on: its category, type and direction.
        `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
        without it (a typed name) only an uncategorised row takes the category, and a type or a
@@ -42324,11 +42270,6 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
     const handlers={
-      onChip:id=>{
-        const items=itemsOf(id,ph);
-        if(!items.length)setList([...latest.current.list,fresh(id,ph)]);
-        else if(confirmDrop(items))setList(latest.current.list.filter(p=>!(p.id===id&&phOf(p)===ph)));
-      },
       /* The stepper of a run adds or drops rows at its end. */
       onCount:(gid,n)=>{
         const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
@@ -42393,8 +42334,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
         const l=[...latest.current.list];[l[a],l[b]]=[l[b],l[a]];setList(l);},
     };
     const addBlank=()=>setList([...latest.current.list,fresh('',ph)]);
-    const picked=new Set(runs.map(r=>r.id).filter(Boolean)).size;
-    return(<PlanTable chips={chips} groups={groups} selected={picked} total={loose?null:DI_MOVE_PATTERNS.length}
+    return(<PlanTable groups={groups}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
       onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
       empty={L('Fazsız satır yok.','No unplaced rows.')}/>);
@@ -42422,7 +42362,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed,athId}){
+function DiInstructionForm({instr,save,onBuild,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
      its next render, so a paste redraws it from scratch (same batch as the write, so it opens on the new rows). */
@@ -42448,7 +42388,7 @@ function DiInstructionForm({instr,save,onBuild,closed,athId}){
           {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
-        <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
+        <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>
@@ -42745,12 +42685,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const vr=useMemo(()=>program?validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers}):null,
     [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
   const blocked=!!(vr&&vr.status==='fail');
-  /* The patterns that load a region reported painful today (or under a standing
-     restriction) — marked on the brief's pattern toggles, which still write them,
-     modified, when the coach picks them. */
-  const closedPats=useMemo(()=>{const s=new Set();
-    ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(r=>(r.loads_patterns||[]).forEach(p=>s.add(p)));
-    return s;},[bundle]);
 
   /* The handlers below read the panel's CURRENT props through this ref rather than the
      ones captured on an earlier render — a draft saved against a stale copy of the team
@@ -42916,7 +42850,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}

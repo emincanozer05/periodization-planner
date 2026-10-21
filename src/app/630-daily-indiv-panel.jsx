@@ -45,12 +45,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const vr=useMemo(()=>program?validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers}):null,
     [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
   const blocked=!!(vr&&vr.status==='fail');
-  /* The patterns that load a region reported painful today (or under a standing
-     restriction) — marked on the brief's pattern toggles, which still write them,
-     modified, when the coach picks them. */
-  const closedPats=useMemo(()=>{const s=new Set();
-    ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(r=>(r.loads_patterns||[]).forEach(p=>s.add(p)));
-    return s;},[bundle]);
 
   /* The handlers below read the panel's CURRENT props through this ref rather than the
      ones captured on an earlier render — a draft saved against a stale copy of the team
@@ -216,7 +210,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}
