@@ -1,0 +1,108 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOINT BY JOINT · TEST VE DEĞERLENDİRME · YÜK TAKİBİ — yumuşak geçişler
+
+   19-profile-tests-load.css'in kurallarına uyar (düz/opak yüzey, gradyan yok, renk
+   küçük işaretlerde). Buradaki hareketler yalnızca bir şeyin GELDİĞİ ya da DEĞİŞTİĞİ
+   anda: bölüm açılırken kısa bir yükseliş, seçimde renk/kenar geçişi, değişen değerin
+   kayarak yerine gitmesi. Sürekli dönen/atan animasyon yok. Süre ve eğriler
+   17-motion-polish.css'teki --dur-* / --ease-*.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes coFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes coPopIn{from{opacity:0;transform:translateY(4px) scale(.97)}to{opacity:1;transform:none}}
+
+/* ═════════════ Sporcu detayı: sekme değişince içerik yumuşakça gelir ═════════════ */
+.ath-tabs2~:not(.modal-bg){animation:coRise var(--dur-3) var(--ease-out) both}
+.ath-tabs2 button{transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out)}
+
+/* ═════════════ 1) JOINT BY JOINT ═════════════ */
+/* Bölümler sırayla gelir (Atletik Profil sekmesi açıldığında bir kez). */
+.atp-wrap>.sc-sec{animation:coRise var(--dur-4) var(--ease-out) both}
+.atp-wrap>.sc-sec:nth-child(2){animation-delay:40ms}.atp-wrap>.sc-sec:nth-child(3){animation-delay:80ms}
+.atp-wrap>.sc-sec:nth-child(n+4){animation-delay:120ms}
+/* Manken: Higgsfield ile netleştirilmiş fotoğraf (joint-model.jpg, 1200 px). Oran
+   işaretçilerin viewBox'ıyla (1000×951) birebir sabit; yüklenince yumuşakça belirir. */
+.jb2-stage{box-shadow:0 0 0 1px var(--border)}
+.jb2-stage>img{aspect-ratio:1000/951;object-fit:fill;animation:coFadeIn var(--dur-4) var(--ease-out) both}
+.jb2-svg{animation:coFadeIn var(--dur-4) var(--ease-out) .12s both}
+/* İşaretçi: üstüne gelince halka kalınlaşır ve disk bir ton açılır; seviyesi
+   değiştiğinde dolgu rengi kayarak değişir. Seçili halka yaylı bir "pıt" ile çıkar. */
+.jb2-ring{transition:stroke-width var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+.jb2-disc{transition:fill var(--dur-3) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+.jb2-m:hover .jb2-ring{stroke-width:6.5}
+.jb2-m:not([class*="jl-"]):hover .jb2-disc{fill:#283039}
+.jb2-halo{transform-box:fill-box;transform-origin:center;animation:coPop var(--dur-3) var(--ease-spring) both}
+.jb2-lt{animation:coFadeIn var(--dur-2) var(--ease-out) both}
+/* Seçici: işaretçinin yanından küçük bir ölçek + saydamlık geçişiyle açılır. */
+:is(:root,:root[data-theme]) .jb2-pop{transform-origin:top center;animation:coPopIn var(--dur-2) var(--ease-out) both;
+  box-shadow:0 10px 28px rgba(0,0,0,.28)}
+:is(:root,:root[data-theme]) .jb2-pop.up{transform-origin:bottom center}
+/* Zincir tablosu: satır üstüne gelince bir ton açılır; seviyesi değişen hücrenin sol
+   çizgisi ve zemini kayarak gelir. */
+.jb2-tr{transition:background var(--dur-2) var(--ease-out)}
+.jb2-tr:not(:first-child):hover{background:var(--hover)}
+.jb2-cell{transition:border-color var(--dur-2) var(--ease-out),background var(--dur-2) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
+.jb2-cell i{animation:coPop var(--dur-3) var(--ease-spring) both}
+
+/* ═════════════ 2) TEST VE DEĞERLENDİRME ═════════════ */
+/* Adım panelleri (Test Seçimi, Test Sonuçları) sırayla gelir. */
+.ev2-step{animation:coRise var(--dur-4) var(--ease-out) both}
+.ev2-step+.ev2-step{animation-delay:70ms}
+/* Seçili sporcu değişince başlıktaki ad yumuşakça yenilenir. */
+.ev2-step-who{display:inline-block;animation:coFadeIn var(--dur-3) var(--ease-out) both}
+/* Kategori listesi: üstüne gelince yazı hafifçe sağa kayar, seçilince yerine oturur. */
+:is(:root,:root[data-theme]) .ev2-cat{transition:background var(--dur-2) var(--ease-out),color var(--dur-2),padding-left var(--dur-3) var(--ease-out)}
+@media (hover:hover) and (min-width:901px){:is(:root,:root[data-theme]) .ev2-cat:not(.on):hover{padding-left:16px}}
+/* Sekmeler, arama ve sıralama: kenar ve zemin geçişli; odakta yumuşak aksan halkası. */
+:is(:root,:root[data-theme]) .ev2-tab{transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-search input,
+:is(:root,:root[data-theme]) .ev2-sort{transition:border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}
+:is(:root,:root[data-theme]) .ev2-search input:focus,
+:is(:root,:root[data-theme]) .ev2-sort:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+/* Kartlar ve test kutucukları: seçim kenarı ve iç çizgi birlikte, yumuşak geçer. */
+:is(:root,:root[data-theme]) .ev2-card,
+:is(:root,:root[data-theme]) .ev2-tile{transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+  box-shadow var(--dur-2) var(--ease-out),background var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-card-av{transition:border-color var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+:is(:root,:root[data-theme]) .ev2-card:hover .ev2-card-av{transform:scale(1.04)}
+:is(:root,:root[data-theme]) .ev2-tile:active,
+:is(:root,:root[data-theme]) .ev2-card:active{transform:translateY(0) scale(.99)}
+/* Liste görünümü satırları da kart gibi sırayla gelir. */
+.ev2-rows>*{animation:coRise var(--dur-3) var(--ease-out) both}
+.ev2-rows>*:nth-child(2){animation-delay:25ms}.ev2-rows>*:nth-child(3){animation-delay:50ms}
+.ev2-rows>*:nth-child(n+4){animation-delay:75ms}
+/* Testi başlat düğmesi: basılınca hafifçe çöker. */
+.ev2-foot .btn{transition:transform var(--dur-2) var(--ease-out),background var(--dur-2),box-shadow var(--dur-2)}
+.ev2-foot .btn:active{transform:scale(.98)}
+
+/* ═════════════ 3) YÜK TAKİBİ ═════════════ */
+/* Hafta görünümü kartları ve alttaki paneller sırayla gelir. */
+.lm-grid>*{animation:coRise var(--dur-4) var(--ease-out) both}
+.lm-grid>*:nth-child(2){animation-delay:70ms}
+:is(:root,:root[data-theme]) .lm-gauge-card,
+:is(:root,:root[data-theme]) .lm-trend-card{transition:border-color var(--dur-2) var(--ease-out)}
+:is(:root,:root[data-theme]) .lm-gauge-card:hover,
+:is(:root,:root[data-theme]) .lm-trend-card:hover{border-color:var(--border2)}
+/* Mini göstergeler (Akut, Kronik, ACWR, Strain): üstüne gelince hafifçe kalkar. */
+:is(:root,:root[data-theme]) .lm-mini .m{transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2)}
+:is(:root,:root[data-theme]) .lm-mini .m:hover{transform:translateY(-2px);border-color:var(--border2)}
+.lm-mini .m{animation:coRise var(--dur-3) var(--ease-out) both}
+.lm-mini .m:nth-child(2){animation-delay:40ms}.lm-mini .m:nth-child(3){animation-delay:80ms}.lm-mini .m:nth-child(4){animation-delay:120ms}
+.lm-mini .m .v{font-variant-numeric:tabular-nums}
+/* Monotoni ölçeğindeki işaret: hafta değişince yeni değerine kayarak gider. */
+.ab-marker{transition:left var(--dur-4) var(--ease-out),border-color var(--dur-3) var(--ease-out)}
+/* Haftalık monotoni özeti ve tablo: sayılar hizalı, satır üstüne gelince bir ton açılır. */
+.metrics>.metric{animation:coRise var(--dur-3) var(--ease-out) both}
+.metrics>.metric:nth-child(2){animation-delay:40ms}.metrics>.metric:nth-child(3){animation-delay:80ms}
+.mono-tbl td{font-variant-numeric:tabular-nums;transition:background var(--dur-1) linear}
+:is(:root,:root[data-theme]) .mono-tbl tbody tr:hover td{background:var(--hover)}
+.chart-box{animation:coFadeIn var(--dur-4) var(--ease-out) .1s both}
+/* Sıralama düğmeleri (Yüke göre / A–Z): seçim zemini kayarak değişir. */
+.lb-seg button{transition:background var(--dur-2) var(--ease-out),color var(--dur-2),box-shadow var(--dur-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .ath-tabs2~*,.atp-wrap>.sc-sec,.jb2-stage>img,.jb2-svg,.jb2-halo,.jb2-lt,.jb2-pop,.jb2-cell i,.ev2-step,.ev2-step-who,
+  .ev2-rows>*,.lm-grid>*,.lm-mini .m,.metrics>.metric,.chart-box{animation:none!important}
+  .ab-marker,.ev2-cat{transition:none!important}
+  .ev2-card:hover .ev2-card-av,.lm-mini .m:hover,.ev2-card:active,.ev2-tile:active,.ev2-foot .btn:active{transform:none!important}
+  .ev2-cat:not(.on):hover{padding-left:revert}
+}

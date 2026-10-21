@@ -16,10 +16,8 @@ const ATH_IC={
 };
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
-const ATH_TAB_IDS=['profile','training','calendar','body','injuries','wellness'];
+const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
-  /* Normally the profile, but a wellness notification opens straight onto the tab it
-     is about — the coach tapped a line about last night's sleep, not a biography. */
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   /* Open at the top. The page scrolls as one, so without this the profile kept the
@@ -66,7 +64,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   // Same 7-day monotony the risk alerts read, at the same reference date as ACWR.
   const apMono=weekMono(athTrend(ath,apRef,7).map(v=>({load:v}))).monotony;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
-  /* Six tabs. Load has no tab of its own: the athlete's load is read where it is made —
+  /* Five tabs. Wellness lives in the sidebar's own Wellness screen. Load has no tab of its own: the athlete's load is read where it is made —
      on their calendar, day by day, with the week's totals and monotony above it. */
   const ATH_TABS=[
     {id:'profile',l:L('Sporcu Profili','Athlete Profile')},
@@ -74,7 +72,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {id:'calendar',l:L('Takvim','Calendar')},
     {id:'body',l:L('Antropometri','Anthropometry')},
     {id:'injuries',l:L('Sakatlıklar','Injuries')},
-    {id:'wellness',l:'Wellness'},
   ];
   const pickPhoto=()=>photoRef.current?.click();
   return(<div>
@@ -150,7 +147,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     </div>}
     {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='body'&&<AthBody ath={ath} updAth={updAth} setup={setup}/>}
-    {tab==='wellness'&&<AthWellness ath={ath} updAth={updAth}/>}
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises} ownerAth={ath}/>

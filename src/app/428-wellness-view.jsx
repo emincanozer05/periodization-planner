@@ -322,10 +322,12 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
 }
 
 /* ---- Sekmenin kendisi ---- */
-function WellnessView({team,updateTeam}){
+function WellnessView({team,updateTeam,focus}){
   const athletes=team.athletes||[];
   const[dayKey,setDayKey]=useState(()=>fmt(today));
-  const[selId,setSelId]=useState(null);
+  /* Bir wellness bildiriminden gelindiyse doğrudan o sporcunun ayrıntısı açılır. */
+  const[selId,setSelId]=useState(()=>focus&&athletes.some(a=>a.id===focus.athleteId)?focus.athleteId:null);
+  useEffect(()=>{if(focus&&athletes.some(a=>a.id===focus.athleteId))setSelId(focus.athleteId);},[focus]);
   const[sort,setSort]=useState('name');
   const[q,setQ]=useState('');
   const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
