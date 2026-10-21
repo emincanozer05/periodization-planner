@@ -426,6 +426,18 @@ function AtpJoints({joints,onSet,onNote}){
           {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
         </AtpJbStage>
         <div className="jb2-chain">
+          {/* How far the chain is rated: one bar split by level, so the coach sees at a
+              glance how much is left and where the high needs sit. */}
+          <div className="jb2-prog">
+            <div className="jb2-prog-h">
+              <span>{L('Değerlendirilen eklem','Joints rated')}</span>
+              <b>{rated.length}<small>/{ATP_JOINT_ROWS.length}</small></b>
+            </div>
+            <div className="jb2-prog-bar" role="img" aria-label={`${rated.length}/${ATP_JOINT_ROWS.length}`}>
+              {ATP_JOINT_LEVELS.map(l=>{const n=rated.filter(r=>joints[r.key].level===l.id).length;
+                return n?<i key={l.id} className={`jl-${l.id}`} style={{width:`${n/ATP_JOINT_ROWS.length*100}%`}} title={`${atpT(l.en)}: ${n}`}/>:null;})}
+            </div>
+          </div>
           <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
             <div className="jb2-tr jb2-th" role="row">
               <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
