@@ -41,10 +41,11 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `18-elements.css` | Sekme içi elemanlar: tek ölçüde panel başlıkları (16px + aksan çubuğu), koyu `color-scheme` ve form alanı hover/disabled, boş durum kutusu (`.empty-st`), tablo rakam hizası |
 | `19-profile-tests-load.css` | Sporcu Profili (Joint by Joint, Atletik Profil), Test ve Değerlendirme ve Sporcu Yük Panosu: düz/opak yüzeyler (gradyan ve yarı saydam katman yok), renk yalnızca küçük işaretlerde, seçim ve gelişte kısa hareketler. `:is(:root,:root[data-theme])` öneki açık temanın otomatik kurallarını aynı özgüllükte geçer |
 | `19b-notebook.css` | "Açık Defter" tasarımı, son stil katmanı: açık tema renkleri (varsayılan), masaüstü üst çubuğu + yalnız menüden oluşan kenar çubuğu, kutusuz sayfa başlığı, tek ana/ikincil düğme stili, tek panelli takvim haftası. Cam ve gradyan yok |
-| `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Wellness + Uyku ve HRV. Düz yüzey, gradyan yok |
+| `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Uyku ve HRV. Düz yüzey, gradyan yok |
 | `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
 | `19e-program-bank.css` | Program bankası: kayıtlı program seçici penceresi (`pbk-*`) ve Sporcu Profili → Antrenman Programları paneli; önizleme satırları 19d'nin `ph-*` biçimini kullanır |
 | `19f-wellness.css` | Wellness sekmesi (`wv-*`): sade koyu başlık bandı (yavaş ışıklar, silik nokta deseni), halka göstergeler, sporcu kutuları, sporcunun ay takvimi ve gün ayrıntısı; az-hareket koruması |
+| `19g-motion-tabs.css` | Joint by Joint, Test ve Değerlendirme ve Yük Takibi için yumuşak geçişler: sekme/bölüm gelişi, seçimde renk-kenar geçişi, monotoni işaretinin kayması, Higgsfield ile netleştirilmiş manken görselinin sabit oranı; az-hareket koruması |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -91,7 +92,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/390-scouting-notes.jsx` | ATHLETE PROFILE TAB — identity & anthropometrics (auto-pulled), |
 | `app/400-profile-tab.jsx` | — |
 | `app/410-atp-profile-ui.jsx` | — |
-| `app/420-athlete-detail.jsx` | Sporcu detayı: başlık, altı sekme, Sakatlıklar, Antropometri |
+| `app/420-athlete-detail.jsx` | Sporcu detayı: başlık, beş sekme, Sakatlıklar, Antropometri |
 | `app/421-athlete-phv.jsx` | PHV — Mirwald 2002 maturity offset (Antropometri sekmesindeki kart) |
 | `app/422-injury-surveillance.jsx` | SAKATLIK SÜRVEYANSI — maruziyet, insidans/1000 sa, burden, şiddet, nüks; Yük Takibi altında ve sporcunun Sakatlıklar sekmesinde |
 | `app/425-athlete-wellness-hrv.jsx` | WELLNESS TAB — wellness kaydı, uyku, HRV izleme (CoachOS_HRV_Monitoring v1.0: ln RMSSD, 7/28 günlük pencereler, 3 seviyeli uyarı) |
@@ -124,7 +125,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/650-language-selector-nav-icons.jsx` | — |
 | `app/660-ai-coach.jsx` | AI COACH ASSISTANT — talks to the Claude Messages API directly |
 | `app/670-checkin-wellness-alerts-client.jsx` | CHECK-IN FORMLARI — uygulamanın kendi anketleri (Tally'siz yol) · WELLNESS UYARILARI — istemci tarafı |
-| `app/675-lift-log.jsx` | ANTRENMAN GÜNLÜĞÜ — lift.html planı yayını, gelen günlüğün işlenmesi, 1RM / e1RM / PR, sporcu kartı, Check-in bölümü |
+| `app/675-lift-log.jsx` | ANTRENMAN GÜNLÜĞÜ — lift.html planı yayını, gelen günlüğün işlenmesi, 1RM / e1RM / PR, Check-in bölümü |
 | `app/680-wellness-alerts-coach.jsx` | WELLNESS ALERTS — the coach's side |
 | `app/690-app.jsx` | — |
 | `app/700-boot.jsx` | — |

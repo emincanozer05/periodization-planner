@@ -8883,6 +8883,114 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
   .wv-card,.wv-cal-d,.wv-ma,.wv-photo,.wv-back{transition:none}
   .wv-card:hover,.wv-cal-d:not(.out):hover,.wv-ma:hover,.wv-card:hover .wv-photo{transform:none}
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOINT BY JOINT · TEST VE DEĞERLENDİRME · YÜK TAKİBİ — yumuşak geçişler
+
+   19-profile-tests-load.css'in kurallarına uyar (düz/opak yüzey, gradyan yok, renk
+   küçük işaretlerde). Buradaki hareketler yalnızca bir şeyin GELDİĞİ ya da DEĞİŞTİĞİ
+   anda: bölüm açılırken kısa bir yükseliş, seçimde renk/kenar geçişi, değişen değerin
+   kayarak yerine gitmesi. Sürekli dönen/atan animasyon yok. Süre ve eğriler
+   17-motion-polish.css'teki --dur-* / --ease-*.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes coFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes coPopIn{from{opacity:0;transform:translateY(4px) scale(.97)}to{opacity:1;transform:none}}
+
+/* ═════════════ Sporcu detayı: sekme değişince içerik yumuşakça gelir ═════════════ */
+.ath-tabs2~:not(.modal-bg){animation:coRise var(--dur-3) var(--ease-out) both}
+.ath-tabs2 button{transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out)}
+
+/* ═════════════ 1) JOINT BY JOINT ═════════════ */
+/* Bölümler sırayla gelir (Atletik Profil sekmesi açıldığında bir kez). */
+.atp-wrap>.sc-sec{animation:coRise var(--dur-4) var(--ease-out) both}
+.atp-wrap>.sc-sec:nth-child(2){animation-delay:40ms}.atp-wrap>.sc-sec:nth-child(3){animation-delay:80ms}
+.atp-wrap>.sc-sec:nth-child(n+4){animation-delay:120ms}
+/* Manken: Higgsfield ile netleştirilmiş fotoğraf (joint-model.jpg, 1200 px). Oran
+   işaretçilerin viewBox'ıyla (1000×951) birebir sabit; yüklenince yumuşakça belirir. */
+.jb2-stage{box-shadow:0 0 0 1px var(--border)}
+.jb2-stage>img{aspect-ratio:1000/951;object-fit:fill;animation:coFadeIn var(--dur-4) var(--ease-out) both}
+.jb2-svg{animation:coFadeIn var(--dur-4) var(--ease-out) .12s both}
+/* İşaretçi: üstüne gelince halka kalınlaşır ve disk bir ton açılır; seviyesi
+   değiştiğinde dolgu rengi kayarak değişir. Seçili halka yaylı bir "pıt" ile çıkar. */
+.jb2-ring{transition:stroke-width var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+.jb2-disc{transition:fill var(--dur-3) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+.jb2-m:hover .jb2-ring{stroke-width:6.5}
+.jb2-m:not([class*="jl-"]):hover .jb2-disc{fill:#283039}
+.jb2-halo{transform-box:fill-box;transform-origin:center;animation:coPop var(--dur-3) var(--ease-spring) both}
+.jb2-lt{animation:coFadeIn var(--dur-2) var(--ease-out) both}
+/* Seçici: işaretçinin yanından küçük bir ölçek + saydamlık geçişiyle açılır. */
+:is(:root,:root[data-theme]) .jb2-pop{transform-origin:top center;animation:coPopIn var(--dur-2) var(--ease-out) both;
+  box-shadow:0 10px 28px rgba(0,0,0,.28)}
+:is(:root,:root[data-theme]) .jb2-pop.up{transform-origin:bottom center}
+/* Zincir tablosu: satır üstüne gelince bir ton açılır; seviyesi değişen hücrenin sol
+   çizgisi ve zemini kayarak gelir. */
+.jb2-tr{transition:background var(--dur-2) var(--ease-out)}
+.jb2-tr:not(:first-child):hover{background:var(--hover)}
+.jb2-cell{transition:border-color var(--dur-2) var(--ease-out),background var(--dur-2) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
+.jb2-cell i{animation:coPop var(--dur-3) var(--ease-spring) both}
+
+/* ═════════════ 2) TEST VE DEĞERLENDİRME ═════════════ */
+/* Adım panelleri (Test Seçimi, Test Sonuçları) sırayla gelir. */
+.ev2-step{animation:coRise var(--dur-4) var(--ease-out) both}
+.ev2-step+.ev2-step{animation-delay:70ms}
+/* Seçili sporcu değişince başlıktaki ad yumuşakça yenilenir. */
+.ev2-step-who{display:inline-block;animation:coFadeIn var(--dur-3) var(--ease-out) both}
+/* Kategori listesi: üstüne gelince yazı hafifçe sağa kayar, seçilince yerine oturur. */
+:is(:root,:root[data-theme]) .ev2-cat{transition:background var(--dur-2) var(--ease-out),color var(--dur-2),padding-left var(--dur-3) var(--ease-out)}
+@media (hover:hover) and (min-width:901px){:is(:root,:root[data-theme]) .ev2-cat:not(.on):hover{padding-left:16px}}
+/* Sekmeler, arama ve sıralama: kenar ve zemin geçişli; odakta yumuşak aksan halkası. */
+:is(:root,:root[data-theme]) .ev2-tab{transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-search input,
+:is(:root,:root[data-theme]) .ev2-sort{transition:border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}
+:is(:root,:root[data-theme]) .ev2-search input:focus,
+:is(:root,:root[data-theme]) .ev2-sort:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+/* Kartlar ve test kutucukları: seçim kenarı ve iç çizgi birlikte, yumuşak geçer. */
+:is(:root,:root[data-theme]) .ev2-card,
+:is(:root,:root[data-theme]) .ev2-tile{transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2) var(--ease-out),
+  box-shadow var(--dur-2) var(--ease-out),background var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-card-av{transition:border-color var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-spring)}
+:is(:root,:root[data-theme]) .ev2-card:hover .ev2-card-av{transform:scale(1.04)}
+:is(:root,:root[data-theme]) .ev2-tile:active,
+:is(:root,:root[data-theme]) .ev2-card:active{transform:translateY(0) scale(.99)}
+/* Liste görünümü satırları da kart gibi sırayla gelir. */
+.ev2-rows>*{animation:coRise var(--dur-3) var(--ease-out) both}
+.ev2-rows>*:nth-child(2){animation-delay:25ms}.ev2-rows>*:nth-child(3){animation-delay:50ms}
+.ev2-rows>*:nth-child(n+4){animation-delay:75ms}
+/* Testi başlat düğmesi: basılınca hafifçe çöker. */
+.ev2-foot .btn{transition:transform var(--dur-2) var(--ease-out),background var(--dur-2),box-shadow var(--dur-2)}
+.ev2-foot .btn:active{transform:scale(.98)}
+
+/* ═════════════ 3) YÜK TAKİBİ ═════════════ */
+/* Hafta görünümü kartları ve alttaki paneller sırayla gelir. */
+.lm-grid>*{animation:coRise var(--dur-4) var(--ease-out) both}
+.lm-grid>*:nth-child(2){animation-delay:70ms}
+:is(:root,:root[data-theme]) .lm-gauge-card,
+:is(:root,:root[data-theme]) .lm-trend-card{transition:border-color var(--dur-2) var(--ease-out)}
+:is(:root,:root[data-theme]) .lm-gauge-card:hover,
+:is(:root,:root[data-theme]) .lm-trend-card:hover{border-color:var(--border2)}
+/* Mini göstergeler (Akut, Kronik, ACWR, Strain): üstüne gelince hafifçe kalkar. */
+:is(:root,:root[data-theme]) .lm-mini .m{transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2)}
+:is(:root,:root[data-theme]) .lm-mini .m:hover{transform:translateY(-2px);border-color:var(--border2)}
+.lm-mini .m{animation:coRise var(--dur-3) var(--ease-out) both}
+.lm-mini .m:nth-child(2){animation-delay:40ms}.lm-mini .m:nth-child(3){animation-delay:80ms}.lm-mini .m:nth-child(4){animation-delay:120ms}
+.lm-mini .m .v{font-variant-numeric:tabular-nums}
+/* Monotoni ölçeğindeki işaret: hafta değişince yeni değerine kayarak gider. */
+.ab-marker{transition:left var(--dur-4) var(--ease-out),border-color var(--dur-3) var(--ease-out)}
+/* Haftalık monotoni özeti ve tablo: sayılar hizalı, satır üstüne gelince bir ton açılır. */
+.metrics>.metric{animation:coRise var(--dur-3) var(--ease-out) both}
+.metrics>.metric:nth-child(2){animation-delay:40ms}.metrics>.metric:nth-child(3){animation-delay:80ms}
+.mono-tbl td{font-variant-numeric:tabular-nums;transition:background var(--dur-1) linear}
+:is(:root,:root[data-theme]) .mono-tbl tbody tr:hover td{background:var(--hover)}
+.chart-box{animation:coFadeIn var(--dur-4) var(--ease-out) .1s both}
+/* Sıralama düğmeleri (Yüke göre / A–Z): seçim zemini kayarak değişir. */
+.lb-seg button{transition:background var(--dur-2) var(--ease-out),color var(--dur-2),box-shadow var(--dur-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .ath-tabs2~*,.atp-wrap>.sc-sec,.jb2-stage>img,.jb2-svg,.jb2-halo,.jb2-lt,.jb2-pop,.jb2-cell i,.ev2-step,.ev2-step-who,
+  .ev2-rows>*,.lm-grid>*,.lm-mini .m,.metrics>.metric,.chart-box{animation:none!important}
+  .ab-marker,.ev2-cat{transition:none!important}
+  .ev2-card:hover .ev2-card-av,.lm-mini .m:hover,.ev2-card:active,.ev2-tile:active,.ev2-foot .btn:active{transform:none!important}
+  .ev2-cat:not(.on):hover{padding-left:revert}
+}
 </style>
 </head>
 <body>
@@ -15947,13 +16055,6 @@ function Setup({team,updateTeam,data,setData}){
       </div>
     </div>
 
-    {/* The gym's kit. Asked once here instead of per session on the programme screen:
-        a gym does not change between Tuesday and Wednesday, and the answer is needed by
-        every session this app writes. */}
-    <div className="panel su-panel">
-      <SetupEquipment setup={s} save={uAll} onZoom={setZoom}/>
-    </div>
-
     {/* Wellness notifications. This used to live on a screen of its own, which meant the
         one control that decides whether a coach hears about a hurt athlete at all sat
         behind a tab most of them never opened. It belongs with the rest of the things
@@ -16010,307 +16111,6 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
     </div>
   </div>);
 }
-
-/* The gym, written down once. Every programme this app writes — the individualization
-   card's session above all — is checked against this list, so an exercise that needs a
-   trap bar is not prescribed in a gym that has none.
-
-   IT IS READ AS A SHELF, NOT AS A LIST OF LINES. One card per piece of kit, carrying
-   what a coach recognises it by — a photograph of the actual bar in the actual room,
-   the name, the line that says which barbell this is — and under it the weights the
-   gym holds of it, each with a count.
-
-   Both halves of a line earn their place. The COUNT is what makes the list useful for
-   a squad rather than one athlete: six barbells and one trap bar is a different session
-   from one barbell and six trap bars. The WEIGHT is what makes it useful for a
-   PRESCRIPTION: a rack whose heaviest dumbbell is 12 kg cannot hold a senior's heavy
-   day, and "3 × 6 @ 40 kg" written into it is not a session, it is a wish. So a gym
-   holds as many lines of one item as it has weights worth naming — 6 × 10 kg dumbbells
-   and 4 × 22.5 kg dumbbells are two lines of one card.
-
-   NOT EVERY ITEM IS COUNTED IN KILOS. A plyo box is a height, a band is a level, a rack
-   is a name; the card says which of the four its lines measure and the table's heading
-   follows. Only a kilo line is sent on as a weight.
-
-   ANY CARD CAN GO, the ten it opens with included. The vocabulary is what the assistant
-   understands, not a list of what a gym must own, so a club with no sled deletes the
-   sled — and adds whatever this list has never heard of in its place.
-
-   Empty means unconstrained, which is what it has always meant here: with nothing on
-   the list the model is free to pick whatever the exercise library suggests. A card
-   with no lines is exactly that — a name waiting for an answer, not an answer. */
-function SetupEquipment({setup,save,onZoom}){
-  const cards=eqCards(setup);
-  const[q,setQ]=useState('');
-  const[cat,setCat]=useState('all');
-  const[sort,setSort]=useState('az');
-  /* The one card being described — a new one when cid is null. Only ever one: a form
-     open on every card is a screenful of forms and no inventory. */
-  const[draft,setDraft]=useState(null);
-
-  /* Every edit writes both: the shelf, which is what this screen reads, and the flat
-     list, which is what everything else does. One call, so the two cannot drift. */
-  const write=next=>save({equipmentCards:next.map(eqStoreCard),equipment:eqMirror(next)});
-  const patch=(cid,upd)=>write(cards.map(c=>c.cid===cid?{...c,...upd}:c));
-  const num=(v,dec)=>{
-    const s=String(v==null?'':v).trim();
-    if(s==='')return null;
-    const n=Number(s.replace(',','.'));
-    if(!isFinite(n)||n<0)return null;
-    return dec?Math.round(n*10)/10:Math.round(n);
-  };
-  const setRow=(c,rid,upd)=>patch(c.cid,{rows:c.rows.map(r=>r.rid===rid?{...r,...upd}:r)});
-  const addRow=c=>patch(c.cid,{rows:[...c.rows,{rid:uid(),v:null,label:'',qty:null}]});
-  const delRow=(c,rid)=>patch(c.cid,{rows:c.rows.filter(r=>r.rid!==rid)});
-  /* Deleting takes the lines with it, so it asks first — and says how many. */
-  const delCard=c=>{
-    const n=c.rows.length;
-    if(!confirm(n
-      ?L(`"${c.name}" envanterden silinsin mi? Altındaki ${n} satır da gider.`,
-         `Delete "${c.name}" from the inventory? Its ${n} line${n===1?'':'s'} go with it.`)
-      :L(`"${c.name}" envanterden silinsin mi?`,`Delete "${c.name}" from the inventory?`)))return;
-    if(draft&&draft.cid===c.cid)setDraft(null);
-    write(cards.filter(x=>x.cid!==c.cid));
-  };
-  /* A picture goes in the moment it is picked — unless the card is open in the form,
-     where everything waits for Kaydet and the photo waits with it. */
-  const setPhoto=(c,v)=>{
-    if(draft&&draft.cid===c.cid){setDraft(d=>({...d,photo:v}));return;}
-    patch(c.cid,{photo:v});
-  };
-  const dset=upd=>setDraft(d=>({...d,...upd}));
-  const dType=v=>setDraft(d=>{
-    const fill=v==='other'?{name:'',desc:'',cat:'other',unit:'kg'}:eqTypeFill(v);
-    return d.auto?{...d,...fill,type:v}:{...d,type:v};
-  });
-  const editCard=c=>setDraft({cid:c.cid,type:DI_EQUIPMENT.some(x=>x.id===c.id)?c.id:'other',
-    name:c.name,desc:c.desc,cat:c.cat,unit:c.unit,photo:c.photo,auto:false});
-  const newCard=()=>setDraft({cid:null,type:DI_EQUIPMENT[0].id,...eqTypeFill(DI_EQUIPMENT[0].id),
-    photo:'',auto:true});
-  const draftName=draft?String(draft.name||'').trim():'';
-  const saveDraft=()=>{
-    if(!draft||!draftName)return;
-    const id=draft.type==='other'?`${EQ_CUSTOM}${diExName(draftName)}`:draft.type;
-    const fields={id,name:draftName,desc:String(draft.desc||'').trim(),cat:draft.cat,
-      unit:draft.unit,photo:draft.photo||''};
-    write(draft.cid
-      ?cards.map(c=>c.cid===draft.cid?{...c,...fields}:c)
-      :[...cards,{...fields,cid:`eq_${uid()}`,rows:[]}]);
-    setDraft(null);
-  };
-
-  /* What is on screen. The chips narrow by drawer, the box by anything written on a
-     card — its name, what it is, or a line inside it. */
-  const needle=q.trim().toLowerCase();
-  const shown=cards.filter(c=>(cat==='all'||c.cat===cat)&&(!needle||
-    [c.name,c.desc,eqCatLabel(c.cat),...c.rows.map(r=>`${r.label} ${r.v==null?'':r.v}`)]
-      .join(' ').toLowerCase().includes(needle)));
-  const byName=(a,b)=>String(a.name).localeCompare(String(b.name),'tr');
-  const sorted=shown.slice().sort((a,b)=>
-    sort==='za'?byName(b,a)
-    :sort==='qty'?(eqCardQty(b)-eqCardQty(a))||byName(a,b)
-    :sort==='cat'?(EQ_CATS.findIndex(x=>x.id===a.cat)-EQ_CATS.findIndex(x=>x.id===b.cat))||byName(a,b)
-    :byName(a,b));
-
-  /* The two figures a coach can check the shelf against at a glance. A card with no
-     lines is not counted as a type: it is not in the inventory. */
-  const inInv=cards.filter(c=>c.rows.length);
-  const pieces=cards.reduce((t,c)=>t+eqCardQty(c),0);
-  const totalKg=cards.reduce((t,c)=>t+(c.unit==='kg'
-    ?c.rows.reduce((s,r)=>s+((r.v!=null&&r.qty!=null)?r.v*r.qty:0),0):0),0);
-
-  const photoBox=(v,onPick,alt)=>{
-    const has=hasMedia(v);
-    const src=has?mediaSrc(v):'';
-    return(<div className="eqc-ph">
-      {has?<img src={src} alt="" title={L('Büyüt','Enlarge')}
-             onClick={()=>onZoom&&onZoom({src,alt:alt||''})}/>
-          :<span className="eqc-ph-e" aria-hidden="true"><TIc k="box" size={22}/></span>}
-      <label className="eqc-ph-up" title={has?L('Görseli değiştir','Replace photo'):L('Görsel yükle','Upload photo')}>
-        <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-          const f=e.target.files&&e.target.files[0];e.target.value='';
-          if(f)handleImageUpload(f,'equipment',url=>onPick(url));
-        }}/>
-        <TIc k="camera" size={12}/>
-      </label>
-    </div>);
-  };
-
-  /* The form, shared by the card being edited and the one being added: the same five
-     answers either way, so a card reads the same however it got here. */
-  const form=()=>(<div className="eqc-form">
-    <label>{L('Ad','Name')}
-      <input value={draft.name} autoFocus placeholder={L('Ekipman adı','Equipment name')}
-        onChange={e=>dset({name:e.target.value,auto:false})}
-        onKeyDown={e=>{if(e.key==='Enter')saveDraft();if(e.key==='Escape')setDraft(null);}}/></label>
-    <label>{L('Tür — asistanın tanıdığı alet','Type — the implement the assistant knows')}
-      <select value={draft.type} onChange={e=>dType(e.target.value)}>
-        {DI_EQUIPMENT.map(x=><option key={x.id} value={x.id}>{L(x.label[0],x.label[1])}</option>)}
-        <option value="other">{L('Diğer (kendi adıyla)','Other (by its own name)')}</option>
-      </select></label>
-    <label>{L('Açıklama','Description')}
-      <input value={draft.desc} placeholder={L('örn. olimpik bar','e.g. Olympic bar')}
-        onChange={e=>dset({desc:e.target.value})}/></label>
-    <div className="eqc-form-2">
-      <label>{L('Kategori','Category')}
-        <select value={draft.cat} onChange={e=>dset({cat:e.target.value})}>
-          {EQ_CATS.map(c=><option key={c.id} value={c.id}>{L(c.label[0],c.label[1])}</option>)}
-        </select></label>
-      <label>{L('Satırlar neyi ölçer','What its lines measure')}
-        <select value={draft.unit} onChange={e=>dset({unit:e.target.value})}>
-          {EQ_UNITS.map(u=><option key={u.id} value={u.id}>{L(u.head[0],u.head[1])}</option>)}
-        </select></label>
-    </div>
-    <div className="eqc-form-act">
-      <button className="btn sm" onClick={saveDraft} disabled={!draftName}>
-        {draft.cid?L('Kaydet','Save'):L('Ekle','Add')}</button>
-      <button className="btn sm sec" onClick={()=>setDraft(null)}>{L('Vazgeç','Cancel')}</button>
-      {hasMedia(draft.photo)&&<button className="btn sm sec" onClick={()=>dset({photo:''})}>
-        {L('Görseli kaldır','Remove photo')}</button>}
-    </div>
-  </div>);
-
-  const rowCell=(c,r,i)=>(c.unit==='kg'||c.unit==='cm')
-    ?<input type="number" min="0" max={c.unit==='kg'?'500':'300'} step={c.unit==='kg'?'0.5':'1'}
-       value={r.v!=null?r.v:''} placeholder="—"
-       aria-label={`${c.name} ${L(eqUnit(c.unit).head[0],eqUnit(c.unit).head[1])}`}
-       onChange={e=>setRow(c,r.rid,{v:num(e.target.value,c.unit==='kg')})}/>
-    :<span className="eqc-lv">
-       {c.unit==='level'&&<i className="eqc-dot" style={{background:eqDot(r.label,i)}} aria-hidden="true"/>}
-       <input value={r.label} list={c.unit==='level'?'su-eq-levels':undefined}
-         placeholder={c.unit==='level'?L('seviye','level'):L('açıklama','description')}
-         aria-label={`${c.name} ${L(eqUnit(c.unit).head[0],eqUnit(c.unit).head[1])}`}
-         onChange={e=>setRow(c,r.rid,{label:e.target.value})}/>
-     </span>;
-
-  const card=c=>{
-    const editing=!!draft&&draft.cid===c.cid;
-    const u=eqUnit(c.unit);
-    return(<div key={c.cid} className={'eqc'+(c.rows.length?'':' off')+(editing?' editing':'')}>
-      <div className="eqc-hd">
-        {photoBox(editing?draft.photo:c.photo,v=>setPhoto(c,v),c.name)}
-        <div className="eqc-id">
-          <div className="eqc-nm" title={c.name}>{c.name}</div>
-          {c.desc&&<div className="eqc-sub" title={c.desc}>{c.desc}</div>}
-          <span className={'eqc-cat c-'+c.cat}>{eqCatLabel(c.cat)}</span>
-        </div>
-        <div className="eqc-acts">
-          <button type="button" className={'eqc-ic'+(editing?' on':'')}
-            onClick={()=>editing?setDraft(null):editCard(c)}
-            title={L('Ekipmanı düzenle','Edit equipment')} aria-label={L('Düzenle','Edit')}>
-            <TIc k="pencil" size={13}/></button>
-          <button type="button" className="eqc-ic danger" onClick={()=>delCard(c)}
-            title={L('Ekipmanı sil','Delete equipment')} aria-label={L('Sil','Delete')}>
-            <TIc k="trash" size={13}/></button>
-        </div>
-      </div>
-      {editing?form():<>
-        <div className="eqc-tbl">
-          <div className="eqc-tr hd"><span>{L(u.head[0],u.head[1])}</span><span>{L('Adet','Count')}</span><span/></div>
-          <div className="eqc-body">{c.rows.map((r,i)=><div key={r.rid} className="eqc-tr">
-            {rowCell(c,r,i)}
-            <input className="qty" type="number" min="0" max="999" value={r.qty!=null?r.qty:''}
-              placeholder="—" aria-label={`${c.name} ${L('adet','count')}`}
-              onChange={e=>setRow(c,r.rid,{qty:num(e.target.value,false)})}/>
-            <button type="button" className="eqc-x" onClick={()=>delRow(c,r.rid)}
-              title={L('Bu satırı sil','Delete this line')} aria-label={L('Satırı sil','Delete line')}>✕</button>
-          </div>)}</div>
-          {!c.rows.length&&<div className="eqc-empty">
-            {L('Satır yok — envanterde sayılmaz.','No lines — not in the inventory.')}</div>}
-        </div>
-        <button className="btn sm eqc-add" onClick={()=>addRow(c)}>＋ {L(u.add[0],u.add[1])}</button>
-      </>}
-    </div>);
-  };
-
-  return(<div className="su-eq">
-    {/* Levels a band is usually sold in. A suggestion, not a list: the box takes
-        whatever the club calls them. */}
-    <datalist id="su-eq-levels">
-      {[['Hafif','Light'],['Orta','Medium'],['Sert','Heavy'],['Ekstra Sert','Extra heavy']]
-        .map(p=><option key={p[0]} value={L(p[0],p[1])}/>)}
-    </datalist>
-
-    <div className="su-eq-hd">
-      <div className="su-eq-hd-l">
-        <h2>{L('Ekipman Envanteri','Equipment Inventory')}</h2>
-        <div className="help">{L('Salonda bulunan tüm ekipmanları, ağırlıklarını ve adetlerini yönetin.',
-                                 'Manage everything the gym holds, what it weighs and how many there are.')}</div>
-      </div>
-      <div className="su-eq-hd-r">
-        <div className="su-eq-stat">
-          <span className="su-eq-stat-ic"><TIc k="box" size={16}/></span>
-          <span><span className="su-eq-stat-l">{L('Envanterdeki Tür','Item types')}</span>
-            <span className="su-eq-stat-v">{inInv.length}</span></span>
-        </div>
-        <div className="su-eq-stat">
-          <span className="su-eq-stat-ic"><TIc k="ruler" size={16}/></span>
-          <span><span className="su-eq-stat-l">{L('Toplam Ekipman Adedi','Total pieces')}</span>
-            <span className="su-eq-stat-v">{pieces}</span></span>
-        </div>
-        <button className="btn" onClick={newCard} disabled={!!draft&&draft.cid===null}>
-          ＋ {L('Ekipman Ekle','Add equipment')}</button>
-      </div>
-    </div>
-
-    <div className="help su-lead">{L('Program asistanı bu listeyi okur: envanterde olmayan bir alet yazılmaz, envanterdeki en ağır yükün üstüne reçete yazılmaz ve aynı anda adetten fazlasını gerektiren bir kurgu kurulmaz. Satırı olmayan kart envantere girmez.',
-                                     'The programme assistant reads this shelf: it will not prescribe a piece of kit that is not here, will not load past the heaviest weight on it, and will not build a set-up that needs more of one item at once than there are. A card with no lines is not in the inventory.')}</div>
-
-    <div className="su-eq-bar">
-      <div className="su-eq-tabs">
-        <button className={'ev2-tab'+(cat==='all'?' on':'')} onClick={()=>setCat('all')}>
-          {L('Tümü','All')}<span className="ev2-tab-n">({cards.length})</span></button>
-        {EQ_CATS.map(c=><button key={c.id} className={'ev2-tab'+(cat===c.id?' on':'')} onClick={()=>setCat(c.id)}>
-          {L(c.label[0],c.label[1])}<span className="ev2-tab-n">({cards.filter(x=>x.cat===c.id).length})</span></button>)}
-      </div>
-      <div className="su-eq-bar-r">
-        <div className="ev2-search">
-          <span className="ev2-search-ic"><TIc k="search" size={15}/></span>
-          <input placeholder={L('Ekipman ara… (örn. barbell, kutu, lastik)','Search equipment… (e.g. barbell, box, band)')}
-            value={q} onChange={e=>setQ(e.target.value)}/>
-        </div>
-        <select className="ev2-sort" value={sort} onChange={e=>setSort(e.target.value)}
-          aria-label={L('Sıralama','Order')}>
-          <option value="az">{L('A → Z','A → Z')}</option>
-          <option value="za">{L('Z → A','Z → A')}</option>
-          <option value="qty">{L('Adet (çoktan aza)','Count (most first)')}</option>
-          <option value="cat">{L('Kategoriye göre','By category')}</option>
-        </select>
-      </div>
-    </div>
-
-    <div className="su-eq-grid">
-      {sorted.map(card)}
-      {draft&&draft.cid===null&&<div className="eqc editing" key="eq-new">
-        <div className="eqc-hd">
-          {photoBox(draft.photo,v=>dset({photo:v}),draftName)}
-          <div className="eqc-id">
-            <div className="eqc-nm">{L('Yeni ekipman','New equipment')}</div>
-            <div className="eqc-sub">{L('Salonda olan, listede olmayan her şey.','Whatever the gym has that this list does not.')}</div>
-          </div>
-        </div>
-        {form()}
-      </div>}
-      {!(draft&&draft.cid===null)&&<button type="button" className="eqc add" onClick={newCard}>
-        <span className="eqc-add-ic">＋</span>
-        <span className="eqc-add-t">{L('Yeni Ekipman Ekle','Add New Equipment')}</span>
-        <span className="eqc-add-s">{L('Salondaki yeni bir ekipmanı envantere ekleyin.','Put another piece of the gym on the shelf.')}</span>
-      </button>}
-    </div>
-
-    {!sorted.length&&!!cards.length&&<div className="empty-st">
-      {L('Bu filtreye uyan ekipman yok.','No equipment matches this filter.')}</div>}
-
-    <div className="su-eq-foot help">
-      {inInv.length
-        ?L(`${inInv.length} tür ekipman envanterde, toplam ${pieces} adet${totalKg>0?`, ${Math.round(totalKg*10)/10} kg`:''}. Bireyselleştirme ekranında yazılan programlar yalnızca bu ekipmanla yapılabilecek egzersizleri içerir; adet aynı anda kaç sporcunun o işi yapabileceğini, kilo ise ne kadar yüklenebileceğini söyler.`,
-           `${inInv.length} item type${inInv.length===1?'':'s'} in the inventory, ${pieces} piece${pieces===1?'':'s'} in all${totalKg>0?`, ${Math.round(totalKg*10)/10} kg`:''}. Sessions written on the Individualization screen use only what is here: the count says how many athletes can be on one piece at once, and the weight says how far it can be loaded.`)
-        :L('Envanter boş — ekipman kısıtı uygulanmaz. Bir kartın altına satır ekle; adede 0 yazarsan o satır yok sayılır.',
-           'The inventory is empty, so no equipment constraint is applied. Add a line under a card; a count of 0 means you do not have it.')}
-    </div>
-  </div>);
-}
-
 
 /* =========================================================
    SEASON PLAN (with customizable periods)
@@ -29826,7 +29626,6 @@ function TrainingProfileTab({ath,updAth,exercises}){
   return(<div className="atp-wrap">
     <AtpTestStrip ath={ath}/>
     <FvSummaryCard ath={ath}/>
-    <LiftCard ath={ath} updAth={updAth}/>
     <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
@@ -29851,10 +29650,8 @@ const ATH_IC={
 };
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
-const ATH_TAB_IDS=['profile','training','calendar','body','injuries','wellness'];
+const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
-  /* Normally the profile, but a wellness notification opens straight onto the tab it
-     is about — the coach tapped a line about last night's sleep, not a biography. */
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   /* Open at the top. The page scrolls as one, so without this the profile kept the
@@ -29901,7 +29698,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   // Same 7-day monotony the risk alerts read, at the same reference date as ACWR.
   const apMono=weekMono(athTrend(ath,apRef,7).map(v=>({load:v}))).monotony;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
-  /* Six tabs. Load has no tab of its own: the athlete's load is read where it is made —
+  /* Five tabs. Wellness lives in the sidebar's own Wellness screen. Load has no tab of its own: the athlete's load is read where it is made —
      on their calendar, day by day, with the week's totals and monotony above it. */
   const ATH_TABS=[
     {id:'profile',l:L('Sporcu Profili','Athlete Profile')},
@@ -29909,7 +29706,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {id:'calendar',l:L('Takvim','Calendar')},
     {id:'body',l:L('Antropometri','Anthropometry')},
     {id:'injuries',l:L('Sakatlıklar','Injuries')},
-    {id:'wellness',l:'Wellness'},
   ];
   const pickPhoto=()=>photoRef.current?.click();
   return(<div>
@@ -29985,7 +29781,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     </div>}
     {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='body'&&<AthBody ath={ath} updAth={updAth} setup={setup}/>}
-    {tab==='wellness'&&<AthWellness ath={ath} updAth={updAth}/>}
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises} ownerAth={ath}/>
@@ -31687,10 +31482,12 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
 }
 
 /* ---- Sekmenin kendisi ---- */
-function WellnessView({team,updateTeam}){
+function WellnessView({team,updateTeam,focus}){
   const athletes=team.athletes||[];
   const[dayKey,setDayKey]=useState(()=>fmt(today));
-  const[selId,setSelId]=useState(null);
+  /* Bir wellness bildiriminden gelindiyse doğrudan o sporcunun ayrıntısı açılır. */
+  const[selId,setSelId]=useState(()=>focus&&athletes.some(a=>a.id===focus.athleteId)?focus.athleteId:null);
+  useEffect(()=>{if(focus&&athletes.some(a=>a.id===focus.athleteId))setSelId(focus.athleteId);},[focus]);
   const[sort,setSort]=useState('name');
   const[q,setQ]=useState('');
   const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
@@ -31971,7 +31768,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
   useEffect(()=>{
     if(!focus||!focus.athleteId)return;
     if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
-    setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||'wellness');
+    setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||null);
   },[focus,team.id]);
   /* ⌘K / Ctrl-K jumps to the search box — the roster is the one screen in the app
      long enough that finding a name by scrolling is the slow way. */
@@ -44913,89 +44710,6 @@ function LiftSection({team,setData,user,loaded,ensureLink,copyText}){
   </div>);
 }
 
-/* ---- Sporcu sayfası kartı: 1RM tablosu + plan/gerçekleşen + hacim + rekorlar ---- */
-function LiftCard({ath,updAth}){
-  const log=ath.liftLog||[];
-  const[open,setOpen]=useState(null);
-  const[nm,setNm]=useState('');const[kgIn,setKgIn]=useState('');
-  const rmList=Object.entries(ath.rm||{}).map(([key,v])=>({key,...v})).sort((a,b)=>String(a.n).localeCompare(String(b.n)));
-  const sugg=useMemo(()=>liftSuggestRm(ath),[ath.liftLog]);
-  const week=useMemo(()=>liftWeekly(ath,8),[ath.liftLog]);
-  const sessions=useMemo(()=>log.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12),[ath.liftLog]);
-  const setRm=(name,kg)=>{
-    const key=liftNorm(name);if(!key)return;
-    const rm={...(ath.rm||{})};
-    const v=Number(String(kg).replace(',','.'));
-    if(!(v>0))delete rm[key];else rm[key]={n:name.trim(),kg:v,at:fmt(today)};
-    updAth(ath.id,{rm});
-  };
-  const addRm=()=>{if(!nm.trim()||!(Number(String(kgIn).replace(',','.'))>0))return;setRm(nm,kgIn);setNm('');setKgIn('');};
-  const maxVol=Math.max(1,...week.map(w=>w.vol));
-  const suggList=Object.entries(sugg).filter(([k,v])=>!(ath.rm&&ath.rm[k]&&ath.rm[k].kg>=v.kg)).slice(0,8);
-  if(!log.length&&!rmList.length&&!suggList.length){
-    return(<div className="panel lift-card"><h2 style={{marginTop:0}}>{L('Kuvvet Günlüğü ve 1RM','Strength Log & 1RM')}</h2>
-      <div className="empty-st" style={{margin:0}}>{L('Henüz kg/tekrar kaydı yok. Check-in Formları ekranından günlük linkini sporcuya gönder.','No kg/reps logged yet. Send the log link from the Check-in Forms screen.')}
-        <div className="row" style={{gap:6,marginTop:10}}>
-          <input value={nm} onChange={e=>setNm(e.target.value)} placeholder={L('Egzersiz (ör. Back Squat)','Exercise (e.g. Back Squat)')}/>
-          <input style={{width:90}} type="number" value={kgIn} onChange={e=>setKgIn(e.target.value)} placeholder="1RM kg"/>
-          <button className="btn sm" onClick={addRm}>{L('1RM ekle','Add 1RM')}</button>
-        </div></div></div>);
-  }
-  return(<div className="panel lift-card">
-    <h2 style={{marginTop:0}}>{L('Kuvvet Günlüğü ve 1RM','Strength Log & 1RM')}</h2>
-    {log.length>0&&<div className="lift-weeks" aria-label={L('Haftalık hacim yükü','Weekly volume load')}>
-      {week.map(w=><div key={w.from} className="lift-wk" title={`${fd(w.from)} · ${w.vol} kg · ${w.sets} ${L('set','sets')}`}>
-        <i style={{height:`${Math.max(2,w.vol/maxVol*100)}%`}}/><span>{w.from.slice(5)}</span></div>)}
-    </div>}
-    <div className="help" style={{margin:'4px 0 12px'}}>{L('Hacim yükü = Σ kg × tekrar, son 8 hafta (hafta başı tarihleriyle).','Volume load = Σ kg × reps, last 8 weeks (week-start dates).')}</div>
-
-    <div className="lift-h">{L('1RM tablosu','1RM table')} <span className="help">{L('— %1RM yükleri bu tablodan kg\'a çevrilip sporcuya gösterilir.','— %1RM loads are converted to kg from this table for the athlete.')}</span></div>
-    <div className="lift-rm">
-      {rmList.map(r=><div key={r.key} className="lift-rm-r">
-        <span>{r.n}</span>
-        <input type="number" step="0.5" defaultValue={r.kg} onBlur={e=>{if(Number(e.target.value)!==r.kg)setRm(r.n,e.target.value);}} aria-label={r.n+' 1RM'}/>
-        <span className="help">kg · {fd(r.at)}</span>
-        <button className="btn xs danger" onClick={()=>setRm(r.n,0)} aria-label={L('Sil','Delete')}>✕</button>
-      </div>)}
-      <div className="lift-rm-r">
-        <input value={nm} onChange={e=>setNm(e.target.value)} placeholder={L('Egzersiz adı','Exercise name')}/>
-        <input type="number" step="0.5" value={kgIn} onChange={e=>setKgIn(e.target.value)} placeholder="kg"/>
-        <button className="btn xs" onClick={addRm}>+ {L('Ekle','Add')}</button>
-      </div>
-    </div>
-    {suggList.length>0&&<div className="lift-sugg">
-      <div className="help" style={{marginBottom:4}}>{L('Günlükten öneri (≤6 tekrarlı en iyi set, Epley e1RM):','Suggested from the log (best set ≤6 reps, Epley e1RM):')}</div>
-      <div className="row" style={{gap:6,flexWrap:'wrap'}}>
-        {suggList.map(([k,v])=><button key={k} className="btn xs sec" onClick={()=>setRm(v.n,v.kg)}>{v.n}: {v.kg} kg</button>)}
-      </div>
-    </div>}
-
-    {sessions.length>0&&<>
-      <div className="lift-h" style={{marginTop:16}}>{L('Son antrenmanlar — plan ve gerçekleşen','Recent sessions — plan vs actual')}</div>
-      {sessions.map(e=>{
-        const st=liftEntryStats(e),prs=liftPRsOf(ath,e),isOpen=open===e.id;
-        return(<div key={e.id||e.date+e.pid} className={'lift-ses'+(isOpen?' open':'')}>
-          <button className="lift-ses-s" aria-expanded={isOpen} onClick={()=>setOpen(isOpen?null:e.id)}>
-            <span>{fd(e.date)}</span>
-            <span>{st.ex.length} {L('egz.','ex.')} · {st.sets} {L('set','sets')}</span>
-            <span>{st.vol.toLocaleString(L('tr-TR','en-GB'))} kg</span>
-            <span className={st.adherence==null?'':(st.adherence>=90?'ok':st.adherence>=70?'mid':'low')}>{st.adherence==null?L('serbest','free'):L(`%${st.adherence} uyum`,`${st.adherence}% adherence`)}</span>
-            {prs.length>0&&<span className="lift-pr">PR ×{prs.length}</span>}
-          </button>
-          {isOpen&&<div className="lift-ses-b">
-            {st.ex.map(({x,st:s},i)=><div key={i} className="lift-ex">
-              <div className="lift-ex-n">{x.n}{prs.includes(x.n)&&<span className="lift-pr">PR</span>}</div>
-              <div className="lift-ex-p">{L('Plan','Plan')}: {[x.pl.s&&x.pl.r?`${x.pl.s}×${x.pl.r}`:'',x.pl.l,x.pl.kg?`≈${x.pl.kg} kg`:''].filter(Boolean).join(' · ')||'—'}</div>
-              <div className="lift-ex-a">{L('Gerçek','Actual')}: {(x.s||[]).map(([kg,r,p])=>`${kg>0?liftFmtKg(kg):'BW'}×${r}${p?`@${p}`:''}`).join(' · ')}
-                {s.plannedKg&&s.avgKg>0&&<em className={Math.abs(s.avgKg/s.plannedKg-1)<=0.05?'ok':'mid'}> ({s.avgKg>=s.plannedKg?'+':''}{Math.round((s.avgKg/s.plannedKg-1)*100)}% {L('yük','load')})</em>}
-                {s.e1>0&&<em> · e1RM {s.e1}</em>}</div>
-            </div>)}
-            {e.note&&<div className="help">{L('Sporcu notu','Athlete note')}: {e.note}</div>}
-          </div>}
-        </div>);})}
-    </>}
-  </div>);
-}
 /* =========================================================
    WELLNESS ALERTS — the coach's side
    ========================================================= */
@@ -45233,6 +44947,7 @@ function App(){
      o sporcuyu doğrudan açıyor; damga (at) aynı sporcuya ikinci kez tıklandığında
      da ekranın yeniden açılmasını sağlıyor. */
   const[athFocus,setAthFocus]=useState(null);
+  const[wvFocus,setWvFocus]=useState(null);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
   const team=useMemo(()=>rosterByName(data.teams.find(t=>t.id===data.activeTeamId)||data.teams[0]),[data]);
@@ -45397,15 +45112,15 @@ function App(){
   const ballNameOptions=useMemo(()=>(data.exercises||[])
     .filter(e=>exLib(e)==='ball'&&(e.name||'').trim())
     .map(e=><option key={e.id} value={e.name}/>),[data.exercises]);
-  /* Uyarı → sporcunun Wellness ekranı. Uyarı başka bir takımınsa önce o takıma
+  /* Uyarı → Wellness ekranında o sporcunun ayrıntısı. Uyarı başka bir takımınsa önce o takıma
      geçiliyor: bildirime tıklayan koç hangi kadroya baktığını düşünmek zorunda
      kalmasın. */
   const openAlert=a=>{
     if(!a||!a.athleteId)return;
     if(a.teamId&&a.teamId!==data.activeTeamId&&data.teams.some(t=>t.id===a.teamId))
       setData(prev=>withTeam(prev,a.teamId));
-    setAthFocus({athleteId:a.athleteId,tab:'wellness',at:Date.now()});
-    setView('athletes');
+    setWvFocus({athleteId:a.athleteId,at:Date.now()});
+    setView('wellness');
   };
   /* Bildirime tıklanınca gelinen adres: index.html#alert=<id>.
      Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
@@ -45571,7 +45286,7 @@ function App(){
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
       {view==='reports'&&<><TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>
         <InjurySurveillance key={team.id} athletes={team.athletes||[]} setup={team.setup}/></>}
-      {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam}/>}
+      {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam} focus={wvFocus}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {/* No `team` prop and no `key` off the team: the pool is the same list whichever
           squad is selected, so switching teams must not remount or refilter it. */}

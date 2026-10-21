@@ -8,6 +8,7 @@ function App(){
      o sporcuyu doğrudan açıyor; damga (at) aynı sporcuya ikinci kez tıklandığında
      da ekranın yeniden açılmasını sağlıyor. */
   const[athFocus,setAthFocus]=useState(null);
+  const[wvFocus,setWvFocus]=useState(null);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
   const team=useMemo(()=>rosterByName(data.teams.find(t=>t.id===data.activeTeamId)||data.teams[0]),[data]);
@@ -172,15 +173,15 @@ function App(){
   const ballNameOptions=useMemo(()=>(data.exercises||[])
     .filter(e=>exLib(e)==='ball'&&(e.name||'').trim())
     .map(e=><option key={e.id} value={e.name}/>),[data.exercises]);
-  /* Uyarı → sporcunun Wellness ekranı. Uyarı başka bir takımınsa önce o takıma
+  /* Uyarı → Wellness ekranında o sporcunun ayrıntısı. Uyarı başka bir takımınsa önce o takıma
      geçiliyor: bildirime tıklayan koç hangi kadroya baktığını düşünmek zorunda
      kalmasın. */
   const openAlert=a=>{
     if(!a||!a.athleteId)return;
     if(a.teamId&&a.teamId!==data.activeTeamId&&data.teams.some(t=>t.id===a.teamId))
       setData(prev=>withTeam(prev,a.teamId));
-    setAthFocus({athleteId:a.athleteId,tab:'wellness',at:Date.now()});
-    setView('athletes');
+    setWvFocus({athleteId:a.athleteId,at:Date.now()});
+    setView('wellness');
   };
   /* Bildirime tıklanınca gelinen adres: index.html#alert=<id>.
      Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
@@ -346,7 +347,7 @@ function App(){
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
       {view==='reports'&&<><TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>
         <InjurySurveillance key={team.id} athletes={team.athletes||[]} setup={team.setup}/></>}
-      {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam}/>}
+      {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam} focus={wvFocus}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {/* No `team` prop and no `key` off the team: the pool is the same list whichever
           squad is selected, so switching teams must not remount or refilter it. */}

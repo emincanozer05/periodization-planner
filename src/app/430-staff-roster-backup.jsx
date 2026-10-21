@@ -233,7 +233,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
   useEffect(()=>{
     if(!focus||!focus.athleteId)return;
     if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
-    setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||'wellness');
+    setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||null);
   },[focus,team.id]);
   /* ⌘K / Ctrl-K jumps to the search box — the roster is the one screen in the app
      long enough that finding a name by scrolling is the slow way. */
