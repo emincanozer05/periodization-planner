@@ -44,7 +44,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Wellness + Uyku ve HRV. Düz yüzey, gradyan yok |
 | `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
 | `19e-program-bank.css` | Program bankası: kayıtlı program seçici penceresi (`pbk-*`) ve Sporcu Profili → Antrenman Programları paneli; önizleme satırları 19d'nin `ph-*` biçimini kullanır |
-| `19f-wellness.css` | Wellness sekmesi (`wv-*`): Higgsfield görselli koyu başlık bandı (aurora, nabız çizgisi), halka göstergeler, sporcu kutuları, sporcunun ay takvimi ve gün ayrıntısı; az-hareket koruması |
+| `19f-wellness.css` | Wellness sekmesi (`wv-*`): sade koyu başlık bandı (yavaş ışıklar, silik nokta deseni), halka göstergeler, sporcu kutuları, sporcunun ay takvimi ve gün ayrıntısı; az-hareket koruması |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
