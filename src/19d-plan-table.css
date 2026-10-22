@@ -3,8 +3,8 @@
    grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
    time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
    individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
-   library) on the left, and on the right Kategori · Tür, the exercise, the dose boxes and
-   the alternative / note — so it never scrolls sideways. */
+   library) on the left, and on the right Kategori · Tür, then two columns — the exercise
+   beside its dose, the link beside the note — and the alternative — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
 .pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
@@ -23,14 +23,17 @@
 .pt-img-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim);text-align:center;padding:6px}
 .pt-img-ph em{font-style:normal;font-size:10.5px;font-weight:600;line-height:1.25}
 .pt-body{min-width:0;display:flex;flex-direction:column;gap:8px}
-.pt-tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end}
-/* The second and third line of an exercise: its alternative (with a dose of its own) and the note. */
-.pt-sec.alt .pt-ex .pt-exname.alt .en{border-color:var(--border)}
+/* Every line of an exercise is two columns: the exercise (then its link) on the left, its dose
+   (then the note) on the right. The alternative takes the same two lines under them. */
+.pt-tr{display:grid;grid-template-columns:minmax(0,9fr) minmax(0,16fr);gap:8px 10px;align-items:end}
+.pt-sec{padding-top:8px;border-top:1px dashed var(--border)}
+.pt-sec .pt-exname.alt .en{border-color:var(--border)}
+.pt-dose{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;min-width:0}
 .pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 /* Kategori · Tür: the category box (its colour's dot in front, ✕ to take it off) on the
    group's first row, then the row's own type box. */
-.pt-pat{position:relative;grid-column:1/-1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+.pt-pat{position:relative;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
   gap:6px 8px;min-height:0;color:var(--text)}
 .pt-pat:empty{display:none}
 .pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
@@ -105,7 +108,7 @@
 .pt-more:hover,.pt-more.on{border-color:var(--accent);color:var(--text)}
 .pt-alt{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px}
 .pt-altk{flex:none;width:38px;text-align:center;font-size:12px;color:var(--dim)}
-.pt-altadd{margin-left:auto;margin-right:2px;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
+.pt-altadd{flex:none;border:0;white-space:nowrap;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
 .pt-altadd:hover{text-decoration:underline}
 .pt-altx{flex:none;width:24px;height:24px;border:0;background:none;color:var(--dim);font-size:11px;cursor:pointer;border-radius:6px}
 .pt-altx:hover{color:#fda4af;background:rgba(244,63,94,.12)}
@@ -148,34 +151,21 @@
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-/* Where each box sits on the 12-column line: the exercise across the card, then the count and
-   the seven dose boxes one column each and the link in the last four; under them the
-   alternative button beside the note. The link and the note say what they are in their own
-   placeholder, so only the number boxes carry a caption (the link keeps the room for one). */
-.pt-ex{grid-column:1/-1}
-.pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
-.pt-link .pt-cl{visibility:hidden}
-.pt-cnt{grid-column:span 1}
-.pt-link{grid-column:span 4}
-.pt-note,.pt-sec .pt-note{grid-column:span 9}
-.pt-sec:not(.alt) .pt-ex{grid-column:span 3}
-.pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
-.pt-sec.note .pt-note{grid-column:1/-1}
-.pt-sec .pt-pat,.pt-sec.note .pt-ex:empty{display:none}
+/* The link shares its column with "Alternatif Ekle"; the count sits at the end of the category line. */
+.pt-link{display:flex;align-items:center;gap:10px}
+.pt-link .pt-noteinp{flex:1;min-width:0}
+.pt-cnt{display:flex;align-items:center;gap:8px;margin-left:auto}
+.pt-cnt .pt-cl{margin:0}
+.pt-cnt .pt-step{width:74px}
 .pt-x{opacity:.7}
-@container (max-width:900px){
+@container (max-width:1000px){
   .pt-item{grid-template-columns:180px minmax(0,1fr);gap:12px}
-  .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .pt-link{grid-column:span 4}
-  .pt-sec:not(.alt) .pt-ex{grid-column:span 2}
-  .pt-note,.pt-sec .pt-note{grid-column:span 4}
-  .pt-sec.note .pt-note{grid-column:1/-1}
+  .pt-tr{grid-template-columns:minmax(0,1fr)}
 }
 @container (max-width:560px){
   .pt-item{grid-template-columns:1fr}
   .pt-img{width:100%;min-height:180px;align-self:auto}
-  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .pt-link{grid-column:1/-1}
+  .pt-dose{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
 /* ---- Phases: one look in the calendar and in the brief -------------------
