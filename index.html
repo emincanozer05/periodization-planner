@@ -8607,6 +8607,44 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
   .ph-sum .ph-date{grid-column:1}.ph-sum .ph-ath{grid-column:1}.ph-sum .ph-name{grid-column:1/-1}
   .ph-ex{grid-template-columns:1fr}
 }
+
+/* ---- Antrenman Hedefi (the brief's goal dropdown, several may be picked) ---- */
+.dg{position:relative;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;margin:4px 0 2px}
+.dg-l{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted,var(--dim))}
+.dg-wrap{position:relative;flex:1 1 320px;max-width:720px;min-width:0}
+.dg-box{position:relative;min-height:38px;box-sizing:border-box;display:flex;align-items:center;flex-wrap:wrap;
+  gap:6px;padding:5px 38px 5px 8px;background:var(--elevated);border:1px solid var(--border2);border-radius:10px;cursor:pointer;
+  transition:border-color .15s}
+.dg-box:hover{border-color:var(--accent)}
+.dg-box:focus-visible,.dg.open .dg-box{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+.dg-ph{padding:0 4px;font-size:13px;color:var(--dim)}
+.dg-arr{position:absolute;right:15px;top:50%;width:7px;height:7px;margin-top:-6px;border-right:1.6px solid var(--text2);
+  border-bottom:1.6px solid var(--text2);transform:rotate(45deg);transition:transform .15s,margin .15s}
+.dg.open .dg-arr{transform:rotate(-135deg);margin-top:-2px}
+.dg-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;border-radius:999px;background:rgba(45,212,167,.12);
+  border:1px solid rgba(45,212,167,.35);color:var(--text);font-size:12px;font-weight:600;white-space:nowrap}
+.dg-chip button{width:18px;height:18px;border:0;border-radius:50%;background:none;color:var(--dim);font-size:9px;cursor:pointer;padding:0}
+.dg-chip button:hover{color:#fda4af;background:rgba(244,63,94,.14)}
+.dg-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;width:100%;box-sizing:border-box;background:var(--bg2,var(--panel));
+  border:1px solid var(--border2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:10px 12px 12px;min-width:min(560px,calc(100vw - 32px))}
+.dg-hd{display:flex;align-items:center;gap:8px;padding:0 2px 8px;margin-bottom:8px;border-bottom:1px solid var(--border)}
+.dg-hd b{font-size:12px;font-weight:700;color:var(--text2)}
+.dg-clear{margin-left:auto;border:0;background:none;color:var(--accent);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px}
+.dg-clear:hover{text-decoration:underline}
+.dg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
+.dg-gh{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0 0 4px 4px}
+.dg-opt{display:flex;align-items:center;gap:8px;margin:0;padding:6px 6px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--text);
+  cursor:pointer;text-transform:none;letter-spacing:normal}
+.dg-opt:hover{background:var(--hover)}
+.dg-opt input{position:absolute;opacity:0;pointer-events:none}
+.dg-cbx{flex:none;position:relative;width:15px;height:15px;box-sizing:border-box;border:1.5px solid var(--border2);border-radius:4px;transition:background .12s,border-color .12s}
+.dg-opt.on .dg-cbx{background:var(--accent);border-color:var(--accent)}
+.dg-opt.on .dg-cbx::after{content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;border-right:2px solid var(--panel);border-bottom:2px solid var(--panel);transform:rotate(45deg)}
+.dg-opt:focus-within{box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.dg-opt.on{font-weight:600}
+@media (max-width:700px){.dg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:440px){.dg-grid{grid-template-columns:1fr}}
 /* ---- Program bankası: kayıtlı program seçici + Sporcu Profili → Antrenman Programları ----
    Önizleme satırları Program geçmişinin `ph-blk / ph-ex` biçimini kullanır (19d). */
 .modal.pbk-modal{max-width:760px;width:96vw;height:min(720px,88vh);background:var(--panel);-webkit-backdrop-filter:none;backdrop-filter:none}
@@ -40967,6 +41005,24 @@ function diMovePhases(v){
       preset:diPhasePreset(x&&x.preset)?x.preset:''}))
     .filter(x=>/^[\w-]{1,24}$/.test(x.id)&&!seen.has(x.id)&&seen.add(x.id)).slice(0,6);
 }
+/* ANTRENMAN HEDEFİ — what the session is for, picked in the brief (several may be). Grouped as
+   the picker shows them; `id` is what is stored on the brief. */
+const DI_GOALS=[
+  {g:['Kuvvet','Strength'],items:[['temel-kuvvet','Temel Kuvvet','General Strength'],['maks-kuvvet','Maksimal Kuvvet','Maximal Strength'],
+    ['hipertrofi','Hipertrofi','Hypertrophy'],['kuvvet-day','Kuvvet Dayanıklılığı','Strength Endurance']]},
+  {g:['Güç','Power'],items:[['patlayici-guc','Patlayıcı Güç','Explosive Power'],['reaktif-guc','Reaktif Güç','Reactive Power'],
+    ['guc-day','Güç Dayanıklılığı','Power Endurance']]},
+  {g:['Sürat ve Çeviklik','Speed and Agility'],items:[['ivmelenme','İvmelenme','Acceleration'],['maks-surat','Maksimal Sürat','Maximal Speed'],
+    ['tekrarli-sprint','Tekrarlı Sprint','Repeated Sprint'],['yavaslama','Yavaşlama (Deceleration)','Deceleration'],
+    ['cod','Yön Değiştirme (COD)','Change of Direction (COD)'],['ceviklik','Çeviklik (Agility)','Agility']]},
+  {g:['Enerji Sistemleri','Energy Systems'],items:[['aerobik-kap','Aerobik Kapasite','Aerobic Capacity'],['aerobik-guc','Aerobik Güç','Aerobic Power'],
+    ['anaerobik-kap','Anaerobik Kapasite','Anaerobic Capacity'],['anaerobik-guc','Anaerobik Güç','Anaerobic Power']]},
+  {g:['Hareket Kalitesi','Movement Quality'],items:[['mobilite','Mobilite','Mobility'],['stabilite','Stabilite','Stability'],
+    ['motor-kontrol','Motor Kontrol','Motor Control'],['hareket-becerisi','Hareket Becerisi','Movement Skill']]},
+  {g:['Toparlanma','Recovery'],items:[['aktif-toparlanma','Aktif Toparlanma','Active Recovery']]},
+];
+const DI_GOAL_IDS=DI_GOALS.flatMap(x=>x.items.map(i=>i[0]));
+const diGoalLabel=id=>{for(const x of DI_GOALS){const i=x.items.find(i=>i[0]===id);if(i)return L(i[1],i[2]);}return'';};
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -41004,6 +41060,7 @@ function diInstr(raw,src){
   });
   return{
     priorities:list(r.priorities).filter(id=>diPrioRow(id)),
+    goals:DI_GOAL_IDS.filter(id=>list(r.goals).includes(id)),
     patterns:diMovePatterns(r.patterns),
     phases:diMovePhases(r.phases),
     must:list(r.must),avoid:list(r.avoid),
@@ -41059,7 +41116,7 @@ function diConValue(kind,txt){
 }
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
-const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
+const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.goals||[]).length||(i.patterns||[]).length||i.must.length||i.avoid.length
   ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity||(i.method&&i.method!==DI_METHOD_DEFAULT)));
 
 /* ---- The coach's own words on the test sheet ------------------------------
@@ -42395,6 +42452,49 @@ function DiPatternPlan({plan,onChange:emit}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
+/* Antrenman Hedefi: a dropdown that takes several. The closed box shows what is picked as
+   chips (✕ on each); open, the goals sit in their groups with a tick box each. */
+function DiGoalPicker({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  const sel=value||[];
+  useEffect(()=>{
+    if(!open)return;
+    const out=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
+  },[open]);
+  /* Kept in the list's own order, so the chips read the same whichever was ticked first. */
+  const toggle=id=>{const on=sel.includes(id);onChange(DI_GOAL_IDS.filter(x=>x===id?!on:sel.includes(x)));};
+  return(<div className={'dg'+(open?' open':'')} ref={ref}>
+    <span className="dg-l">{L('Antrenman Hedefi','Training Goal')}</span>
+    <div className="dg-wrap">
+    <div className="dg-box" role="button" tabIndex={0} aria-haspopup="listbox" aria-expanded={open}
+      onClick={()=>setOpen(o=>!o)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setOpen(o=>!o);}}}>
+      {sel.length
+        ?sel.map(id=><span key={id} className="dg-chip">{diGoalLabel(id)}
+          <button type="button" aria-label={L(`${diGoalLabel(id)} kaldır`,`Remove ${diGoalLabel(id)}`)}
+            onClick={e=>{e.stopPropagation();toggle(id);}}>✕</button></span>)
+        :<span className="dg-ph">{L('Hedef seç…','Pick goals…')}</span>}
+      <i className="dg-arr" aria-hidden="true"/>
+    </div>
+    {open&&<div className="dg-pop" role="listbox" aria-multiselectable="true" aria-label={L('Antrenman Hedefi','Training Goal')}>
+      <div className="dg-hd"><b>{L(`${sel.length} seçili`,`${sel.length} selected`)}</b>
+        {sel.length>0&&<button type="button" className="dg-clear" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>}</div>
+      <div className="dg-grid">
+        {DI_GOALS.map(gr=><div key={gr.g[0]} className="dg-grp">
+          <div className="dg-gh">{L(gr.g[0],gr.g[1])}</div>
+          {gr.items.map(([id,tr,en])=>{const on=sel.includes(id);
+            return(<label key={id} className={'dg-opt'+(on?' on':'')} role="option" aria-selected={on}>
+              <input type="checkbox" checked={on} onChange={()=>toggle(id)}/>
+              <span className="dg-cbx" aria-hidden="true"/>{L(tr,en)}</label>);})}
+        </div>)}
+      </div>
+    </div>}
+    </div>
+  </div>);
+}
 function DiInstructionForm({instr,save,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
@@ -42419,6 +42519,7 @@ function DiInstructionForm({instr,save,athId}){
           <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
             title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
           {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
+        <DiGoalPicker value={instr.goals} onChange={v=>save({...instr,goals:v})}/>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}

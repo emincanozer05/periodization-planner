@@ -259,6 +259,49 @@ function DiPatternPlan({plan,onChange:emit}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
+/* Antrenman Hedefi: a dropdown that takes several. The closed box shows what is picked as
+   chips (✕ on each); open, the goals sit in their groups with a tick box each. */
+function DiGoalPicker({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  const sel=value||[];
+  useEffect(()=>{
+    if(!open)return;
+    const out=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
+  },[open]);
+  /* Kept in the list's own order, so the chips read the same whichever was ticked first. */
+  const toggle=id=>{const on=sel.includes(id);onChange(DI_GOAL_IDS.filter(x=>x===id?!on:sel.includes(x)));};
+  return(<div className={'dg'+(open?' open':'')} ref={ref}>
+    <span className="dg-l">{L('Antrenman Hedefi','Training Goal')}</span>
+    <div className="dg-wrap">
+    <div className="dg-box" role="button" tabIndex={0} aria-haspopup="listbox" aria-expanded={open}
+      onClick={()=>setOpen(o=>!o)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setOpen(o=>!o);}}}>
+      {sel.length
+        ?sel.map(id=><span key={id} className="dg-chip">{diGoalLabel(id)}
+          <button type="button" aria-label={L(`${diGoalLabel(id)} kaldır`,`Remove ${diGoalLabel(id)}`)}
+            onClick={e=>{e.stopPropagation();toggle(id);}}>✕</button></span>)
+        :<span className="dg-ph">{L('Hedef seç…','Pick goals…')}</span>}
+      <i className="dg-arr" aria-hidden="true"/>
+    </div>
+    {open&&<div className="dg-pop" role="listbox" aria-multiselectable="true" aria-label={L('Antrenman Hedefi','Training Goal')}>
+      <div className="dg-hd"><b>{L(`${sel.length} seçili`,`${sel.length} selected`)}</b>
+        {sel.length>0&&<button type="button" className="dg-clear" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>}</div>
+      <div className="dg-grid">
+        {DI_GOALS.map(gr=><div key={gr.g[0]} className="dg-grp">
+          <div className="dg-gh">{L(gr.g[0],gr.g[1])}</div>
+          {gr.items.map(([id,tr,en])=>{const on=sel.includes(id);
+            return(<label key={id} className={'dg-opt'+(on?' on':'')} role="option" aria-selected={on}>
+              <input type="checkbox" checked={on} onChange={()=>toggle(id)}/>
+              <span className="dg-cbx" aria-hidden="true"/>{L(tr,en)}</label>);})}
+        </div>)}
+      </div>
+    </div>}
+    </div>
+  </div>);
+}
 function DiInstructionForm({instr,save,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
@@ -283,6 +326,7 @@ function DiInstructionForm({instr,save,athId}){
           <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
             title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
           {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
+        <DiGoalPicker value={instr.goals} onChange={v=>save({...instr,goals:v})}/>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}

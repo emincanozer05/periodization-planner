@@ -389,6 +389,24 @@ function diMovePhases(v){
       preset:diPhasePreset(x&&x.preset)?x.preset:''}))
     .filter(x=>/^[\w-]{1,24}$/.test(x.id)&&!seen.has(x.id)&&seen.add(x.id)).slice(0,6);
 }
+/* ANTRENMAN HEDEFİ — what the session is for, picked in the brief (several may be). Grouped as
+   the picker shows them; `id` is what is stored on the brief. */
+const DI_GOALS=[
+  {g:['Kuvvet','Strength'],items:[['temel-kuvvet','Temel Kuvvet','General Strength'],['maks-kuvvet','Maksimal Kuvvet','Maximal Strength'],
+    ['hipertrofi','Hipertrofi','Hypertrophy'],['kuvvet-day','Kuvvet Dayanıklılığı','Strength Endurance']]},
+  {g:['Güç','Power'],items:[['patlayici-guc','Patlayıcı Güç','Explosive Power'],['reaktif-guc','Reaktif Güç','Reactive Power'],
+    ['guc-day','Güç Dayanıklılığı','Power Endurance']]},
+  {g:['Sürat ve Çeviklik','Speed and Agility'],items:[['ivmelenme','İvmelenme','Acceleration'],['maks-surat','Maksimal Sürat','Maximal Speed'],
+    ['tekrarli-sprint','Tekrarlı Sprint','Repeated Sprint'],['yavaslama','Yavaşlama (Deceleration)','Deceleration'],
+    ['cod','Yön Değiştirme (COD)','Change of Direction (COD)'],['ceviklik','Çeviklik (Agility)','Agility']]},
+  {g:['Enerji Sistemleri','Energy Systems'],items:[['aerobik-kap','Aerobik Kapasite','Aerobic Capacity'],['aerobik-guc','Aerobik Güç','Aerobic Power'],
+    ['anaerobik-kap','Anaerobik Kapasite','Anaerobic Capacity'],['anaerobik-guc','Anaerobik Güç','Anaerobic Power']]},
+  {g:['Hareket Kalitesi','Movement Quality'],items:[['mobilite','Mobilite','Mobility'],['stabilite','Stabilite','Stability'],
+    ['motor-kontrol','Motor Kontrol','Motor Control'],['hareket-becerisi','Hareket Becerisi','Movement Skill']]},
+  {g:['Toparlanma','Recovery'],items:[['aktif-toparlanma','Aktif Toparlanma','Active Recovery']]},
+];
+const DI_GOAL_IDS=DI_GOALS.flatMap(x=>x.items.map(i=>i[0]));
+const diGoalLabel=id=>{for(const x of DI_GOALS){const i=x.items.find(i=>i[0]===id);if(i)return L(i[1],i[2]);}return'';};
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -426,6 +444,7 @@ function diInstr(raw,src){
   });
   return{
     priorities:list(r.priorities).filter(id=>diPrioRow(id)),
+    goals:DI_GOAL_IDS.filter(id=>list(r.goals).includes(id)),
     patterns:diMovePatterns(r.patterns),
     phases:diMovePhases(r.phases),
     must:list(r.must),avoid:list(r.avoid),
@@ -481,7 +500,7 @@ function diConValue(kind,txt){
 }
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
-const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
+const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.goals||[]).length||(i.patterns||[]).length||i.must.length||i.avoid.length
   ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity||(i.method&&i.method!==DI_METHOD_DEFAULT)));
 
 /* ---- The coach's own words on the test sheet ------------------------------
