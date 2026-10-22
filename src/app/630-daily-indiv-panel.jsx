@@ -51,25 +51,24 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* "Programı Kaydet": the Movement Pattern table gathered into a programme and put where
-     the coach reads it — the same draft, the same checks and the same approval a written
-     programme always had. It reaches the calendar only through "Onayla ve takvime yaz". */
+  /* The Movement Pattern table gathered into a programme and put where the coach reads it —
+     the same draft, the same checks and the same approval a written programme always had.
+     There is no save button: "Programı Gör" builds it from whatever the table holds at that
+     moment (until the programme is approved; after that the calendar's copy is the one).
+     It reaches the calendar only through "Onayla ve takvime yaz". Returns the programme. */
   const buildProgram=()=>{
     const L0=live.current;
     const prog=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name);
-    if(!prog){
-      setErr(L('Programa girecek egzersiz yok — Hareket Paterni tablosunda en az bir egzersiz adı yaz.',
-        'There is nothing to build from — write at least one exercise name in the Movement Pattern table.'));
-      return;
-    }
+    const cur=L0.review&&L0.review.program;
+    /* An empty table leaves what is there alone (a programme copied in from the history,
+       say); the same programme as the stored one is not written again. */
+    if(!prog)return cur||null;
+    if(cur&&JSON.stringify(cur)===JSON.stringify(prog))return cur;
     let v;
     try{
       v=validateProgram(prog,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
         differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
-    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return;}
-    const cur=L0.review&&L0.review.program;
-    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program zaten var. Tablodan yeniden oluşturulsun mu?',
-      'There is already a programme for this athlete on this day. Build it again from the table?')))return;
+    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return cur||null;}
     diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
       athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:prog,instr,
       differentiators:L0.differentiators,validation:v,
@@ -78,8 +77,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       model:'manual',created_at:new Date().toISOString(),
       decision:null,decided_at:null,jobId:null,pendingJob:null,generation:{source:'manual'}});
     setErr('');
-    flipTo('prog');
-    setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+    return prog;
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
@@ -134,6 +132,24 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const progRows=calRows||rows;
   const progAdj=(calRows||(program&&program.external))?{...adj,pct:0}:adj;
   const onProg=side==='prog';
+  /* "Programı Gör": what is written in the table right now, on the programme face. */
+  const viewProg=()=>{if(!written)buildProgram();flipTo('prog');};
+  /* Print the programme with the exercises' pictures: the programme the card shows, or —
+     before it is approved — whatever the table holds this moment. */
+  const printProg=withImages=>{
+    let rs=progRows,ttl=progTitle,pct=progAdj.pct;
+    if(!written){
+      const p=buildProgram();
+      if(!p){setErr(L('Yazdırılacak egzersiz yok — antrenman tablosuna en az bir egzersiz yaz.',
+        'There is nothing to print — write at least one exercise in the training table.'));return;}
+      rs=diProgramRows(p,p.external?0:adj.pct);ttl=p.session_name||ttl;pct=p.external?0:adj.pct;
+    }
+    /* The session's own line — start, length, focus, target RPE — as the athlete has it:
+       off the calendar once written, off the plan before that. */
+    const m=(written&&calSes)||plan.meta||{};
+    printDiProgram({ath:plan.ath,date,title:ttl,rows:rs,pct,withImages,
+      time:m.time,duration:m.duration,focus:sesFocusLine(m),rpe:sesRpeTarget(m)});
+  };
   return(<div className="di-panel" ref={panelRef}>
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
@@ -143,21 +159,17 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
           <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
         {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
-          onClick={()=>flipTo(onProg?'brief':'prog')}
+          onClick={()=>onProg?flipTo('brief'):viewProg()}
           title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
             :L('Kartı çevir, bu sporcunun programını göster','Turn the card over to this athlete\'s programme')}>
           <i>⟳</i><span>{onProg?L('Talimata Dön','Back to Brief'):L('Programı Gör','View Programme')}</span>
         </button>}
-        {open&&onProg&&program&&<button type="button" className="di-printbtn"
-          onClick={()=>{
-            /* The session's own line — start, length, focus, target RPE — as the athlete
-               has it: off the calendar once written, off the plan before that. */
-            const m=(written&&calSes)||plan.meta||{};
-            printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct,
-              time:m.time,duration:m.duration,focus:sesFocusLine(m),rpe:sesRpeTarget(m)});
-          }}
+        {open&&onProg&&program&&<button type="button" className="di-printbtn" onClick={()=>printProg(false)}
           title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
           <i>🖨</i><span>{L('Yazdır','Print')}</span></button>}
+        {open&&<button type="button" className="di-printbtn" onClick={()=>printProg(true)}
+          title={L('Programı egzersiz görselleriyle (küçük) yazdır ya da PDF olarak kaydet','Print the programme with the exercise pictures (small), or save it as a PDF')}>
+          <i>🖨</i><span>{L('Yazdır (Görselli)','Print (with images)')}</span></button>}
         <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
           aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
           <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
@@ -210,7 +222,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}
@@ -263,8 +275,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {side==='cal'&&calendar&&React.cloneElement(calendar,{showCal:true,showLoad:false})}
 
     {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Kaydet"e bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme for this athlete yet — fill in the Movement Pattern table and press "Save programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
+      {L('Bu sporcu için henüz bir program yok — antrenman tablosuna egzersiz yaz; "Programı Gör" onu burada gösterir. Ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
+         'No programme for this athlete yet — write exercises in the training table and "View Programme" shows it here, or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
     </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that

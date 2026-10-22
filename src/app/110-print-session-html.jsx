@@ -187,6 +187,10 @@ function rptVolStats(list){
   });
   return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
 }
+/* An exercise's picture for "Print with Image": the one put on the row, else the library's
+   card for that name — a programme written from the table carries no picture of its own. */
+const rptExImage=ex=>{if(!ex)return'';const hit=String(ex.name||'').trim()?exLibHit(ex.name):null;
+  return ex.image||(hit&&hit.image)||'';};
 function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const withImages=!!(opts&&opts.withImages);
   /* Coach copy: prints the justification recorded against every changed exercise.
@@ -261,7 +265,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
           <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${isSS?' ss':''} ghost">${lab.tag}</span></span></td>
           <td class="ex">
             <div class="ex-ex-wrap">
-              ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
+              ${withImages&&rptExImage(alt)?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(rptExImage(alt)))}" alt="${escHTML(altNm)}"></div>`:''}
               <div class="ex-ex-txt">
                 <div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
                 <div class="ex-nm-wrap"><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
@@ -281,7 +285,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <td class="n">${num}</td>
         <td class="ex">
           <div class="ex-ex-wrap">
-            ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
+            ${withImages&&rptExImage(e)?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(rptExImage(e)))}" alt="${escHTML(e.name)}"></div>`:''}
             <div class="ex-ex-txt">
               ${rptPatHTML(e.name,e.pattern)}
               <div class="ex-nm-wrap"><span class="pc-nm">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
@@ -493,8 +497,9 @@ ${RPT_PHASE_CSS}
   text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
-   inside rather than cropped, so a portrait shot still shows the whole movement. */
-.ex-imgwrap{flex:none;line-height:0;width:26mm;height:18mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+   inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
+   a picture does not make its row taller than the text beside it needs. */
+.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
