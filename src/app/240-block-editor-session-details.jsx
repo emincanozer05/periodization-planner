@@ -9,7 +9,12 @@ const UNCAT='Kategorisiz';
    them by that category's types and directions (Tür · Yön) — the same boxes the row has.
    A row with no category yet lists the library by category instead. */
 const EN_NO_TYPE='__none';
+/* True under a table whose exercises reach the library only when its programme is approved
+   (the individualization brief): a name typed there and then corrected must not leave the
+   mistyped one behind in the library. The box still reports a fresh name to its host. */
+const ExLibDeferCtx=React.createContext(false);
 function ExNameField({value,onChange,onPick,tags,onNewName}){
+  const libDefer=React.useContext(ExLibDeferCtx);
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
   const[cats,setCats]=useState([]);   // selected category names (empty = no filter)
@@ -41,16 +46,16 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
      exercise written here is filed the way it is trained — whichever order the coach
      works in. Typing the name first and tagging it after already wrote the pair; this
      covers the other order, and a rename, which otherwise left a bare stub behind. */
-  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
+  const withTags=nm=>{if(!libDefer&&nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
   /* A name the box has not filed before — freshly typed or renamed — is also the moment
      the row can be read for how the exercise is executed. An unchanged name is not: the
      coach may have cleared the execution on purpose, and re-entering the name field is
      no reason to argue with them. */
   const fresh=nm=>{if(nm&&onNewName)onNewName(nm);};
   const commit=v=>{const nm=(v||'').trim();const prev=committedRef.current;
-    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
+    if(prev===null){if(nm&&!libDefer)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
     if(nm===prev){withTags(nm);return;}
-    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
+    if(!libDefer)replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
   /* The row's own Tür (Split Squat …) ticks the picker's filter by itself, so a split-squat row

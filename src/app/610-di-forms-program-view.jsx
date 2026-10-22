@@ -21,6 +21,25 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
+/* The table's exercises into the shared library, at the approval: every name the library
+   does not have yet is added with its Kategori · Tür · Yön, its link (a card with a link keeps
+   it) and its picture (only where the card has none) — the alternative's name and link too. */
+function diFileToLibrary(instr){
+  const t=v=>String(v==null?'':v).trim();
+  diMovePatterns(instr&&instr.patterns).forEach(p=>{
+    const row=diMoveRow(p.id);const cat=row?row.k:'';
+    const file=(nm,link,image)=>{
+      if(!nm)return;
+      const hit=exLibHit(nm);
+      if(!hit)addExerciseToLibrary(nm);
+      if(cat)rememberExerciseTags(nm,cat,(p.type||[])[0]||'',(p.direction||[])[0]||'');
+      if(t(link))rememberExerciseLink(nm,t(link));
+      if(t(image)&&!(hit&&hit.image))rememberExerciseImage(nm,t(image));
+    };
+    file(t(p.exercise),p.link,p.image);
+    if(p.alt)file(t(p.alt.name),p.alt.link,'');
+  });
+}
 function DiPatternPlan({plan,onChange:emit}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -195,8 +214,6 @@ function DiPatternPlan({plan,onChange:emit}){
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
         if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
-      onLinkBlur:(k,isAlt,v)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];if(!p)return;
-        rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
@@ -212,10 +229,12 @@ function DiPatternPlan({plan,onChange:emit}){
         const l=[...latest.current.list];[l[a],l[b]]=[l[b],l[a]];setList(l);},
     };
     const addBlank=()=>setList([...latest.current.list,fresh('',ph)]);
-    return(<PlanTable groups={groups}
+    /* Nothing written here reaches the library until the programme is approved
+       (diFileToLibrary): a mistyped name corrected a moment later leaves nothing behind. */
+    return(<ExLibDeferCtx.Provider value={true}><PlanTable groups={groups}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
       onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
-      empty={L('Fazsız satır yok.','No unplaced rows.')}/>);
+      empty={L('Fazsız satır yok.','No unplaced rows.')}/></ExLibDeferCtx.Provider>);
   };
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
