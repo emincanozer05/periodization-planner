@@ -425,19 +425,8 @@ function AtpJoints({joints,onSet,onNote}){
         <AtpJbStage joints={joints} sel={sel} onPick={pick}>
           {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
         </AtpJbStage>
+        {/* Only the chain table beside the mannequin, sized to sit next to it. */}
         <div className="jb2-chain">
-          {/* How far the chain is rated: one bar split by level, so the coach sees at a
-              glance how much is left and where the high needs sit. */}
-          <div className="jb2-prog">
-            <div className="jb2-prog-h">
-              <span>{L('Değerlendirilen eklem','Joints rated')}</span>
-              <b>{rated.length}<small>/{ATP_JOINT_ROWS.length}</small></b>
-            </div>
-            <div className="jb2-prog-bar" role="img" aria-label={`${rated.length}/${ATP_JOINT_ROWS.length}`}>
-              {ATP_JOINT_LEVELS.map(l=>{const n=rated.filter(r=>joints[r.key].level===l.id).length;
-                return n?<i key={l.id} className={`jl-${l.id}`} style={{width:`${n/ATP_JOINT_ROWS.length*100}%`}} title={`${atpT(l.en)}: ${n}`}/>:null;})}
-            </div>
-          </div>
           <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
             <div className="jb2-tr jb2-th" role="row">
               <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
@@ -449,11 +438,6 @@ function AtpJoints({joints,onSet,onNote}){
                 <span className="jb2-need" role="cell"><i/>{atpT(j.need==='mobility'?'Mobility':'Stability')}</span>
                 {j.bi?<>{cell(rs[0])}{cell(rs[1])}</>:<span className="jb2-mid" role="cell">{cell(rs[0])}</span>}
               </div>);})}
-          </div>
-          <div className="jb2-leg">
-            <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
-            <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span>
-            {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}
           </div>
         </div>
       </div>

@@ -117,7 +117,6 @@ function DiPatternPlan({plan,onChange:emit}){
             a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
             a_rest:a.rest,a_link:a.link,tagP:ck,tagS:(p.type||[])[0]||'',tagD:(p.direction||[])[0]||'',
             typeOpts:ptTypeOpts(ck),typeVal:(p.type||[])[0]||'',
-            dirOpts:ptDirOpts(ck),dirVal:(p.direction||[])[0]||'',
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
@@ -207,7 +206,6 @@ function DiPatternPlan({plan,onChange:emit}){
       onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
       onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
-      onDir:(k,v)=>patch(k,p=>({...p,direction:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
         if(a==null||b==null)return;

@@ -53,14 +53,12 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
-  /* The row's own Tür and Yön (Split Squat, Geriye …) tick the picker's filters by themselves,
-     so a split-squat row lists split squats only, not every knee-dominant exercise. The coach
-     can still untick them inside the picker; a different category, type or direction on the
-     row starts the filters over from it. */
+  /* The row's own Tür (Split Squat …) ticks the picker's filter by itself, so a split-squat row
+     lists split squats only, not every knee-dominant exercise. One filter per category: the
+     coach can still untick it inside the picker; a different category or type on the row
+     starts the filter over from it. */
   const rowType=cat&&tags&&mvTypes(cat).includes(tags.plane)?tags.plane:'';
-  const rowDir=cat&&tags&&mvDirs(cat).includes(tags.dir)?tags.dir:'';
-  const[dirs,setDirs]=useState(()=>rowDir?[rowDir]:[]);   // directions ticked (empty = no filter)
-  useEffect(()=>{setCats(rowType?[rowType]:[]);setDirs(rowDir?[rowDir]:[]);},[cat,rowType,rowDir]);
+  useEffect(()=>{setCats(rowType?[rowType]:[]);},[cat,rowType]);
   const libAll=focus?getLibItems():[];
   /* The row's category narrows the library first, so nothing of another category is offered. */
   const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);
@@ -68,7 +66,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
   // Text query narrows the pool first; the counts on the right are computed from that pool
   // so they always say how many rows a filter would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  /* The filters on the right: the category's types (and its directions), or — on a row with
+  /* The filters on the right: the category's types, or — on a row with
      no category — the categories themselves, with "Kategorisiz" for what none of them claims. */
   const catList=useMemo(()=>{
     const cnt=new Map();
@@ -83,24 +81,11 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     if(cnt.get(UNCAT))out.push({name:UNCAT,label:L('Kategorisiz','Uncategorized'),n:cnt.get(UNCAT)});
     return out;
   },[pool,cat]);
-  const dirList=useMemo(()=>{
-    if(!cat||!mvDirs(cat).length)return[];
-    const cnt=new Map();pool.forEach(e=>{if(e._d)cnt.set(e._d,(cnt.get(e._d)||0)+1);});
-    return mvDirs(cat).map(d=>({name:d,label:mvTerm(cat,d),n:cnt.get(d)||0}));
-  },[pool,cat]);
-  // Ticked values are OR-ed inside a list; the type and the direction lists are AND-ed.
-  const matchesCats=e=>{
-    if(cat){
-      if(cats.length&&!cats.includes(e._t||EN_NO_TYPE))return false;
-      if(dirs.length&&!dirs.includes(e._d))return false;
-      return true;
-    }
-    return!cats.length||cats.includes(mvLibCat(e)||UNCAT);
-  };
-  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,dirs,cat]);
+  // Ticked values are OR-ed.
+  const matchesCats=e=>!cats.length||cats.includes(cat?(e._t||EN_NO_TYPE):(mvLibCat(e)||UNCAT));
+  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,cat]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
   const toggleCat=c=>{setHi(-1);setCats(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
-  const toggleDir=c=>{setHi(-1);setDirs(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
   // Picking a library row hands the whole entry back (not just the name) so the caller can
   // pull its cover image and video link onto the exercise; typing a free name never does.
   const pick=it=>{const n=it.name;if(onPick)onPick(it);else onChange(n);
@@ -142,7 +127,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           <div className="en-phd"><span>{cat
             ?<><i className="en-catdot" style={{background:ML_PIE_COLS[cat]}}/><b>{mvCatLabel(cat)}</b> · {L(`${shown.length} egzersiz`,`${shown.length} exercises`)}</>
             :L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
-            {(cats.length>0||dirs.length>0)&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setDirs([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
+            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
@@ -166,14 +151,6 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
-                <span className="en-cnm">{c.label}</span>
-                <span className="en-cn">{c.n}</span>
-              </label>)}
-            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L(...mvDirLab(cat))}</span></div>}
-            {dirList.map(c=>
-              <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
-                onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>
-                <span className="en-cbx">{dirs.includes(c.name)?'✓':''}</span>
                 <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
