@@ -65,14 +65,29 @@ function newCheckinToken(){
   }
   return out;
 }
+/* SPORCUYA GİDEN LİNKLERİN KLASÖRÜ.
+
+   *.vercel.app alan adı Türkiye'de erişime engelli (USOM/BTK, Aralık 2023'ten beri, bazı
+   operatörlerde). Engel alan adı üzerinden (SNI) uygulanıyor: bağlantı daha sayfa gelmeden
+   kesiliyor ve Safari "ağ bağlantısı kesildiği için sayfayı açamıyor" diyor — internet
+   varken, yalnızca o operatörü kullanan sporcularda. Koç uygulamayı vercel.app'ten
+   açıyorsa sporcuya giden form linkleri, her merge'de aynı dosyalarla yayınlanan GitHub
+   Pages kopyasını gösteriyor (pages.yml). Formlar o kopyada da aynen çalışıyor: verileri
+   Firestore'da, dosyaları göreli adreslerle yükleniyor, token yine # kısmında.
+   Kendi alan adından açılan uygulama (ya da yerel kopya) kendi klasörünü vermeye devam eder. */
+const SHARE_MIRROR='https://emincanozer05.github.io/periodization-planner/';
+function shareBase(){
+  if(/\.vercel\.app$/i.test(location.hostname))return SHARE_MIRROR;
+  return location.origin+location.pathname.replace(/[^/]*$/,'');
+}
 /* Sporcunun açacağı adres. Uygulama hangi klasörde duruyorsa form dosyaları onun
-   yanında. Adres doğrudan checkin.html'e değil, form başına bir "kapak" sayfasına
+   yanında (vercel.app hariç, yukarıya bak). Adres doğrudan checkin.html'e değil, form başına bir "kapak" sayfasına
    bakıyor (rpe.html / wellness.html): WhatsApp önizlemesi sayfanın <title>/og:*
    etiketlerini okuyor, adresin # kısmını ise hiç görmüyor — yani hangi formun linki
    olduğu ancak dosya ayrıysa önizlemede yazıyor. Kapak sayfası açılır açılmaz
    checkin.html'e geçiyor ve token'ı # kısmında taşımaya devam ediyor. */
 function checkinUrl(token,kind){
-  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  const base=shareBase();
   const page=kind==='wellness'?'wellness.html':'rpe.html';
   return `${base}${page}#k=${encodeURIComponent(token)}`;
 }
