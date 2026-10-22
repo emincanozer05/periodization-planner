@@ -8,8 +8,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
   const setOpen=v=>{setOpenRaw(v);try{localStorage.setItem('coachos_di_open',v?'1':'0');}catch(e){}};
-  /* Which face of the panel is up: today and the brief, the programme, the athlete's
-     calendar — the header's "Takvim", opened over the same area instead of under the
+  /* Which face of the panel is up: today and the brief, or the athlete's calendar — the header's "Takvim", opened over the same area instead of under the
      card. (The weekly load distribution is the "Haftalık Yük Dağılımı" button on the
      brief's movement-pattern box, in a window of its own.) The turn is
      two halves — the face swings out, the other swings in — so the swap happens at the
@@ -44,76 +43,70 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const peers=useMemo(()=>diPeerPrograms(team,date,plan.ath.id),[team,date,plan.ath.id]);
   const vr=useMemo(()=>program?validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers}):null,
     [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
-  const blocked=!!(vr&&vr.status==='fail');
 
   /* The handlers below read the panel's CURRENT props through this ref rather than the
      ones captured on an earlier render — a draft saved against a stale copy of the team
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* The Movement Pattern table gathered into a programme and put where the coach reads it —
-     the same draft, the same checks and the same approval a written programme always had.
-     There is no save button: "Programı Gör" builds it from whatever the table holds at that
-     moment (until the programme is approved; after that the calendar's copy is the one).
-     It reaches the calendar only through "Onayla ve takvime yaz". Returns the programme. */
-  const buildProgram=()=>{
+  /* The Movement Pattern table gathered into a programme — the same draft, the same checks
+     and the same approval a written programme always had. There is no save button: printing
+     or approving builds it from whatever the table holds at that moment (until the programme
+     is approved; after that the calendar's copy is the one). `extra` rides on the same write
+     (the approval), so the draft and the decision land together rather than the second
+     overwriting the first from a stale copy of the team. Returns the programme. */
+  const buildProgram=extra=>{
     const L0=live.current;
-    const prog=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name);
+    const made=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name);
     const cur=L0.review&&L0.review.program;
     /* An empty table leaves what is there alone (a programme copied in from the history,
        say); the same programme as the stored one is not written again. */
-    if(!prog)return cur||null;
-    if(cur&&JSON.stringify(cur)===JSON.stringify(prog))return cur;
+    const prog=made||cur||null;
+    if(!prog)return null;
+    const at=L0.plan.ath.id;
+    if(cur&&JSON.stringify(cur)===JSON.stringify(prog)){
+      if(extra)diWriteReview(L0.team,L0.updateTeam,L0.srcKey,at,L0.date,extra);
+      return prog;
+    }
     let v;
     try{
       v=validateProgram(prog,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
         differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
-    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return cur||null;}
-    diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
-      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:prog,instr,
+    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return null;}
+    diWriteReview(L0.team,L0.updateTeam,L0.srcKey,at,L0.date,{
+      athlete:at,date:L0.date,src:L0.srcKey,program:prog,instr,
       differentiators:L0.differentiators,validation:v,
       engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
         competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
       model:'manual',created_at:new Date().toISOString(),
-      decision:null,decided_at:null,jobId:null,pendingJob:null,generation:{source:'manual'}});
+      decision:null,decided_at:null,jobId:null,pendingJob:null,generation:{source:'manual'},...(extra||{})});
     setErr('');
     return prog;
   };
-  /* Write is the approval: the coach read the session and said yes, so it is recorded
-     as the decision AND put on the athlete's calendar in the same press. */
-  const write=()=>{
-    if(!program)return;
+  /* Approve is the write: the coach wrote the session and said yes, so it is recorded as
+     the decision AND put on the athlete's calendar in the same press. */
+  const approve=()=>{
+    const L0=live.current;
+    const prog=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name)||(L0.review&&L0.review.program);
+    if(!prog){setErr(L('Takvime yazılacak egzersiz yok — antrenman tablosuna en az bir egzersiz yaz.',
+      'There is nothing to write — put at least one exercise in the training table.'));return;}
     /* THE APPROVAL IS NOT THE GATE. The coach saying yes is necessary and it is not
        sufficient: a session that breaks a hard rule is not written, and there is no
        button here that writes it anyway. That is the whole point of the split — the
        coach decides what is GOOD, the code decides what is ALLOWED, and neither
-       overrules the other. Re-checked at the press rather than trusted from the
-       stored verdict, because the athlete's day moves under a draft. */
-    const v=validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers});
+       overrules the other. Checked at the press, because the athlete's day moves. */
+    const v=validateProgram(prog,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers});
     if(v.status==='fail'){
-      diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{validation:v});
-      setErr(L(`Bu program ${v.hardViolations.length} sert kuralı ihlal ediyor ve takvime yazılamaz. Aşağıdaki maddeleri gider ya da tabloyu düzenleyip programı yeniden oluştur.`,
-        `This session breaks ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} and cannot be written to the calendar. Clear the items below, or edit the table and build the programme again.`));
+      buildProgram({validation:v});
+      setErr(L(`Bu program ${v.hardViolations.length} sert kuralı ihlal ediyor ve takvime yazılamaz. Aşağıdaki maddeleri gider ya da tabloyu düzenle.`,
+        `This session breaks ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} and cannot be written to the calendar. Clear the items below, or edit the table.`));
       return;
     }
-    diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
-      {decision:'accept',decided_at:new Date().toISOString(),validation:v});
-    if(writeOne)writeOne(plan.ath.id,program);
-  };
-  /* Filing a written exercise into the shared library, through the same bridge the
-     calendar's own exercise box uses — so a name filed here is filed exactly as one
-     typed on a programme, and its movement pattern rides along. */
-  const addLib=row=>{
-    const nm=String(row&&row.name||'').trim();
-    if(!nm)return;
-    addExerciseToLibrary(nm);
-    if(row.pattern)rememberExerciseTags(nm,row.pattern,'');
+    buildProgram({decision:'accept',decided_at:new Date().toISOString(),validation:v});
+    setErr('');
+    if(writeOne)writeOne(plan.ath.id,prog);
   };
   const undo=()=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{decision:null,decided_at:null});
-  const discard=()=>{
-    if(!confirm(L('Bu program silinsin mi? Talimatlar kalır.','Discard this session? The brief stays.')))return;
-    diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{program:null,decision:null,decided_at:null});
-  };
 
   const rd=bundle.readiness;
   const written=!!(review&&review.decision==='accept');
@@ -131,12 +124,20 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const progTitle=(calEdited&&String(calSes.name||'').trim())||(program&&program.session_name)||L('Önerilen program','Proposed session');
   const progRows=calRows||rows;
   const progAdj=(calRows||(program&&program.external))?{...adj,pct:0}:adj;
-  const onProg=side==='prog';
-  /* "Programı Gör": what is written in the table right now, on the programme face. */
-  const viewProg=()=>{if(!written)buildProgram();flipTo('prog');};
-  /* Print the programme with the exercises' pictures: the programme the card shows, or —
-     before it is approved — whatever the table holds this moment. */
+  /* "Yazdır": a small box under the button asks with pictures or without. */
+  const[printMenu,setPrintMenu]=useState(false);
+  const printRef=useRef(null);
+  useEffect(()=>{
+    if(!printMenu)return;
+    const down=e=>{if(printRef.current&&!printRef.current.contains(e.target))setPrintMenu(false);};
+    const key=e=>{if(e.key==='Escape')setPrintMenu(false);};
+    document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
+    return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
+  },[printMenu]);
+  /* Print the programme: the one on the calendar once approved, before that whatever the
+     table holds this moment. */
   const printProg=withImages=>{
+    setPrintMenu(false);
     let rs=progRows,ttl=progTitle,pct=progAdj.pct;
     if(!written){
       const p=buildProgram();
@@ -158,18 +159,15 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           onClick={()=>flipTo(side==='cal'?'brief':'cal')}
           title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
           <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
-        {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
-          onClick={()=>onProg?flipTo('brief'):viewProg()}
-          title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
-            :L('Kartı çevir, bu sporcunun programını göster','Turn the card over to this athlete\'s programme')}>
-          <i>⟳</i><span>{onProg?L('Talimata Dön','Back to Brief'):L('Programı Gör','View Programme')}</span>
-        </button>}
-        {open&&onProg&&program&&<button type="button" className="di-printbtn" onClick={()=>printProg(false)}
-          title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
-          <i>🖨</i><span>{L('Yazdır','Print')}</span></button>}
-        {open&&<button type="button" className="di-printbtn" onClick={()=>printProg(true)}
-          title={L('Programı egzersiz görselleriyle (küçük) yazdır ya da PDF olarak kaydet','Print the programme with the exercise pictures (small), or save it as a PDF')}>
-          <i>🖨</i><span>{L('Yazdır (Görselli)','Print (with images)')}</span></button>}
+        {open&&<span className="di-printwrap" ref={printRef}>
+          <button type="button" className={'di-printbtn'+(printMenu?' on':'')} aria-haspopup="menu" aria-expanded={printMenu}
+            onClick={()=>setPrintMenu(o=>!o)} title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
+            <i>🖨</i><span>{L('Yazdır','Print')}</span></button>
+          {printMenu&&<span className="di-printmenu" role="menu">
+            <button type="button" role="menuitem" onClick={()=>printProg(true)}>{L('Görsel ile','With images')}</button>
+            <button type="button" role="menuitem" onClick={()=>printProg(false)}>{L('Görselsiz','Without images')}</button>
+          </span>}
+        </span>}
         <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
           aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
           <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
@@ -224,60 +222,29 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       <PlanLoadCtx.Provider value={loadCtx}>
         <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
+      {/* The table reaches the athlete's calendar only through this press: until then the
+          calendar is HELD — neither this session nor the plain copy of the team session is
+          written for them. A hard violation stops the write, so it is said here. */}
+      {!written&&vr&&vr.hardViolations.length>0&&<div className="di-hardv">
+        <div className="di-checkh">⛔ {L(`Sert kural ihlali — bu program takvime yazılamaz (${vr.hardViolations.length})`,
+          `Hard rule violation — this session cannot be written (${vr.hardViolations.length})`)}</div>
+        <ul className="di-sig">{vr.hardViolations.map((v,i)=><li key={i}>
+          {v.rule?<i className="di-cfld">{L('Kural','Rule')} {v.rule}</i>:null} {v.text}</li>)}</ul>
+      </div>}
+      <div className="di-writebar">
+        {written
+          ?<><span className="di-wrote">✓ {L('Sporcunun takvimine yazıldı','Written to the athlete\'s calendar')}</span>
+            <button type="button" className="btn xs sec" onClick={undo}>{L('geri al','undo')}</button></>
+          :<><button type="button" className="di-write" onClick={approve}>
+              ✓ {L('Onayla ve takvime yaz','Approve and write to the calendar')}</button>
+            <span className="di-dim">{L('Antrenman tablosundaki program onaylanıp sporcunun kendi takvimine işlenir.',
+              'The programme in the training table is approved and put on the athlete\'s own calendar.')}</span></>}
+      </div>
     </DiSection>
     </>}
 
-    {onProg&&program&&<DiSection n="3" title={progTitle}
-      className="di-sec-prog"
-      meta={written?(calEdited?L('takvimdeki güncel hali','as it stands on the calendar'):L('takvime yazıldı','on the calendar'))
-        :L('senin yazdığın program — onaylanmadan sporcuya ulaşmaz','the session you wrote — it reaches nobody until you approve it')}>
-      <div className="di-result">
-        <div className="di-resacts">
-          <button type="button" className="btn xs sec" onClick={discard}>
-            {L('✕ Sil','✕ Discard')}</button>
-        </div>
-        {/* Once written and then edited on the athlete's calendar, the card shows the
-            calendar's version — the one the athlete actually has — rather than the
-            programme as it was loaded, so the two never disagree. */}
-        <DiProgramView program={program} rows={progRows} adj={progAdj} libMap={libMap}
-          onAddToLibrary={addLib} diffs={differentiators}/>
-
-        {/* A hard violation stops the write, so it is still said here. The model's own
-            notes on the programme — how it read the brief, its checks, its rationale and
-            warnings — are not shown: the card is the programme and nothing else. */}
-        {vr&&vr.hardViolations.length>0&&<div className="di-hardv">
-          <div className="di-checkh">⛔ {L(`Sert kural ihlali — bu program takvime yazılamaz (${vr.hardViolations.length})`,
-            `Hard rule violation — this session cannot be written (${vr.hardViolations.length})`)}</div>
-          <ul className="di-sig">{vr.hardViolations.map((v,i)=><li key={i}>
-            {v.rule?<i className="di-cfld">{L('Kural','Rule')} {v.rule}</i>:null} {v.text}</li>)}</ul>
-        </div>}
-        {program.truncated&&<div className="di-dim">{L('Yanıt token sınırında kesildi — kurtarılabilen kısım gösteriliyor.','The reply hit the token cap — the salvageable part is shown.')}</div>}
-
-        {/* AI draft → coach review → final programme. Until this button is pressed the
-            athlete's calendar is HELD: neither this session nor the plain copy of the
-            team session is written for them. */}
-        <div className="di-writebar">
-          {written
-            ?<><span className="di-wrote">✓ {L('Sporcunun takvimine yazıldı','Written to the athlete\'s calendar')}</span>
-              <button type="button" className="btn xs sec" onClick={undo}>{L('geri al','undo')}</button></>
-            :<><button type="button" className="di-write" onClick={write} disabled={blocked}
-                title={blocked?L('Sert kural ihlali var — önce yukarıdaki maddeleri gider.',
-                  'There is a hard rule violation — clear the items above first.'):''}>
-                ✓ {L('Onayla ve takvime yaz','Approve and write to the calendar')}</button>
-              <span className="di-dim">{blocked
-                ?L('Sert kural ihlali giderilmeden yazılamaz. Tabloyu düzenleyip programı yeniden oluşturabilir ya da sporcunun kendi takviminden elle yazabilirsin.',
-                   'It cannot be written until the hard violation is cleared. Edit the table and build the programme again, or write it by hand on the athlete\'s own calendar.')
-                :L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
-        </div>
-      </div>
-    </DiSection>}
-
     {side==='cal'&&calendar&&React.cloneElement(calendar,{showCal:true,showLoad:false})}
 
-    {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yok — antrenman tablosuna egzersiz yaz; "Programı Gör" onu burada gösterir. Ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme for this athlete yet — write exercises in the training table and "View Programme" shows it here, or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
-    </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that
         failed on the brief side both have to be seen whichever face is up. */}
