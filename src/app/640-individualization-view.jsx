@@ -144,12 +144,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      being printed as an empty sheet. Exercises print by name only (`noDesc`): the coaching
      text under them is what pushed a programme onto a second page. */
   const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
-  const printSquad=()=>{
+  const printSquad=withImages=>{
     if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
     const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
     const setup=team.setup||{};
     try{
-      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,withImages:withImages===true,
         groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){
@@ -392,10 +392,13 @@ function IndividualizationView({data,team,updateTeam,weeks}){
           ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
         {/* Everyone selected above, as one printout: each athlete's programme from their own
             calendar, one document. Counts only the athletes who have one written. */}
-        <button className="btn sec sm" onClick={printSquad} disabled={!printable.length}
+        <button className="btn sec sm" onClick={()=>printSquad(false)} disabled={!printable.length}
           title={L('Seçili sporcuların takvimine yazılmış programlarını tek belgede yazdırır ya da PDF olarak kaydeder (her sporcu ayrı sayfada).',
             'Prints the programmes written to the selected athletes\' calendars as one document, or saves it as a PDF (one athlete per page).')}>
           🖨 {L(`Sporcuların Antrenman Çıktısını Al (${printable.length})`,`Print all athletes' programmes (${printable.length})`)}</button>
+        <button className="btn sec sm" onClick={()=>printSquad(true)} disabled={!printable.length}
+          title={L('Aynı çıktı, egzersiz görselleriyle (küçük).','The same printout, with the exercise pictures (small).')}>
+          🖨 {L('Yazdır (Görselli)','Print (with images)')}</button>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>

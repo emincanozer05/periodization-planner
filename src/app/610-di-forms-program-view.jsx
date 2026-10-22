@@ -240,7 +240,7 @@ function DiPatternPlan({plan,onChange:emit}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,athId}){
+function DiInstructionForm({instr,save,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
      its next render, so a paste redraws it from scratch (same batch as the write, so it opens on the new rows). */
@@ -270,13 +270,6 @@ function DiInstructionForm({instr,save,onBuild,athId}){
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>
-    {onBuild&&<div className="di-genbar">
-      <span className="di-dim">{L('Antrenman tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
-        'The exercises and doses in the training table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
-      <button type="button" className="di-gen" onClick={onBuild}>
-        <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
-      </button>
-    </div>}
   </div>);
 }
 
@@ -360,12 +353,15 @@ const diDose=d=>{
    out of the same masthead, session banner and phase cards as the calendar's printout
    (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
    `time`, `duration`, `focus` and `rpe` (its target RPE) are the session's own line: the
-   calendar's copy once it is written, the plan's before. */
-function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
+   calendar's copy once it is written, the plan's before. `withImages` puts the library's
+   picture of each exercise beside its name, as a small thumbnail. */
+function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withImages}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const a=ath||{};
+  const img=nm=>{if(!withImages)return'';const src=rptExImage({name:nm});
+    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(nm)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
     const trs=b.rows.map((r,k)=>{
@@ -378,12 +374,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
         <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
-        <td class="ex"><div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
-          <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></td>
+        <td class="ex"><div class="ex-ex-wrap">${img(al.name)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+          <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
       return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
-        <td class="ex">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</td>
+        <td class="ex"><div class="ex-ex-wrap">${img(r.name)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
     }).join('');
@@ -401,6 +397,10 @@ ${RPT_PHASE_CSS}
 .bs{padding:10px 16px}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
+.ex-ex-wrap{display:flex;align-items:center;gap:8px;min-width:0}
+.ex-ex-txt{min-width:0}
+.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:5px;background:#fff;overflow:hidden}
+.ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:7px 16px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}

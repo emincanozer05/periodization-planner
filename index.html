@@ -14018,6 +14018,10 @@ function rptVolStats(list){
   });
   return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
 }
+/* An exercise's picture for "Print with Image": the one put on the row, else the library's
+   card for that name — a programme written from the table carries no picture of its own. */
+const rptExImage=ex=>{if(!ex)return'';const hit=String(ex.name||'').trim()?exLibHit(ex.name):null;
+  return ex.image||(hit&&hit.image)||'';};
 function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const withImages=!!(opts&&opts.withImages);
   /* Coach copy: prints the justification recorded against every changed exercise.
@@ -14092,7 +14096,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
           <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${isSS?' ss':''} ghost">${lab.tag}</span></span></td>
           <td class="ex">
             <div class="ex-ex-wrap">
-              ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
+              ${withImages&&rptExImage(alt)?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(rptExImage(alt)))}" alt="${escHTML(altNm)}"></div>`:''}
               <div class="ex-ex-txt">
                 <div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
                 <div class="ex-nm-wrap"><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
@@ -14112,7 +14116,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <td class="n">${num}</td>
         <td class="ex">
           <div class="ex-ex-wrap">
-            ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
+            ${withImages&&rptExImage(e)?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(rptExImage(e)))}" alt="${escHTML(e.name)}"></div>`:''}
             <div class="ex-ex-txt">
               ${rptPatHTML(e.name,e.pattern)}
               <div class="ex-nm-wrap"><span class="pc-nm">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
@@ -14324,8 +14328,9 @@ ${RPT_PHASE_CSS}
   text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
-   inside rather than cropped, so a portrait shot still shows the whole movement. */
-.ex-imgwrap{flex:none;line-height:0;width:26mm;height:18mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+   inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
+   a picture does not make its row taller than the text beside it needs. */
+.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
@@ -42298,7 +42303,7 @@ function DiPatternPlan({plan,onChange:emit}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,athId}){
+function DiInstructionForm({instr,save,athId}){
   const[pasted,setPasted]=useState('');
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
      its next render, so a paste redraws it from scratch (same batch as the write, so it opens on the new rows). */
@@ -42328,13 +42333,6 @@ function DiInstructionForm({instr,save,onBuild,athId}){
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>
-    {onBuild&&<div className="di-genbar">
-      <span className="di-dim">{L('Antrenman tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
-        'The exercises and doses in the training table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
-      <button type="button" className="di-gen" onClick={onBuild}>
-        <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
-      </button>
-    </div>}
   </div>);
 }
 
@@ -42418,12 +42416,15 @@ const diDose=d=>{
    out of the same masthead, session banner and phase cards as the calendar's printout
    (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
    `time`, `duration`, `focus` and `rpe` (its target RPE) are the session's own line: the
-   calendar's copy once it is written, the plan's before. */
-function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
+   calendar's copy once it is written, the plan's before. `withImages` puts the library's
+   picture of each exercise beside its name, as a small thumbnail. */
+function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withImages}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const a=ath||{};
+  const img=nm=>{if(!withImages)return'';const src=rptExImage({name:nm});
+    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(nm)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
     const trs=b.rows.map((r,k)=>{
@@ -42436,12 +42437,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
         <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
-        <td class="ex"><div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
-          <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></td>
+        <td class="ex"><div class="ex-ex-wrap">${img(al.name)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+          <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
       return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
-        <td class="ex">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</td>
+        <td class="ex"><div class="ex-ex-wrap">${img(r.name)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
     }).join('');
@@ -42459,6 +42460,10 @@ ${RPT_PHASE_CSS}
 .bs{padding:10px 16px}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
+.ex-ex-wrap{display:flex;align-items:center;gap:8px;min-width:0}
+.ex-ex-txt{min-width:0}
+.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:5px;background:#fff;overflow:hidden}
+.ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:7px 16px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}
@@ -42627,25 +42632,24 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* "Programı Kaydet": the Movement Pattern table gathered into a programme and put where
-     the coach reads it — the same draft, the same checks and the same approval a written
-     programme always had. It reaches the calendar only through "Onayla ve takvime yaz". */
+  /* The Movement Pattern table gathered into a programme and put where the coach reads it —
+     the same draft, the same checks and the same approval a written programme always had.
+     There is no save button: "Programı Gör" builds it from whatever the table holds at that
+     moment (until the programme is approved; after that the calendar's copy is the one).
+     It reaches the calendar only through "Onayla ve takvime yaz". Returns the programme. */
   const buildProgram=()=>{
     const L0=live.current;
     const prog=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name);
-    if(!prog){
-      setErr(L('Programa girecek egzersiz yok — Hareket Paterni tablosunda en az bir egzersiz adı yaz.',
-        'There is nothing to build from — write at least one exercise name in the Movement Pattern table.'));
-      return;
-    }
+    const cur=L0.review&&L0.review.program;
+    /* An empty table leaves what is there alone (a programme copied in from the history,
+       say); the same programme as the stored one is not written again. */
+    if(!prog)return cur||null;
+    if(cur&&JSON.stringify(cur)===JSON.stringify(prog))return cur;
     let v;
     try{
       v=validateProgram(prog,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
         differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
-    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return;}
-    const cur=L0.review&&L0.review.program;
-    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program zaten var. Tablodan yeniden oluşturulsun mu?',
-      'There is already a programme for this athlete on this day. Build it again from the table?')))return;
+    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return cur||null;}
     diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
       athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:prog,instr,
       differentiators:L0.differentiators,validation:v,
@@ -42654,8 +42658,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       model:'manual',created_at:new Date().toISOString(),
       decision:null,decided_at:null,jobId:null,pendingJob:null,generation:{source:'manual'}});
     setErr('');
-    flipTo('prog');
-    setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+    return prog;
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
@@ -42710,6 +42713,24 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const progRows=calRows||rows;
   const progAdj=(calRows||(program&&program.external))?{...adj,pct:0}:adj;
   const onProg=side==='prog';
+  /* "Programı Gör": what is written in the table right now, on the programme face. */
+  const viewProg=()=>{if(!written)buildProgram();flipTo('prog');};
+  /* Print the programme with the exercises' pictures: the programme the card shows, or —
+     before it is approved — whatever the table holds this moment. */
+  const printProg=withImages=>{
+    let rs=progRows,ttl=progTitle,pct=progAdj.pct;
+    if(!written){
+      const p=buildProgram();
+      if(!p){setErr(L('Yazdırılacak egzersiz yok — antrenman tablosuna en az bir egzersiz yaz.',
+        'There is nothing to print — write at least one exercise in the training table.'));return;}
+      rs=diProgramRows(p,p.external?0:adj.pct);ttl=p.session_name||ttl;pct=p.external?0:adj.pct;
+    }
+    /* The session's own line — start, length, focus, target RPE — as the athlete has it:
+       off the calendar once written, off the plan before that. */
+    const m=(written&&calSes)||plan.meta||{};
+    printDiProgram({ath:plan.ath,date,title:ttl,rows:rs,pct,withImages,
+      time:m.time,duration:m.duration,focus:sesFocusLine(m),rpe:sesRpeTarget(m)});
+  };
   return(<div className="di-panel" ref={panelRef}>
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
@@ -42719,21 +42740,17 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
           <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
         {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
-          onClick={()=>flipTo(onProg?'brief':'prog')}
+          onClick={()=>onProg?flipTo('brief'):viewProg()}
           title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
             :L('Kartı çevir, bu sporcunun programını göster','Turn the card over to this athlete\'s programme')}>
           <i>⟳</i><span>{onProg?L('Talimata Dön','Back to Brief'):L('Programı Gör','View Programme')}</span>
         </button>}
-        {open&&onProg&&program&&<button type="button" className="di-printbtn"
-          onClick={()=>{
-            /* The session's own line — start, length, focus, target RPE — as the athlete
-               has it: off the calendar once written, off the plan before that. */
-            const m=(written&&calSes)||plan.meta||{};
-            printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct,
-              time:m.time,duration:m.duration,focus:sesFocusLine(m),rpe:sesRpeTarget(m)});
-          }}
+        {open&&onProg&&program&&<button type="button" className="di-printbtn" onClick={()=>printProg(false)}
           title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
           <i>🖨</i><span>{L('Yazdır','Print')}</span></button>}
+        {open&&<button type="button" className="di-printbtn" onClick={()=>printProg(true)}
+          title={L('Programı egzersiz görselleriyle (küçük) yazdır ya da PDF olarak kaydet','Print the programme with the exercise pictures (small), or save it as a PDF')}>
+          <i>🖨</i><span>{L('Yazdır (Görselli)','Print (with images)')}</span></button>}
         <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
           aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
           <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
@@ -42786,7 +42803,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
       </PlanLoadCtx.Provider>
     </DiSection>
     </>}
@@ -42839,8 +42856,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {side==='cal'&&calendar&&React.cloneElement(calendar,{showCal:true,showLoad:false})}
 
     {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Kaydet"e bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme for this athlete yet — fill in the Movement Pattern table and press "Save programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
+      {L('Bu sporcu için henüz bir program yok — antrenman tablosuna egzersiz yaz; "Programı Gör" onu burada gösterir. Ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
+         'No programme for this athlete yet — write exercises in the training table and "View Programme" shows it here, or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
     </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that
@@ -43081,12 +43098,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      being printed as an empty sheet. Exercises print by name only (`noDesc`): the coaching
      text under them is what pushed a programme onto a second page. */
   const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
-  const printSquad=()=>{
+  const printSquad=withImages=>{
     if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
     const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
     const setup=team.setup||{};
     try{
-      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,withImages:withImages===true,
         groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){
@@ -43329,10 +43346,13 @@ function IndividualizationView({data,team,updateTeam,weeks}){
           ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
         {/* Everyone selected above, as one printout: each athlete's programme from their own
             calendar, one document. Counts only the athletes who have one written. */}
-        <button className="btn sec sm" onClick={printSquad} disabled={!printable.length}
+        <button className="btn sec sm" onClick={()=>printSquad(false)} disabled={!printable.length}
           title={L('Seçili sporcuların takvimine yazılmış programlarını tek belgede yazdırır ya da PDF olarak kaydeder (her sporcu ayrı sayfada).',
             'Prints the programmes written to the selected athletes\' calendars as one document, or saves it as a PDF (one athlete per page).')}>
           🖨 {L(`Sporcuların Antrenman Çıktısını Al (${printable.length})`,`Print all athletes' programmes (${printable.length})`)}</button>
+        <button className="btn sec sm" onClick={()=>printSquad(true)} disabled={!printable.length}
+          title={L('Aynı çıktı, egzersiz görselleriyle (küçük).','The same printout, with the exercise pictures (small).')}>
+          🖨 {L('Yazdır (Görselli)','Print (with images)')}</button>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
