@@ -1,0 +1,68 @@
+# Firebase Hosting deploy'u — sitenin periodization-planner.web.app kopyası.
+#
+# *.vercel.app Türkiye'de bazı operatörlerde erişime engelli; sporcu formlarının
+# (RPE, Wellness, Antrenman Günlüğü) linki bu yüzden web.app'e bakıyor. Yayınlanan
+# klasör GitHub Pages ile aynı: build.js'in ürettiği dist/.
+#
+# PR'da site, iki gün yaşayan bir ÖNİZLEME kanalına deploy ediliyor: yetki ya da
+# yapılandırma bozuksa bunu merge'den ÖNCE görüyoruz, canlı siteye dokunmadan.
+# main'e girişte canlı siteye (web.app) çıkıyor.
+#
+# Sır: functions.yml'deki FIREBASE_SERVICE_ACCOUNT. Yoksa (fork PR'ı gibi) iş
+# kırmızıya düşmüyor, yalnızca "deploy atlandı" notu bırakıyor.
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosting-${{ github.event_name == 'pull_request' && github.event.number || 'live' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build
+        run: node build.js
+
+      - name: Authenticate to Google Cloud
+        if: env.HAS_CREDENTIALS == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy (önizleme kanalı)
+        if: env.HAS_CREDENTIALS == 'true' && github.event_name == 'pull_request'
+        run: >
+          npx --yes firebase-tools@15 hosting:channel:deploy pr-${{ github.event.number }}
+          --expires 2d
+          --project periodization-planner
+          --non-interactive
+
+      - name: Deploy (canlı)
+        if: env.HAS_CREDENTIALS == 'true' && github.event_name != 'pull_request'
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only hosting
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: Deploy atlandı
+        if: env.HAS_CREDENTIALS != 'true'
+        run: echo "::notice::FIREBASE_SERVICE_ACCOUNT secret'ı tanımlı değil — hosting deploy'u atlandı."

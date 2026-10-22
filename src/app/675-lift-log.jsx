@@ -27,7 +27,7 @@ const LIFT_WIN_BACK=1, LIFT_WIN_FWD=6;          // yayın penceresi: dün … +6
 const liftNorm=s=>phNorm(String(s==null?'':s).trim()).replace(/\s+/g,' ');
 const liftPlanId=(token,athId,date)=>`${token}_${athId}_${date}`;
 function liftUrl(token){
-  const base=shareBase();   // vercel.app Türkiye'de engelli: 670'teki nota bak
+  const base=shareBase();   // tek adres (web.app): 670'teki nota bak
   return `${base}lift.html#k=${encodeURIComponent(token)}`;
 }
 /* Aralık dışı değer SINIRLANMAZ, reddedilir: 99999 kg'ı 1000 kg diye kaydetmek de yalandır. */
