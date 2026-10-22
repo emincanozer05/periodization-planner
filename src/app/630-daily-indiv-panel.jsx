@@ -103,6 +103,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       return;
     }
     buildProgram({decision:'accept',decided_at:new Date().toISOString(),validation:v});
+    /* The approved table's exercises go into the library now, not while they were typed. */
+    diFileToLibrary(instr);
     setErr('');
     if(writeOne)writeOne(plan.ath.id,prog);
   };

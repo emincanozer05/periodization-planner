@@ -19989,7 +19989,12 @@ const UNCAT='Kategorisiz';
    them by that category's types and directions (Tür · Yön) — the same boxes the row has.
    A row with no category yet lists the library by category instead. */
 const EN_NO_TYPE='__none';
+/* True under a table whose exercises reach the library only when its programme is approved
+   (the individualization brief): a name typed there and then corrected must not leave the
+   mistyped one behind in the library. The box still reports a fresh name to its host. */
+const ExLibDeferCtx=React.createContext(false);
 function ExNameField({value,onChange,onPick,tags,onNewName}){
+  const libDefer=React.useContext(ExLibDeferCtx);
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
   const[cats,setCats]=useState([]);   // selected category names (empty = no filter)
@@ -20021,16 +20026,16 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
      exercise written here is filed the way it is trained — whichever order the coach
      works in. Typing the name first and tagging it after already wrote the pair; this
      covers the other order, and a rename, which otherwise left a bare stub behind. */
-  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
+  const withTags=nm=>{if(!libDefer&&nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
   /* A name the box has not filed before — freshly typed or renamed — is also the moment
      the row can be read for how the exercise is executed. An unchanged name is not: the
      coach may have cleared the execution on purpose, and re-entering the name field is
      no reason to argue with them. */
   const fresh=nm=>{if(nm&&onNewName)onNewName(nm);};
   const commit=v=>{const nm=(v||'').trim();const prev=committedRef.current;
-    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
+    if(prev===null){if(nm&&!libDefer)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
     if(nm===prev){withTags(nm);return;}
-    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
+    if(!libDefer)replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
   /* The row's own Tür (Split Squat …) ticks the picker's filter by itself, so a split-squat row
@@ -20754,6 +20759,7 @@ const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
    in one of them must not rebuild the other nineteen. */
 const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
   const k=slot.key;
+  const libDefer=React.useContext(ExLibDeferCtx);
   const[altOn,setAltOn]=useState(false);
   const hasAlt=!!(slot.a_name||PT_ALT_KEYS.some(f=>slot['a_'+f]));
   const showAlt=hasAlt||altOn;
@@ -20787,7 +20793,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
       /* A picture pasted on the row goes into the library with the exercise — its name and
          its Kategori · Tür too — when the library has no picture for it yet. */
       const nm=String(slot.name||'').trim();
-      if(url&&nm){const hit=exLibHit(nm);
+      if(url&&nm&&!libDefer){const hit=exLibHit(nm);
         if(!hit)addExerciseToLibrary(nm);
         rememberExerciseTags(nm,slot.tagP,slot.tagS,slot.tagD);
         if(!(hit&&hit.image))rememberExerciseImage(nm,url);}
@@ -42129,6 +42135,25 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
+/* The table's exercises into the shared library, at the approval: every name the library
+   does not have yet is added with its Kategori · Tür · Yön, its link (a card with a link keeps
+   it) and its picture (only where the card has none) — the alternative's name and link too. */
+function diFileToLibrary(instr){
+  const t=v=>String(v==null?'':v).trim();
+  diMovePatterns(instr&&instr.patterns).forEach(p=>{
+    const row=diMoveRow(p.id);const cat=row?row.k:'';
+    const file=(nm,link,image)=>{
+      if(!nm)return;
+      const hit=exLibHit(nm);
+      if(!hit)addExerciseToLibrary(nm);
+      if(cat)rememberExerciseTags(nm,cat,(p.type||[])[0]||'',(p.direction||[])[0]||'');
+      if(t(link))rememberExerciseLink(nm,t(link));
+      if(t(image)&&!(hit&&hit.image))rememberExerciseImage(nm,t(image));
+    };
+    file(t(p.exercise),p.link,p.image);
+    if(p.alt)file(t(p.alt.name),p.alt.link,'');
+  });
+}
 function DiPatternPlan({plan,onChange:emit}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -42303,8 +42328,6 @@ function DiPatternPlan({plan,onChange:emit}){
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
         if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
-      onLinkBlur:(k,isAlt,v)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];if(!p)return;
-        rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
@@ -42320,10 +42343,12 @@ function DiPatternPlan({plan,onChange:emit}){
         const l=[...latest.current.list];[l[a],l[b]]=[l[b],l[a]];setList(l);},
     };
     const addBlank=()=>setList([...latest.current.list,fresh('',ph)]);
-    return(<PlanTable groups={groups}
+    /* Nothing written here reaches the library until the programme is approved
+       (diFileToLibrary): a mistyped name corrected a moment later leaves nothing behind. */
+    return(<ExLibDeferCtx.Provider value={true}><PlanTable groups={groups}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
       onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
-      empty={L('Fazsız satır yok.','No unplaced rows.')}/>);
+      empty={L('Fazsız satır yok.','No unplaced rows.')}/></ExLibDeferCtx.Provider>);
   };
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
@@ -42729,6 +42754,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       return;
     }
     buildProgram({decision:'accept',decided_at:new Date().toISOString(),validation:v});
+    /* The approved table's exercises go into the library now, not while they were typed. */
+    diFileToLibrary(instr);
     setErr('');
     if(writeOne)writeOne(plan.ath.id,prog);
   };
