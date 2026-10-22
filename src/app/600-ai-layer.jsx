@@ -350,6 +350,8 @@ function diMovePatterns(v){
        dose of its own, since the swap may be done at other sets and reps. */
     DI_MOVE_DOSE.forEach(k=>{o[k]=txt(obj[k],40);});
     o.link=txt(obj.link,300);
+    /* A picture pasted on the row: an uploaded URL, or the data URL kept while offline. */
+    o.image=typeof obj.image==='string'&&/^(https?:|data:image\/)/.test(obj.image)?obj.image:'';
     o.superset=/^[A-F]$/i.test(String(obj.superset||'').trim())?String(obj.superset).trim().toUpperCase():'';
     const ar=(obj.alt&&typeof obj.alt==='object')?obj.alt:{name:obj.alt};
     o.alt={name:txt(ar.name,120)};

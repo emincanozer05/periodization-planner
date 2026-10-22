@@ -104,19 +104,37 @@ function PtCat({value,color,options,onChange,label}){
       title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
   </span>);
 }
-/* The exercise's picture, on the left of its card: the one the library carries for that name
-   (its cover, else the video's thumbnail), else the one put on the row itself. */
-function PtImg({name,image}){
+/* The exercise's picture, on the left of its card: the one put on the row itself, else the one
+   the library carries for that name (its program image, else the video's thumbnail). The box
+   takes a picture too: copy one and paste it in (Ctrl/Cmd+V, or click — the clipboard is read),
+   or right-click for a file. `onImage(url)` gets the uploaded picture; '' takes it off. */
+function PtImg({name,image,onImage}){
   const hit=exLibHit(name);
-  const pic=(hit&&hit.image)||image||'';
+  const pic=image||(hit&&hit.image)||'';
   const[bad,setBad]=useState(false);
+  const[busy,setBusy]=useState(false);
+  const fileRef=useRef(null);
   useEffect(()=>{setBad(false);},[pic]);
-  return(<div className={'pt-img'+(pic&&!bad?' has':'')}>
+  const done=url=>{setBusy(false);if(url)onImage(url);};
+  const save=f=>{if(f&&onImage){setBusy(true);handleImageUpload(f,'exercises',done);}};
+  return(<div className={'pt-img'+(pic&&!bad?' has':'')+(onImage?' paste':'')+(busy?' busy':'')}
+    tabIndex={onImage?0:undefined} role={onImage?'button':undefined}
+    aria-label={onImage?L('Egzersiz görseli — kopyaladığın görseli yapıştır','Exercise image — paste a copied picture'):undefined}
+    title={onImage?L('Görsel yapıştır: bir görseli kopyala, buraya tıkla ya da Ctrl/Cmd+V · Sağ tık: dosya seç',
+      'Paste a picture: copy one, click here or press Ctrl/Cmd+V · Right-click: choose a file'):undefined}
+    onClick={onImage?(()=>pasteImageFromClipboard('exercises',done)):undefined}
+    onPaste={onImage?(e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}):undefined}
+    onContextMenu={onImage?(e=>{e.preventDefault();fileRef.current&&fileRef.current.click();}):undefined}>
     {pic&&!bad
       ?<img src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={()=>setBad(true)}/>
       :<span className="pt-img-ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
-        <em>{String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em></span>}
+        <em>{busy?L('Yükleniyor…','Uploading…'):String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em>
+        {onImage&&!busy&&<small>{L('Görsel yapıştır','Paste a picture')}</small>}</span>}
+    {onImage&&image&&<button type="button" className="pt-img-x" title={L('Görseli kaldır','Remove the picture')}
+      aria-label={L('Görseli kaldır','Remove the picture')} onClick={e=>{e.stopPropagation();onImage('');}}>✕</button>}
+    {onImage&&<input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onClick={e=>e.stopPropagation()}
+      onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)save(f);e.target.value='';}}/>}
   </div>);
 }
 const ptSame=(a,b)=>{
@@ -161,7 +179,16 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   const style={'--pat-c':grp.color||'var(--border2)'};
   const showCat=first||grp.pick,showType=!!(slot.typeOpts&&slot.typeOpts.length),showCnt=first&&!grp.pick;
   return(<div className={'pt-item'+(first?' first':'')} style={style}>
-    <PtImg name={slot.name} image={slot.image}/>
+    <PtImg name={slot.name} image={slot.image} onImage={url=>{
+      f('image',url);
+      /* A picture pasted on the row goes into the library with the exercise — its name and
+         its Kategori · Tür too — when the library has no picture for it yet. */
+      const nm=String(slot.name||'').trim();
+      if(url&&nm){const hit=exLibHit(nm);
+        if(!hit)addExerciseToLibrary(nm);
+        rememberExerciseTags(nm,slot.tagP,slot.tagS,slot.tagD);
+        if(!(hit&&hit.image))rememberExerciseImage(nm,url);}
+    }}/>
     <div className="pt-body">
     {(showCat||showType||showCnt)&&<div className="pt-pat" role="rowheader">
       {/* A category covers its whole group and is set on its first row; an uncategorised row is

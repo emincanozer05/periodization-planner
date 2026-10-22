@@ -112,7 +112,7 @@ function DiPatternPlan({plan,onChange:emit}){
         color:row?(ML_PIE_COLS[row.k]||''):'',pick:run.id==='',options:patOpts,
         slots:run.at.map(gi=>{const p=latest.current.list[gi];const n=n0++;const k=`${ph}|${n}`;const a=p.alt||{};
           const ck=row?row.k:'';
-          return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
+          return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,image:p.image||'',link:p.link,note:p.note,
             sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
             a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
             a_rest:a.rest,a_link:a.link,tagP:ck,tagS:(p.type||[])[0]||'',tagD:(p.direction||[])[0]||'',
