@@ -70,18 +70,22 @@ function newCheckinToken(){
    *.vercel.app alan adı Türkiye'de erişime engelli (USOM/BTK, Aralık 2023'ten beri, bazı
    operatörlerde). Engel alan adı üzerinden (SNI) uygulanıyor: bağlantı daha sayfa gelmeden
    kesiliyor ve Safari "ağ bağlantısı kesildiği için sayfayı açamıyor" diyor — internet
-   varken, yalnızca o operatörü kullanan sporcularda. Koç uygulamayı vercel.app'ten
-   açıyorsa sporcuya giden form linkleri, her merge'de aynı dosyalarla yayınlanan GitHub
-   Pages kopyasını gösteriyor (pages.yml). Formlar o kopyada da aynen çalışıyor: verileri
-   Firestore'da, dosyaları göreli adreslerle yükleniyor, token yine # kısmında.
-   Kendi alan adından açılan uygulama (ya da yerel kopya) kendi klasörünü vermeye devam eder. */
-const SHARE_MIRROR='https://emincanozer05.github.io/periodization-planner/';
+   varken, yalnızca o operatörü kullanan sporcularda. GitHub Pages kopyası (github.io) da
+   bazı hatlarda ("Güvenli İnternet" profili) açılmıyor.
+   Bu yüzden sporcuya giden HER form linki, uygulama hangi adresten açılmış olursa olsun,
+   tek bir adrese bakıyor: projenin kendi Firebase Hosting adresi (hosting.yml her merge'de
+   aynı dist/'i oraya yayınlıyor). Formlar orada da aynen çalışıyor: verileri Firestore'da,
+   dosyaları göreli adreslerle yükleniyor, token yine # kısmında.
+   Yalnızca yerel geliştirme kopyası (localhost / dosya) kendi klasörünü veriyor. */
+const SHARE_HOST='https://periodization-planner.web.app/';
 function shareBase(){
-  if(/\.vercel\.app$/i.test(location.hostname))return SHARE_MIRROR;
-  return location.origin+location.pathname.replace(/[^/]*$/,'');
+  const h=location.hostname;
+  if(location.protocol==='file:'||h==='localhost'||h==='127.0.0.1')
+    return location.origin+location.pathname.replace(/[^/]*$/,'');
+  return SHARE_HOST;
 }
 /* Sporcunun açacağı adres. Uygulama hangi klasörde duruyorsa form dosyaları onun
-   yanında (vercel.app hariç, yukarıya bak). Adres doğrudan checkin.html'e değil, form başına bir "kapak" sayfasına
+   yanında (canlıda tek adres: yukarıya bak). Adres doğrudan checkin.html'e değil, form başına bir "kapak" sayfasına
    bakıyor (rpe.html / wellness.html): WhatsApp önizlemesi sayfanın <title>/og:*
    etiketlerini okuyor, adresin # kısmını ise hiç görmüyor — yani hangi formun linki
    olduğu ancak dosya ayrıysa önizlemede yazıyor. Kapak sayfası açılır açılmaz
