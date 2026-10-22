@@ -499,7 +499,7 @@ ${RPT_PHASE_CSS}
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
    a picture does not make its row taller than the text beside it needs. */
-.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:24mm;height:17mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
