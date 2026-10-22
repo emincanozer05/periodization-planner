@@ -28,6 +28,17 @@ test('vercel.json tüm güvenlik başlıklarını taşıyor', () => {
   for (const k of SEC) assert.ok(vercel[k], 'vercel.json\'da yok: ' + k);
 });
 
+/* Aynı site Firebase Hosting'de de (periodization-planner.web.app) yayında; sporcu formlarının
+   linki oraya bakıyor. Başlıkları firebase.json'da ayrıca yazılı; iki liste ayrışmasın. */
+test('firebase.json hosting başlıkları vercel.json ile aynı', () => {
+  const hosting = JSON.parse(read('firebase.json')).hosting;
+  assert.ok(hosting, 'firebase.json\'da hosting yok');
+  const all = (hosting.headers.find(r => r.source === '**') || {}).headers || [];
+  const fb = {};
+  for (const h of all) fb[h.key] = h.value;
+  assert.deepStrictEqual(fb, vercel);
+});
+
 const csp = {};
 for (const part of (vercel['Content-Security-Policy-Report-Only'] || '').split(';')) {
   const [name, ...vals] = part.trim().split(/\s+/);
