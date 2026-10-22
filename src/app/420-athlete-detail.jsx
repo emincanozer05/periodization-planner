@@ -162,7 +162,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
    a ball-practice, an S&C and a match score at once, and each is its own row. Changing the
    score or the minutes rewrites that slot's load and the entry's total; deleting the last
    score of an entry drops the entry — one that came from a form is remembered as deleted
-   (`deletedSrpeSrcIds`) so the next sync does not bring it back. */
+   (`deletedSrpeSrcIds`) so the next sync does not bring it back. The date is editable too: it
+   moves the whole entry (a check-in's scores were given for one day), and a check-in is matched
+   back by its `srcId`, not its date, so a sync does not undo the move. */
 const RPE_SLOT_LAB={tp:['Top Antrenmanı','Ball Practice'],sc:['S&C','S&C'],game:['Maç','Match']};
 function AthRpeScores({ath,updAth,onClose}){
   const log=ath.srpeLog||[];
@@ -185,6 +187,7 @@ function AthRpeScores({ath,updAth,onClose}){
       n.totalLoad=total(n)||'';
       return n;})});
   };
+  const setDate=(id,date)=>{if(!date)return;updAth(ath.id,{srpeLog:log.map(e=>e.id===id?{...e,date}:e)});};
   const delSlot=(id,k)=>{
     if(!confirm(L('Bu RPE puanı silinsin mi?','Delete this RPE score?')))return;
     const[rk,du]=SRPE_KINDS[k];
@@ -227,16 +230,17 @@ function AthRpeScores({ath,updAth,onClose}){
           ?<div className="empty-st">{L('Bu sporcunun henüz RPE puanı yok.','This athlete has no RPE scores yet.')}</div>
           :<table className="rpes-t">
             <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Seans','Session')}</th><th>RPE</th><th>{L('Süre (dk)','Minutes')}</th><th>{L('Yük','Load')}</th><th/></tr></thead>
-            <tbody>{rows.map(r=>{const d=r.e.date?parseD(r.e.date):null;
-              return(<tr key={r.e.id+r.k}>
-                <td className="d">{d?`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`:'—'}</td>
+            <tbody>{rows.map(r=>
+              <tr key={r.e.id+r.k}>
+                <td className="d"><input type="date" value={r.e.date||''} aria-label={L('Tarih','Date')}
+                  onChange={e=>setDate(r.e.id,e.target.value)}/></td>
                 <td><span className={'rpes-k k-'+r.k}>{L(RPE_SLOT_LAB[r.k][0],RPE_SLOT_LAB[r.k][1])}</span> {sesName(r.e,r.k)}</td>
                 <td><input type="number" min="0" max="10" step="0.5" value={r.e[SRPE_KINDS[r.k][0]]}
                   style={{color:rpeColor(r.rpe)||undefined}} onChange={e=>setSlot(r.e.id,r.k,{rpe:e.target.value})}/></td>
                 <td><input type="number" min="0" value={r.e[SRPE_KINDS[r.k][1]]??''} onChange={e=>setSlot(r.e.id,r.k,{dur:e.target.value})}/></td>
                 <td className="l">{r.dur?`${Math.round(r.rpe*r.dur)} AU`:'—'}</td>
                 <td><button type="button" className="x-btn" title={L('Sil','Delete')} onClick={()=>delSlot(r.e.id,r.k)}>✕</button></td>
-              </tr>);})}</tbody>
+              </tr>)}</tbody>
           </table>}
       </div>
     </div>

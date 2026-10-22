@@ -1,38 +1,44 @@
 /* ---- The pattern table ---------------------------------------------------
-   "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
-   grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
-   time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
-   individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
-   library) on the left, and on the right Kategori · Tür · Yön, the exercise, the dose boxes and
-   the alternative / note — so it never scrolls sideways. */
+   "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group with a
+   header (the category and how many exercises) over its cards, two to a line. Used by the
+   calendar's block editor and by the individualization brief (PlanTable). Every exercise is a
+   card: its picture (pulled from the library) on the left, and on the right its Tür, the
+   exercise, the dose in two even rows of four and the alternative / note — so it never
+   scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
 .pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pt-scroll{min-width:0}
 .pt-grid{min-width:0;display:flex;flex-direction:column;gap:10px}
 .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
+/* The group's header: its category on the left, how many exercises on the right. */
+.pt-ghd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);
+  background:var(--elevated)}
+.pt-ghd .pt-cat{flex:0 1 260px}
+.pt-gcnt{flex:none;display:flex;align-items:center;gap:8px}
+.pt-gcnt .pt-cl{margin:0}
+.pt-gcnt .pt-step{width:74px}
+/* The cards, two to a line at equal width; an odd one out keeps the same width. */
+.pt-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
 /* One exercise: the picture on the left, everything written about it on the right. */
-.pt-item{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;padding:12px;align-items:start}
-.pt-item+.pt-item{border-top:1px dashed var(--border)}
-.pt-item:hover{background:rgba(255,255,255,.012)}
-/* The picture takes the whole height of its card (category line to note), at a fixed width on the left. */
-.pt-img{position:relative;align-self:stretch;min-height:170px;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
+.pt-item{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:10px;align-items:stretch;min-width:0;
+  border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.pt-item:hover{border-color:var(--border2)}
+/* The picture takes the whole height of its card (type line to note), at a fixed width on the left. */
+.pt-img{position:relative;align-self:stretch;min-height:150px;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
   display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 0 0 var(--pat-c)}
 .pt-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pt-img.has{background:#fff}
 .pt-img-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim);text-align:center;padding:6px}
 .pt-img-ph em{font-style:normal;font-size:10.5px;font-weight:600;line-height:1.25}
 .pt-body{min-width:0;display:flex;flex-direction:column;gap:8px}
-.pt-tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end}
-/* The second and third line of an exercise: its alternative (with a dose of its own) and the note. */
-.pt-sec.alt .pt-ex .pt-exname.alt .en{border-color:var(--border)}
-.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
+/* The dose: sets, reps, time, tempo over RPE, load, rest, link — four even columns. */
+.pt-dose{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 8px;align-items:end}
+.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
-/* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
-   group's first row, then the row's own type and direction boxes. */
-.pt-pat{position:relative;grid-column:1/-1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
-  gap:6px 8px;min-height:0;color:var(--text)}
-.pt-pat:empty{display:none}
+/* The card's first line: its type (Tür), and on an uncategorised card the category box beside it. */
+.pt-pat{position:relative;display:flex;flex-direction:row;align-items:center;gap:8px;min-width:0;color:var(--text)}
+.pt-pat>.pt-cat,.pt-pat>.pt-type{flex:1 1 0;min-width:0;max-width:none}
 .pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
 .pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
@@ -48,12 +54,7 @@
 .pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:.55;transition:opacity .12s,background .12s,color .12s}
 .pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
-.pt-cat{flex:0 1 230px}
-.pt-tdr{flex:1 1 260px;display:flex;flex-direction:row;gap:8px;min-width:0}
-.pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
-.pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
-.pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
-.pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.pt-pat .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
 .pt-type{position:relative;display:block;margin:0;max-width:100%;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-type select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px solid var(--border);
@@ -63,9 +64,6 @@
 .pt-type select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 .pt-type::after{content:'';position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
   border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
-.pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
-  border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
-.pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
 .pt-x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:0;transition:opacity .12s,background .12s,color .12s;margin-left:auto}
 .pt-item:hover .pt-x,.pt-x:focus-visible{opacity:1}
@@ -103,9 +101,12 @@
 .pt-more{flex:none;width:28px;margin-left:4px;border:1px solid var(--border);border-radius:8px;background:var(--elevated);color:var(--dim);
   font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s}
 .pt-more:hover,.pt-more.on{border-color:var(--accent);color:var(--text)}
-.pt-alt{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px}
+.pt-alt{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px;padding-top:8px;border-top:1px dashed var(--border)}
+/* The card's last line: "Alternatif Ekle" (until there is one) and the note. */
+.pt-foot{display:flex;align-items:center;gap:10px;min-width:0}
+.pt-foot .pt-noteinp{flex:1;min-width:0}
 .pt-altk{flex:none;width:38px;text-align:center;font-size:12px;color:var(--dim)}
-.pt-altadd{margin-left:auto;margin-right:2px;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
+.pt-altadd{flex:none;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
 .pt-altadd:hover{text-decoration:underline}
 .pt-altx{flex:none;width:24px;height:24px;border:0;background:none;color:var(--dim);font-size:11px;cursor:pointer;border-radius:6px}
 .pt-altx:hover{color:#fda4af;background:rgba(244,63,94,.12)}
@@ -137,8 +138,8 @@
 .pt-noteinp:hover{border-color:var(--border2)}
 .pt-noteinp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 /* The row's "more": execution, image, link, the reason for the alternative, order. */
-.pt-detail{padding:0 12px 12px 12px;border-top:1px dashed var(--border)}
-.pt-det{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:10px 12px;margin-top:10px}
+.pt-detail{grid-column:1/-1;min-width:0}
+.pt-det{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:10px 12px}
 .pt-dl{display:flex;flex-direction:column;gap:4px;margin:0;font-size:11px;font-weight:600;color:var(--dim);text-transform:none;letter-spacing:normal}
 .pt-dl select,.pt-dl input{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px}
 .pt-dl.wide{flex:1 1 260px;min-width:220px}
@@ -148,34 +149,14 @@
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-/* Where each box sits on the 12-column line: the exercise across the card, then the count and
-   the seven dose boxes one column each and the link in the last four; under them the
-   alternative button beside the note. The link and the note say what they are in their own
-   placeholder, so only the number boxes carry a caption (the link keeps the room for one). */
-.pt-ex{grid-column:1/-1}
-.pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
-.pt-link .pt-cl{visibility:hidden}
-.pt-cnt{grid-column:span 1}
-.pt-link{grid-column:span 4}
-.pt-note,.pt-sec .pt-note{grid-column:span 9}
-.pt-sec:not(.alt) .pt-ex{grid-column:span 3}
-.pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
-.pt-sec.note .pt-note{grid-column:1/-1}
-.pt-sec .pt-pat,.pt-sec.note .pt-ex:empty{display:none}
-.pt-x{opacity:.7}
-@container (max-width:900px){
-  .pt-item{grid-template-columns:180px minmax(0,1fr);gap:12px}
-  .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .pt-link{grid-column:span 4}
-  .pt-sec:not(.alt) .pt-ex{grid-column:span 2}
-  .pt-note,.pt-sec .pt-note{grid-column:span 4}
-  .pt-sec.note .pt-note{grid-column:1/-1}
+/* Narrower tables: one card to a line (the picture keeps its place), then the picture on top. */
+@container (max-width:1000px){
+  .pt-cards{grid-template-columns:minmax(0,1fr)}
 }
-@container (max-width:560px){
+@container (max-width:520px){
   .pt-item{grid-template-columns:1fr}
   .pt-img{width:100%;min-height:180px;align-self:auto}
-  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .pt-link{grid-column:1/-1}
+  .pt-dose{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* ---- Phases: one look in the calendar and in the brief -------------------
@@ -231,10 +212,8 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .di-pp .pp-body>.pt{padding:12px}
 .pp-body>.iv-slots{padding:10px 12px}
 
-/* The exercise picker, narrowed to the row's category: its colour in the header, and the
-   direction filters under the type filters. */
+/* The exercise picker, narrowed to the row's category: its colour in the header. */
 .en-catdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
-.en-phd-sub{border-top:1px solid var(--border2)}
 
 /* The weekly load distribution, as a small window at the right edge: no backdrop, no blur. */
 .di-loadwin{position:fixed;right:16px;top:76px;z-index:900;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 100px);

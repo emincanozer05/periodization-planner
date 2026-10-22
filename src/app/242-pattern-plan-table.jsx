@@ -24,7 +24,6 @@
      onType(key,id)           the row's type box (Tür: Squat, Yatay İtiş, Anti-rotasyon …) was
                               changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
                               current one in `typeVal` (no box when a slot has none)
-     onDir(key,id)            the row's direction box (Yön), the same way: `dirOpts` / `dirVal`
      onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
                               go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
@@ -126,12 +125,14 @@ const ptSame=(a,b)=>{
   return ka.length===kb.length&&ka.every(k=>a[k]===b[k]||(Array.isArray(a[k])&&Array.isArray(b[k])&&JSON.stringify(a[k])===JSON.stringify(b[k])));
 };
 const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
-/* One exercise: up to three grid rows under its pattern — the exercise itself with its dose
-   and link; its alternative, written like an exercise with a dose of its own (a swap may be
-   done at other sets, reps and load); and the note, in the open space beside them.
+/* One exercise, as a card: its picture on the left and, on the right, its type (Tür), the
+   exercise, the dose in two even rows of four (sets, reps, time, tempo / RPE, load, rest, link),
+   then the alternative — written like an exercise with a dose of its own (a swap may be done at
+   other sets, reps and load) — and the note. The category and the "how many" stepper belong to
+   the whole group and sit in its header (PtGroupHead), so every card of a group looks the same.
    Memoised on what it draws: a table of twenty rows is two hundred inputs, and a keystroke
    in one of them must not rebuild the other nineteen. */
-const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
+const PtRow=React.memo(function PtRow({gid,slot,grp,cb,ids,hasDetail,detailOpen}){
   const k=slot.key;
   const[altOn,setAltOn]=useState(false);
   const hasAlt=!!(slot.a_name||PT_ALT_KEYS.some(f=>slot['a_'+f]));
@@ -139,106 +140,100 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   const f=(name,v)=>cb.onSlot(k,{[name]:v});
   const lab=n=>`${grp.label} · ${n}`;
   const alab=n=>`${grp.label} · ${L('Alternatif','Alternative')} · ${n}`;
-  const dose=(pre,labf)=>[
-    <div key="sets" className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
-      <PtStep value={slot[pre+'sets']} onChange={v=>f(pre+'sets',v)} label={labf(L('Set','Sets'))} max={20}/></div>,
-    <div key="reps" className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
-      <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>,
-    <div key="duration" className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
-      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>,
-    <div key="tempo" className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
-      <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>,
-    <div key="rpe" className="pt-td" role="cell"><span className="pt-cl">RPE</span>
-      <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>,
-    <div key="load" className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
-      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>,
-    <div key="rest" className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
-      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>,
-    <div key="link" className="pt-td pt-link" role="cell"><span className="pt-cl">Link</span>
+  const dose=(pre,labf)=><div className="pt-dose" role="row">
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
+      <PtStep value={slot[pre+'sets']} onChange={v=>f(pre+'sets',v)} label={labf(L('Set','Sets'))} max={20}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
+      <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
+      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
+      <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">RPE</span>
+      <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
+      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
+      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">Link</span>
       <LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
         onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
-        placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>];
+        placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>
+  </div>;
   const style={'--pat-c':grp.color||'var(--border2)'};
-  const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
-    <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
-      placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>;
-  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+  const hasType=!!(slot.typeOpts&&slot.typeOpts.length);
+  return(<div className="pt-item" style={style}>
     <PtImg name={slot.name} image={slot.image}/>
     <div className="pt-body">
-    <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
-      <div className="pt-pat" role="rowheader">
-        {/* A category covers its whole group and is set on its first row; an uncategorised row is
-            given one on its own. */}
-        {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
-          onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
-        {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
-          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))} ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>
-          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L(...mvDirLab(grp.pat)))} ph={L(mvDirLab(grp.pat)[0]+'…',mvDirLab(grp.pat)[1]+'…')} onChange={v=>cb.onDir(k,v)}/>
-        </span>}
-      </div>
-      <div className="pt-td pt-ex" role="cell">
-        <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
-        <div className="pt-exmain">
-          <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
-          <div className="pt-exname">
-            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
-              onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
-              onPick={it=>cb.onPick(k,it,false)}/>
-          </div>
-          {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
-            onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
-          {cb.hasMove&&<span className="pt-mv">
-            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
-              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
-            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
-              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
-          </span>}
-          {<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
-            aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
+      {(grp.pick||hasType)&&<div className="pt-pat" role="rowheader">
+        {/* An uncategorised row is given a category on its own card. */}
+        {grp.pick&&<PtCat value="" color={grp.color} options={grp.options} label={L('Kategori','Category')}
+          onChange={v=>cb.onRowCat(k,v)}/>}
+        {hasType&&<PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))}
+          ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>}
+      </div>}
+      <div className="pt-exmain" role="row">
+        <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
+        <div className="pt-exname" role="cell" aria-label={L('Egzersiz','Exercise')}>
+          <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
+            onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
+            onPick={it=>cb.onPick(k,it,false)}/>
         </div>
-      </div>
-      <div className="pt-td pt-cnt" role="cell">
-        {first&&!grp.pick&&<><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
-          <input type="number" min={1} max={grp.max} value={grp.count} aria-label={lab(L('Egzersiz adedi','Exercises'))}
-            onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
-          <span className="pt-spin">
-            <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
-              onClick={()=>cb.onCount(gid,grp.count+1)}/>
-            <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
-              onClick={()=>cb.onCount(gid,grp.count-1)}/>
-          </span></span></>}
+        {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
+          onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
+        {cb.hasMove&&<span className="pt-mv">
+          <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+            aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+          <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+            aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+        </span>}
+        <button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+          aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
       </div>
       {dose('',lab)}
-    </div>
-    <div className={'pt-tr pt-sec'+(showAlt?' alt':'')} role="row" style={style}>
-      <div className="pt-pat" role="rowheader"/>
-      <div className="pt-td pt-ex" role="cell">
+      {showAlt&&<>
         <div className="pt-alt">
-          {showAlt
-            ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
-              <div className="pt-exname alt">
-                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
-                  tags={{pattern:slot.tagP}}/>
-              </div>
-              <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
-                aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button></>
-            :<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
-              title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
-              {L('Alternatif Ekle','Add Alternative')}</button>}
+          <span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
+          <div className="pt-exname alt">
+            <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
+              tags={{pattern:slot.tagP}}/>
+          </div>
+          <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
+            aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button>
         </div>
+        {dose('a_',alab)}
+      </>}
+      <div className="pt-foot">
+        {!showAlt&&<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
+          title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
+          {L('Alternatif Ekle','Add Alternative')}</button>}
+        <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
+          placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/>
       </div>
-      {showAlt
-        ?<><div className="pt-td pt-cnt" role="cell"/>{dose('a_',alab)}</>
-        :noteBox}
-    </div>
-    {showAlt&&<div className="pt-tr pt-sec note" role="row" style={style}>
-      <div className="pt-pat" role="rowheader"/><div className="pt-td pt-ex" role="cell"/>{noteBox}
-    </div>}
     </div>
   </div>);
-},(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
-  &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
-  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
+},(a,b)=>a.gid===b.gid&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
+  &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color
+  &&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
+/* A group's header: its category (Kategori — every card of the group takes it; ✕ takes it off)
+   and how many exercises the group holds. An uncategorised group has none: each of its cards
+   asks for a category itself. */
+function PtGroupHead({gid,grp,cb}){
+  if(grp.pick)return null;
+  return(<div className="pt-ghd" style={{'--pat-c':grp.color||'var(--border2)'}}>
+    <PtCat value={grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
+      onChange={v=>cb.onGroupCat(gid,v)}/>
+    <span className="pt-gcnt"><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
+      <input type="number" min={1} max={grp.max} value={grp.count} aria-label={`${grp.label} · ${L('Egzersiz adedi','Exercises')}`}
+        onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
+      <span className="pt-spin">
+        <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
+          onClick={()=>cb.onCount(gid,grp.count+1)}/>
+        <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
+          onClick={()=>cb.onCount(gid,grp.count-1)}/>
+      </span></span></span>
+  </div>);
+}
 
 function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
@@ -258,7 +253,6 @@ function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,ch
     onRowCat:(k,v)=>live.current.onRowCat&&live.current.onRowCat(k,v),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
-    onDir:(k,v)=>live.current.onDir&&live.current.onDir(k,v),
     onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
     hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
@@ -272,13 +266,17 @@ function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,ch
         <datalist id={ids.rpe}>{sug.rpe.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
-        {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
-          {g.slots.map((s,ix)=><React.Fragment key={s.key}>
-            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
-              first={ix===0} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
+        {rows.map(g=>{const grp={label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''};
+          return(<div key={g.id} className="pt-grp" role="rowgroup">
+          <PtGroupHead gid={g.id} grp={grp} cb={cb}/>
+          {/* The cards two to a line; an open "more" spans the line under its card. */}
+          <div className="pt-cards">
+          {g.slots.map(s=><React.Fragment key={s.key}>
+            <PtRow gid={g.id} slot={s} grp={grp} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
             {hasDetail&&openDet.has(s.key)&&<div className="pt-detail" role="row"><div role="cell">{detail(s.key)}</div></div>}
           </React.Fragment>)}
-        </div>)}
+          </div>
+        </div>);})}
       </div></div>
       :(onAdd
         ?<button type="button" className="pt-empty pt-emptybtn" onClick={onAdd}>+ {addLabel}</button>
@@ -387,7 +385,6 @@ function CalSlotDetail({ex,onChange}){
 /* The category options of the Kategori box, one list for both homes (`id` is what the host stores). */
 const ptCatOpts=(idOf)=>MV_CATS.map(c=>({id:idOf(c),label:L(c.tr,c.en)}));
 const ptTypeOpts=k=>{const c=mvCat(k);return c?c.types.map(t=>[t[0],L(t[1],t[2])]):[];};
-const ptDirOpts=k=>{const c=mvCat(k);return c?c.dirs.map(t=>[t[0],L(t[1],t[2])]):[];};
 function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
   const byI=useMemo(()=>{const m={};rows.forEach(r=>{m[r.i]=r.ex;});return m;},[rows]);
   const rowsRef=useRef(rows);rowsRef.current=rows;
@@ -421,7 +418,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
         typeOpts:ptTypeOpts(run.pat),typeVal:ty,
-        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
@@ -506,7 +502,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onType:(k,v)=>{const ex=byI[k];if(!ex)return;
       const dir=ex.dir||mvGuessDir(ex.pattern,ex.name,v);
       rememberExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
-    onDir:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,ex.plane,v);edit(k,x=>({...x,dir:v}));},
     onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},

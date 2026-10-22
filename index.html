@@ -8022,7 +8022,7 @@ main .panel,main .ap-head{animation:none}
 .jb2-pop-b{display:flex;flex-direction:column;gap:7px}
 .jb2-pop-k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 /* Zincir tablosu: baştan ayağa, mobil / stabil sırayla; her taraf bir hücre. */
-.jb2-chain{display:flex;flex-direction:column;gap:10px;min-width:0}
+.jb2-chain{display:flex;flex-direction:column;gap:10px;min-width:0;align-self:start}
 .jb2-tbl{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--panel)}
 .jb2-tr{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr) minmax(0,1fr) minmax(0,1fr);align-items:center;gap:6px;
   padding:5px 10px;border-top:1px solid var(--border);box-shadow:inset 3px 0 0 var(--jc,transparent)}
@@ -8043,8 +8043,6 @@ main .panel,main .ap-head{animation:none}
 .jb2-none{color:var(--dim);font-weight:500}
 .jb2-note{margin-left:auto;font-style:normal;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .jb2-cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.jb2-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--muted);padding:0 2px}
-.jb2-leg span{display:inline-flex;align-items:center;gap:6px}
 :root[data-theme="light"] .jb-mobility{--jc:#2f7fe0}
 :root[data-theme="light"] .jb-stability{--jc:#d97706}
 
@@ -8329,45 +8327,52 @@ main .panel,main .ap-head{animation:none}
 .rpes-t td.d,.rpes-t td.l{font-variant-numeric:tabular-nums;white-space:nowrap}
 .rpes-t td.l{color:var(--text);font-weight:700}
 .rpes-t input{width:72px;padding:4px 8px;font-weight:700;font-variant-numeric:tabular-nums}
+.rpes-t td.d input{width:136px;font-weight:600}
 .rpes-t tr:hover td{background:var(--hover)}
 .rpes-k{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 6px;margin-right:4px;border:1px solid var(--border2)}
 .rpes-k.k-sc{color:#3b82f6}.rpes-k.k-tp{color:#f59e0b}.rpes-k.k-game{color:#ef4444}
 .rpes .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 /* ---- The pattern table ---------------------------------------------------
-   "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
-   grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
-   time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
-   individualization brief (PlanTable). Every exercise is a card: its picture (pulled from the
-   library) on the left, and on the right Kategori · Tür · Yön, the exercise, the dose boxes and
-   the alternative / note — so it never scrolls sideways. */
+   "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group with a
+   header (the category and how many exercises) over its cards, two to a line. Used by the
+   calendar's block editor and by the individualization brief (PlanTable). Every exercise is a
+   card: its picture (pulled from the library) on the left, and on the right its Tür, the
+   exercise, the dose in two even rows of four and the alternative / note — so it never
+   scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
 .pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pt-scroll{min-width:0}
 .pt-grid{min-width:0;display:flex;flex-direction:column;gap:10px}
 .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
+/* The group's header: its category on the left, how many exercises on the right. */
+.pt-ghd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);
+  background:var(--elevated)}
+.pt-ghd .pt-cat{flex:0 1 260px}
+.pt-gcnt{flex:none;display:flex;align-items:center;gap:8px}
+.pt-gcnt .pt-cl{margin:0}
+.pt-gcnt .pt-step{width:74px}
+/* The cards, two to a line at equal width; an odd one out keeps the same width. */
+.pt-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
 /* One exercise: the picture on the left, everything written about it on the right. */
-.pt-item{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;padding:12px;align-items:start}
-.pt-item+.pt-item{border-top:1px dashed var(--border)}
-.pt-item:hover{background:rgba(255,255,255,.012)}
-/* The picture takes the whole height of its card (category line to note), at a fixed width on the left. */
-.pt-img{position:relative;align-self:stretch;min-height:170px;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
+.pt-item{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:10px;align-items:stretch;min-width:0;
+  border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.pt-item:hover{border-color:var(--border2)}
+/* The picture takes the whole height of its card (type line to note), at a fixed width on the left. */
+.pt-img{position:relative;align-self:stretch;min-height:150px;border-radius:10px;border:1px solid var(--border);background:var(--elevated);overflow:hidden;
   display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 0 0 var(--pat-c)}
 .pt-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pt-img.has{background:#fff}
 .pt-img-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim);text-align:center;padding:6px}
 .pt-img-ph em{font-style:normal;font-size:10.5px;font-weight:600;line-height:1.25}
 .pt-body{min-width:0;display:flex;flex-direction:column;gap:8px}
-.pt-tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end}
-/* The second and third line of an exercise: its alternative (with a dose of its own) and the note. */
-.pt-sec.alt .pt-ex .pt-exname.alt .en{border-color:var(--border)}
-.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
+/* The dose: sets, reps, time, tempo over RPE, load, rest, link — four even columns. */
+.pt-dose{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 8px;align-items:end}
+.pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
-/* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
-   group's first row, then the row's own type and direction boxes. */
-.pt-pat{position:relative;grid-column:1/-1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
-  gap:6px 8px;min-height:0;color:var(--text)}
-.pt-pat:empty{display:none}
+/* The card's first line: its type (Tür), and on an uncategorised card the category box beside it. */
+.pt-pat{position:relative;display:flex;flex-direction:row;align-items:center;gap:8px;min-width:0;color:var(--text)}
+.pt-pat>.pt-cat,.pt-pat>.pt-type{flex:1 1 0;min-width:0;max-width:none}
 .pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
 .pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
@@ -8383,12 +8388,7 @@ main .panel,main .ap-head{animation:none}
 .pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:.55;transition:opacity .12s,background .12s,color .12s}
 .pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
-.pt-cat{flex:0 1 230px}
-.pt-tdr{flex:1 1 260px;display:flex;flex-direction:row;gap:8px;min-width:0}
-.pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
-.pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
-.pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
-.pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.pt-pat .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
 .pt-type{position:relative;display:block;margin:0;max-width:100%;text-transform:none;letter-spacing:normal;font-weight:400}
 .pt-type select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px solid var(--border);
@@ -8398,9 +8398,6 @@ main .panel,main .ap-head{animation:none}
 .pt-type select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 .pt-type::after{content:'';position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
   border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
-.pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
-  border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
-.pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
 .pt-x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:0;transition:opacity .12s,background .12s,color .12s;margin-left:auto}
 .pt-item:hover .pt-x,.pt-x:focus-visible{opacity:1}
@@ -8438,9 +8435,12 @@ main .panel,main .ap-head{animation:none}
 .pt-more{flex:none;width:28px;margin-left:4px;border:1px solid var(--border);border-radius:8px;background:var(--elevated);color:var(--dim);
   font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s}
 .pt-more:hover,.pt-more.on{border-color:var(--accent);color:var(--text)}
-.pt-alt{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px}
+.pt-alt{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px;padding-top:8px;border-top:1px dashed var(--border)}
+/* The card's last line: "Alternatif Ekle" (until there is one) and the note. */
+.pt-foot{display:flex;align-items:center;gap:10px;min-width:0}
+.pt-foot .pt-noteinp{flex:1;min-width:0}
 .pt-altk{flex:none;width:38px;text-align:center;font-size:12px;color:var(--dim)}
-.pt-altadd{margin-left:auto;margin-right:2px;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
+.pt-altadd{flex:none;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
 .pt-altadd:hover{text-decoration:underline}
 .pt-altx{flex:none;width:24px;height:24px;border:0;background:none;color:var(--dim);font-size:11px;cursor:pointer;border-radius:6px}
 .pt-altx:hover{color:#fda4af;background:rgba(244,63,94,.12)}
@@ -8472,8 +8472,8 @@ main .panel,main .ap-head{animation:none}
 .pt-noteinp:hover{border-color:var(--border2)}
 .pt-noteinp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 /* The row's "more": execution, image, link, the reason for the alternative, order. */
-.pt-detail{padding:0 12px 12px 12px;border-top:1px dashed var(--border)}
-.pt-det{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:10px 12px;margin-top:10px}
+.pt-detail{grid-column:1/-1;min-width:0}
+.pt-det{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:10px 12px}
 .pt-dl{display:flex;flex-direction:column;gap:4px;margin:0;font-size:11px;font-weight:600;color:var(--dim);text-transform:none;letter-spacing:normal}
 .pt-dl select,.pt-dl input{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px}
 .pt-dl.wide{flex:1 1 260px;min-width:220px}
@@ -8483,34 +8483,14 @@ main .panel,main .ap-head{animation:none}
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-/* Where each box sits on the 12-column line: the exercise across the card, then the count and
-   the seven dose boxes one column each and the link in the last four; under them the
-   alternative button beside the note. The link and the note say what they are in their own
-   placeholder, so only the number boxes carry a caption (the link keeps the room for one). */
-.pt-ex{grid-column:1/-1}
-.pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
-.pt-link .pt-cl{visibility:hidden}
-.pt-cnt{grid-column:span 1}
-.pt-link{grid-column:span 4}
-.pt-note,.pt-sec .pt-note{grid-column:span 9}
-.pt-sec:not(.alt) .pt-ex{grid-column:span 3}
-.pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
-.pt-sec.note .pt-note{grid-column:1/-1}
-.pt-sec .pt-pat,.pt-sec.note .pt-ex:empty{display:none}
-.pt-x{opacity:.7}
-@container (max-width:900px){
-  .pt-item{grid-template-columns:180px minmax(0,1fr);gap:12px}
-  .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .pt-link{grid-column:span 4}
-  .pt-sec:not(.alt) .pt-ex{grid-column:span 2}
-  .pt-note,.pt-sec .pt-note{grid-column:span 4}
-  .pt-sec.note .pt-note{grid-column:1/-1}
+/* Narrower tables: one card to a line (the picture keeps its place), then the picture on top. */
+@container (max-width:1000px){
+  .pt-cards{grid-template-columns:minmax(0,1fr)}
 }
-@container (max-width:560px){
+@container (max-width:520px){
   .pt-item{grid-template-columns:1fr}
   .pt-img{width:100%;min-height:180px;align-self:auto}
-  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .pt-link{grid-column:1/-1}
+  .pt-dose{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* ---- Phases: one look in the calendar and in the brief -------------------
@@ -8566,10 +8546,8 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .di-pp .pp-body>.pt{padding:12px}
 .pp-body>.iv-slots{padding:10px 12px}
 
-/* The exercise picker, narrowed to the row's category: its colour in the header, and the
-   direction filters under the type filters. */
+/* The exercise picker, narrowed to the row's category: its colour in the header. */
 .en-catdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
-.en-phd-sub{border-top:1px solid var(--border2)}
 
 /* The weekly load distribution, as a small window at the right edge: no backdrop, no blur. */
 .di-loadwin{position:fixed;right:16px;top:76px;z-index:900;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 100px);
@@ -8989,19 +8967,10 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .jb2-cap{bottom:12px;padding:5px 10px;border-radius:999px;background:rgba(13,18,32,.86);border:1px solid rgba(255,255,255,.12);
   letter-spacing:.16em;font-size:10.5px}
 .jb2-side{bottom:17px}
-/* Değerlendirme ilerlemesi: sayı + seviyelere bölünmüş tek çubuk. */
-.jb2-prog{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--panel)}
-.jb2-prog-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:11px;font-weight:700;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.jb2-prog-h b{font-size:20px;letter-spacing:-.01em;color:var(--text);font-variant-numeric:tabular-nums;text-transform:none}
-.jb2-prog-h small{font-size:12px;font-weight:600;color:var(--dim);margin-left:2px}
-.jb2-prog-bar{display:flex;gap:2px;height:8px;border-radius:999px;background:var(--border);overflow:hidden}
-.jb2-prog-bar i{display:block;height:100%;background:var(--lv);transform-origin:left;
-  transition:width var(--dur-4) var(--ease-out);animation:coGrowX var(--dur-4) var(--ease-out) both}
 /* Zincir tablosu: satırlar daha ferah, ihtiyaç rozet olarak, işaretli hücre kendi
    seviyesinin tonunda. */
 :is(:root,:root[data-theme]) .jb2-tbl{border-radius:12px;border-color:var(--border2)}
-.jb2-tr:not(.jb2-th){min-height:44px}
+.jb2-tr:not(.jb2-th){min-height:40px}
 .jb2-jn{font-size:13px;font-weight:700;letter-spacing:-.005em}
 :is(:root,:root[data-theme]) .jb2-need{justify-self:start;padding:3px 9px 3px 7px;border-radius:999px;font-size:11px;
   background:color-mix(in srgb,var(--jc) 13%,transparent);border:1px solid color-mix(in srgb,var(--jc) 34%,transparent)}
@@ -9009,8 +8978,6 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 :is(:root,:root[data-theme]) .jb2-cell{min-height:30px;border-radius:8px;background:var(--bg2)}
 :is(:root,:root[data-theme]) .jb2-cell[class*="jl-"]{background:color-mix(in srgb,var(--lv) 14%,transparent);
   border-color:color-mix(in srgb,var(--lv) 38%,transparent);color:var(--text);font-weight:700}
-.jb2-leg{display:flex;flex-wrap:wrap;gap:6px}
-:is(:root,:root[data-theme]) .jb2-leg>span{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel)}
 /* Seçici: başlığı ayrı bir şerit, seviye düğmeleri seçilince kendi tonunda. */
 :is(:root,:root[data-theme]) .jb2-pop{border-radius:14px}
 :is(:root,:root[data-theme]) .jb2-pop .atp-jb-lvs button.on{background:color-mix(in srgb,var(--lv) 16%,transparent);border-color:var(--lv)}
@@ -9067,7 +9034,7 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 
 @media (prefers-reduced-motion: reduce){
   .ath-tabs2~*,.atp-wrap>.sc-sec,.jb2-stage>img,.jb2-svg,.jb2-halo,.jb2-lt,.jb2-pop,.jb2-cell i,.ev2-step,.ev2-step-who,
-  .ev2-rows>*,.lm-grid>*,.lm-mini .m,.metrics>.metric,.chart-box,.jb2-prog-bar i{animation:none!important}
+  .ev2-rows>*,.lm-grid>*,.lm-mini .m,.metrics>.metric,.chart-box{animation:none!important}
   .ab-marker,.ev2-cat{transition:none!important}
   .ev2-card:hover .ev2-card-av,.lm-mini .m:hover,.ev2-card:active,.ev2-tile:active,.ev2-foot .btn:active{transform:none!important}
   .ev2-cat:not(.on):hover{padding-left:revert}
@@ -20036,14 +20003,12 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
   const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
-  /* The row's own Tür and Yön (Split Squat, Geriye …) tick the picker's filters by themselves,
-     so a split-squat row lists split squats only, not every knee-dominant exercise. The coach
-     can still untick them inside the picker; a different category, type or direction on the
-     row starts the filters over from it. */
+  /* The row's own Tür (Split Squat …) ticks the picker's filter by itself, so a split-squat row
+     lists split squats only, not every knee-dominant exercise. One filter per category: the
+     coach can still untick it inside the picker; a different category or type on the row
+     starts the filter over from it. */
   const rowType=cat&&tags&&mvTypes(cat).includes(tags.plane)?tags.plane:'';
-  const rowDir=cat&&tags&&mvDirs(cat).includes(tags.dir)?tags.dir:'';
-  const[dirs,setDirs]=useState(()=>rowDir?[rowDir]:[]);   // directions ticked (empty = no filter)
-  useEffect(()=>{setCats(rowType?[rowType]:[]);setDirs(rowDir?[rowDir]:[]);},[cat,rowType,rowDir]);
+  useEffect(()=>{setCats(rowType?[rowType]:[]);},[cat,rowType]);
   const libAll=focus?getLibItems():[];
   /* The row's category narrows the library first, so nothing of another category is offered. */
   const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);
@@ -20051,7 +20016,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
   // Text query narrows the pool first; the counts on the right are computed from that pool
   // so they always say how many rows a filter would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  /* The filters on the right: the category's types (and its directions), or — on a row with
+  /* The filters on the right: the category's types, or — on a row with
      no category — the categories themselves, with "Kategorisiz" for what none of them claims. */
   const catList=useMemo(()=>{
     const cnt=new Map();
@@ -20066,24 +20031,11 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     if(cnt.get(UNCAT))out.push({name:UNCAT,label:L('Kategorisiz','Uncategorized'),n:cnt.get(UNCAT)});
     return out;
   },[pool,cat]);
-  const dirList=useMemo(()=>{
-    if(!cat||!mvDirs(cat).length)return[];
-    const cnt=new Map();pool.forEach(e=>{if(e._d)cnt.set(e._d,(cnt.get(e._d)||0)+1);});
-    return mvDirs(cat).map(d=>({name:d,label:mvTerm(cat,d),n:cnt.get(d)||0}));
-  },[pool,cat]);
-  // Ticked values are OR-ed inside a list; the type and the direction lists are AND-ed.
-  const matchesCats=e=>{
-    if(cat){
-      if(cats.length&&!cats.includes(e._t||EN_NO_TYPE))return false;
-      if(dirs.length&&!dirs.includes(e._d))return false;
-      return true;
-    }
-    return!cats.length||cats.includes(mvLibCat(e)||UNCAT);
-  };
-  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,dirs,cat]);
+  // Ticked values are OR-ed.
+  const matchesCats=e=>!cats.length||cats.includes(cat?(e._t||EN_NO_TYPE):(mvLibCat(e)||UNCAT));
+  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,cat]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
   const toggleCat=c=>{setHi(-1);setCats(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
-  const toggleDir=c=>{setHi(-1);setDirs(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
   // Picking a library row hands the whole entry back (not just the name) so the caller can
   // pull its cover image and video link onto the exercise; typing a free name never does.
   const pick=it=>{const n=it.name;if(onPick)onPick(it);else onChange(n);
@@ -20125,7 +20077,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           <div className="en-phd"><span>{cat
             ?<><i className="en-catdot" style={{background:ML_PIE_COLS[cat]}}/><b>{mvCatLabel(cat)}</b> · {L(`${shown.length} egzersiz`,`${shown.length} exercises`)}</>
             :L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
-            {(cats.length>0||dirs.length>0)&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setDirs([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
+            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
@@ -20149,14 +20101,6 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
-                <span className="en-cnm">{c.label}</span>
-                <span className="en-cn">{c.n}</span>
-              </label>)}
-            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L(...mvDirLab(cat))}</span></div>}
-            {dirList.map(c=>
-              <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
-                onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>
-                <span className="en-cbx">{dirs.includes(c.name)?'✓':''}</span>
                 <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
@@ -20653,7 +20597,6 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
      onType(key,id)           the row's type box (Tür: Squat, Yatay İtiş, Anti-rotasyon …) was
                               changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
                               current one in `typeVal` (no box when a slot has none)
-     onDir(key,id)            the row's direction box (Yön), the same way: `dirOpts` / `dirVal`
      onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
                               go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
@@ -20755,12 +20698,14 @@ const ptSame=(a,b)=>{
   return ka.length===kb.length&&ka.every(k=>a[k]===b[k]||(Array.isArray(a[k])&&Array.isArray(b[k])&&JSON.stringify(a[k])===JSON.stringify(b[k])));
 };
 const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
-/* One exercise: up to three grid rows under its pattern — the exercise itself with its dose
-   and link; its alternative, written like an exercise with a dose of its own (a swap may be
-   done at other sets, reps and load); and the note, in the open space beside them.
+/* One exercise, as a card: its picture on the left and, on the right, its type (Tür), the
+   exercise, the dose in two even rows of four (sets, reps, time, tempo / RPE, load, rest, link),
+   then the alternative — written like an exercise with a dose of its own (a swap may be done at
+   other sets, reps and load) — and the note. The category and the "how many" stepper belong to
+   the whole group and sit in its header (PtGroupHead), so every card of a group looks the same.
    Memoised on what it draws: a table of twenty rows is two hundred inputs, and a keystroke
    in one of them must not rebuild the other nineteen. */
-const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
+const PtRow=React.memo(function PtRow({gid,slot,grp,cb,ids,hasDetail,detailOpen}){
   const k=slot.key;
   const[altOn,setAltOn]=useState(false);
   const hasAlt=!!(slot.a_name||PT_ALT_KEYS.some(f=>slot['a_'+f]));
@@ -20768,106 +20713,100 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   const f=(name,v)=>cb.onSlot(k,{[name]:v});
   const lab=n=>`${grp.label} · ${n}`;
   const alab=n=>`${grp.label} · ${L('Alternatif','Alternative')} · ${n}`;
-  const dose=(pre,labf)=>[
-    <div key="sets" className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
-      <PtStep value={slot[pre+'sets']} onChange={v=>f(pre+'sets',v)} label={labf(L('Set','Sets'))} max={20}/></div>,
-    <div key="reps" className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
-      <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>,
-    <div key="duration" className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
-      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>,
-    <div key="tempo" className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
-      <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>,
-    <div key="rpe" className="pt-td" role="cell"><span className="pt-cl">RPE</span>
-      <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>,
-    <div key="load" className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
-      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>,
-    <div key="rest" className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
-      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>,
-    <div key="link" className="pt-td pt-link" role="cell"><span className="pt-cl">Link</span>
+  const dose=(pre,labf)=><div className="pt-dose" role="row">
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
+      <PtStep value={slot[pre+'sets']} onChange={v=>f(pre+'sets',v)} label={labf(L('Set','Sets'))} max={20}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
+      <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
+      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
+      <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">RPE</span>
+      <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
+      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
+      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>
+    <div className="pt-td" role="cell"><span className="pt-cl">Link</span>
       <LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
         onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
-        placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>];
+        placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>
+  </div>;
   const style={'--pat-c':grp.color||'var(--border2)'};
-  const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
-    <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
-      placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>;
-  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+  const hasType=!!(slot.typeOpts&&slot.typeOpts.length);
+  return(<div className="pt-item" style={style}>
     <PtImg name={slot.name} image={slot.image}/>
     <div className="pt-body">
-    <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
-      <div className="pt-pat" role="rowheader">
-        {/* A category covers its whole group and is set on its first row; an uncategorised row is
-            given one on its own. */}
-        {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
-          onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
-        {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
-          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))} ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>
-          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L(...mvDirLab(grp.pat)))} ph={L(mvDirLab(grp.pat)[0]+'…',mvDirLab(grp.pat)[1]+'…')} onChange={v=>cb.onDir(k,v)}/>
-        </span>}
-      </div>
-      <div className="pt-td pt-ex" role="cell">
-        <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
-        <div className="pt-exmain">
-          <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
-          <div className="pt-exname">
-            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
-              onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
-              onPick={it=>cb.onPick(k,it,false)}/>
-          </div>
-          {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
-            onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
-          {cb.hasMove&&<span className="pt-mv">
-            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
-              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
-            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
-              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
-          </span>}
-          {<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
-            aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
+      {(grp.pick||hasType)&&<div className="pt-pat" role="rowheader">
+        {/* An uncategorised row is given a category on its own card. */}
+        {grp.pick&&<PtCat value="" color={grp.color} options={grp.options} label={L('Kategori','Category')}
+          onChange={v=>cb.onRowCat(k,v)}/>}
+        {hasType&&<PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L(...mvTypeLab(grp.pat)))}
+          ph={L(mvTypeLab(grp.pat)[0]+'…',mvTypeLab(grp.pat)[1]+'…')} onChange={v=>cb.onType(k,v)}/>}
+      </div>}
+      <div className="pt-exmain" role="row">
+        <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
+        <div className="pt-exname" role="cell" aria-label={L('Egzersiz','Exercise')}>
+          <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
+            onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
+            onPick={it=>cb.onPick(k,it,false)}/>
         </div>
-      </div>
-      <div className="pt-td pt-cnt" role="cell">
-        {first&&!grp.pick&&<><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
-          <input type="number" min={1} max={grp.max} value={grp.count} aria-label={lab(L('Egzersiz adedi','Exercises'))}
-            onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
-          <span className="pt-spin">
-            <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
-              onClick={()=>cb.onCount(gid,grp.count+1)}/>
-            <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
-              onClick={()=>cb.onCount(gid,grp.count-1)}/>
-          </span></span></>}
+        {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
+          onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
+        {cb.hasMove&&<span className="pt-mv">
+          <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+            aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+          <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+            aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+        </span>}
+        <button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+          aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
       </div>
       {dose('',lab)}
-    </div>
-    <div className={'pt-tr pt-sec'+(showAlt?' alt':'')} role="row" style={style}>
-      <div className="pt-pat" role="rowheader"/>
-      <div className="pt-td pt-ex" role="cell">
+      {showAlt&&<>
         <div className="pt-alt">
-          {showAlt
-            ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
-              <div className="pt-exname alt">
-                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
-                  tags={{pattern:slot.tagP}}/>
-              </div>
-              <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
-                aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button></>
-            :<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
-              title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
-              {L('Alternatif Ekle','Add Alternative')}</button>}
+          <span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
+          <div className="pt-exname alt">
+            <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
+              tags={{pattern:slot.tagP}}/>
+          </div>
+          <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
+            aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button>
         </div>
+        {dose('a_',alab)}
+      </>}
+      <div className="pt-foot">
+        {!showAlt&&<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
+          title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
+          {L('Alternatif Ekle','Add Alternative')}</button>}
+        <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
+          placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/>
       </div>
-      {showAlt
-        ?<><div className="pt-td pt-cnt" role="cell"/>{dose('a_',alab)}</>
-        :noteBox}
-    </div>
-    {showAlt&&<div className="pt-tr pt-sec note" role="row" style={style}>
-      <div className="pt-pat" role="rowheader"/><div className="pt-td pt-ex" role="cell"/>{noteBox}
-    </div>}
     </div>
   </div>);
-},(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
-  &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
-  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
+},(a,b)=>a.gid===b.gid&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
+  &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color
+  &&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
+/* A group's header: its category (Kategori — every card of the group takes it; ✕ takes it off)
+   and how many exercises the group holds. An uncategorised group has none: each of its cards
+   asks for a category itself. */
+function PtGroupHead({gid,grp,cb}){
+  if(grp.pick)return null;
+  return(<div className="pt-ghd" style={{'--pat-c':grp.color||'var(--border2)'}}>
+    <PtCat value={grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
+      onChange={v=>cb.onGroupCat(gid,v)}/>
+    <span className="pt-gcnt"><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
+      <input type="number" min={1} max={grp.max} value={grp.count} aria-label={`${grp.label} · ${L('Egzersiz adedi','Exercises')}`}
+        onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
+      <span className="pt-spin">
+        <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
+          onClick={()=>cb.onCount(gid,grp.count+1)}/>
+        <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
+          onClick={()=>cb.onCount(gid,grp.count-1)}/>
+      </span></span></span>
+  </div>);
+}
 
 function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
@@ -20887,7 +20826,6 @@ function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,ch
     onRowCat:(k,v)=>live.current.onRowCat&&live.current.onRowCat(k,v),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
-    onDir:(k,v)=>live.current.onDir&&live.current.onDir(k,v),
     onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
     hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
@@ -20901,13 +20839,17 @@ function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,ch
         <datalist id={ids.rpe}>{sug.rpe.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
-        {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
-          {g.slots.map((s,ix)=><React.Fragment key={s.key}>
-            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
-              first={ix===0} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
+        {rows.map(g=>{const grp={label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''};
+          return(<div key={g.id} className="pt-grp" role="rowgroup">
+          <PtGroupHead gid={g.id} grp={grp} cb={cb}/>
+          {/* The cards two to a line; an open "more" spans the line under its card. */}
+          <div className="pt-cards">
+          {g.slots.map(s=><React.Fragment key={s.key}>
+            <PtRow gid={g.id} slot={s} grp={grp} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
             {hasDetail&&openDet.has(s.key)&&<div className="pt-detail" role="row"><div role="cell">{detail(s.key)}</div></div>}
           </React.Fragment>)}
-        </div>)}
+          </div>
+        </div>);})}
       </div></div>
       :(onAdd
         ?<button type="button" className="pt-empty pt-emptybtn" onClick={onAdd}>+ {addLabel}</button>
@@ -21016,7 +20958,6 @@ function CalSlotDetail({ex,onChange}){
 /* The category options of the Kategori box, one list for both homes (`id` is what the host stores). */
 const ptCatOpts=(idOf)=>MV_CATS.map(c=>({id:idOf(c),label:L(c.tr,c.en)}));
 const ptTypeOpts=k=>{const c=mvCat(k);return c?c.types.map(t=>[t[0],L(t[1],t[2])]):[];};
-const ptDirOpts=k=>{const c=mvCat(k);return c?c.dirs.map(t=>[t[0],L(t[1],t[2])]):[];};
 function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
   const byI=useMemo(()=>{const m={};rows.forEach(r=>{m[r.i]=r.ex;});return m;},[rows]);
   const rowsRef=useRef(rows);rowsRef.current=rows;
@@ -21050,7 +20991,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
         typeOpts:ptTypeOpts(run.pat),typeVal:ty,
-        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
         tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
@@ -21135,7 +21075,6 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onType:(k,v)=>{const ex=byI[k];if(!ex)return;
       const dir=ex.dir||mvGuessDir(ex.pattern,ex.name,v);
       rememberExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
-    onDir:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,ex.plane,v);edit(k,x=>({...x,dir:v}));},
     onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
@@ -29799,19 +29738,8 @@ function AtpJoints({joints,onSet,onNote}){
         <AtpJbStage joints={joints} sel={sel} onPick={pick}>
           {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
         </AtpJbStage>
+        {/* Only the chain table beside the mannequin, sized to sit next to it. */}
         <div className="jb2-chain">
-          {/* How far the chain is rated: one bar split by level, so the coach sees at a
-              glance how much is left and where the high needs sit. */}
-          <div className="jb2-prog">
-            <div className="jb2-prog-h">
-              <span>{L('Değerlendirilen eklem','Joints rated')}</span>
-              <b>{rated.length}<small>/{ATP_JOINT_ROWS.length}</small></b>
-            </div>
-            <div className="jb2-prog-bar" role="img" aria-label={`${rated.length}/${ATP_JOINT_ROWS.length}`}>
-              {ATP_JOINT_LEVELS.map(l=>{const n=rated.filter(r=>joints[r.key].level===l.id).length;
-                return n?<i key={l.id} className={`jl-${l.id}`} style={{width:`${n/ATP_JOINT_ROWS.length*100}%`}} title={`${atpT(l.en)}: ${n}`}/>:null;})}
-            </div>
-          </div>
           <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
             <div className="jb2-tr jb2-th" role="row">
               <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
@@ -29823,11 +29751,6 @@ function AtpJoints({joints,onSet,onNote}){
                 <span className="jb2-need" role="cell"><i/>{atpT(j.need==='mobility'?'Mobility':'Stability')}</span>
                 {j.bi?<>{cell(rs[0])}{cell(rs[1])}</>:<span className="jb2-mid" role="cell">{cell(rs[0])}</span>}
               </div>);})}
-          </div>
-          <div className="jb2-leg">
-            <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
-            <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span>
-            {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}
           </div>
         </div>
       </div>
@@ -30114,7 +30037,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
    a ball-practice, an S&C and a match score at once, and each is its own row. Changing the
    score or the minutes rewrites that slot's load and the entry's total; deleting the last
    score of an entry drops the entry — one that came from a form is remembered as deleted
-   (`deletedSrpeSrcIds`) so the next sync does not bring it back. */
+   (`deletedSrpeSrcIds`) so the next sync does not bring it back. The date is editable too: it
+   moves the whole entry (a check-in's scores were given for one day), and a check-in is matched
+   back by its `srcId`, not its date, so a sync does not undo the move. */
 const RPE_SLOT_LAB={tp:['Top Antrenmanı','Ball Practice'],sc:['S&C','S&C'],game:['Maç','Match']};
 function AthRpeScores({ath,updAth,onClose}){
   const log=ath.srpeLog||[];
@@ -30137,6 +30062,7 @@ function AthRpeScores({ath,updAth,onClose}){
       n.totalLoad=total(n)||'';
       return n;})});
   };
+  const setDate=(id,date)=>{if(!date)return;updAth(ath.id,{srpeLog:log.map(e=>e.id===id?{...e,date}:e)});};
   const delSlot=(id,k)=>{
     if(!confirm(L('Bu RPE puanı silinsin mi?','Delete this RPE score?')))return;
     const[rk,du]=SRPE_KINDS[k];
@@ -30179,16 +30105,17 @@ function AthRpeScores({ath,updAth,onClose}){
           ?<div className="empty-st">{L('Bu sporcunun henüz RPE puanı yok.','This athlete has no RPE scores yet.')}</div>
           :<table className="rpes-t">
             <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Seans','Session')}</th><th>RPE</th><th>{L('Süre (dk)','Minutes')}</th><th>{L('Yük','Load')}</th><th/></tr></thead>
-            <tbody>{rows.map(r=>{const d=r.e.date?parseD(r.e.date):null;
-              return(<tr key={r.e.id+r.k}>
-                <td className="d">{d?`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`:'—'}</td>
+            <tbody>{rows.map(r=>
+              <tr key={r.e.id+r.k}>
+                <td className="d"><input type="date" value={r.e.date||''} aria-label={L('Tarih','Date')}
+                  onChange={e=>setDate(r.e.id,e.target.value)}/></td>
                 <td><span className={'rpes-k k-'+r.k}>{L(RPE_SLOT_LAB[r.k][0],RPE_SLOT_LAB[r.k][1])}</span> {sesName(r.e,r.k)}</td>
                 <td><input type="number" min="0" max="10" step="0.5" value={r.e[SRPE_KINDS[r.k][0]]}
                   style={{color:rpeColor(r.rpe)||undefined}} onChange={e=>setSlot(r.e.id,r.k,{rpe:e.target.value})}/></td>
                 <td><input type="number" min="0" value={r.e[SRPE_KINDS[r.k][1]]??''} onChange={e=>setSlot(r.e.id,r.k,{dur:e.target.value})}/></td>
                 <td className="l">{r.dur?`${Math.round(r.rpe*r.dur)} AU`:'—'}</td>
                 <td><button type="button" className="x-btn" title={L('Sil','Delete')} onClick={()=>delSlot(r.e.id,r.k)}>✕</button></td>
-              </tr>);})}</tbody>
+              </tr>)}</tbody>
           </table>}
       </div>
     </div>
@@ -42237,7 +42164,6 @@ function DiPatternPlan({plan,onChange:emit}){
             a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
             a_rest:a.rest,a_link:a.link,tagP:ck,tagS:(p.type||[])[0]||'',tagD:(p.direction||[])[0]||'',
             typeOpts:ptTypeOpts(ck),typeVal:(p.type||[])[0]||'',
-            dirOpts:ptDirOpts(ck),dirVal:(p.direction||[])[0]||'',
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
@@ -42327,7 +42253,6 @@ function DiPatternPlan({plan,onChange:emit}){
       onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
       onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
-      onDir:(k,v)=>patch(k,p=>({...p,direction:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
         if(a==null||b==null)return;
