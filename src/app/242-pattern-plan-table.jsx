@@ -32,6 +32,7 @@ let PT_UID=0;
 /* The suggestions behind the dropdown arrows. Any text is still accepted: a rep RANGE, a
    tempo the list does not have and a rest of "90 sn + 30 sn" are all valid answers. */
 const ptSuggest=()=>({
+  duration:['10 s','20 s','30 s','45 s','60 s','90 s','2 dk'],
   tempo:['2-0-1','3-0-1','3-1-1','2-1-1','4-0-1','1-0-1','X-0-X'],
   rpe:['4','5','6','6.5','7','7.5','8','8.5','9','10'],
   load:[L('Vücut ağırlığı','Bodyweight'),'50% 1RM','60% 1RM','65% 1RM','70% 1RM','75% 1RM','80% 1RM','85% 1RM','90% 1RM'],
@@ -39,17 +40,31 @@ const ptSuggest=()=>({
     L('2-3 dk','2-3 min'),L('3 dk','3 min'),L('3-5 dk','3-5 min')],
 });
 
+/* Load and rest step in a unit ("5 kg", "60 s"). Whatever is written after the number stays
+   (% 1RM, sn, dk) and steps by its own size; text with no number in front starts over. */
+const PT_UNIT_STEP={kg:2.5,'%':5,s:15,sn:15,sec:15,dk:.5,min:.5};
+const ptBumpUnit=(v,d,unit,start)=>{
+  const m=String(v||'').trim().match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if(!m)return d>0?`${start} ${unit}`:'';
+  const suf=m[2]||unit,pct=suf.startsWith('%');
+  const st=PT_UNIT_STEP[pct?'%':suf.split(/\s/)[0].toLowerCase()]||1;
+  const n=Math.max(0,Math.round((parseFloat(m[1].replace(',','.'))+d*st)*100)/100);
+  return pct?`${n}${suf}`:`${n} ${suf}`;
+};
 /* A number with a small up / down pair beside it. Text, not a number input, so "8-10" is
-   a legal rep count; the arrows step a plain number and replace anything else. */
-function PtStep({value,onChange,label,min=1,max=99}){
+   a legal rep count; the arrows step a plain number and replace anything else. With a `unit`
+   the box is load or rest: the arrows step in that unit, and `listId` still offers suggestions. */
+function PtStep({value,onChange,label,min=1,max=99,unit,start,listId}){
   const[v,set]=useLiveValue(String(value==null?'':value),onChange);
   const bump=d=>{
+    if(unit){set(ptBumpUnit(v,d,unit,start));return;}
     const n=parseInt(v,10);
     if(isNaN(n)){set(d>0?String(min):'');return;}
     set(String(Math.max(min,Math.min(max,n+d))));
   };
   return(<span className={'pt-step'+(v?' on':'')}>
-    <input value={v} inputMode="numeric" aria-label={label} placeholder="—" onChange={e=>set(e.target.value.slice(0,12))}/>
+    <input value={v} inputMode={unit?undefined:'numeric'} list={listId||undefined} aria-label={label} placeholder="—"
+      onChange={e=>set(e.target.value.slice(0,unit?40:12))}/>
     <span className="pt-spin">
       <button type="button" tabIndex={-1} aria-label={L('Artır','Increase')} onClick={()=>bump(1)}/>
       <button type="button" tabIndex={-1} aria-label={L('Azalt','Decrease')} onClick={()=>bump(-1)}/>
@@ -142,11 +157,19 @@ const ptSame=(a,b)=>{
   /* `typeOpts` is a fresh array on every draw of the host; it counts as the same when it holds the same. */
   return ka.length===kb.length&&ka.every(k=>a[k]===b[k]||(Array.isArray(a[k])&&Array.isArray(b[k])&&JSON.stringify(a[k])===JSON.stringify(b[k])));
 };
+/* The link and note boxes carry a small line icon at their left. */
+const PT_ICON_LINK=()=><svg className="pt-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/>
+  <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>;
+const PT_ICON_NOTE=()=><svg className="pt-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+  <path d="M14 3v5h5M9 13h6M9 17h6"/></svg>;
 const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
-/* One exercise, in two columns beside its picture: the exercise on the left with its dose on
-   the right (sets, reps, time, tempo, RPE, load, rest), then its link under the exercise with
-   the note beside it. Its alternative — written like an exercise with a dose of its own (a swap
-   may be done at other sets, reps and load) — takes the same two lines under them.
+/* One exercise, beside its picture, in four lines: Kategori · Tür with the count at the end, the
+   exercise (superset tag in its own box), its dose (sets, reps, time, tempo, RPE, load, rest —
+   the label over each box), then the link, "Alternatif Ekle" and the note. Its alternative —
+   written like an exercise with a dose of its own (a swap may be done at other sets, reps and
+   load) — takes the same lines under them.
    Memoised on what it draws: a table of twenty rows is two hundred inputs, and a keystroke
    in one of them must not rebuild the other nineteen. */
 const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
@@ -164,19 +187,19 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     <div className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
       <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>
     <div className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
-      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>
+      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} listId={ids.duration} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>
     <div className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
       <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>
     <div className="pt-td" role="cell"><span className="pt-cl">RPE</span>
       <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>
     <div className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
-      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>
+      <PtStep value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} unit="kg" start={5} label={labf(L('Yük','Load'))}/></div>
     <div className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
-      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>
+      <PtStep value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} unit="s" start={60} label={labf(L('Dinlenme','Rest'))}/></div>
   </div>;
-  const link=(pre,labf)=><LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
-    onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
-    placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/>;
+  const link=(pre,labf)=><span className="pt-field"><PT_ICON_LINK/><LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300}
+    onChange={v=>f(pre+'link',v)} onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
+    placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></span>;
   const style={'--pat-c':grp.color||'var(--border2)'};
   const showCat=first||grp.pick,showType=!!(slot.typeOpts&&slot.typeOpts.length),showCnt=first&&!grp.pick;
   return(<div className={'pt-item'+(first?' first':'')} style={style}>
@@ -209,7 +232,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
             onClick={()=>cb.onCount(gid,grp.count-1)}/>
         </span></span></span>}
     </div>}
-    <div className="pt-tr" role="row" style={style}>
+    <div className="pt-exrow" role="row">
       <div className="pt-td pt-ex" role="cell">
         <div className="pt-exmain">
           <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
@@ -230,22 +253,20 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
         </div>
       </div>
-      {dose('',lab)}
     </div>
-    <div className="pt-tr" role="row" style={style}>
-      <div className="pt-td pt-link" role="cell">
-        {link('',lab)}
-        {!showAlt&&<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
-          title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
-          {L('Alternatif Ekle','Add Alternative')}</button>}
-      </div>
-      <div className="pt-td pt-note" role="cell">
+    {dose('',lab)}
+    <div className="pt-foot" role="row">
+      <div className="pt-td pt-link" role="cell">{link('',lab)}</div>
+      {!showAlt&&<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
+        title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
+        <i aria-hidden="true"/>{L('Alternatif Ekle','Add Alternative')}</button>}
+      <div className="pt-td pt-note" role="cell"><span className="pt-field"><PT_ICON_NOTE/>
         <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
-          placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/>
+          placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></span>
       </div>
     </div>
-    {showAlt&&<>
-      <div className="pt-tr pt-sec" role="row" style={style}>
+    {showAlt&&<div className="pt-sec">
+      <div className="pt-exrow" role="row">
         <div className="pt-td pt-ex" role="cell">
           <div className="pt-alt">
             <span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
@@ -257,12 +278,12 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
               aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button>
           </div>
         </div>
-        {dose('a_',alab)}
       </div>
-      <div className="pt-tr pt-sec" role="row" style={style}>
+      {dose('a_',alab)}
+      <div className="pt-foot alt" role="row">
         <div className="pt-td pt-link" role="cell">{link('a_',alab)}</div>
       </div>
-    </>}
+    </div>}
     </div>
   </div>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
@@ -271,7 +292,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
 
 function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
-  const ids=useMemo(()=>({tempo:`pt-tempo-${uid.current}`,rpe:`pt-rpe-${uid.current}`,load:`pt-load-${uid.current}`,rest:`pt-rest-${uid.current}`}),[]);
+  const ids=useMemo(()=>({duration:`pt-dur-${uid.current}`,tempo:`pt-tempo-${uid.current}`,rpe:`pt-rpe-${uid.current}`,load:`pt-load-${uid.current}`,rest:`pt-rest-${uid.current}`}),[]);
   const sug=ptSuggest();
   const[openDet,setOpenDet]=useState(()=>new Set());
   /* The handlers a row holds on to have to keep their identity, or the memo never holds. */
@@ -296,6 +317,7 @@ function PlanTable({groups,handlers,max,detail,hasDetail,empty,onAdd,addLabel,ch
   return(<div className="pt">
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
+        <datalist id={ids.duration}>{sug.duration.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.tempo}>{sug.tempo.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rpe}>{sug.rpe.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
