@@ -399,7 +399,7 @@ ${RPT_PHASE_CSS}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
 .ex-ex-wrap{display:flex;align-items:center;gap:8px;min-width:0}
 .ex-ex-txt{min-width:0}
-.ex-imgwrap{flex:none;line-height:0;width:16mm;height:12mm;border:1px solid #e2e8f0;border-radius:5px;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:24mm;height:17mm;border:1px solid #e2e8f0;border-radius:5px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
