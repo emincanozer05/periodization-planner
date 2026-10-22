@@ -138,7 +138,7 @@ function ExercisesView({data,setData}){
     <div className="ex-top">
       <div>
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← {L('Kategoriler','Categories')}</button>
-        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):mvCatLabel(activeType)}</h1>
+        <h1 className="ex-h1">{activeType==='FMS'&&<img className="ex-h1-logo" src="fms-logo-square.png" alt=""/>}{isUncat?L('Kategorisiz','Uncategorized'):mvCatLabel(activeType)}</h1>
         {isUncat&&<div className="sub">{L('Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart\'a tıklayıp kategori ata.','Exercises added automatically from the program / not yet assigned a category. Click a card to assign one.')}</div>}
         {dims.length>0&&<div className="sub">{L('Filtre:','Filter:')} <b>{dims.map(d=>exLabel(d.label)).join(' · ')}</b></div>}
       </div>
