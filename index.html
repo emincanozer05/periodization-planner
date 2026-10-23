@@ -19403,6 +19403,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                   sets and the printed program prints, in the same band colour, so the day
                   column reads how hard the week is without opening a single session. */}
               <div className="mt"><span>{s.time}</span>{!isMatchSes(s)&&<><span className="sep"/><span>{Number(s.duration)||0}m</span></>}{(()=>{
+                /* A match, a test day and a recovery session carry no planned RPE band. */
+                const fo=sesFocus(s);
+                if(isMatchSes(s)||sesKind(s)==='test'||(fo.length===1&&(fo[0]==='Testing'||fo[0]==='Recovery')))return null;
                 const[rlo,rhi]=sesRpeRange(s);const rz=rpeZone(sesRpeTarget(s));
                 return<span className="rpe" style={{color:rz.c,background:rz.soft,borderColor:`color-mix(in srgb,${rz.c} 60%,transparent)`}}
                   title={L(`Hedeflenen RPE ${rlo}-${rhi} — ${rz.tr}`,`Target RPE ${rlo}-${rhi} — ${rz.en}`)}>RPE {rlo}-{rhi}</span>;
