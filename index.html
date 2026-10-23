@@ -20873,12 +20873,13 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     <PtImg name={slot.name} image={slot.image} onImage={url=>{
       f('image',url);
       /* A picture pasted on the row goes into the library with the exercise — its name and
-         its Kategori · Tür too — when the library has no picture for it yet. */
+         its Kategori · Tür too — and replaces the one its window carries, so the two always
+         show the same picture. */
       const nm=String(slot.name||'').trim();
       if(url&&nm&&!libDefer){const hit=exLibHit(nm);
         if(!hit)addExerciseToLibrary(nm);
         rememberExerciseTags(nm,slot.tagP,slot.tagS,slot.tagD);
-        if(!(hit&&hit.image))rememberExerciseImage(nm,url);}
+        rememberExerciseImage(nm,url);}
     }}/>
     <div className="pt-body">
     {(showCat||showType||showCnt)&&<div className="pt-pat" role="rowheader">
@@ -21195,7 +21196,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       if(isAlt){const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:{};
         return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||''}};}
       const t=exTagsFromLib(it,{});
-      const nx={...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
+      const nx={...ex,name:it.name,image:it.image||(String(ex.name||'').trim().toLowerCase()===String(it.name||'').trim().toLowerCase()?ex.image:'')||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
       if(t&&t.pattern){delete nx.noPat;nx.pattern=t.pattern;nx.plane=t.plane||'';nx.dir=t.dir||'';}
       return nx;
     }),
@@ -45610,20 +45611,20 @@ function App(){
     const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane,...f};
     return{...prev,exercises:next};
   }));
-  /* Putting a picture on a program row writes it onto the library entry as its plan
-     image, so the next program that names this exercise fills it in by itself. A name the
-     library has never seen is added carrying the picture, exactly as typing it would. */
+  /* Putting a picture on a program row writes it onto the library entry as its picture (the
+     one its window shows and the next program that names this exercise fills in by itself). A
+     name the library has never seen is added carrying the picture, exactly as typing it would. */
   registerLibImage((nm,url)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
     const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
     if(i<0){
       if(!url)return prev;
-      return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',planImage:url},...exs]};
+      return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',image:url,planImage:url},...exs]};
     }
     const cur=exs[i];
-    if((cur.planImage||'')===url)return prev;
-    const next=[...exs];next[i]={...cur,planImage:url};
+    if((cur.image||'')===url&&(cur.planImage||'')===url)return prev;
+    const next=[...exs];next[i]={...cur,image:url,planImage:url};
     return{...prev,exercises:next};
   }));
   /* A link written on a program row is filed as the exercise's video link when the library
@@ -45656,10 +45657,10 @@ function App(){
          `sub` as a caption, while the load distribution reads the type/sub-type pair
          to work out what an untagged session row trains and how. */
       items.push({name:nm,type:e.type||'',subType:e.subType||'',action:e.action||'',sub:[e.subType,e.action,e.pattern].filter(Boolean),
-        /* The coach's own plan picture first: it was put on a program row for programs.
-           The library cover (or the video's auto-thumbnail) still stands in when the
-           exercise has never carried one. */
-        image:e.planImage||e.thumb||videoThumb(e.videoData||e.videoUrl)||'',   // row picture → library's Program Image → video's own thumbnail
+        /* The picture the library card carries (the one set in the exercise's own window, or
+           the one put on a program row — both are written to it) first; the video's
+           auto-thumbnail stands in when the exercise has never carried one. */
+        image:exPicture(e)||videoThumb(e.videoData||e.videoUrl)||'',   // the picture on the library card (exPicture) → video's own thumbnail
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
