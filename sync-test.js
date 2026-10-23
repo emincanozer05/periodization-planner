@@ -84,18 +84,43 @@ function fakeFirestore() {
     serverSnaps: true,  // anlık görüntüler sunucudan mı geliyor (false → hep önbellek)
     holdSnap: false,    // ilk anlık görüntüyü tut (cihaz henüz "hazır" olamasın)
     rules: false,       // firestore.rules'taki manifest kuralı: `base` buluttaki rev'i tutmalı
+    /* TAKILI BAĞLANTI. Ağ sağlam, ama SDK'nın sunucuyla açtığı bağlantı ölü: tablet uykudan
+       döndüğünde, Wi-Fi el değiştirdiğinde olan bu. Hiçbir yazım onaylanmaz, sunucudan
+       okuma dönmez, yeniden abone olmak da yalnızca önbelleği getirir — çünkü yeni dinleyici
+       AYNI ölü bağlantıyı kullanır. Bunu yalnızca bağlantının kendisini kapatıp açmak
+       (disableNetwork → enableNetwork) düzeltir; sayfayı yenilemek de düzeltir, ama o koçun
+       elindeki işi siler.
+       Takılıyken iki ayrı gerçek var: CİHAZIN gördüğü (docs: kendi kuyruğundaki yazımlar
+       işlenmiş) ve SUNUCUNUN tuttuğu (server: başka cihazların yazımları buraya düşer).
+       Bağlantı açılınca cihaz sunucunun gerçeğine döner ve kuyruğu SIRAYLA gönderir; her
+       yazım o anki sunucu hâline göre kurala takılabilir — gerçeğinde olduğu gibi. */
+    wedged: false,
+    server: null,
+    queue: [],
+    kicks: 0,
     rejected: 0,
     commits: 0, listens: 0, hung: 0,
     now: () => ({ toMillis: () => Date.now() }),
     /* Ağ geri geldi. Gerçeğinde de olan bu: bekleyen yazımlar kuyruktan çıkıp onaylanır —
        cihaz yeni bir tur açmayı beklemek zorunda kalmaz. */
     recover() { api.ack = true; held.splice(0).forEach(r => r()); api.emit({}); },
+    /* Sunucuya başka bir cihazdan yazım. Bağlantı takılıyken bu cihaza ulaşmaz: sunucuda
+       bekler, bağlantı yeniden açılınca gelir. */
+    serverSet(id, v) { (api.wedged ? api.server : docs).set(id, v); },
+    wedge(kicksToHeal) { api.wedged = true; api.server = new Map(docs); api.kicksToHeal = kicksToHeal || 1; },
   };
+  const never = () => new Promise(() => {});
+  /* firestore.rules → syncHeadOk: manifest, buluttakinin rev'ini `base` olarak taşımıyorsa
+     reddedilir. Batch atomiktir: hiçbir işlem uygulanmaz. */
+  const ruleBlocks = (ops, store) => api.rules && ops.some(([kind, id, v]) => kind === 'set' && id === 'coach1' && v && v.base !== undefined
+    && store.has(id) && store.get(id).rev !== undefined && store.get(id).rev !== v.base);
+  const denied = () => Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
+  const fromServerOpt = o => !!(o && o.source === 'server');
   const snapshotOf = (uid, opts) => {
     const rows = [...docs.entries()].filter(([, v]) => v.userId === uid);
     const changes = rows.map(([id, v]) => ({ type: 'added', doc: { id, data: () => v } }));
     return {
-      metadata: { fromCache: !api.serverSnaps, hasPendingWrites: !!(opts && opts.pending) },
+      metadata: { fromCache: !api.serverSnaps || api.wedged, hasPendingWrites: !!(opts && opts.pending) || api.queue.length > 0 },
       size: rows.length,
       forEach: cb => rows.forEach(([id, v]) => cb({ id, data: () => v })),
       docChanges: () => changes,
@@ -108,10 +133,28 @@ function fakeFirestore() {
     return out;
   };
   const db = {
+    /* Bağlantıyı kapatıp aç. Takılı bağlantıyı yalnızca bu düzeltir: sunucuda bekleyen
+       yazımlar gelir, kuyruktaki yazımlar onaylanır. Gerçek bir kesintide (ack=false) işe yaramaz. */
+    disableNetwork: async () => {},
+    enableNetwork: async () => {
+      api.kicks++;
+      if (!api.wedged) return;
+      if (--api.kicksToHeal > 0) return;   // ağ hâlâ kötü: bu deneme de tutmadı
+      api.wedged = false;
+      docs.clear(); api.server.forEach((v, id) => docs.set(id, v)); api.server = null;
+      for (const q of api.queue.splice(0)) {
+        if (ruleBlocks(q.ops, docs)) { api.rejected++; q.rej(denied()); continue; }
+        q.ops.forEach(([kind, id, v]) => kind === 'del' ? docs.delete(id) : docs.set(id, v));
+        q.res();
+      }
+      emit({});
+    },
     collection: () => ({
-      doc: id => ({ __id: id, get: async () => ({ exists: docs.has(id), data: () => docs.get(id) }), set: async v => { docs.set(id, stamp(v)); emit({}); } }),
+      doc: id => ({ __id: id,
+        get: async o => { if (api.wedged && fromServerOpt(o)) return never(); return { exists: docs.has(id), data: () => docs.get(id) }; },
+        set: async v => { docs.set(id, stamp(v)); emit({}); } }),
       where: (f, op, uid) => ({
-        get: async () => snapshotOf(uid, {}),
+        get: async o => { if (api.wedged && fromServerOpt(o)) return never(); return snapshotOf(uid, {}); },
         onSnapshot: (o, next, err) => {
           api.listens++;
           const s = { uid, next, err };
@@ -129,13 +172,15 @@ function fakeFirestore() {
         delete: ref => ops.push(['del', ref.__id]),
         commit: () => {
           api.commits++;
-          /* firestore.rules → syncHeadOk: manifest, buluttakinin rev'ini `base` olarak taşımıyorsa
-             reddedilir. Batch atomiktir: hiçbir işlem uygulanmaz. */
-          if (api.rules && ops.some(([kind, id, v]) => kind === 'set' && id === 'coach1' && v && v.base !== undefined
-              && docs.has(id) && docs.get(id).rev !== undefined && docs.get(id).rev !== v.base)) {
-            api.rejected++;
-            return Promise.reject(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
+          if (api.wedged) {
+            // Cihazın kendi görüşüne işlenir, sunucuya gitmez: kuyrukta bekler.
+            const st = ops.map(([kind, id, v]) => [kind, id, kind === 'del' ? v : stamp(v)]);
+            st.forEach(([kind, id, v]) => kind === 'del' ? docs.delete(id) : docs.set(id, v));
+            api.hung++;
+            emit({ pending: true });
+            return new Promise((res, rej) => api.queue.push({ ops: st, res, rej }));
           }
+          if (ruleBlocks(ops, docs)) { api.rejected++; return Promise.reject(denied()); }
           // Yerel kopyaya HER HÂLDE işlenir — gerçeğinde de yazım önce diske gider.
           ops.forEach(([kind, id, v]) => kind === 'del' ? docs.delete(id) : docs.set(id, stamp(v)));
           if (api.ack) { emit({}); return Promise.resolve(); }
@@ -239,10 +284,10 @@ const withSecond = (n, m) => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: {
    kurulabiliyor. emit YOK — bu, uyuyan/ölmüş bir dinleyicinin teslim etmediği yazım. */
 function remoteWrite(w, state, rev, base) {
   const h = 'uzak' + rev;
-  w.fake.docs.set('coach1_' + h, { userId: 'coach1', c: JSON.stringify(state), h, rev });
+  w.fake.serverSet('coach1_' + h, { userId: 'coach1', c: JSON.stringify(state), h, rev });
   const m = { userId: 'coach1', v: 2, n: 1, rev, ids: [h], st: w.fake.now() };
   if (base !== undefined) m.base = base;   // yazan cihazın dayandığı hâl (yeni sürüm bunu her yazımda koyar)
-  w.fake.docs.set('coach1', m);
+  w.fake.serverSet('coach1', m);
 }
 const cloudRev = w => (w.fake.docs.get('coach1') || {}).rev;
 
@@ -255,7 +300,7 @@ const check = (name, ok, detail) => {
 /* Bir senaryo düştüğünde cihazın o an ne yaşadığını görmek gerekiyor — sarının
    sebebini ayıran şey tam olarak bu günlük. Geçen senaryoda basmıyoruz. */
 const scene = name => { console.log('\n== ' + name + ''); failedHere = 0; };
-const endScene = () => { if (failedHere) console.log('  --- senkron günlüğü ---\n' + BAG.slogText().replace(/^/gm, '  ')); };
+const endScene = () => { if (failedHere || process.env.SYNCTEST_LOG) console.log('  --- senkron günlüğü ---\n' + BAG.slogText().replace(/^/gm, '  ')); };
 
 /* ─── senaryolar ──────────────────────────────────────────────────────── */
 
@@ -629,26 +674,129 @@ async function scenarioMissingChunkRepaired() {
   endScene(); h.unmount();
 }
 
+/* "TABLETTE SARIDA KALIYOR" — TAKILI BAĞLANTI.
+   Tablet bir süre kullanılmadı (ekran kapandı, Wi-Fi el değiştirdi). Ağ ayakta, ama Firestore'un
+   sunucuyla açtığı bağlantı ölü: koç tablette bir şey yazıyor, yazım hiç onaylanmıyor. Önceki
+   bütün önlemler (onay süresi, kilidi bırakma, yeniden abone olma) uygulamayı kilitlenmekten
+   kurtarıyordu ama BAĞLANTIYI kurtarmıyordu — yeni dinleyici de aynı ölü bağlantıyı kullanıyor.
+   Gösterge, sayfa yenilenene kadar sarıda kalıyordu. Bu arada masaüstü de yazmış olsun: cihaz
+   kendine geldiğinde iki tarafın değişikliği de kalmalı. */
+async function scenarioWedgedConnectionEdit() {
+  scene('bağlantı takılınca (tablet): cihaz bağlantıyı kendisi yeniden açıyor, sayfa yenilenmeden yeşile dönüyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  w.fake.rules = true;
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('tablet senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+  const r1 = cloudRev(w);
+
+  w.fake.wedge();                                          // bağlantı öldü
+  out.setData(realState(2));                               // tablette düzenleme
+  await sleep(1500);
+  check('takılı bağlantıda sarı', out.sync.status === 'syncing', 'status=' + out.sync.status);
+  remoteWrite(w, withSecond(1, 4), Date.now() + 5000, r1); // masaüstü yazdı: tabletin n2'sini görmeden
+
+  await sleep(30000);
+  const scr = JSON.stringify(out.data), cl = cloudState(w);
+  check('bağlantı yeniden açıldı', w.fake.kicks > 0, 'kicks=' + w.fake.kicks);
+  check('sayfa yenilenmedi', w.win.reloaded === 0, 'reloaded=' + w.win.reloaded);
+  check('tabletin düzenlemesi (n2) ekranda ve bulutta', scr.includes('"n2"') && cl.includes('"n2"'), 'ekrandaki: ' + scr.slice(0, 160) + '\n         buluttaki: ' + cl.slice(0, 160));
+  check('masaüstünün sporcusu ekranda ve bulutta', scr.includes('"m4"') && cl.includes('"m4"'), 'ekrandaki: ' + scr.slice(0, 160) + '\n         buluttaki: ' + cl.slice(0, 160));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+/* Aynısı, tablet boşta: koç tableti açıyor, hiçbir şey yazmıyor, sadece bakıyor. Bağlantı ölü
+   olduğu için masaüstünün değişikliği hiç gelmiyor; dönüş sınavının sunucu okuması da dönmüyor.
+   Eskiden bunun karşılığı yeniden abone olmaktı — aynı ölü bağlantıya. */
+async function scenarioWedgedOnWake() {
+  scene('tablet uykudan dönünce bağlantı ölüyse: masaüstünün değişikliği yenilemeden geliyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  w.fake.rules = true;
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('tablet senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  w.document.visibilityState = 'hidden';                   // ekran kapandı
+  (w.evts.visibilitychange || []).forEach(f => f());
+  w.fake.wedge();
+  remoteWrite(w, withSecond(1, 6), Date.now() + 5000, cloudRev(w));
+  await sleep(21000);
+  w.document.visibilityState = 'visible';                  // koç tableti açtı
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(15000);
+  const scr = JSON.stringify(out.data);
+  check('bağlantı yeniden açıldı', w.fake.kicks > 0, 'kicks=' + w.fake.kicks);
+  check('masaüstünün değişikliği geldi', scr.includes('"m6"'), 'ekrandaki: ' + scr.slice(0, 160));
+  check('sayfa yenilenmedi', w.win.reloaded === 0, 'reloaded=' + w.win.reloaded);
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+/* Aynısı, ama ağ bir süre daha kötü: ilk yeniden açma tutmuyor. Tabletin kuyruktaki kaydı
+   (manifest) onay süresini çoktan aşmışken sunucuya varıyor ve — arada masaüstü yazdığı için —
+   kurala takılıyor. Bu ret artık kimsenin beklemediği bir anda geliyor; cihaz yine de iki tarafın
+   değişikliğini birleştirip yazmalı ve yeşile dönmeli. */
+async function scenarioWedgedLong() {
+  scene('bağlantı uzun süre takılırsa: geç gelen ret de birleştiriliyor, hiçbir şey kaybolmuyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  w.fake.rules = true;
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  const r1 = cloudRev(w);
+  w.fake.wedge(3);                                         // ancak üçüncü yeniden açma tutuyor
+  out.setData(realState(2));
+  await sleep(1500);
+  remoteWrite(w, withSecond(1, 9), Date.now() + 5000, r1);
+  await sleep(90000);
+  const scr = JSON.stringify(out.data), cl = cloudState(w);
+  check('bağlantı birkaç kez yeniden açıldı', w.fake.kicks >= 3, 'kicks=' + w.fake.kicks);
+  check('sayfa yenilenmedi', w.win.reloaded === 0, 'reloaded=' + w.win.reloaded);
+  check('iki tarafın değişikliği de ekranda', scr.includes('"n2"') && scr.includes('"m9"'), 'ekrandaki: ' + scr.slice(0, 160));
+  check('iki tarafın değişikliği de bulutta', cl.includes('"n2"') && cl.includes('"m9"'), 'buluttaki: ' + cl.slice(0, 160));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+/* Bağlantı sağlamken bağlantıyı yenilemek boşa iştir: hiçbir senaryoda kendiliğinden olmamalı. */
+async function scenarioNoNeedlessKick() {
+  scene('her şey yolundayken: bağlantı boşuna yeniden açılmıyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  out.setData(realState(2));
+  await sleep(1500);
+  w.document.visibilityState = 'hidden';
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(21000);
+  w.document.visibilityState = 'visible';
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(40000);                                      // sessizlik sınavının da ötesi
+  check('bağlantı yenilenmedi', w.fake.kicks === 0, 'kicks=' + w.fake.kicks);
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
-  await scenarioHappyPath();
-  await scenarioWedgedNetwork();
-  await scenarioListenerDies();
-  await scenarioDroppedEdit();
-  await scenarioNoWriteStorm();
-  await scenarioPhoneWakesUp();
-  await scenarioWakeUpCostsNothing();
-  await scenarioPendingWriteBlindness();
-  await scenarioSilentStream();
-  await scenarioSilenceCostsNothing();
-  await scenarioNeverReachesServer();
-  await scenarioStaleOverwrite();
-  await scenarioSingleDeleteSyncs();
-  await scenarioBlindWriteMerged();
-  await scenarioBlindWriteNoAncestor();
-  await scenarioConcurrentWriteRejected();
-  await scenarioMissingChunkRepaired();
+  const all = [
+    scenarioHappyPath, scenarioWedgedNetwork, scenarioListenerDies, scenarioDroppedEdit,
+    scenarioNoWriteStorm, scenarioPhoneWakesUp, scenarioWakeUpCostsNothing,
+    scenarioPendingWriteBlindness, scenarioSilentStream, scenarioSilenceCostsNothing,
+    scenarioNeverReachesServer, scenarioStaleOverwrite, scenarioSingleDeleteSyncs,
+    scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
+    scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
+    scenarioNoNeedlessKick,
+  ];
+  // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
+  const only = process.env.SYNCTEST_ONLY;
+  for (const s of all) if (!only || s.name.includes(only)) await s();
   console.log('\n' + pass + ' geçti, ' + fail + ' kaldı');
   process.exit(fail ? 1 : 0);
 })();
