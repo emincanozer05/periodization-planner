@@ -302,8 +302,57 @@ function DiGoalPicker({value,onChange}){
     </div>
   </div>);
 }
+/* What "Kopyala" takes off a brief: the goals and every row with something written in it, with
+   the phases those rows stand in. Null when the table is empty. */
+function diTableToClipboard(instr){
+  const rows=diMovePatterns(instr&&instr.patterns).filter(p=>String(p.exercise||'').trim()||String(p.sets||'').trim()||String(p.reps||'').trim());
+  if(!rows.length)return null;
+  const used=new Set(rows.map(p=>p.phase).filter(Boolean));
+  return{goals:[...((instr&&instr.goals)||[])],patterns:rows,phases:diMovePhases(instr&&instr.phases).filter(x=>used.has(x.id))};
+}
+/* "Yapıştır": the copied table added after whatever the target brief already has. A phase is matched
+   to the target's own (the ready-made ones by kind, the others by name) and opened there if missing;
+   the goals are joined. The table caps each category per section, so `added` says what fitted. */
+function diTableFromClipboard(clip,instr){
+  const phases=[...diMovePhases(instr&&instr.phases)];
+  const before=diMovePatterns(instr&&instr.patterns);
+  const map={};
+  diMovePhases(clip.phases).forEach(ph=>{
+    let hit=ph.preset?phases.find(x=>x.preset===ph.preset):phases.find(x=>!x.preset&&x.name&&x.name===ph.name);
+    if(!hit&&phases.length<6){
+      hit={id:'ph_'+Math.random().toString(36).slice(2,7),name:ph.name,preset:ph.preset};
+      if(ph.preset==='prep')phases.unshift(hit);
+      else if(ph.preset==='main'&&phases.some(x=>x.preset==='cool'))phases.splice(phases.findIndex(x=>x.preset==='cool'),0,hit);
+      else phases.push(hit);
+    }
+    if(hit)map[ph.id]=hit.id;
+  });
+  const rows=diMovePatterns(clip.patterns).map(p=>({...p,phase:map[p.phase]||''}));
+  const patterns=diMovePatterns([...before,...rows]);
+  const have=new Set((instr&&instr.goals)||[]),want=new Set(clip.goals||[]);
+  const goals=DI_GOAL_IDS.filter(id=>have.has(id)||want.has(id));
+  return{patterns,phases:diMovePhases(phases),goals,added:patterns.length-before.length,total:rows.length};
+}
 function DiInstructionForm({instr,save,athId}){
   const[pasted,setPasted]=useState('');
+  const clip=useTableClipboard();
+  const copyTable=()=>{
+    const c=diTableToClipboard(instr);
+    copyTableToClipboard(c);
+    setPasted(c?L(`${c.patterns.length} egzersiz kopyalandı. Başka bir sporcunun tablosunda Yapıştır'a bas.`,
+      `${c.patterns.length} ${c.patterns.length===1?'exercise':'exercises'} copied. Press Paste in another athlete's table.`)
+      :L('Kopyalanacak egzersiz yok.','There is nothing to copy.'));
+    setTimeout(()=>setPasted(''),6000);
+  };
+  const pasteTable=()=>{
+    if(!clip)return;
+    const r=diTableFromClipboard(clip,instr);
+    save({...instr,patterns:r.patterns,phases:r.phases,goals:r.goals});
+    setTableKey(k=>k+1);
+    setPasted(r.added>=r.total?L(`${r.added} egzersiz tabloya yapıştırıldı.`,`${r.added} ${r.added===1?'exercise':'exercises'} pasted into the table.`)
+      :L(`${r.added} / ${r.total} egzersiz yapıştırıldı — kalanlar kategori başına üst sınıra takıldı.`,`${r.added} of ${r.total} exercises pasted — the rest hit the per-category limit.`));
+    setTimeout(()=>setPasted(''),6000);
+  };
   /* The table keeps its own copy of the rows it last wrote and only takes a change from outside on
      its next render, so a paste redraws it from scratch (same batch as the write, so it opens on the new rows). */
   const[tableKey,setTableKey]=useState(0);
@@ -325,7 +374,13 @@ function DiInstructionForm({instr,save,athId}){
           <label>{L('Antrenman tablosu','Training table')}</label>
           <ProgramPickBtn athId={athId} cls="btn xs sec" label={L('Kayıtlı programdan doldur','Fill from a saved programme')} onPick={pasteProgram}
             title={L('Önceden yazılmış bir programı bul; egzersizleri tabloya satır olarak eklenir','Find a programme written before; its exercises are added to the table as rows')}/>
-          {pasted&&<span className="di-dim" role="status">{pasted}</span>}</div>
+          {pasted&&<span className="di-dim" role="status">{pasted}</span>}
+          <div className="di-fhd-x">
+            <button type="button" className="btn xs sec" onClick={copyTable}
+              title={L('Bu sporcunun antrenman tablosunu kopyala; başka bir sporcunun tablosuna yapıştırabilirsin','Copy this athlete\'s training table; paste it into another athlete\'s table')}>{L('Kopyala','Copy')}</button>
+            <button type="button" className="btn xs sec" onClick={pasteTable} disabled={!clip}
+              title={clip?L('Kopyalanan antrenmanı bu tabloya ekle','Add the copied training to this table'):L('Önce bir sporcunun tablosunda Kopyala\'ya bas','Press Copy in an athlete\'s table first')}>{L('Yapıştır','Paste')}</button>
+          </div></div>
         <DiGoalPicker value={instr.goals} onChange={v=>save({...instr,goals:v})}/>
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
