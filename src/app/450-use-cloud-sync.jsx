@@ -75,7 +75,60 @@ function useCloudSync(data,setData){
   const healBase=useRef(null);          // onarım yazımı: bilerek üstüne yazılan bozuk manifestin rev'i
   const conflicts=useRef({n:0,at:0});   // art arda reddedilen manifest yazımı (sonsuz döngü olmasın)
   const repairing=useRef(false);        // eksik parça onarımı uçuşta mı
+  const netKick=useRef({at:0,n:0,off:0,total:0});   // bağlantı yeniden açma: son ne zaman, art arda kaç kez, sürüyor mu
+  const unackedSince=useRef(0);         // son yazım ne zamandan beri onay bekliyor (0 = beklemiyor)
   const COL='kullanici_verileri';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     BAĞLANTIYI YENİDEN AÇ — "sarıda kalıyor"un kökteki ilacı.
+
+     Aşağıdaki bütün önlemler (onay süresi, takılan yazımı bırakma, dinleyiciyi yeniden
+     kurma, sunucudan elle çekme) uygulamanın KİLİTLENMESİNİ önlüyordu, ama hiçbiri
+     Firestore'un sunucuyla açtığı BAĞLANTIYI yenilemiyordu. Tablet uykudan döndüğünde,
+     Wi-Fi el değiştirdiğinde ya da bir ara sunucu bağlantıyı tutup bıraktığında o bağlantı
+     "açık" görünüp hiçbir şey geçirmeyebiliyor ve SDK bunu kendi başına çoğu zaman uzun
+     süre (iPad'de bazen hiç) fark etmiyor. O hâlde:
+       • yazımlar kuyrukta bekliyor, hiçbiri onaylanmıyor → gösterge sarı;
+       • yeniden kurulan dinleyici AYNI ölü bağlantıyı kullanıyor → yine bir şey gelmiyor;
+       • sunucudan okuma da aynı bağlantıdan gidiyor → zaman aşımı.
+     Tek çıkış sayfayı yenilemekti; "bir süre düzgün çalışıyor, sonra yine sarıda kalıyor"
+     döngüsünün sebebi bu: her yeni yamada kilit başka bir yerden açılıyordu ama ölü
+     bağlantı yerinde duruyordu.
+     Firestore'un kendi ilacı disableNetwork → enableNetwork: bağlantıyı kapatır ve SIFIRDAN
+     açar. Kuyruktaki yazımlar yeni bağlantıdan gönderilir, dinleyiciler kaldıkları yerden
+     (resume token) devam eder. Sayfa yenilenmez, koçun açık formu, sekmesi yerinde kalır.
+     Ne zaman: bir yazım süresinde onaylanmadığında, sunucu okuması dönmediğinde, dinleyicinin
+     kaçırdığı bir hâl bulutta göründüğünde, hazır olunamadığında. Art arda gerekirse aralık
+     açılır (bkz. KICK_MIN_MS), sağlıklı bir yanıt gelince sıfırlanır. Ağ gerçekten yoksa
+     (navigator.onLine=false) ya da sekme arka plandaysa yapılmaz.
+     Dönüş: yeniden açılış bitince sonuçlanan bir söz, ya da false (yapılmadı). */
+  const kickNetwork=why=>{
+    const fb=FB();if(!fb)return false;
+    let fs=null;try{fs=fb.firestore();}catch(e){return false;}
+    if(!fs||typeof fs.disableNetwork!=='function'||typeof fs.enableNetwork!=='function')return false;
+    if(isHidden()||(typeof navigator!=='undefined'&&navigator.onLine===false))return false;
+    const k=netKick.current,now=Date.now();
+    if(k.off)return false;   // bir yeniden açılış zaten sürüyor
+    if(k.at&&now-k.at<Math.min(KICK_MAX_MS,KICK_MIN_MS*Math.pow(2,Math.max(0,Math.min(k.n,5)-1))))return false;
+    k.at=now;k.n++;k.total++;k.off=now;
+    fromServer.current=false;   // yeni bağlantıda ilk yazımdan önce bulut bir kez sorulsun
+    slog('bağlantı yeniden açılıyor',why);
+    /* enableNetwork HER HÂLDE çağrılır: kapatılıp açılmayan bir bağlantı cihazı tamamen
+       çevrimdışı bırakırdı. Kapatma takılırsa da beklenmez; açma başarısız olursa gözcü
+       yeniden dener (bkz. ensureNetwork). */
+    const on=()=>Promise.resolve().then(()=>fs.enableNetwork()).then(
+      ()=>{k.off=0;slog('bağlantı yeniden açıldı');},
+      e=>{slog('bağlantı açılamadı, tekrar denenecek',(e&&e.code)||(e&&e.message)||'?');});
+    return withTimeout(Promise.resolve().then(()=>fs.disableNetwork()),3000).then(on,on);
+  };
+  // Yeniden açılış yarıda kaldıysa (açma başarısız ya da dönmedi) bağlantıyı açık hâle getir.
+  const ensureNetwork=()=>{
+    const k=netKick.current;
+    if(!k.off||Date.now()-k.off<10000)return;
+    k.off=Date.now();
+    const fb=FB();
+    try{Promise.resolve(fb&&fb.firestore().enableNetwork()).then(()=>{k.off=0;slog('bağlantı yeniden açıldı (ikinci deneme)');},()=>{});}catch(e){}
+  };
   const GC_GRACE_MS=5*60*1000;   // bu kadar yeni bir parça, kimse göstermiyor görünse bile silinmez
 
   // Eski {url} pointer'ından (Storage) veriyi kurtarmayı dene — sadece fetch, SDK gerekmez
@@ -120,7 +173,9 @@ function useCloudSync(data,setData){
       catch(e){
         // Zaman aşımı bir HATA DEĞİL: yazım yerel kuyrukta duruyor, sırası gelince gidecek.
         // Yeniden denemek yalnızca kuyruğu şişirirdi.
-        if(e&&e.code==='timeout'){slog('write: onay gecikti, kuyrukta','op='+ops.length);return false;}
+        /* Onayın gecikmesi çoğu zaman bağlantının ölü olduğunu söyler: kuyruktaki yazımın
+           gidebilmesi için bağlantı yeniden açılır (bkz. kickNetwork). */
+        if(e&&e.code==='timeout'){slog('write: onay gecikti, kuyrukta','op='+ops.length);kickNetwork('yazım onayı '+Math.round(COMMIT_MS/1000)+' sn içinde gelmedi');return false;}
         if(SOFT_ERR.indexOf(e&&e.code)<0||a>=RETRY_MS.length)throw e;
         await new Promise(r=>setTimeout(r,RETRY_MS[a]));
       }
@@ -173,7 +228,7 @@ function useCloudSync(data,setData){
      reddedildiğinde). Buluttaki hâl bizim kendi yazımımızsa ya da içeriği zaten elimizdeyse
      birleştirilecek bir şey yoktur: yalnızca hangi rev'in üstüne yazdığımız güncellenir. */
   const pullMerge=async(fb,uid)=>{
-    const sv=await withTimeout(readServer(fb,uid),SERVER_READ_MS);
+    const sv=await readLatest(fb,uid);
     if(sv.json==null){if(sv.found)waitThenHeal(fb,uid);return;}
     lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;
     if(sv.json===lastSynced.current||sv.json===ancestor.current||myRevs.current.has(sv.rev)){
@@ -239,7 +294,8 @@ function useCloudSync(data,setData){
         if(mv&&typeof mv.rev==='number'&&mv.rev!==(curRev.current||0)&&!myRevs.current.has(mv.rev))await pullMerge(fb,u.uid);
         fromServer.current=true;   // sunucuyu şimdi okuduk; sıradaki yazımlar tekrar okumaz
       }catch(e){/* okunamadı ya da zamanında gelmedi → yazımı yine de dene, dinleyici dönüşte birleştirir */
-        slog('write: ön-okuma başarısız',(e&&e.code)||(e&&e.message)||'?');}
+        slog('write: ön-okuma başarısız',(e&&e.code)||(e&&e.message)||'?');
+        if(e&&e.code==='timeout')kickNetwork('ön-okuma dönmedi');}
       // Sıra önemli: bu tur bırakıldıysa kilit ARTIK BİZİM DEĞİL — yerine geçen tur onu
       // tutuyor olabilir, dokunmadan çekiliyoruz.
       if(stale())return;
@@ -583,6 +639,43 @@ function useCloudSync(data,setData){
     return{json:null,n:0,rev:0,at:manifest?stampMs(manifest.st):0,found,byRev,
       mrev:(manifest&&typeof manifest.rev==='number')?manifest.rev:0};   // okunamayan manifestin rev'i (onarım onun üstüne yazar)
   };
+  /* HIZLI ÇEKİM. readServer koleksiyonun TAMAMINI sunucudan ister: birkaç MB'lık bir durumda
+     yüzlerce doküman. Bunu birleştirme için beklemek (başka cihazın yazımı yüzünden reddedilen
+     kayıttan sonra, dönüş sınavında, elle çekimde) tablette sık sık süreyi aşıyordu; aşınca
+     birleştirme yapılamıyor, kayıt aynı eski tabanla yeniden reddediliyor ve gösterge sarı ile
+     kırmızı arasında gidip geliyordu.
+     Parça adları içeriğin hash'i olduğu için gereken tek şey manifesttir: elde (dinleyicinin
+     önbelleğinde) olan parçalar zaten doğrudur, yalnızca olmayanlar adlarıyla tek tek istenir —
+     çoğu zaman bir iki doküman. Manifest eski düzendeyse ya da bir parça bulunamazsa null döner
+     ve çağıran tam okumaya geçer. */
+  const readServerFast=async(fb,uid)=>{
+    const col=fb.firestore().collection(COL);
+    const md=await col.doc(uid).get({source:'server'});
+    const m=md.exists?md.data():null;
+    if(!m||!Array.isArray(m.ids))return null;
+    const meta={n:m.n,rev:m.rev,base:m.base,heal:m.heal,at:stampMs(m.st),found:true};
+    const key=m.ids.join('|');
+    const hit=idsJson.current.find(e=>e.key===key);
+    if(hit)return{json:hit.json,...meta};
+    const byHash={};
+    docCache.current.forEach(v=>{if(v&&typeof v.c==='string'&&typeof v.h==='string')byHash[v.h]=v.c;});
+    const miss=m.ids.filter((h,i)=>byHash[h]==null&&m.ids.indexOf(h)===i);
+    if(miss.length>FAST_READ_MAX)return null;
+    const got=await Promise.all(miss.map(h=>col.doc(chunkDocId(uid,h)).get({source:'server'})));
+    for(let i=0;i<miss.length;i++){
+      const v=got[i].exists?got[i].data():null;
+      if(!v||typeof v.c!=='string')return null;
+      byHash[miss[i]]=v.c;
+    }
+    const json=assembleIds(m,byHash);
+    return json==null?null:{json,...meta};
+  };
+  // Bulutun son hâli: önce hızlı yol; o yol kullanılamıyorsa (null) tam okuma. Zaman aşımı hata olarak döner.
+  const readLatest=async(fb,uid)=>{
+    const f=await withTimeout(readServerFast(fb,uid),FAST_READ_MS);
+    if(f)return f;
+    return await withTimeout(readServer(fb,uid),FULL_READ_MS);
+  };
   /* Bulut tutarsız ve elde bulutla mutabık bir hâl yokken eski kopyayı yazmadan önce kaç tur
      daha beklendiği. Manifest son birkaç dakikada yazılmışsa başka bir cihaz büyük bir kaydı
      hâlâ gönderiyor olabilir: 8 saniye sonra onun üstüne eski kopyayı yazmak, o cihazın bütün
@@ -688,7 +781,7 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     let pulled=false;
     try{
-      const sv=await withTimeout(readServer(fb,u.uid),SERVER_READ_MS);   // manifest bozuksa parçalardan kurtarır
+      const sv=await readLatest(fb,u.uid);   // hızlı yol; olmazsa tam okuma (manifest bozuksa parçalardan kurtarır)
       const{json,n,rev,at,found}=sv;
       if(json==null){
         // Parçalar duruyor ama hiçbir tutarlı set çıkmıyor → onarım turu (asla üzerine yazma).
@@ -704,6 +797,9 @@ function useCloudSync(data,setData){
       ready.current=true;setSyncErr('');
       if(!pulled)setStatus('synced');
     }catch(e){console.warn('forcePull',e);slog('kurtarma çekimi: HATA',(e&&e.code)||(e&&e.message)||'?');
+      /* Sunucu yanıt vermedi: hata değil, bağlantı sorunu. Kırmızı yakmak yerine bağlantı
+         yeniden açılır; çekim gözcünün bir sonraki turunda tekrarlanır. */
+      if(e&&(e.code==='timeout'||e.code==='unavailable')){kickNetwork('sunucudan çekim dönmedi');setStatus('syncing');return;}
       setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
@@ -795,6 +891,7 @@ function useCloudSync(data,setData){
              sürekli önbellekten geliyorsa cihaz Firestore'a hiç bağlanamıyor demektir ve
              sarıda kalmasının sebebi kodun mantığı değil, taşıma katmanıdır. */
           if(!_cache){sawServer.current=true;lastServerAt.current=Date.now();
+            if(!_pend&&writeAcked.current)netKick.current.n=0;   // bağlantı sağlıklı: yeniden açma aralığı baştan
             // Bu taşıma gerçekten sunucuya ulaşıyor → bu cihazın seçimi olarak saklansın.
             if(typeof window.__fsTransportWorks==='function')window.__fsTransportWorks();}
           snapCount.current++;lastDocs.current=snap.size;
@@ -1141,7 +1238,7 @@ function useCloudSync(data,setData){
     let checking=false;
     const checkLive=async()=>{
       const fb2=FB(),u=userRef.current;
-      if(checking||!ready.current||!fb2||!u)return;
+      if(checking||!ready.current||!fb2||!u||netKick.current.off)return;
       if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
       checking=true;
       try{
@@ -1150,14 +1247,21 @@ function useCloudSync(data,setData){
         const v=d.exists?d.data():null;
         const rev=(v&&typeof v.rev==='number')?v.rev:0;
         // "Daha büyük" değil "başka" rev: saati geride olan bir cihazın yazımı küçük rev taşır.
-        if(rev&&rev!==(curRev.current||0)&&!myRevs.current.has(rev)){slog('dönüş sınavı: bulutta başka bir hâl → çekiliyor','rev='+rev);await forcePull();}
+        if(rev&&rev!==(curRev.current||0)&&!myRevs.current.has(rev)){
+          slog('dönüş sınavı: bulutta başka bir hâl → çekiliyor','rev='+rev);
+          await forcePull();
+          /* Dinleyici bu hâli getirmemişti: akışı ölü. Yeniden abone olmak aynı ölü bağlantıyı
+             kullanırdı; bağlantının kendisi yeniden açılır ki sonraki değişiklikler de gelsin. */
+          kickNetwork('dinleyici bulutun son hâlini getirmemiş');
+        }
         else slog('dönüş sınavı: güncel','rev='+rev);
       }catch(e){
-        /* Sunucu yanıt vermedi: akış ölü ya da taşıma bu ağda geçmiyor. Dinleyiciyi
-           tazelemek hafızayı silmez (hesap değişmediği için "yeniden" kurulum), yani
-           gönderilmemiş bir düzenleme tabansız kalmaz. */
-        slog('dönüş sınavı: sunucuya ULAŞILAMADI → dinleyici tazeleniyor',(e&&e.code)||(e&&e.message)||'?');
-        setSubTick(n=>n+1);
+        /* Sunucu yanıt vermedi: bağlantı ölü ya da taşıma bu ağda geçmiyor. Önce bağlantının
+           kendisi yeniden açılır (bkz. kickNetwork); dinleyiciyi de tazelemek hafızayı silmez
+           (hesap değişmediği için "yeniden" kurulum), yani gönderilmemiş bir düzenleme tabansız kalmaz. */
+        slog('dönüş sınavı: sunucuya ULAŞILAMADI → bağlantı yeniden açılıyor',(e&&e.code)||(e&&e.message)||'?');
+        const k=kickNetwork('dönüş sınavı sunucuya ulaşamadı');
+        if(k)k.then(()=>setSubTick(n=>n+1));else setSubTick(n=>n+1);
       }
       checking=false;
     };
@@ -1172,7 +1276,14 @@ function useCloudSync(data,setData){
       // Uzun bir aradan sonra: dönüşteki ilk yazım, arada başka cihaz yazmış mı diye baksın.
       if(gap>=HIDE_GAP_MS||typeof navigator!=='undefined'&&navigator.onLine===false)fromServer.current=false;
       const freed=unstick();
-      if(freed||dirty.current)writeNow();
+      /* Uzun bir aradan dönüşte bekleyen iş varsa (onaylanmamış yazım, yazılmamış düzenleme,
+         hazır olamamış dinleyici) bağlantı sınanmadan yeniden açılır: uykudan dönen tabletin
+         bağlantısının ölü olma ihtimali en yüksek olan an budur ve bekleyen yazım ancak canlı
+         bir bağlantıdan gidebilir. Yazım, yeni bağlantı açıldıktan sonra başlatılır. */
+      const busy=!writeAcked.current||dirty.current||!ready.current||freed;
+      const k=(gap>=HIDE_GAP_MS&&busy)?kickNetwork('uygulamaya dönüldü, bekleyen iş var'):false;
+      const go=()=>{if(freed||dirty.current)writeNow();};
+      if(k)k.then(go);else go();
       lsFlush();
       /* Ağ geri geldiğinde ve sayfa geri gösterildiğinde ara ölçülemez (sekme hiç
          gizlenmemiş olabilir), ama akışın ölmüş olma ihtimali en yüksek olan an tam
@@ -1276,6 +1387,16 @@ function useCloudSync(data,setData){
       if(reloading)return;
       const now=Date.now();
       const st=statusRef.current;
+      ensureNetwork();
+
+      /* 0) Bir yazım uzun süredir onay bekliyor: bağlantı ölü olabilir. Bunu yalnızca
+            bağlantıyı yeniden açmak çözer (bkz. kickNetwork); aralık art arda açılır.
+            Sunucudan başka yanıtlar geliyor olsa bile sorulur — yazım ve okuma ayrı
+            akışlardan gider, biri ölüyken öteki çalışabilir. */
+      if(writeAcked.current)unackedSince.current=0;
+      else if(!unackedSince.current)unackedSince.current=now;
+      if(unackedSince.current&&now-unackedSince.current>COMMIT_MS)
+        kickNetwork('yazım '+Math.round((now-unackedSince.current)/1000)+' sn\'dir onay bekliyor');
 
       // 1) Dinleyici bir hata alıp öldü → yerine yenisini kur (art arda tekrarlarsa seyrelterek).
       if(resub.current&&now-lastResub.current>RESUB_MS){
@@ -1286,8 +1407,11 @@ function useCloudSync(data,setData){
 
       /* 2) Seçilen taşıma bu ağda hiç açılmadı: ağ ayakta, giriş yapılmış, ama Firestore'dan
             tek bir sunucu yanıtı gelmedi. Bu, mantıkla çözülecek bir şey değil — öteki taşımaya
-            geçilip sayfa bir kez yenilenir. Oturum başına yalnızca bir kez (bkz. __fsSwitchTransport),
-            yani bir ileri bir geri dönemez. Yenilemenin bedeli yok: yazımlar zaten IndexedDB'de
+            geçilip sayfa bir kez yenilenir. Bağlantıyı yeniden açmak (kickNetwork) bundan önce,
+            hazır olunamadığı anda denenmiş olur; bu basamak ona da yanıt vermeyen ağ içindir.
+            En çok on dakikada bir (bkz. __fsSwitchTransport), yani bir ileri bir geri dönemez —
+            ama eskisi gibi "oturum başına bir kez" de değil: tablette uygulama günlerce açık kalır
+            ve tek hakkı yanlış yöne harcanan oturum, kapatılana kadar sarıda kalıyordu. Yenilemenin bedeli yok: yazımlar zaten IndexedDB'de
             kalıcı, ekrandaki hâl de yerel kopyaya yazılıyor. */
       if(!sawServer.current&&startedAt.current&&now-startedAt.current>STALL_MS
          &&(typeof navigator==='undefined'||navigator.onLine!==false)
@@ -1309,7 +1433,8 @@ function useCloudSync(data,setData){
       if(waiting&&sawServer.current&&lastServerAt.current&&!isHidden()
          &&now-lastServerAt.current>STALL_MS*2&&now-lastResub.current>RESUB_MS){
         lastResub.current=now;lastServerAt.current=now;
-        slog('gözcü: sunucudan ses yok → dinleyici tazeleniyor');
+        slog('gözcü: sunucudan ses yok → bağlantı yeniden açılıyor, dinleyici tazeleniyor');
+        kickNetwork('sunucudan '+Math.round(STALL_MS*2/1000)+' sn\'dir ses yok');
         setSubTick(n=>n+1);return;
       }
 
@@ -1320,6 +1445,7 @@ function useCloudSync(data,setData){
         if(!isHidden()&&startedAt.current&&now-startedAt.current>PEND_STUCK_MS&&now-lastPull.current>15000){
           lastPull.current=now;
           slog('gözcü: hâlâ hazır değil → sunucudan çekiliyor');
+          // Çekim de dönmezse bağlantıyı forcePull kendisi yeniden açar (aynı anda kapatmak çekimi boşa düşürürdü).
           Promise.resolve(forcePull()).catch(()=>{});
         }
         return;
@@ -1399,6 +1525,7 @@ function useCloudSync(data,setData){
     transport:(typeof window!=='undefined'&&window.__fsTransport)||'?',
     serverAgo:lastServerAt.current?Math.round((Date.now()-lastServerAt.current)/1000):-1,
     skew:skew.current,
+    kicks:netKick.current.total,
   });
   /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
      şeyden birini söyler — okundu (taşıma sağlam, sorun mantıkta), zaman aşımı (cihaz

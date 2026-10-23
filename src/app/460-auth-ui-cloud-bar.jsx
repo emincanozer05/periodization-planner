@@ -274,6 +274,7 @@ function SyncDiag({sync,onClose}){
     [L('Sunucudan veri geldi mi','Server ever reached'),d.sawServer?L('EVET','YES'):L('HAYIR — hiç bağlanılamadı','NO — never connected')],
     [L('Son sunucu yanıtı','Last server reply'),d.serverAgo>=0?(d.serverAgo+L(' sn önce',' s ago')):'—'],
     [L('Bağlantı biçimi','Transport'),d.transport==='long'?L('uzun yoklama','long-polling'):d.transport==='auto'?L('otomatik','auto'):'?'],
+    [L('Bağlantı yeniden açıldı','Connection restarts'),String(d.kicks||0)],
     [L('Veri hazır (ready)','Ready'),yn(d.ready)],
     [L('Son yazım onaylandı','Last write acknowledged'),yn(d.acked)],
     [L('Saat farkı (sunucu−cihaz)','Clock skew (server−device)'),d.skew==null?L('ölçülmedi','not measured'):(Math.round(d.skew/1000)+L(' sn',' s'))],

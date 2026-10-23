@@ -79,10 +79,12 @@ if(!dark)document.documentElement.setAttribute('data-theme','light');else docume
        Artık varsayılan otomatik algılama; hangi taşımanın GERÇEKTEN sunucuya ulaştığı
        bu tarayıcıda saklanıyor ve bir dahaki açılışta doğrudan o kullanılıyor. Seçilen
        taşıma hiç bağlanamazsa (ağ açık, giriş yapılmış, ama Firestore'dan tek bir sunucu
-       yanıtı gelmemiş) uygulama ötekine geçip sayfayı bir kez yeniliyor — oturum başına
-       YALNIZCA BİR KEZ, yani bir ileri bir geri döngüye giremez.
+       yanıtı gelmemiş) uygulama ötekine geçip sayfayı bir kez yeniliyor — en çok ON DAKİKADA
+       BİR, yani bir ileri bir geri döngüye giremez. (Eskiden "oturum başına bir kez"di: tablette
+       uygulama günlerce açık kaldığı için tek hakkı yanlış yöne — çalışan taşımadan çalışmayana —
+       harcanan oturum, kapatılana kadar sarıda kalıyordu.)
        Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı. */
-    var _TKEY='coachos_fs_transport', _TSW='coachos_fs_transport_switched';
+    var _TKEY='coachos_fs_transport', _TSW='coachos_fs_transport_switched_at', _TSW_GAP=10*60*1000;
     var _tp=null; try{_tp=localStorage.getItem(_TKEY);}catch(e){}
     if(_tp!=='long'&&_tp!=='auto')_tp='auto';
     window.__fsTransport=_tp;
@@ -97,11 +99,12 @@ if(!dark)document.documentElement.setAttribute('data-theme','light');else docume
       if(_tOk)return; _tOk=true;
       try{if(localStorage.getItem(_TKEY)!==_tp)localStorage.setItem(_TKEY,_tp);}catch(e){}
     };
-    // Ötekine geç: true dönerse çağıran sayfayı yeniler. Oturum başına bir kez.
+    // Ötekine geç: true dönerse çağıran sayfayı yeniler. En çok on dakikada bir.
     window.__fsSwitchTransport=function(){
       try{
-        if(sessionStorage.getItem(_TSW))return false;
-        sessionStorage.setItem(_TSW,'1');
+        var last=+localStorage.getItem(_TSW)||0, now=Date.now();
+        if(last<=now&&now-last<_TSW_GAP)return false;
+        localStorage.setItem(_TSW,String(now));
         localStorage.setItem(_TKEY,_tp==='long'?'auto':'long');
         return true;
       }catch(e){return false;}

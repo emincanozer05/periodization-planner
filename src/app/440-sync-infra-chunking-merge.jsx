@@ -63,6 +63,12 @@ const SERVER_READ_MS=4000;      // yazım öncesi güvenlik okuması bu kadar be
 const COMMIT_MS=15000;          // bir commit'in SUNUCU ONAYINI bu kadar bekleriz (yazımın kendisi beklemez)
 const WRITE_STUCK_MS=45000;     // bu kadar süredir İLERLEMEYEN yazım takılmış sayılır ve bırakılır
 const PEND_STUCK_MS=12000;      // bekleyen yazım bu kadar oturmazsa dinleyici yine de açılır
+const FAST_READ_MS=8000;        // hızlı çekim (manifest + yalnızca elde olmayan parçalar) bu kadar bekler
+const FULL_READ_MS=20000;       // tam koleksiyon okuması (yalnızca hızlı yol kullanılamazsa)
+const FAST_READ_MAX=40;         // bundan çok parça eksikse tek tek değil, tek sorguyla okunur
+/* Takılı bağlantıyı yeniden açma aralığı: art arda gerekirse 20 sn, 40 sn, 80 sn … en çok 5 dk.
+   Bağlantı sağlıklıysa sayaç sıfırlanır. */
+const KICK_MIN_MS=20000, KICK_MAX_MS=5*60*1000;
 /* Sunucudan bu kadar süre tek bir yanıt gelmezse taşıma katmanından şüphelenilir. Sağlam bir
    ağda ilk anlık görüntü bir-iki saniyede gelir, kötü ama çalışan bir mobil bağlantıda bile
    çok altında kalır; yani bu süre "yavaş" ile "hiç geçmiyor"u ayırmaya fazlasıyla yeter.
