@@ -80,6 +80,20 @@ function useExerciseClipboard(){
   useEffect(()=>{const f=x=>setV(x);_exClipSubs.add(f);setV(_exClipboard);return()=>{_exClipSubs.delete(f);};},[]);
   return v;
 }
+/* Table clipboard — the whole Antrenman tablosu of one athlete's brief (goals, phases and every
+   written row), copied with "Kopyala" and poured into another athlete's table with "Yapıştır".
+   Subscribed like the others: the two buttons sit in different athletes' cards. */
+let _tableClipboard=null;
+const _tblClipSubs=new Set();
+function copyTableToClipboard(t){
+  _tableClipboard=t?JSON.parse(JSON.stringify(t)):null;
+  _tblClipSubs.forEach(f=>{try{f(_tableClipboard);}catch{}});
+}
+function useTableClipboard(){
+  const[v,setV]=useState(_tableClipboard);
+  useEffect(()=>{const f=x=>setV(x);_tblClipSubs.add(f);setV(_tableClipboard);return()=>{_tblClipSubs.delete(f);};},[]);
+  return v;
+}
 /* What a paste writes onto a slot: the prescription and nothing else. The row's image,
    reference link and the coach's own description stay as they are — the suggestion is an
    exercise with a dose, not a whole row. Empty fields are written too, so pasting over a
