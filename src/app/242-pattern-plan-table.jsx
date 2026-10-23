@@ -206,12 +206,13 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     <PtImg name={slot.name} image={slot.image} onImage={url=>{
       f('image',url);
       /* A picture pasted on the row goes into the library with the exercise — its name and
-         its Kategori · Tür too — when the library has no picture for it yet. */
+         its Kategori · Tür too — and replaces the one its window carries, so the two always
+         show the same picture. */
       const nm=String(slot.name||'').trim();
       if(url&&nm&&!libDefer){const hit=exLibHit(nm);
         if(!hit)addExerciseToLibrary(nm);
         rememberExerciseTags(nm,slot.tagP,slot.tagS,slot.tagD);
-        if(!(hit&&hit.image))rememberExerciseImage(nm,url);}
+        rememberExerciseImage(nm,url);}
     }}/>
     <div className="pt-body">
     {(showCat||showType||showCnt)&&<div className="pt-pat" role="rowheader">
@@ -528,7 +529,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       if(isAlt){const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:{};
         return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||''}};}
       const t=exTagsFromLib(it,{});
-      const nx={...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
+      const nx={...ex,name:it.name,image:it.image||(String(ex.name||'').trim().toLowerCase()===String(it.name||'').trim().toLowerCase()?ex.image:'')||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
       if(t&&t.pattern){delete nx.noPat;nx.pattern=t.pattern;nx.plane=t.plane||'';nx.dir=t.dir||'';}
       return nx;
     }),

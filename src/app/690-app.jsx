@@ -51,20 +51,20 @@ function App(){
     const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane,...f};
     return{...prev,exercises:next};
   }));
-  /* Putting a picture on a program row writes it onto the library entry as its plan
-     image, so the next program that names this exercise fills it in by itself. A name the
-     library has never seen is added carrying the picture, exactly as typing it would. */
+  /* Putting a picture on a program row writes it onto the library entry as its picture (the
+     one its window shows and the next program that names this exercise fills in by itself). A
+     name the library has never seen is added carrying the picture, exactly as typing it would. */
   registerLibImage((nm,url)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
     const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
     if(i<0){
       if(!url)return prev;
-      return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',planImage:url},...exs]};
+      return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',image:url,planImage:url},...exs]};
     }
     const cur=exs[i];
-    if((cur.planImage||'')===url)return prev;
-    const next=[...exs];next[i]={...cur,planImage:url};
+    if((cur.image||'')===url&&(cur.planImage||'')===url)return prev;
+    const next=[...exs];next[i]={...cur,image:url,planImage:url};
     return{...prev,exercises:next};
   }));
   /* A link written on a program row is filed as the exercise's video link when the library
@@ -97,10 +97,10 @@ function App(){
          `sub` as a caption, while the load distribution reads the type/sub-type pair
          to work out what an untagged session row trains and how. */
       items.push({name:nm,type:e.type||'',subType:e.subType||'',action:e.action||'',sub:[e.subType,e.action,e.pattern].filter(Boolean),
-        /* The coach's own plan picture first: it was put on a program row for programs.
-           The library cover (or the video's auto-thumbnail) still stands in when the
-           exercise has never carried one. */
-        image:e.planImage||e.thumb||videoThumb(e.videoData||e.videoUrl)||'',   // row picture → library's Program Image → video's own thumbnail
+        /* The picture the library card carries (the one set in the exercise's own window, or
+           the one put on a program row — both are written to it) first; the video's
+           auto-thumbnail stands in when the exercise has never carried one. */
+        image:exPicture(e)||videoThumb(e.videoData||e.videoUrl)||'',   // the picture on the library card (exPicture) → video's own thumbnail
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
