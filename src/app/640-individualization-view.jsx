@@ -141,16 +141,28 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      printout, an athlete per page under their own header, so it prints (or saves as a PDF)
      in a single go. It reads `written`, i.e. what reached the calendars: an athlete whose
      draft is still waiting on the coach has nothing there yet, so they are named instead of
-     being printed as an empty sheet. Exercises print by name only (`noDesc`): the coaching
-     text under them is what pushed a programme onto a second page. */
+     being printed as an empty sheet. The note the coach wrote on a row prints under its
+     exercise, and the picture put on a row is the one printed (picOf). */
   const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
+  /* A programme written before the row's picture rode onto the calendar has none on its
+     exercises: those take the picture the athlete's table holds for that exercise. */
+  const picOf=(a,ses)=>{
+    const r=diReadReview(team,activeKey,a.id,date);
+    const pics={};
+    diMovePatterns(r&&r.instr&&r.instr.patterns).forEach(p=>{
+      const nm=String(p.exercise||'').trim().toLowerCase();
+      if(nm&&p.image&&!pics[nm])pics[nm]=p.image;});
+    if(!Object.keys(pics).length)return ses;
+    return{...ses,blocks:(ses.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>
+      e.image?e:{...e,image:pics[String(e.name||'').trim().toLowerCase()]||''})}))};
+  };
   const printSquad=withImages=>{
     if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
     const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
     const setup=team.setup||{};
     try{
-      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,withImages:withImages===true,
-        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{withImages:withImages===true,
+        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[picOf(a,written[a.id])]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){
       const msg=L(`Programı henüz takvime yazılmayan ${missing.length} sporcu çıktıya girmedi: ${missing.join(', ')}.`,

@@ -14099,9 +14099,6 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   /* Coach copy: prints the justification recorded against every changed exercise.
      The athlete copy leaves them out entirely — same document, two audiences. */
   const withReasons=!!(opts&&opts.withReasons);
-  /* Names only: the coaching text under each exercise (and its alternative) is left out,
-     so a squad printout keeps each athlete's programme on a single page. */
-  const noDesc=!!(opts&&opts.noDesc);
   // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
   const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
   const dash=`<span class="dash">—</span>`;
@@ -14146,7 +14143,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const lnk=safeURL(e.link);
       /* The coaching text reads under the name, a line per line the coach wrote, plus
          the recorded justification (coach copy only) as a last line. */
-      const notes=noDesc?[]:String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
       /* The alternative, printed as its own row directly under the exercise it stands in
          for: same columns, so it can be read straight across, with the coach's reason
@@ -14159,7 +14156,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const altDose=alt&&['sets','reps','duration','load','tempo','rpe','rest'].some(k=>String(alt[k]||'').trim());
       if(altNm||altWhy||altDose){
         const aLnk=safeURL(alt.link);
-        const aNotes=noDesc?[]:String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+        const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
         /* Whose alternative this is has to be unmissable, or the row reads as an eighth
            exercise rather than a second way of doing the fourth: the number column carries
            the parent's own badge behind a ↳, the cell opens with the word, and the two
@@ -14231,7 +14228,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.players)bits.push(escHTML(e.players));
       if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
       if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
-      const notes=noDesc?[]:String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       const lnk=safeURL(e.videoUrl);
       return`${phHd}<div class="drill-card">
         <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
@@ -41745,6 +41742,8 @@ function diManualProgram(instr,libMap,sessionName){
       sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
       rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
       why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,exDir:exDir,noPat:!row,superset:p.superset||'',link:t(p.link),
+      /* The picture put on the row, so the calendar and the printout show that one and not the library's. */
+      image:p.image||'',
       ...(altName?{alt:{name:altName,pattern:exPat,plane:exPlane,
         sets:String(al.sets||'').trim(),reps:String(al.reps||'').trim(),duration:String(al.duration||'').trim(),
         tempo:String(al.tempo||'').trim(),rpe:String(al.rpe||'').trim(),load:String(al.load||'').trim(),
@@ -42262,7 +42261,7 @@ function diProgramPlan(plan,program,pct){
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
       superset:e.superset||'',pattern:e.noPat?'':(e.exPattern||e.pattern||''),plane:e.noPat?'':(e.exPlane||''),
       dir:e.noPat?'':(e.exDir||''),noPat:!!e.noPat,link:e.link||'',
-      description:why,image:'',changedName:false,
+      description:why,image:e.image||'',changedName:false,
       ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};
   };
@@ -42782,6 +42781,8 @@ function diSessionRows(ses,program){
       out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
         pattern:e.pattern||(src&&src.pattern)||'',coachPattern:(src&&src.coachPattern)||null,equipment:exEquipText(src&&src.equipment),
         why:exDesc(e),basis:(src&&src.basis)||[],
+        /* The row's own picture; a session written before pictures rode along takes the plan's. */
+        image:e.image||(src&&src.image)||'',
         load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
         ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
@@ -42820,15 +42821,15 @@ const diDose=d=>{
    out of the same masthead, session banner and phase cards as the calendar's printout
    (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
    `time`, `duration`, `focus` and `rpe` (its target RPE) are the session's own line: the
-   calendar's copy once it is written, the plan's before. `withImages` puts the library's
-   picture of each exercise beside its name, as a small thumbnail. */
+   calendar's copy once it is written, the plan's before. `withImages` puts each exercise's
+   picture beside its name, as a small thumbnail: the one put on the row, else the library's. */
 function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withImages}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const a=ath||{};
-  const img=nm=>{if(!withImages)return'';const src=rptExImage({name:nm});
-    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(nm)}"></div>`:'';};
+  const img=ex=>{if(!withImages||!ex)return'';const src=rptExImage(ex);
+    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(ex.name)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
     const trs=b.rows.map((r,k)=>{
@@ -42841,12 +42842,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
         <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
-        <td class="ex"><div class="ex-ex-wrap">${img(al.name)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+        <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
       return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
-        <td class="ex"><div class="ex-ex-wrap">${img(r.name)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
+        <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
     }).join('');
@@ -43469,16 +43470,28 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      printout, an athlete per page under their own header, so it prints (or saves as a PDF)
      in a single go. It reads `written`, i.e. what reached the calendars: an athlete whose
      draft is still waiting on the coach has nothing there yet, so they are named instead of
-     being printed as an empty sheet. Exercises print by name only (`noDesc`): the coaching
-     text under them is what pushed a programme onto a second page. */
+     being printed as an empty sheet. The note the coach wrote on a row prints under its
+     exercise, and the picture put on a row is the one printed (picOf). */
   const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
+  /* A programme written before the row's picture rode onto the calendar has none on its
+     exercises: those take the picture the athlete's table holds for that exercise. */
+  const picOf=(a,ses)=>{
+    const r=diReadReview(team,activeKey,a.id,date);
+    const pics={};
+    diMovePatterns(r&&r.instr&&r.instr.patterns).forEach(p=>{
+      const nm=String(p.exercise||'').trim().toLowerCase();
+      if(nm&&p.image&&!pics[nm])pics[nm]=p.image;});
+    if(!Object.keys(pics).length)return ses;
+    return{...ses,blocks:(ses.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>
+      e.image?e:{...e,image:pics[String(e.name||'').trim().toLowerCase()]||''})}))};
+  };
   const printSquad=withImages=>{
     if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
     const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
     const setup=team.setup||{};
     try{
-      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,withImages:withImages===true,
-        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{withImages:withImages===true,
+        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[picOf(a,written[a.id])]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){
       const msg=L(`Programı henüz takvime yazılmayan ${missing.length} sporcu çıktıya girmedi: ${missing.join(', ')}.`,

@@ -433,6 +433,8 @@ function diSessionRows(ses,program){
       out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
         pattern:e.pattern||(src&&src.pattern)||'',coachPattern:(src&&src.coachPattern)||null,equipment:exEquipText(src&&src.equipment),
         why:exDesc(e),basis:(src&&src.basis)||[],
+        /* The row's own picture; a session written before pictures rode along takes the plan's. */
+        image:e.image||(src&&src.image)||'',
         load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
         ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
@@ -471,15 +473,15 @@ const diDose=d=>{
    out of the same masthead, session banner and phase cards as the calendar's printout
    (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
    `time`, `duration`, `focus` and `rpe` (its target RPE) are the session's own line: the
-   calendar's copy once it is written, the plan's before. `withImages` puts the library's
-   picture of each exercise beside its name, as a small thumbnail. */
+   calendar's copy once it is written, the plan's before. `withImages` puts each exercise's
+   picture beside its name, as a small thumbnail: the one put on the row, else the library's. */
 function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withImages}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const a=ath||{};
-  const img=nm=>{if(!withImages)return'';const src=rptExImage({name:nm});
-    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(nm)}"></div>`:'';};
+  const img=ex=>{if(!withImages||!ex)return'';const src=rptExImage(ex);
+    return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(ex.name)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
     const trs=b.rows.map((r,k)=>{
@@ -492,12 +494,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
         <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
-        <td class="ex"><div class="ex-ex-wrap">${img(al.name)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+        <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
       return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
-        <td class="ex"><div class="ex-ex-wrap">${img(r.name)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
+        <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
     }).join('');
