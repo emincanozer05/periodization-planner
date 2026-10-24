@@ -973,6 +973,8 @@ function diManualProgram(instr,libMap,sessionName){
       sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
       rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
       why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,exDir:exDir,noPat:!row,superset:p.superset||'',link:t(p.link),
+      /* The picture put on the row, so the calendar and the printout show that one and not the library's. */
+      image:p.image||'',
       ...(altName?{alt:{name:altName,pattern:exPat,plane:exPlane,
         sets:String(al.sets||'').trim(),reps:String(al.reps||'').trim(),duration:String(al.duration||'').trim(),
         tempo:String(al.tempo||'').trim(),rpe:String(al.rpe||'').trim(),load:String(al.load||'').trim(),
@@ -1490,7 +1492,7 @@ function diProgramPlan(plan,program,pct){
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
       superset:e.superset||'',pattern:e.noPat?'':(e.exPattern||e.pattern||''),plane:e.noPat?'':(e.exPlane||''),
       dir:e.noPat?'':(e.exDir||''),noPat:!!e.noPat,link:e.link||'',
-      description:why,image:'',changedName:false,
+      description:why,image:e.image||'',changedName:false,
       ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};
   };
