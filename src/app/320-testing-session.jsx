@@ -627,6 +627,9 @@ function FmsPartCard({item,test,ath,onUpdate}){
   });
   const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
   const setProblems=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),problems:{...((t.fms||{}).problems||{}),[id]:v}}}));
+  /* Front and side photos of the movement, kept per movement in `fms.photos`; the report prints them. */
+  const ph=(f.photos||{})[item.id]||{};
+  const setPhoto=(k,v)=>onUpdate(t=>{const o=t.fms||{},all=o.photos||{};return{fms:{...o,photos:{...all,[item.id]:{...(all[item.id]||{}),[k]:v}}}};});
   const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
   let lab='';
   const lines=rows.map(r=>{if(r.lab)lab=r.lab[1];return{r,lab:r.kind==='score'?L('Ham skor','Raw score'):lab};});
@@ -668,6 +671,11 @@ function FmsPartCard({item,test,ath,onUpdate}){
             <FmsProblemPick opts={FMS_PROBLEMS[id]} value={(f.problems||{})[id]} onChange={v=>setProblems(id,v)} legacy={(f.comments||{})[id]}/></div>
         :<div key={id} className="tc-obs fmsc-cm"><div className="tc-obs-l">{id==='ankle'?L('Ayak bileği yorumu','Ankle comment'):L('Yorum','Comment')}</div>
             <LiveTextarea value={(f.comments||{})[id]||''} onChange={x=>setComment(id,x)} rows={2} placeholder={L('Kompanzasyon, ağrı, kalite notu…','Compensation, pain, quality note…')}/></div>)}
+      <div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
+        <div className="mk-uploads sm">
+          <MkUpload photo={ph.front} onChange={v=>setPhoto('front',v)} label={L('Önden','Front')}/>
+          <MkUpload photo={ph.side} onChange={v=>setPhoto('side',v)} label={L('Yandan','Side')}/>
+        </div></div>
       <div className="fmsc-tot">{L('FMS toplamı','FMS total')} <b>{c.total!=null?c.total:'—'}</b> / 21<span>{c.n}/7 {L('hareket','movements')}</span></div>
     </div>
   </div>);

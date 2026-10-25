@@ -737,7 +737,8 @@ const TI_HAS={
   ohs:t=>!!(t.ohs&&(tiNum(t.ohs.score)||t.ohs.observations||t.ohs.frontPhoto||t.ohs.sidePhoto||t.ohs.backPhoto)),
   fms:t=>FMS_HAS(t),
   ...Object.fromEntries(FMS_ITEMS.map(it=>['fms_'+it.id,t=>{const f=t.fms||{};const c=fmsCalc(f).items.find(i=>i.id===it.id);
-    return!!(c&&(c.filled||c.cleared))||fmsCommentsOf(it.id).some(k=>(f.comments||{})[k]||((f.problems||{})[k]||[]).length);}])),
+    const ph=(f.photos||{})[it.id]||{};
+    return!!(c&&(c.filled||c.cleared))||!!(ph.front||ph.side)||fmsCommentsOf(it.id).some(k=>(f.comments||{})[k]||((f.problems||{})[k]||[]).length);}])),
   hipRot:t=>{const h=hipRotCalc(t);return[h.irR,h.irL,h.erR,h.erL].some(v=>v!=null);},
   thomas:t=>thomasCalc(t).any,
   tSpine:t=>{const x=tSpineCalc(t);return x.r!=null||x.l!=null;},
