@@ -34,6 +34,8 @@ const RPT_CMP_GROUPS=[
   {id:'anthro',tr:'Antropometri',       en:'Anthropometry'},
   {id:'pow',   tr:'Güç & Sıçrama',      en:'Power & Jump'},
   {id:'spd',   tr:'Sürat & Çeviklik',   en:'Speed & Agility'},
+  {id:'str',   tr:'Kuvvet',             en:'Strength'},
+  {id:'end',   tr:'Dayanıklılık',       en:'Endurance'},
   {id:'cust',  tr:'Özel Testler',       en:'Custom Tests'},
 ];
 /* Mobility is off this sheet. An ankle angle and an ASLR grade are a screen — a pass

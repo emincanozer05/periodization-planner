@@ -318,6 +318,18 @@ const makeTest=(period='pre')=>({
   lateralCmj:{right:'',left:''},
   // Agility / Conditioning
   tTest:'',fiveZeroFive:'',shuttleRun:'',
+  /* 505 per turning side (s). `fiveZeroFive` keeps the better of the two, so every report
+     that reads the single number goes on reading it. */
+  cod505:{right:'',left:''},
+  // Hareket taraması: aktif kalça IR/ER (oturarak, °), Thomas testi (taraf başına), T-spine rotasyonu (°)
+  hipRot:{irR:'',irL:'',erR:'',erL:''},
+  thomas:{right:{},left:{}},
+  tSpine:{right:'',left:''},
+  // Kuvvet: yük (kg) × tekrar → e1RM; Pull-Up tekrar (+ ek yük); plank süreleri taraf başına (s)
+  benchPress:{load:'',reps:''},trapBarDL:{load:'',reps:''},backSquat:{load:'',reps:''},
+  pullUp:{reps:'',load:''},copenhagen:{right:'',left:''},sidePlank:{right:'',left:''},
+  // Dayanıklılık: 30-15 IFT son tamamlanan kademe hızı (km/sa)
+  ift3015:{vift:''},
   // Coach-defined custom tests: { [customTestId]: value }
   custom:{},
   notes:'',
@@ -330,13 +342,27 @@ const TEST_CATALOG=[
   {id:'anthro',        name:'Anthropometric Measurement', short:'Anthro'},
   {id:'circ',          name:'Body Circumference',         short:'Circumf.'},
   {id:'posture',       name:'Static Posture',             short:'Posture'},
-  {id:'fms',           name:'FMS — Functional Movement Screen',short:'FMS'},
+  /* The FMS is picked movement by movement: each of the seven is its own test, but all of
+     them write into the one `fms` record, so the score sheet, its total and every report
+     that reads `fmsCalc` stay as they were. */
+  {id:'fms_deepSquat',       name:'FMS Deep Squat',               short:'FMS DS'},
+  {id:'fms_hurdleStep',      name:'FMS Hurdle Step',              short:'FMS HS'},
+  {id:'fms_inlineLunge',     name:'FMS In-Line Lunge',            short:'FMS ILL'},
+  {id:'fms_shoulderMobility',name:'FMS Shoulder Mobility',        short:'FMS SM'},
+  {id:'fms_aslr',            name:'FMS Active Straight-Leg Raise',short:'FMS ASLR'},
+  {id:'fms_trunkPushup',     name:'FMS Trunk Stability Push-Up',  short:'FMS TSPU'},
+  {id:'fms_rotary',          name:'FMS Rotary Stability',         short:'FMS RS'},
+  /* The whole sheet as one test. No longer offered — new batteries pick the seven movements —
+     but a record screened with it still opens as the full score sheet. */
+  {id:'fms',           name:'FMS — Functional Movement Screen',short:'FMS',retired:true},
   {id:'ohs',           name:'Overhead Squat Test',        short:'OHS'},
-  /* Retired from the picker: no new battery offers them — the FMS sheet carries the
-     active straight-leg raise and an ankle clearing of its own. Kept here so a record
-     that was screened with them still reads, prints and charts as before. */
-  {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF',retired:true},
+  {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF'},
+  /* Retired from the picker: the FMS Active Straight-Leg Raise replaces it. Kept here so a
+     record that was screened with it still reads, prints and charts as before. */
   {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR',retired:true},
+  {id:'hipRot',        name:'Active Hip IR/ER (Seated)',  short:'Hip IR/ER'},
+  {id:'thomas',        name:'Thomas Test',                short:'Thomas'},
+  {id:'tSpine',        name:'Active T-Spine Rotation',    short:'T-Spine'},
   {id:'yBalance',      name:'Y Balance Test',             short:'YBT'},
   {id:'verticalJump',  name:'Vertical Jump',              short:'VJ'},
   {id:'cmj',           name:'Counter-Movement Jump',      short:'CMJ'},
@@ -345,8 +371,16 @@ const TEST_CATALOG=[
   {id:'horizontalJump',name:'Horizontal Jump',            short:'HJ'},
   {id:'dropJump',      name:'Drop Jump (RSI)',            short:'DJ'},
   {id:'sprint',        name:'20m Sprint',                 short:'20m'},
+  {id:'accel',         name:'5-10m Acceleration',         short:'5-10m'},
   {id:'tTest',         name:'T-Agility',                  short:'T-Test'},
-  {id:'fiveZeroFive',  name:'5-0-5',                      short:'5-0-5'},
+  {id:'fiveZeroFive',  name:'505 COD',                    short:'505'},
+  {id:'benchPress',    name:'Bench Press',                short:'BP'},
+  {id:'trapBarDL',     name:'Trap Bar Deadlift',          short:'TBDL'},
+  {id:'pullUp',        name:'Pull-Up',                    short:'Pull-Up'},
+  {id:'copenhagen',    name:'Short Lever Copenhagen Plank',short:'Copenhagen'},
+  {id:'sidePlank',     name:'Side Plank',                 short:'Side Plank'},
+  {id:'backSquat',     name:'Barbell Squat',              short:'Squat'},
+  {id:'ift3015',       name:'30-15 IFT',                  short:'30-15 IFT'},
   {id:'shuttleRun',    name:'Shuttle Run',                short:'Shuttle'},
 ];
 const TEST_CAT_LABEL=id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?c.name:id;};

@@ -47,10 +47,20 @@ const TEST_META={
   anthro:        {g:'basic',   ic:'ruler',   tr:'Boy, kilo, vücut kompozisyonu', en:'Height, weight, composition'},
   circ:          {g:'basic',   ic:'tape',    tr:'Çevre ölçümleri',               en:'Circumference measures'},
   posture:       {g:'basic',   ic:'stand',   tr:'Postür analizi',                en:'Posture analysis'},
+  fms_deepSquat:       {g:'move',ic:'squat',  tr:'Simetrik alt-üst vücut mobilitesi', en:'Symmetrical whole-body mobility'},
+  fms_hurdleStep:      {g:'move',ic:'stand',  tr:'Adım mekaniği, tek bacak kontrolü', en:'Stepping mechanics, single-leg control'},
+  fms_inlineLunge:     {g:'move',ic:'stand',  tr:'Dar tabanda denge ve kontrol',      en:'Balance and control on a narrow base'},
+  fms_shoulderMobility:{g:'move',ic:'angle',  tr:'Omuz kuşağı mobilitesi',            en:'Shoulder girdle mobility'},
+  fms_aslr:            {g:'move',ic:'legraise',tr:'Aktif kalça fleksiyonu',           en:'Active hip flexion'},
+  fms_trunkPushup:     {g:'move',ic:'stand',  tr:'Refleksif gövde stabilitesi',       en:'Reflexive trunk stability'},
+  fms_rotary:          {g:'move',ic:'stand',  tr:'Çok düzlemli gövde stabilitesi',    en:'Multiplanar trunk stability'},
   ankleDF:       {g:'move',    ic:'angle',   tr:'Ayak bileği mobilitesi',        en:'Ankle mobility'},
   aslr:          {g:'move',    ic:'legraise',tr:'Hamstring mobilitesi',          en:'Hamstring mobility'},
   ohs:           {g:'move',    ic:'squat',   tr:'Hareket kalitesi',              en:'Movement quality'},
   fms:           {g:'move',    ic:'squat',   tr:'Fonksiyonel hareket taraması',  en:'Functional movement screen'},
+  hipRot:        {g:'move',    ic:'angle',   tr:'Kalça iç/dış rotasyon açısı',   en:'Hip internal/external rotation'},
+  thomas:        {g:'move',    ic:'legraise',tr:'Kalça fleksör uzunluğu',        en:'Hip flexor length'},
+  tSpine:        {g:'move',    ic:'angle',   tr:'Torasik rotasyon mobilitesi',   en:'Thoracic rotation mobility'},
   yBalance:      {g:'move',    ic:'ybal',    tr:'Denge',                         en:'Balance'},
   verticalJump:  {g:'jump',    ic:'up',      tr:'Dikey sıçrama',                 en:'Vertical jump'},
   cmj:           {g:'jump',    ic:'wave',    tr:'Patlayıcı kuvvet',              en:'Explosive power'},
@@ -59,16 +69,26 @@ const TEST_META={
   horizontalJump:{g:'jump',    ic:'hop',     tr:'Yatay sıçrama',                 en:'Horizontal jump'},
   dropJump:      {g:'jump',    ic:'down',    tr:'Reaktivite',                    en:'Reactive strength'},
   sprint:        {g:'speed',   ic:'watch',   tr:'Maksimum hız',                  en:'Maximum speed'},
+  accel:         {g:'speed',   ic:'watch',   tr:'İlk adım ivmelenmesi',          en:'First-step acceleration'},
   tTest:         {g:'speed',   ic:'cone',    tr:'Çeviklik',                      en:'Agility'},
-  fiveZeroFive:  {g:'speed',   ic:'uturn',   tr:'Yön değiştirme',                en:'Change of direction'},
-  shuttleRun:    {g:'speed',   ic:'shuttle', tr:'Çok yönlülük',                  en:'Shuttle endurance'},
+  fiveZeroFive:  {g:'speed',   ic:'uturn',   tr:'Yön değiştirme, sağ-sol asimetri',en:'Change of direction, R/L asymmetry'},
+  benchPress:    {g:'str',     ic:'up',      tr:'Üst vücut itiş kuvveti (e1RM)', en:'Upper-body push strength (e1RM)'},
+  trapBarDL:     {g:'str',     ic:'up',      tr:'Alt vücut maksimal kuvvet (e1RM)',en:'Lower-body maximal strength (e1RM)'},
+  pullUp:        {g:'str',     ic:'up',      tr:'Üst vücut çekiş kuvveti',       en:'Upper-body pull strength'},
+  copenhagen:    {g:'str',     ic:'lateral', tr:'Adduktor kuvvet-dayanıklılığı', en:'Adductor strength-endurance'},
+  sidePlank:     {g:'str',     ic:'lateral', tr:'Lateral gövde dayanıklılığı',   en:'Lateral trunk endurance'},
+  backSquat:     {g:'str',     ic:'squat',   tr:'Alt vücut kuvveti (e1RM)',      en:'Lower-body strength (e1RM)'},
+  ift3015:       {g:'endur',   ic:'shuttle', tr:'Aralıklı koşu kapasitesi (VIFT)',en:'Intermittent running capacity (VIFT)'},
+  shuttleRun:    {g:'endur',   ic:'shuttle', tr:'Çok yönlülük',                  en:'Shuttle endurance'},
 };
 const TEST_GROUPS=[
   {id:'all',   tr:'Tüm Testler',          en:'All Tests'},
   {id:'basic', tr:'Temel Ölçümler',       en:'Basic Measures'},
-  {id:'move',  tr:'Hareket Kalitesi',     en:'Movement Quality'},
+  {id:'move',  tr:'Hareket Taraması',     en:'Movement Screen'},
   {id:'jump',  tr:'Sıçrama & Reaktivite', en:'Jump & Reactivity'},
   {id:'speed', tr:'Hız & Çeviklik',       en:'Speed & Agility'},
+  {id:'str',   tr:'Kuvvet',               en:'Strength'},
+  {id:'endur', tr:'Dayanıklılık',         en:'Endurance'},
   {id:'custom',tr:'Özel Testler',         en:'Custom Tests'},
 ];
 const testGroupOf=c=>c.custom?'custom':((TEST_META[c.id]||{}).g||'custom');
@@ -237,6 +257,19 @@ const FMS_SHEET=[
 ];
 /* What the record holds for one line of the sheet. */
 const fmsCell=(f,r)=>{const v=(f||{})[r.f];return r.side?((v&&v[r.side])||''):(v==null?'':v);};
+/* The seven movements as tests of their own (`fms_<movement>` in the catalog). Each card edits
+   only its own lines of the sheet — the movement, and the clearing / mobility lines filed under
+   it — in the shared `fms` record. */
+const FMS_PART_IDS=FMS_ITEMS.map(i=>'fms_'+i.id);
+const fmsPartItem=id=>FMS_ITEMS.find(i=>'fms_'+i.id===id)||null;
+const FMS_ROW_OF={anklePain:'inlineLunge',ankleMob:'inlineLunge',shoulderClear:'shoulderMobility',pushupClear:'trunkPushup',rotaryClear:'rotary'};
+const fmsRowsOf=mid=>FMS_SHEET.filter(r=>(FMS_ROW_OF[r.f]||r.f)===mid);
+/* The comment cells a movement owns on the sheet (the in-line lunge also owns the ankle one). */
+const fmsCommentsOf=mid=>fmsRowsOf(mid).filter(r=>r.cm).map(r=>r.cm.id);
+/* Does a battery carry any of the FMS: the whole sheet (older records) or one of its movements. */
+const fmsInBattery=bat=>Array.isArray(bat)&&bat.some(id=>id==='fms'||FMS_PART_IDS.includes(id));
+/* The movements a record shows: every one for the whole-sheet test, else the ones picked. */
+const fmsMovesIn=bat=>!Array.isArray(bat)||bat.includes('fms')?FMS_ITEMS.map(i=>i.id):FMS_ITEMS.filter(i=>bat.includes('fms_'+i.id)).map(i=>i.id);
 /* The line's words for the footer of the sheet, in the report language. */
 const FMS_LEGEND=()=>[
   L('Ham Skor: Bu skor sağ ve sol tarafın ayrı puanlanması için kullanılır. Yedi testin beşinde sağ ve sol taraf puanlanır ve ikisi de bu alana kaydedilir.',
@@ -365,29 +398,29 @@ function fmsSheetHtml(test,ath,opts){
 </div>`;
 }
 /* ---- The page that follows the score sheet: what each of the seven movements is for. ----
-   One A4 portrait page, a picture on the left and the words beside it. The pictures live in fms/
-   (cropped 3:2 and shrunk for print). The movement names are the English FMS terms in both
+   One A4 portrait page, a picture on the left and the words beside it. The pictures live in tests/
+   and fms/ (shrunk for print). Only the movements the record screened are listed. The movement names are the English FMS terms in both
    languages; the explanations follow the language setting. */
 const FMS_INFO=[
-  {id:'deepSquat',img:'deep-squat.jpg',name:'Deep Squat',
+  {id:'deepSquat',img:'tests/deep-squat.jpg',name:'Deep Squat',
     tr:'Tüm vücut mekaniğini ve nöromüsküler kontrolü test eder. Kalça, diz ve ayak bileğinin simetrik mobilite ve stabilitesini ölçer. Başın üstündeki çubuk omuzlar ve sırtın da simetrik hareket edebildiğini gösterir. Günlük hayatta ya da sporda tam derinliğe nadiren inilir. Yine de bu kalıba erişebilmek, her seferinde maksimum hareket açıklığının sınırına dayanmamanı sağlayan bir tampon alan yaratır.',
     en:'Tests whole-body mechanics and neuromuscular control. Measures the symmetrical mobility and stability of the hips, knees and ankles. The dowel held overhead shows that the shoulders and back can also move symmetrically. Full depth is rarely reached in daily life or in sport. Still, being able to access this pattern creates a buffer zone, so you are not up against the limit of your maximum range of motion every time.'},
-  {id:'hurdleStep',img:'hurdle-step.jpg',name:'Hurdle Step',
+  {id:'hurdleStep',img:'tests/hurdle-step.jpg',name:'Hurdle Step',
     tr:'Yürüme ve ivmelenmenin temel parçası olan adım ve koşu mekaniğini, tek bacak üzerinde denge ve kontrolle birlikte test eder. Bir bacak üzerinde dururken diğer bacağın ayak bileği, diz ve kalçasını kontrollü şekilde bükerek adım atabilme becerisine bakar.',
     en:'Tests the stepping and running mechanics that underlie walking and acceleration, together with balance and control on one leg. Looks at the ability to step by bending the ankle, knee and hip of one leg in a controlled way while standing on the other.'},
-  {id:'inlineLunge',img:'inline-lunge.jpg',name:'In-Line Lunge',
+  {id:'inlineLunge',img:'fms/inline-lunge.jpg',name:'In-Line Lunge',
     tr:'Hurdle Step koşu ve yürümeyi incelerken, In-Line Lunge yavaşlama ve yön değiştirme hareketlerini yansıtır. Alt vücudu ince bir tabanda, ayaklar arka arkaya konumda yük altına sokar. Böylece denge, kalça-diz-ayak bileği kontrolü ve sağ-sol farkı görülür.',
     en:'While the Hurdle Step examines running and walking, the In-Line Lunge reflects deceleration and change of direction. It loads the lower body on a narrow base, with the feet one behind the other. This shows balance, hip-knee-ankle control and right-left differences.'},
-  {id:'shoulderMobility',img:'shoulder-mobility.jpg',name:'Shoulder Mobility',
+  {id:'shoulderMobility',img:'tests/shoulder-mobility.jpg',name:'Shoulder Mobility',
     tr:'Omuz kuşağı, göğüs kafesi (torasik omurga) ve kolların birbiriyle uyumlu çalışma ritmini gösterir. İki elin sırtta birbirine ne kadar yaklaşabildiğine bakılır. Bu hareket şut, pas ve baş üstü hareketler için önemlidir.',
     en:'Shows how well the shoulder girdle, the rib cage (thoracic spine) and the arms work together. Looks at how close the two hands can get to each other behind the back. This movement matters for shooting, passing and overhead movements.'},
-  {id:'aslr',img:'aslr.jpg',name:'Active Straight-Leg Raise',
+  {id:'aslr',img:'tests/aslr.jpg',name:'Active Straight-Leg Raise',
     tr:'Bükülen kalçanın aktif mobilitesini ortaya çıkarır. Bir bacak havadayken diğer bacak ve gövde stabil kalabiliyor mu, ona bakar. Ayrıca arka bacak kaslarının esnekliği ve pelvis kontrolü görülür.',
     en:'Reveals the active mobility of the flexing hip. Looks at whether the other leg and the trunk stay stable while one leg is in the air. It also shows hamstring flexibility and pelvic control.'},
-  {id:'trunkPushup',img:'trunk-pushup.jpg',name:'Trunk Stability Push-Up',
+  {id:'trunkPushup',img:'fms/trunk-pushup.jpg',name:'Trunk Stability Push-Up',
     tr:'Refleksif core stabilizasyonunun temel gözlemidir. Kollar şınav kalıbında çalışırken omurga ve kalçada hareket olmaması beklenir. Şınava yerden “ölü başlangıçla” başlandığı için, ana kasların çalışmasına karşı sagittal düzlemde stabilite ve lumbopelvik kontrol test edilir.',
     en:'The basic observation of reflexive core stabilization. While the arms work in a push-up pattern, no movement is expected in the spine and hips. Because the push-up starts from the floor with a “dead start”, stability in the sagittal plane against the work of the prime movers, and lumbopelvic control, are tested.'},
-  {id:'rotary',img:'rotary-stability.jpg',name:'Rotary Stability',
+  {id:'rotary',img:'fms/rotary-stability.jpg',name:'Rotary Stability',
     tr:'Karmaşık bir kalıptır. Doğru nöromüsküler koordinasyon ve tırmanma gibi temel kalıplardaki mobilite ve stabilite uyumunu gerektirir. Dört ayak pozisyonunda kol ve bacak birlikte hareket ederken gövdenin kontrolünü korumaya bakar. Bu, güç aktarımı ve çok düzlemli gövde stabilitesi açısından önemlidir.',
     en:'A complex pattern. It requires proper neuromuscular coordination and the combined mobility and stability of basic patterns such as crawling. In the quadruped position, it looks at whether control of the trunk is kept while the arm and leg move together. This matters for force transfer and multiplanar trunk stability.'},
 ];
@@ -403,21 +436,22 @@ const FMS_INFO_CSS=`
 .fmsi-head .lg img{display:block;width:100%;height:100%;object-fit:cover}
 .fmsi-head .tt{flex:1;margin-left:1.6mm;background:${FMS_RED};color:#fff;display:flex;align-items:center;padding:0 5mm;font-size:15pt;letter-spacing:.04em;font-weight:700}
 .fmsi-list{flex:1;min-height:0;display:flex;flex-direction:column}
-.fmsi-row{flex:1 1 0;min-height:0;display:flex;align-items:center;gap:4.5mm;border-top:.25mm solid #cfcfcf;padding:1mm 0}
+.fmsi-row{flex:1 1 0;min-height:0;max-height:40mm;display:flex;align-items:center;gap:4.5mm;border-top:.25mm solid #cfcfcf;padding:1mm 0}
 .fmsi-row:first-child{border-top:none}
-.fmsi-img{flex:none;width:48mm;height:32mm;background:#eee;overflow:hidden}
+.fmsi-img{flex:none;width:52mm;height:29.25mm;background:#eee;overflow:hidden}
 .fmsi-img img{display:block;width:100%;height:100%;object-fit:cover}
 .fmsi-tx{flex:1;min-width:0}
 .fmsi-tx h3{display:flex;align-items:baseline;gap:2.2mm;margin:0 0 1.2mm;font-size:14pt;line-height:1.15;font-weight:700;letter-spacing:.01em;color:#111}
 .fmsi-tx h3 i{font-style:normal;color:${FMS_RED};font-weight:700}
 .fmsi-tx p{margin:0;font-size:9pt;line-height:1.36;color:#2b2b2b}
 `;
-function fmsInfoHtml(){
+function fmsInfoHtml(moves){
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const base=location.origin;
+  const list=Array.isArray(moves)&&moves.length?FMS_INFO.filter(m=>moves.includes(m.id)):FMS_INFO;
   return`<div class="fmsi">
   <div class="fmsi-head"><div class="lg"><img src="${base}/fms-logo.png" alt="FMS"/></div><div class="tt">${L('FMS HAREKET KALIPLARI','FMS MOVEMENT PATTERNS')}</div></div>
-  <div class="fmsi-list">${FMS_INFO.map((m,i)=>`<div class="fmsi-row"><div class="fmsi-img"><img src="${base}/fms/${m.img}" alt="${esc(m.name)}"/></div><div class="fmsi-tx"><h3><i>${i+1}</i><span>${esc(m.name)}</span></h3><p>${esc(L(m.tr,m.en))}</p></div></div>`).join('')}</div>
+  <div class="fmsi-list">${list.map((m,i)=>`<div class="fmsi-row"><div class="fmsi-img"><img src="${base}/${m.img}" alt="${esc(m.name)}"/></div><div class="fmsi-tx"><h3><i>${i+1}</i><span>${esc(m.name)}</span></h3><p>${esc(L(m.tr,m.en))}</p></div></div>`).join('')}</div>
 </div>`;
 }
 /* The sheet alone, as its own document — what the card's own print button opens. */
@@ -439,9 +473,9 @@ body{background:#fff;font-family:'Google Sans',Arial,sans-serif}
 ${FMS_SHEET_CSS}
 ${FMS_INFO_CSS}
 </style></head><body>
-<div class="print-bar">📄 ${L('FMS puan kâğıdı hazır','FMS score sheet is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button onclick="window.close()">${L('Kapat','Close')}</button></div>
+<div class="print-bar">${L('FMS puan kâğıdı hazır','FMS score sheet is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp"></div>
-<div class="pg">${fmsSheetHtml(test,ath,opts)}${fmsInfoHtml()}</div>
+<div class="pg">${fmsSheetHtml(test,ath,opts)}${fmsInfoHtml(fmsMovesIn(test&&test.battery))}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
   printWhenImagesReady(w,{safety:8000});
@@ -489,6 +523,101 @@ async function fmsReadPdf(file){
   if(!pages.length)throw new Error(L('PDF boş görünüyor.','That PDF appears to be empty.'));
   return{name:file.name||'FMS.pdf',size:file.size,at:new Date().toISOString(),pages,data:dataUrl};
 }
+
+/* =========================================================
+   READINGS OF THE NEWER TESTS — one place that turns the raw entries into the numbers a
+   card shows and a report prints, so the two cannot disagree.
+   ========================================================= */
+const tN=v=>{const n=Number(v);return(v===''||v==null||!isFinite(n))?null:n;};
+/* Right/left asymmetry in per cent of the better side: the longer reach or hold (`hi`), the
+   quicker time (`lo`). Under 10% reads as balanced, 10-15% is worth watching, 15%+ is a flag. */
+function asymPct(a,b,dir){
+  const x=tN(a),y=tN(b);if(x==null||y==null||x<=0||y<=0)return null;
+  const best=dir==='lo'?Math.min(x,y):Math.max(x,y);
+  return+(Math.abs(x-y)/best*100).toFixed(1);
+}
+const asymLevel=p=>p==null?'':p<10?'ok':p<15?'warn':'bad';
+const ASYM_COL={ok:'#16a34a',warn:'#b88400',bad:'#dc2626'};
+/* 505 COD: a time per turning side; the better one is the athlete's 505. A record from before
+   the sides existed carries only `fiveZeroFive`, and still reads as that. */
+function cod505Calc(t){
+  const o=(t&&t.cod505)||{};const r=tN(o.right),l=tN(o.left);
+  const best=r!=null&&l!=null?Math.min(r,l):(r!=null?r:l!=null?l:tN(t&&t.fiveZeroFive));
+  return{r,l,best,pct:asymPct(r,l,'lo'),slow:r!=null&&l!=null&&r!==l?(r>l?'right':'left'):null};
+}
+/* 5-10 m acceleration: the 5 m and 10 m gates (shared with the sprint's split times, so a run
+   timed once feeds both the acceleration test and the sprint F-V profile). */
+function accelCalc(t){
+  const sp=(t&&t.sprintSplits)||{};const t5=tN(sp.t5),t10=tN(sp.t10);
+  const split=t5!=null&&t10!=null&&t10>t5?+(t10-t5).toFixed(2):null;
+  return{t5,t10,split,v5:t5>0?+(5/t5).toFixed(2):null,v510:split>0?+(5/split).toFixed(2):null,v10:t10>0?+(10/t10).toFixed(2):null};
+}
+/* Active hip IR / ER, seated (°): each side's two rotations and their total arc. */
+function hipRotCalc(t){
+  const o=(t&&t.hipRot)||{};const irR=tN(o.irR),irL=tN(o.irL),erR=tN(o.erR),erL=tN(o.erL);
+  const totR=irR!=null&&erR!=null?irR+erR:null,totL=irL!=null&&erL!=null?irL+erL:null;
+  const d=(a,b)=>a!=null&&b!=null?+Math.abs(a-b).toFixed(1):null;
+  return{irR,irL,erR,erL,totR,totL,dIr:d(irR,irL),dEr:d(erR,erL),dTot:d(totR,totL),pTot:asymPct(totR,totL,'hi')};
+}
+/* Thomas test, per side. Three findings, each a −/+ call; the two angles, when measured, make the
+   call themselves where the coach has not: the thigh resting above the horizontal (hip angle > 0°)
+   reads as short hip flexors (iliopsoas), knee flexion under 80° as a short rectus femoris. */
+/* [key, name, what a positive looks like as [tr,en]] — read with L() where it is drawn. */
+const THOMAS_FIND=[
+  ['psoas','Iliopsoas',['Uyluk masaya inmiyor','Thigh does not reach the table']],
+  ['rf','Rectus femoris',['Diz fleksiyonu < 80°','Knee flexion < 80°']],
+  ['itb','TFL / ITB',['Uyluk abdüksiyona kayıyor','Thigh drifts into abduction']],
+];
+function thomasCalc(t){
+  const side=s=>{
+    const o=((t&&t.thomas)||{})[s]||{};const hip=tN(o.hip),knee=tN(o.knee);
+    const auto={psoas:hip!=null?(hip>0?'pos':'neg'):'',rf:knee!=null?(knee<80?'pos':'neg'):'',itb:''};
+    const res={};THOMAS_FIND.forEach(([k])=>{res[k]=o[k]==='pos'||o[k]==='neg'?o[k]:auto[k];});
+    return{hip,knee,res,pos:THOMAS_FIND.filter(([k])=>res[k]==='pos').map(([k])=>k),any:hip!=null||knee!=null||THOMAS_FIND.some(([k])=>res[k])};
+  };
+  const right=side('right'),left=side('left');
+  return{right,left,any:right.any||left.any};
+}
+/* Active T-spine rotation (°) per side. */
+function tSpineCalc(t){
+  const o=(t&&t.tSpine)||{};const r=tN(o.right),l=tN(o.left);
+  return{r,l,diff:r!=null&&l!=null?+Math.abs(r-l).toFixed(1):null,pct:asymPct(r,l,'hi')};
+}
+/* Strength. Bench press, trap bar deadlift and barbell squat take a load and the reps done with
+   it; the estimated 1RM is Epley's (the load itself on a single, capped at 12 reps where the
+   estimate stops being worth much), and relative strength is that over body mass. */
+const STR_LIFTS=['benchPress','trapBarDL','backSquat'];
+const strE1rm=(kg,reps)=>{if(!(kg>0)||!(reps>0))return null;return reps===1?kg:kg*(1+Math.min(reps,12)/30);};
+function strCalc(t,id,bw){
+  const o=(t&&t[id])||{};const load=tN(o.load),reps=tN(o.reps);
+  const e1=strE1rm(load,reps);const m=tN(bw);
+  return{load,reps,e1:e1!=null?+e1.toFixed(1):null,rel:e1!=null&&m>0?+(e1/m).toFixed(2):null};
+}
+/* Plank holds (s) per side: Copenhagen (short lever) and side plank. */
+function holdCalc(t,id){
+  const o=(t&&t[id])||{};const r=tN(o.right),l=tN(o.left);
+  return{r,l,pct:asymPct(r,l,'hi'),weak:r!=null&&l!=null&&r!==l?(r<l?'right':'left'):null};
+}
+/* 30-15 IFT. VIFT is the speed of the last stage completed (km/h). VO2max is Buchheit's (2008)
+   estimate: 28.3 − 2.15·G − 0.741·A − 0.0357·W + 0.0586·A·VIFT + 1.03·VIFT, G 1 = male / 2 = female,
+   A age (years), W body mass (kg). It needs all four; without one it says which is missing. */
+function iftCalc(t,ath,bw){
+  const v=tN(t&&t.ift3015&&t.ift3015.vift);const a=ath||{};
+  const G=a.sex==='M'?1:a.sex==='F'?2:null;
+  const A=fmsAgeAt(a.dateOfBirth,t&&t.date);const W=tN(bw);
+  const missing=[G==null&&L('cinsiyet','sex'),A==null&&L('doğum tarihi','date of birth'),!(W>0)&&L('kilo','body mass')].filter(Boolean);
+  const vo2=v>0&&!missing.length?+(28.3-2.15*G-0.741*A-0.0357*W+0.0586*A*v+1.03*v).toFixed(1):null;
+  return{vift:v,vo2,missing,ms:v>0?+(v/3.6).toFixed(2):null};
+}
+/* The picture printed beside each test — what the athlete, a parent or a physio sees to know what
+   was done. Tests without one print without it. */
+const TEST_IMG={
+  fms_deepSquat:'tests/deep-squat.jpg',fms_hurdleStep:'tests/hurdle-step.jpg',fms_inlineLunge:'fms/inline-lunge.jpg',
+  fms_shoulderMobility:'tests/shoulder-mobility.jpg',fms_aslr:'tests/aslr.jpg',fms_trunkPushup:'fms/trunk-pushup.jpg',fms_rotary:'fms/rotary-stability.jpg',
+  ohs:'tests/deep-squat.jpg',ankleDF:'tests/ankle-df.jpg',aslr:'tests/aslr.jpg',hipRot:'tests/hip-rotation.jpg',thomas:'tests/thomas.jpg',tSpine:'tests/t-spine-rotation.jpg',
+  cmj:'tests/cmj.jpg',lateralCmj:'tests/lateral-cmj.jpg',squatJump:'tests/squat-jump.jpg',horizontalJump:'tests/broad-jump.jpg',dropJump:'tests/drop-jump.jpg',
+  accel:'tests/accel-5-10.jpg',tTest:'tests/t-test.jpg',fiveZeroFive:'tests/cod-505.jpg',
+};
 
 /* =========================================================
    TEST INFO — what each test is, and why it is taken
@@ -552,13 +681,50 @@ const TEST_INFO={
   tTest:{n:'T-Agility Test',
     tr:{w:'Sporcu ileri sprint, lateral hareket ve geri koşudan oluşan T şeklindeki bir parkuru mümkün olduğunca hızlı tamamlar.',p:'Hızlanma, yavaşlama, yön değiştirme ve lateral hareket becerisini değerlendirmek için kullanılır.'},
     en:{w:'The athlete completes a T-shaped course of forward sprint, lateral shuffle and backpedal as fast as possible.',p:'Used to assess acceleration, deceleration, change of direction and lateral movement ability.'}},
-  fiveZeroFive:{n:'5-0-5',
-    tr:{w:'Sporcu hızlandıktan sonra 5 metrede 180° dönerek 5 metre geri sprint yapar.',p:'Yön değiştirme hızını, yavaşlama ve yeniden hızlanma becerisini değerlendirmek için kullanılır.'},
-    en:{w:'After a run-up, the athlete sprints 5 metres, turns 180° and sprints 5 metres back.',p:'Used to assess change-of-direction speed and the ability to decelerate and re-accelerate.'}},
+  fiveZeroFive:{n:'505 COD',
+    tr:{w:'Sporcu 10 metre hızlanarak gelir, kapıdan 5 metre sonra çizgide 180° döner ve 5 metre geri sprint eder. Dönüş her iki ayakla ayrı ayrı yapılır.',p:'Yön değiştirme hızını, yavaşlama ve yeniden hızlanma becerisini ve sağ-sol dönüş farkını (asimetri %) değerlendirmek için kullanılır.'},
+    en:{w:'The athlete runs in over 10 metres, turns 180° on the line 5 metres past the gate and sprints 5 metres back, turning off each foot in turn.',p:'Used to assess change-of-direction speed, the ability to decelerate and re-accelerate, and the right–left turning difference (asymmetry %).'}},
+  accel:{n:'5-10m Acceleration',
+    tr:{w:'Sporcu duruştan çıkış yapar; 5 m ve 10 m kapılarından geçiş süreleri alınır.',p:'İlk adım ivmelenmesini ve 5-10 m arasındaki hız kazanımını değerlendirmek için kullanılır.'},
+    en:{w:'From a standing start, the athlete sprints through gates at 5 m and 10 m.',p:'Used to assess first-step acceleration and the speed gained between 5 and 10 m.'}},
+  hipRot:{n:'Active Hip IR/ER (Seated)',
+    tr:{w:'Sporcu masanın kenarında oturur; kalça ve diz 90° fleksiyondayken bacağını aktif olarak içe ve dışa döndürür, açı gonyometre ya da inklinometre ile ölçülür.',p:'Kalça iç-dış rotasyon hareket açıklığını, toplam rotasyon arkını ve sağ-sol farkını değerlendirmek için kullanılır.'},
+    en:{w:'Seated on the edge of a table with hip and knee at 90°, the athlete actively rotates the leg inwards and outwards; the angle is measured with a goniometer or inclinometer.',p:'Used to assess hip internal and external rotation range, the total rotation arc and the right–left difference.'}},
+  thomas:{n:'Thomas Test',
+    tr:{w:'Sporcu masanın ucunda sırtüstü yatar, bir dizini göğsüne çeker; diğer bacağın uyluk ve diz konumu gözlenir ve açılar ölçülür.',p:'İliopsoas, rectus femoris ve TFL/ITB uzunluğunu, yani kalça fleksörlerindeki kısalığı değerlendirmek için kullanılır.'},
+    en:{w:'Lying back on the end of a table, the athlete hugs one knee to the chest; the position of the other thigh and knee is observed and the angles measured.',p:'Used to assess the length of the iliopsoas, rectus femoris and TFL/ITB — tightness in the hip flexors.'}},
+  tSpine:{n:'Active T-Spine Rotation',
+    tr:{w:'Sporcu oturur, kalça sabitken sopayı omuzlarında tutarak gövdesini aktif olarak iki yana döndürür; rotasyon açısı ölçülür.',p:'Torasik omurga rotasyon mobilitesini ve sağ-sol farkını değerlendirmek için kullanılır.'},
+    en:{w:'Seated with the pelvis fixed and a dowel across the shoulders, the athlete actively rotates the trunk to each side; the rotation angle is measured.',p:'Used to assess thoracic rotation mobility and the right–left difference.'}},
+  benchPress:{n:'Bench Press',
+    tr:{w:'Sporcu bench press’te belirlenen yükle teknik bozulmadan yapabildiği kadar tekrar yapar (ya da 1RM denemesi).',p:'Üst vücut itiş kuvvetini tahmini 1RM (Epley) ve vücut ağırlığına göre göreli kuvvet olarak değerlendirmek için kullanılır.'},
+    en:{w:'The athlete performs as many clean reps as possible with a set load on the bench press (or a 1RM attempt).',p:'Used to assess upper-body pushing strength as an estimated 1RM (Epley) and relative to body mass.'}},
+  trapBarDL:{n:'Trap Bar Deadlift',
+    tr:{w:'Sporcu trap bar ile belirlenen yükü teknik bozulmadan kaldırabildiği kadar tekrar yapar (ya da 1RM denemesi).',p:'Alt vücut maksimal kuvvetini tahmini 1RM ve göreli kuvvet olarak değerlendirmek için kullanılır.'},
+    en:{w:'The athlete lifts a set load with the trap bar for as many clean reps as possible (or a 1RM attempt).',p:'Used to assess lower-body maximal strength as an estimated 1RM and relative strength.'}},
+  pullUp:{n:'Pull-Up',
+    tr:{w:'Sporcu tam asılı pozisyondan çenesi barın üstüne çıkana kadar çekiş yapar; tam tekrar sayısı (gerekirse ek yükle) kaydedilir.',p:'Üst vücut çekiş kuvvetini ve kuvvet-dayanıklılığını değerlendirmek için kullanılır.'},
+    en:{w:'From a dead hang, the athlete pulls until the chin clears the bar; full reps are counted (with added load if needed).',p:'Used to assess upper-body pulling strength and strength-endurance.'}},
+  copenhagen:{n:'Short Lever Copenhagen Plank',
+    tr:{w:'Sporcu yan plank pozisyonunda üstteki bacağın dizini sehpaya dayar (kısa kol) ve pozisyonu koruyabildiği süre her iki taraf için ölçülür.',p:'Adduktor kas grubunun kuvvet-dayanıklılığını ve sağ-sol farkını değerlendirmek; kasık sakatlığı riskini izlemek için kullanılır.'},
+    en:{w:'In a side plank, the athlete rests the top knee on a bench (short lever) and holds; the time is taken for each side.',p:'Used to assess adductor strength-endurance and the right–left difference, and to monitor groin injury risk.'}},
+  sidePlank:{n:'Side Plank',
+    tr:{w:'Sporcu dirsek üzerinde yan plank pozisyonunu bozulmadan koruyabildiği süre boyunca tutar; her iki taraf ölçülür.',p:'Lateral gövde kaslarının dayanıklılığını ve sağ-sol farkını değerlendirmek için kullanılır.'},
+    en:{w:'The athlete holds a side plank on the elbow for as long as the position stays clean; both sides are timed.',p:'Used to assess lateral trunk endurance and the right–left difference.'}},
+  backSquat:{n:'Barbell Squat',
+    tr:{w:'Sporcu barbell back squat’ta belirlenen yükle teknik bozulmadan yapabildiği kadar tekrar yapar (ya da 1RM denemesi).',p:'Alt vücut kuvvetini tahmini 1RM ve vücut ağırlığına göre göreli kuvvet olarak değerlendirmek için kullanılır.'},
+    en:{w:'The athlete performs as many clean reps as possible with a set load on the barbell back squat (or a 1RM attempt).',p:'Used to assess lower-body strength as an estimated 1RM and relative to body mass.'}},
+  ift3015:{n:'30-15 Intermittent Fitness Test',
+    tr:{w:'Sporcu 40 m mekikte 30 sn koşu, 15 sn aktif dinlenme şeklinde, her kademede 0,5 km/sa artan hızla koşar; tamamlanan son kademenin hızı (VIFT) kaydedilir.',p:'Aralıklı, yön değiştirmeli koşu kapasitesini değerlendirmek, VO2max’ı tahmin etmek ve antrenman koşu hızlarını bireyselleştirmek için kullanılır.'},
+    en:{w:'Over a 40 m shuttle, the athlete runs 30 s and recovers actively for 15 s, with the speed rising 0.5 km/h each stage; the speed of the last stage completed (VIFT) is recorded.',p:'Used to assess intermittent, change-of-direction running capacity, estimate VO2max and individualise training running speeds.'}},
   shuttleRun:{n:'Shuttle Run',
     tr:{w:'Sporcu belirlenen mesafeler arasında gidiş-dönüş koşuları yapar.',p:'Dayanıklılığı ve tekrarlı koşu kapasitesini değerlendirmek için kullanılır.'},
     en:{w:'The athlete runs back and forth between set markers.',p:'Used to assess endurance and repeated-running capacity.'}},
 };
+/* The seven FMS movements explain themselves with the words of the movement-pattern page. */
+FMS_INFO.forEach(m=>{TEST_INFO['fms_'+m.id]={n:'FMS '+m.name,
+  tr:{w:m.tr,p:'0-3 arasında puanlanır; çift taraflı hareketlerde düşük taraf geçerlidir. Ağrı varsa skor 0 olur.'},
+  en:{w:m.en,p:'Scored 0-3; on a bilateral movement the lower side counts. Pain makes the score 0.'}};});
 /* Which tests a record actually covers. A record saved with a battery says so
    itself; an older one without one is read from its own readings, so a sheet
    never explains a test that was never taken. */
@@ -570,6 +736,11 @@ const TI_HAS={
   aslr:t=>tiNum(t.aslr&&t.aslr.right)||tiNum(t.aslr&&t.aslr.left),
   ohs:t=>!!(t.ohs&&(tiNum(t.ohs.score)||t.ohs.observations||t.ohs.frontPhoto||t.ohs.sidePhoto||t.ohs.backPhoto)),
   fms:t=>FMS_HAS(t),
+  ...Object.fromEntries(FMS_ITEMS.map(it=>['fms_'+it.id,t=>{const f=t.fms||{};const c=fmsCalc(f).items.find(i=>i.id===it.id);
+    return!!(c&&(c.filled||c.cleared))||fmsCommentsOf(it.id).some(k=>(f.comments||{})[k]||((f.problems||{})[k]||[]).length);}])),
+  hipRot:t=>{const h=hipRotCalc(t);return[h.irR,h.irL,h.erR,h.erL].some(v=>v!=null);},
+  thomas:t=>thomasCalc(t).any,
+  tSpine:t=>{const x=tSpineCalc(t);return x.r!=null||x.l!=null;},
   yBalance:t=>{const y=ybCalc(t.yBalance);return y.limb!=null||['ant','pm','pl'].some(k=>y.right[k]!=null||y.left[k]!=null);},
   verticalJump:t=>tiNum(t.verticalJump),
   cmj:t=>tiNum(t.cmj),
@@ -577,10 +748,16 @@ const TI_HAS={
   squatJump:t=>tiNum(t.squatJump),
   horizontalJump:t=>tiNum(t.horizontalJump),
   dropJump:t=>tiNum(t.dropJump),
+  accel:t=>{const a=accelCalc(t);return a.t5!=null||a.t10!=null;},
   sprint:t=>!!(t.sprint20m&&(tiNum(t.sprint20m.time)||t.sprint20m.sideStep1||t.sprint20m.sideStep2||t.sprint20m.sideStep3||t.sprint20m.frontRightFoot||t.sprint20m.frontLeftFoot)),
   tTest:t=>tiNum(t.tTest),
-  fiveZeroFive:t=>tiNum(t.fiveZeroFive),
+  fiveZeroFive:t=>cod505Calc(t).best!=null,
   shuttleRun:t=>tiNum(t.shuttleRun),
+  ...Object.fromEntries(STR_LIFTS.map(id=>[id,t=>!!(t[id]&&(tiNum(t[id].load)||tiNum(t[id].reps)))])),
+  pullUp:t=>!!(t.pullUp&&(tiNum(t.pullUp.reps)||tiNum(t.pullUp.load))),
+  copenhagen:t=>{const h=holdCalc(t,'copenhagen');return h.r!=null||h.l!=null;},
+  sidePlank:t=>{const h=holdCalc(t,'sidePlank');return h.r!=null||h.l!=null;},
+  ift3015:t=>tiNum(t.ift3015&&t.ift3015.vift),
 };
 const tiNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
 function testInfoIds(test){
@@ -595,7 +772,11 @@ const CMP_METRIC_TEST={height:'anthro',weight:'anthro',bodyFat:'anthro',wingspan
   adfR:'ankleDF',adfL:'ankleDF',adfD:'ankleDF',aslrR:'aslr',aslrL:'aslr',ohs:'ohs',ybR:'yBalance',ybL:'yBalance',ybD:'yBalance',
   vj:'verticalJump',cmj:'cmj',sj:'squatJump',dj:'dropJump',hj:'horizontalJump',
   lcjR:'lateralCmj',lcjL:'lateralCmj',lcjD:'lateralCmj',
-  sp20:'sprint',tTest:'tTest',f505:'fiveZeroFive',shut:'shuttleRun'};
+  sp20:'sprint',tTest:'tTest',f505:'fiveZeroFive',shut:'shuttleRun',
+  hirR:'hipRot',hirL:'hipRot',herR:'hipRot',herL:'hipRot',htD:'hipRot',tspR:'tSpine',tspL:'tSpine',tspD:'tSpine',
+  acc5:'accel',acc10:'accel',f505R:'fiveZeroFive',f505L:'fiveZeroFive',f505D:'fiveZeroFive',
+  bp:'benchPress',tbdl:'trapBarDL',sq:'backSquat',bpRel:'benchPress',tbdlRel:'trapBarDL',sqRel:'backSquat',pu:'pullUp',
+  cphR:'copenhagen',cphL:'copenhagen',cphD:'copenhagen',spkR:'sidePlank',spkL:'sidePlank',spkD:'sidePlank',vift:'ift3015'};
 /* The block itself — one row per test, in catalog order, in the report language. */
 function testInfoTable(ids){
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -648,6 +829,8 @@ const CMP_GROUPS=[
   {id:'mob',   tr:'Mobilite & Hareket',en:'Mobility & Movement'},
   {id:'pow',   tr:'Güç & Sıçrama',     en:'Power & Jump'},
   {id:'spd',   tr:'Sürat & Çeviklik',  en:'Speed & Agility'},
+  {id:'str',   tr:'Kuvvet',            en:'Strength'},
+  {id:'end',   tr:'Dayanıklılık',      en:'Endurance'},
   {id:'cust',  tr:'Özel Testler',      en:'Custom Tests'},
 ];
 const CMP_METRICS=[
@@ -667,6 +850,14 @@ const CMP_METRICS=[
   {id:'aslrR',g:'mob',tr:'ASLR R',en:'ASLR R',u:'/3',dir:'hi',st:'ASLR R',se:'ASLR R',get:t=>cmpN(t.aslr&&t.aslr.right)},
   {id:'aslrL',g:'mob',tr:'ASLR L',en:'ASLR L',u:'/3',dir:'hi',st:'ASLR L',se:'ASLR L',get:t=>cmpN(t.aslr&&t.aslr.left)},
   {id:'ohs',  g:'mob',tr:'Overhead Squat',en:'Overhead Squat',u:'/3',dir:'hi',st:'OHS',se:'OHS',get:t=>cmpN(t.ohs&&t.ohs.score)},
+  {id:'hirR', g:'mob',tr:'Kalça IR Sağ',en:'Hip IR R',u:'°',dir:'hi',st:'IR R',se:'IR R',get:t=>hipRotCalc(t).irR},
+  {id:'hirL', g:'mob',tr:'Kalça IR Sol',en:'Hip IR L',u:'°',dir:'hi',st:'IR L',se:'IR L',get:t=>hipRotCalc(t).irL},
+  {id:'herR', g:'mob',tr:'Kalça ER Sağ',en:'Hip ER R',u:'°',dir:'hi',st:'ER R',se:'ER R',get:t=>hipRotCalc(t).erR},
+  {id:'herL', g:'mob',tr:'Kalça ER Sol',en:'Hip ER L',u:'°',dir:'hi',st:'ER L',se:'ER L',get:t=>hipRotCalc(t).erL},
+  {id:'htD',  g:'mob',tr:'Kalça Toplam Rot. Fark',en:'Hip Total Rot. Gap',u:'°',dir:'lo',st:'Kalça Δ',se:'Hip Δ',get:t=>hipRotCalc(t).dTot},
+  {id:'tspR', g:'mob',tr:'T-Spine Rot. Sağ',en:'T-Spine Rot. R',u:'°',dir:'hi',st:'TSR R',se:'TSR R',get:t=>tSpineCalc(t).r},
+  {id:'tspL', g:'mob',tr:'T-Spine Rot. Sol',en:'T-Spine Rot. L',u:'°',dir:'hi',st:'TSR L',se:'TSR L',get:t=>tSpineCalc(t).l},
+  {id:'tspD', g:'mob',tr:'T-Spine Rot. Fark',en:'T-Spine Rot. Gap',u:'°',dir:'lo',st:'TSR Δ',se:'TSR Δ',get:t=>tSpineCalc(t).diff},
   {id:'ybR',  g:'mob',tr:'Y Balance R',en:'Y Balance R',u:'%',dir:'hi',st:'YBT R',se:'YBT R',get:t=>ybCalc(t.yBalance).compR},
   {id:'ybL',  g:'mob',tr:'Y Balance L',en:'Y Balance L',u:'%',dir:'hi',st:'YBT L',se:'YBT L',get:t=>ybCalc(t.yBalance).compL},
   {id:'ybD',  g:'mob',tr:'Y Balance Fark',en:'Y Balance Gap',u:'%',dir:'lo',st:'YBT Δ',se:'YBT Δ',get:t=>{const y=ybCalc(t.yBalance);return cmpGap(y.compR,y.compL);}},
@@ -680,8 +871,24 @@ const CMP_METRICS=[
   {id:'lcjD', g:'pow',tr:'Lateral CMJ Fark',en:'Lateral CMJ Gap',u:'cm',dir:'lo',st:'LCMJ Δ',se:'LCMJ Δ',get:t=>cmpGap(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left)},
   {id:'sp20', g:'spd',tr:'20m Sprint',en:'20m Sprint',u:'s',dir:'lo',st:'20m',se:'20m',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
   {id:'tTest',g:'spd',tr:'T-Test',    en:'T-Test',    u:'s',dir:'lo',st:'T-Test',se:'T-Test',get:t=>cmpN(t.tTest)},
-  {id:'f505', g:'spd',tr:'5-0-5',     en:'5-0-5',     u:'s',dir:'lo',st:'5-0-5',se:'5-0-5',get:t=>cmpN(t.fiveZeroFive)},
-  {id:'shut', g:'spd',tr:'Shuttle Run',en:'Shuttle Run',u:'s',dir:'lo',st:'Shuttle',se:'Shuttle',get:t=>cmpN(t.shuttleRun)},
+  {id:'acc5', g:'spd',tr:'5m İvmelenme',en:'5m Acceleration',u:'s',dir:'lo',st:'5m',se:'5m',get:t=>accelCalc(t).t5},
+  {id:'acc10',g:'spd',tr:'10m İvmelenme',en:'10m Acceleration',u:'s',dir:'lo',st:'10m',se:'10m',get:t=>accelCalc(t).t10},
+  {id:'f505', g:'spd',tr:'505 COD',   en:'505 COD',   u:'s',dir:'lo',st:'505',se:'505',get:t=>cod505Calc(t).best},
+  {id:'f505R',g:'spd',tr:'505 Sağ',   en:'505 R',     u:'s',dir:'lo',st:'505 R',se:'505 R',get:t=>cod505Calc(t).r},
+  {id:'f505L',g:'spd',tr:'505 Sol',   en:'505 L',     u:'s',dir:'lo',st:'505 L',se:'505 L',get:t=>cod505Calc(t).l},
+  {id:'f505D',g:'spd',tr:'505 Asimetri',en:'505 Asymmetry',u:'%',dir:'lo',st:'505 Δ',se:'505 Δ',get:t=>cod505Calc(t).pct},
+  {id:'bp',   g:'str',tr:'Bench Press e1RM',en:'Bench Press e1RM',u:'kg',dir:'hi',st:'BP',se:'BP',get:t=>strCalc(t,'benchPress').e1},
+  {id:'tbdl', g:'str',tr:'Trap Bar DL e1RM',en:'Trap Bar DL e1RM',u:'kg',dir:'hi',st:'TBDL',se:'TBDL',get:t=>strCalc(t,'trapBarDL').e1},
+  {id:'sq',   g:'str',tr:'Squat e1RM',en:'Squat e1RM',u:'kg',dir:'hi',st:'Squat',se:'Squat',get:t=>strCalc(t,'backSquat').e1},
+  {id:'pu',   g:'str',tr:'Pull-Up',en:'Pull-Up',u:'tk',dir:'hi',st:'Pull-Up',se:'Pull-Up',get:t=>cmpN(t.pullUp&&t.pullUp.reps)},
+  {id:'cphR', g:'str',tr:'Copenhagen Sağ',en:'Copenhagen R',u:'s',dir:'hi',st:'CPH R',se:'CPH R',get:t=>holdCalc(t,'copenhagen').r},
+  {id:'cphL', g:'str',tr:'Copenhagen Sol',en:'Copenhagen L',u:'s',dir:'hi',st:'CPH L',se:'CPH L',get:t=>holdCalc(t,'copenhagen').l},
+  {id:'cphD', g:'str',tr:'Copenhagen Asimetri',en:'Copenhagen Asymmetry',u:'%',dir:'lo',st:'CPH Δ',se:'CPH Δ',get:t=>holdCalc(t,'copenhagen').pct},
+  {id:'spkR', g:'str',tr:'Side Plank Sağ',en:'Side Plank R',u:'s',dir:'hi',st:'SPK R',se:'SPK R',get:t=>holdCalc(t,'sidePlank').r},
+  {id:'spkL', g:'str',tr:'Side Plank Sol',en:'Side Plank L',u:'s',dir:'hi',st:'SPK L',se:'SPK L',get:t=>holdCalc(t,'sidePlank').l},
+  {id:'spkD', g:'str',tr:'Side Plank Asimetri',en:'Side Plank Asymmetry',u:'%',dir:'lo',st:'SPK Δ',se:'SPK Δ',get:t=>holdCalc(t,'sidePlank').pct},
+  {id:'vift', g:'end',tr:'30-15 IFT (VIFT)',en:'30-15 IFT (VIFT)',u:'km/h',dir:'hi',st:'VIFT',se:'VIFT',get:t=>cmpN(t.ift3015&&t.ift3015.vift)},
+  {id:'shut', g:'end',tr:'Shuttle Run',en:'Shuttle Run',u:'s',dir:'lo',st:'Shuttle',se:'Shuttle',get:t=>cmpN(t.shuttleRun)},
 ];
 /* The coach's own tests join the table as columns too. Nothing says which way is
    better for a test the app has never seen, so they carry no direction. */

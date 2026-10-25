@@ -55,14 +55,18 @@ const TRYOUT_FAMILY=[
    score. */
 const TRYOUT_UNITS={anthro:'cm',circ:'cm',ankleDF:'°',aslr:'/3',ohs:'/3',fms:'/21',yBalance:'%',
   verticalJump:'cm',cmj:'cm',lateralCmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'',
-  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',shuttleRun:'sec'};
+  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',shuttleRun:'sec',
+  fms_deepSquat:'/3',fms_hurdleStep:'/3',fms_inlineLunge:'/3',fms_shoulderMobility:'/3',fms_aslr:'/3',fms_trunkPushup:'/3',fms_rotary:'/3',
+  hipRot:'°',tSpine:'°',accel:'sec',benchPress:'kg',trapBarDL:'kg',backSquat:'kg',pullUp:'',copenhagen:'sec',sidePlank:'sec',ift3015:'km/h'};
 /* Turkish names for the built-in battery. The catalog itself is written in English (it is
    read by the reports too), and a trial sheet is filled in on the court in Turkish. */
 const TRYOUT_TR={anthro:'Antropometri',circ:'Çevre Ölçümü',posture:'Statik Postür',
   ankleDF:'Ayak Bileği DF',aslr:'ASLR',ohs:'Overhead Squat',fms:'FMS',yBalance:'Y Balance',
   verticalJump:'Dikey Sıçrama',cmj:'CMJ',lateralCmj:'Lateral CMJ',squatJump:'Skuat Sıçrama',
   horizontalJump:'Yatay Sıçrama',dropJump:'Drop Jump (RSI)',sprint:'20m Sprint',tTest:'T-Test',
-  fiveZeroFive:'5-0-5',shuttleRun:'Shuttle Run'};
+  fiveZeroFive:'505 COD',shuttleRun:'Shuttle Run',
+  hipRot:'Kalça IR/ER',thomas:'Thomas Testi',tSpine:'T-Spine Rotasyon',accel:'5-10m İvmelenme',
+  pullUp:'Barfiks (Pull-Up)',copenhagen:'Copenhagen Plank',sidePlank:'Yan Plank',backSquat:'Barbell Squat'};
 /* Tests the trial sheet carried before it shared the club's catalog. They are not offered
    any more, but a candidate measured on one still has the number on their sheet — so the
    key keeps its name and its unit, and the sheet can still label the box. */
@@ -641,11 +645,12 @@ function EvaluationView({team,updateTeam,data,setData}){
     if(!name)return;
     setData({...data,testTemplates:[...templates,{id:uid(),name,tests:[...pick]}]});
   };
-  /* A template saved before the FMS replaced the ankle and ASLR tests still names them: they
-     come out as the FMS, once, so applying it never starts a test the picker no longer offers. */
+  /* A template saved before the FMS was split names the whole sheet: it comes out as its seven
+     movements. An old ASLR becomes the FMS one, so applying it never starts a test the picker
+     no longer offers. */
   const tplIds=t=>{
     const known=new Set(fullCatalog.map(c=>c.id));
-    return[...new Set((t.tests||[]).map(id=>id==='ankleDF'||id==='aslr'?'fms':id))].filter(id=>known.has(id));
+    return[...new Set((t.tests||[]).flatMap(id=>id==='fms'?FMS_PART_IDS:id==='aslr'?['fms_aslr']:[id]))].filter(id=>known.has(id));
   };
   const delTemplate=id=>{
     if(!confirm(Lx('Bu şablon silinsin mi?','Delete this template?')))return;
@@ -775,11 +780,13 @@ function EvaluationView({team,updateTeam,data,setData}){
             <div className="ev2-tiles">
               {catalogShown.map(c=>{const on=pick.has(c.id);const m=TEST_META[c.id]||{};
                 const cat0=(TEST_CATALOG.find(x=>x.id===c.id)||{});
-                return(<div key={c.id} className={'ev2-tile g-'+testGroupOf(c)+(on?' on':'')}
+                const fmsP=FMS_PART_IDS.includes(c.id);
+                return(<div key={c.id} className={'ev2-tile g-'+testGroupOf(c)+(on?' on':'')+(fmsP?' fmsp-tile':'')}
                   onClick={()=>toggle(c.id)} title={c.name}>
+                  {fmsP&&<img className="ev2-tile-fms" src="fms-logo-square.png" alt="FMS"/>}
                   <div className="ev2-tile-tx">
-                    <div className="ev2-tile-k">{c.custom?Lx('Özel','Custom'):(cat0.short||'')}</div>
-                    <div className="ev2-tile-t">{c.name}</div>
+                    {!fmsP&&<div className="ev2-tile-k">{c.custom?Lx('Özel','Custom'):(cat0.short||'')}</div>}
+                    <div className="ev2-tile-t">{fmsP?c.name.replace(/^FMS /,''):c.name}</div>
                     <div className="ev2-tile-s">{m.tr?Lx(m.tr,m.en):Lx('Özel test','Custom test')}</div>
                   </div>
                   <div className="ev2-tile-chk">{on?'✓':''}</div>

@@ -1,0 +1,130 @@
+/* ═════════ Test ve Değerlendirme — kompakt kartlar (v3) ═════════
+   Kartlar küçüldü: ızgara ekran genişliğine göre 2-4 sütun, değer kutuları ve gözlem alanı
+   daha alçak, sabit kart yüksekliği yok. Yeni testlerin parçaları (sağ/sol tablosu, okuma
+   kutuları, −/+ anahtarı), FMS hareket kartı (sol üstte FMS logosu), kapı şeritli 20 m sprint
+   kartı ve sağ/sol tablolu Y Balance. Düz yüzey, gradyan yok. */
+.ts-wrap{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:12px;align-items:stretch}
+.tcard-score{min-height:0}
+.tcard-hd{padding:12px 14px 9px;gap:10px}
+.tcard-badge{width:26px;height:26px;font-size:12.5px;border-radius:7px}
+.tcard-title{font-size:14px}
+.tcard-tag{font-size:9.5px;padding:3px 8px}
+.tcard-col{gap:10px;padding:0 14px 14px}
+.tcard-body-wide{gap:12px;padding:0 14px 14px}
+.mk-flbl{font-size:9.5px;margin-bottom:5px}
+.mk-input{min-height:40px;padding:6px 12px}
+.mk-input input{font-size:17px}
+.mk-unit{font-size:12.5px;margin-left:8px}
+.mk-input.sm{min-height:34px;padding:4px 9px;border-radius:8px}
+.mk-input.sm input{font-size:15px}
+.mk-input.sm .mk-unit{font-size:11px;margin-left:5px}
+.mk-solo{max-width:none}
+.mk-pair{gap:10px}
+.tc-obs-l{font-size:9.5px;margin-bottom:5px}
+.tc-obs textarea{min-height:54px;padding:7px 10px;font-size:12.5px}
+.tcard-col .tc-obs{flex:1 1 auto}
+.mk-asym-pill{padding:4px 11px;font-size:11.5px;margin-top:0}
+:is(:root,:root[data-theme]) .mk-asym-pill.lv-ok{color:var(--low-t)}
+:is(:root,:root[data-theme]) .mk-asym-pill.lv-warn{color:var(--med-t)}
+:is(:root,:root[data-theme]) .mk-asym-pill.lv-bad{color:var(--high-t)}
+
+/* okuma kutuları: hesaplanan değerler, girişten ayrı ve sessiz */
+.mk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.mk-stat{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;min-width:0}
+.mk-stat .k{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-stat .v{margin-top:2px;font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;line-height:1.15}
+.mk-stat .u{font-size:10.5px;font-weight:500;color:var(--muted);margin-left:4px}
+.mk-stat.ok .v{color:var(--low-t)}.mk-stat.warn .v{color:var(--med-t)}.mk-stat.bad .v{color:var(--high-t)}
+
+/* sağ / sol tablosu */
+.mk-lr{display:flex;flex-direction:column;gap:6px}
+.mk-lr-h,.mk-lr-r{display:grid;grid-template-columns:minmax(78px,1fr) minmax(62px,92px) minmax(62px,92px) 64px;gap:6px;align-items:center}
+.mk-lr-h span{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.mk-lr-l{font-size:12px;font-weight:600;color:var(--text2);line-height:1.2}
+.mk-lr-v{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
+.mk-lr-r.ro{padding-top:6px;border-top:1px solid var(--border)}
+.mk-lr-d{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.mk-lr-d.ok{color:var(--low-t)}.mk-lr-d.warn{color:var(--med-t)}.mk-lr-d.bad{color:var(--high-t)}
+.mk-lr .mk-input.sm input{text-align:right}
+
+/* Y Balance */
+.yb-limb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.yb-limb .mk-flbl{margin:0;flex:1 1 150px}
+.yb-limb .mk-input{flex:0 0 130px}
+.tcard-ybt .yb-formula{margin-top:0;padding-top:8px}
+
+/* −/+ anahtarı; açıdan gelen öneri kesik çizgiyle */
+.mk-pm button{min-width:30px;height:28px}
+.fmsl-seg.clr button.neg.auto{box-shadow:inset 0 0 0 1.5px #16a34a;color:#16a34a}
+.fmsl-seg.clr button.pos.auto{box-shadow:inset 0 0 0 1.5px #dc2626;color:#dc2626}
+
+/* Thomas */
+.th-sides{align-items:start}
+.th-side{display:flex;flex-direction:column;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px}
+.th-side .mk-pair{gap:6px}
+.th-side .mk-input{background:var(--panel)}
+.th-side-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
+.th-find{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.th-find-t{min-width:0;display:flex;flex-direction:column}
+.th-find-t b{font-size:12px;font-weight:600;color:var(--text)}
+.th-find-t span{font-size:10.5px;color:var(--dim);line-height:1.3}
+
+/* FMS hareket kartı: rozetin yerinde FMS logosu */
+.tcard-fmslogo{flex:none;width:30px;height:30px;border-radius:7px;object-fit:cover;display:block}
+.fmsc{display:grid;grid-template-columns:1fr 78px;gap:10px;align-items:stretch}
+.fmsc-rows{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fmsc-row{display:grid;grid-template-columns:minmax(0,1fr) 14px auto;gap:8px;align-items:center}
+.fmsc-l{font-size:11.5px;font-weight:600;color:var(--text2);line-height:1.2}
+.fmsc-row.sub .fmsc-l{font-size:9.5px;font-weight:600;color:#ec1c24;letter-spacing:.03em;text-transform:uppercase}
+.fmsc-sd{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;color:#ec1c24;text-align:center}
+.fmsc-row .fmsl-seg button{min-width:30px;height:28px}
+.fmsc-fin{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 4px}
+.fmsc-fin .k{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.fmsc-fin .v{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+.fmsc-fin .v small{font-size:11px;font-weight:600;color:var(--muted);margin-left:2px}
+.fmsc-fin.t1 .v{color:#dc2626}.fmsc-fin.t2 .v{color:#d99a00}.fmsc-fin.t3 .v{color:#16a34a}
+.fmsc-flag{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#dc2626;text-align:center}
+.fmsc-flag.am{color:var(--med-t)}
+.fmsc-meas{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:600;color:var(--text2)}
+.fmsc-meas .mk-input{flex:0 0 120px}
+.fmsc-cm .fmsp-btn{width:100%}
+.fmsc-cm textarea{width:100%;box-sizing:border-box;min-height:48px;resize:vertical;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font:inherit;font-size:12.5px}
+.fmsc-tot{display:flex;align-items:baseline;gap:6px;margin-top:auto;padding-top:8px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.fmsc-tot b{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text)}
+.fmsc-tot span{margin-left:auto}
+
+/* 20 m sprint: kapı şeridi, altında F-V ve fotoğraflar */
+.spr-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.spr-gate{display:flex;flex-direction:column;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;position:relative}
+.spr-gate.main{border-color:var(--accent)}
+.spr-gate .mk-input{background:var(--panel)}
+.spr-gate-d{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.spr-gate-d b{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text)}
+.spr-gate-d span{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.spr-gate.main .spr-gate-d span{color:var(--accent2,var(--accent))}
+.spr-gate-v{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.spr-gate-v.bad{color:var(--high-t)}
+.spr-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.spr-body .fv-box{margin-top:0;padding-top:0;border-top:none}
+.spr-photos{min-width:0}
+.mk-uploads.sm{gap:8px}
+.mk-uploads.sm .mk-up-box{width:58px;height:58px}
+.mk-uploads.sm .mk-up-box svg{width:20px;height:20px}
+.mk-uploads.sm .mk-up-cap{font-size:9px}
+.tcard-sprint .tc-obs{flex:none}
+@media(max-width:900px){.spr-track{grid-template-columns:1fr 1fr}.spr-body{grid-template-columns:1fr}}
+
+/* seçici: yeni grup renkleri, FMS hareketlerinde logo */
+.ev2-tile.g-str{--gc:#ef4444}.ev2-tile.g-endur{--gc:#14b8a6}
+.ev2-tile.fmsp-tile{gap:11px;align-items:center}
+.ev2-tile-fms{flex:none;width:30px;height:30px;border-radius:7px;object-fit:cover;align-self:flex-start}
+
+/* Değer kutusunun içindeki alan kutunun kendisidir: açık temanın genel "beyaz form alanı"
+   kuralı içeride ikinci bir beyaz kutu çiziyordu. Kutuyu çerçeve çizer, alan saydam kalır. */
+:root[data-theme] .mk-input input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+:root .mk-input input:focus{background:transparent;border-color:transparent;box-shadow:none}
+/* Tek değerli kartlarda kutu sütunda uzamasın. */
+.tcard-col .mk-solo{flex:none}
+/* İki taraflı, çok satırlı kartlar (Thomas) geniş ızgarada iki sütun kaplar. */
+.tcard-w2{grid-column:span 2}
+@media(max-width:760px){.tcard-w2{grid-column:auto}}
