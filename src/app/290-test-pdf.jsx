@@ -363,7 +363,6 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
      its clearing test, the final score, the findings ticked against it and its front / side photos.
      An uploaded score sheet (PDF) still prints as its pages. */
   const fmsF=test.fms||{};
-  const fmsWord=v=>v==='pos'?[L('Pozitif','Positive'),' style="color:#dc2626"']:v==='neg'?[L('Negatif','Negative'),' style="color:#16a34a"']:['—',''];
   const fmsMove=mid=>{
     const it=fmsR.items.find(i=>i.id===mid);if(!it)return'';
     const id='fms_'+mid;shown.push(id);
@@ -373,16 +372,20 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
     const cms=fmsCommentsOf(mid);
     const probs=cms.flatMap(k=>fmsProblemLabels(fmsF,k));
     const notes=cms.map(k=>String((fmsF.comments||{})[k]||'').trim()).filter(Boolean);
-    const sc=(h,v)=>[h,v!=null?String(v):'—',v!=null?` style="color:${fmsTone(v)}"`:''];
-    const cells=it.bi?[sc(L('Ham skor · Sağ','Raw score · Right'),it.right),sc(L('Ham skor · Sol','Raw score · Left'),it.left)]:[sc(L('Ham skor','Raw score'),it.single)];
-    if(it.clear){const w=fmsWord(it.cleared);cells.push([esc(it.clearEn),w[0],w[1]]);}
-    if(mid==='inlineLunge'){const m=fmsF.ankleMob||{};const g=x=>({r:L('Kırmızı','Red'),y:L('Sarı','Yellow'),g:L('Yeşil','Green')})[x]||'—';
-      if(m.right||m.left)cells.push([L('Ayak bileği mob. (S / L)','Ankle mobility (R / L)'),`${g(m.right)} / ${g(m.left)}`,'']);}
-    cells.push([L('Nihai skor','Final score'),it.score!=null?`${it.score} <small>/ 3</small>`:'—',it.score!=null?` style="color:${fmsTone(it.score)}"`:'']);
-    const photos=(pp.front||pp.side)?`<div class="photos">${ph(pp.front,L('Önden','Front'),118,160)}${ph(pp.side,L('Yandan','Side'),118,160)}</div>`:'';
-    const pr=probs.length?`<div class="tb-note"><b>${L('Tespit edilen problemler','Identified problems')}:</b> ${probs.map(esc).join(', ')}</div>`:'';
-    const nt=notes.length?`<div class="tb-note"><b>${L('Yorum','Comment')}:</b> ${notes.map(esc).join(' · ')}</div>`:'';
-    return box(esc(it.en),'FMS',kv(cells)+photos+pr+nt);
+    /* Two columns: the front and side photos on the left; on the right the score alone, and
+       under it the problems ticked against the movement (a painful clearing test and the coach's
+       free-text comment are listed with them). */
+    if(it.clear&&it.cleared==='pos')probs.push(`${it.clearEn}: ${L('Pozitif (ağrı)','Positive (pain)')}`);
+    if(mid==='inlineLunge'){const m=fmsF.ankleMob||{};const g=x=>({r:L('Kırmızı','Red'),y:L('Sarı','Yellow'),g:L('Yeşil','Green')})[x];
+      if(m.right||m.left)probs.push(`${L('Ayak bileği mobilitesi','Ankle mobility')}: ${L('Sağ','Right')} ${g(m.right)||'—'} / ${L('Sol','Left')} ${g(m.left)||'—'}`);}
+    notes.forEach(n=>probs.push(n));
+    const score=`<div class="fm-sc"><div class="fm-k">${L('Skor','Score')}</div>
+      <div class="fm-v"${it.score!=null?` style="color:${fmsTone(it.score)}"`:''}>${it.score!=null?it.score:'—'}<small> / 3</small></div></div>`;
+    const list=`<div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
+      ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>`;
+    return box(esc(it.en),'FMS',`<div class="fm">
+      <div class="fm-ph">${ph(pp.front,L('Önden','Front'),132,176)}${ph(pp.side,L('Yandan','Side'),132,176)}</div>
+      <div class="fm-r">${score}${list}</div></div>`);
   };
   const fmsPdfBlk=()=>`<div class="tb fms-sheet">
       <div class="tb-h"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div><div class="tb-bd">
@@ -476,6 +479,19 @@ table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--bord
 .rt.lab th.l,.rt.lab td.l{text-align:left;width:34%}
 .rt.lab td{font-size:10.5px;padding:4px 4px 3px}
 .rt.lab td.l{font-size:9.5px;font-weight:500;color:var(--text2)}
+/* FMS movement: photos left, score and problems right */
+.fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+.fm-ph{display:flex;justify-content:center;align-items:flex-start;gap:10px}
+.fm-ph .ph img,.fm-ph .phx{width:132px!important;height:176px!important;max-height:none!important;object-fit:cover!important}
+.fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
+.fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.fm-sc{text-align:center}
+.fm-sc .fm-k{text-align:center}
+.fm-v{margin-top:5px;font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.fm-v small{font-size:9px;font-weight:500;color:var(--muted)}
+.fm-pr{flex:1}
+.fm-pr ul{margin:5px 0 0;padding-left:13px;font-size:9.5px;line-height:1.55;color:var(--text)}
+.fm-none{margin-top:5px;font-size:9px;color:var(--dim)}
 .photos{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:4px 0 2px}
 .ph{text-align:center;display:inline-block}
 .ph img{border-radius:6px;border:1px solid var(--border);display:block}
