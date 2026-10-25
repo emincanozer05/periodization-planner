@@ -266,15 +266,18 @@ function CustomStage({theme}){
 }
 
 /* ---- Mockup-style test card helpers ---- */
-const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'5-0-5 Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference'};
-const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',fiveZeroFive:'sec',shuttleRun:'vo2max'};
-const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'5-0-5',shuttleRun:'SHUTTLE'};
+const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
+  accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Seated)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
+  benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
+const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',shuttleRun:'vo2max'};
+const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',shuttleRun:'SHUTTLE',
+  accel:'5-10M',hipRot:'HIP IR/ER',thomas:'THOMAS',tSpine:'T-SPINE',benchPress:'BP',trapBarDL:'TBDL',pullUp:'PULL-UP',copenhagen:'CPH',sidePlank:'SIDE PLANK',backSquat:'SQUAT',ift3015:'30-15 IFT'};
 const BADGE_COLS=['#0094ff','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#0094ff','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#0094ff','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
 const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
 
-function MkInput({value,onChange,unit,step}){
-  return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
+function MkInput({value,onChange,unit,step,sm}){
+  return(<div className={'mk-input'+(sm?' sm':'')}><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
 /* One line under the score box: the squad's current average and how far this
    reading sits from it. Silent when the test has no team average to show — an
@@ -574,6 +577,138 @@ function FmsSheetCard({test,ath,onUpdate}){
   </div>);
 }
 
+/* ---- Compact card pieces: a right/left table, a read-out tile, a −/+ switch ---- */
+const pctTxt=p=>L('%'+p,p+'%');
+function MkAsym({pct,extra}){
+  if(pct==null)return null;
+  const lv=asymLevel(pct);
+  return(<div className={'mk-asym-pill lv-'+lv}>{L('Asimetri','Asymmetry')} {pctTxt(pct)}{extra?' · '+extra:''}</div>);
+}
+function MkStat({k,v,u,tone}){
+  return(<div className={'mk-stat'+(tone?' '+tone:'')}><div className="k">{k}</div><div className="v">{v==null||v===''?'—':v}{u&&v!=null&&v!==''?<span className="u">{u}</span>:null}</div></div>);
+}
+/* Rows of right / left entries with the gap between them. A row with `ro` shows numbers
+   worked out from the others instead of taking input. */
+function MkLR({rows,unit,step,diffHead}){
+  return(<div className="mk-lr">
+    <div className="mk-lr-h"><span/><span>{L('Sağ','Right')}</span><span>{L('Sol','Left')}</span><span>{diffHead||L('Fark','Gap')}</span></div>
+    {rows.map(r=>(<div key={r.k} className={'mk-lr-r'+(r.ro?' ro':'')}>
+      <span className="mk-lr-l">{r.label}</span>
+      {r.ro?<span className="mk-lr-v">{r.r==null?'—':r.r}</span>:<MkInput value={r.r} onChange={r.setR} unit={unit} step={step} sm/>}
+      {r.ro?<span className="mk-lr-v">{r.l==null?'—':r.l}</span>:<MkInput value={r.l} onChange={r.setL} unit={unit} step={step} sm/>}
+      <span className={'mk-lr-d'+(r.cls?' '+r.cls:'')}>{r.diff==null?'—':r.diff}</span>
+    </div>))}
+  </div>);
+}
+function MkPM({value,onChange,auto,label}){
+  const cur=value||'';
+  return(<div className="fmsl-seg clr mk-pm" role="group" aria-label={label}>
+    <button type="button" className={'neg'+(cur==='neg'?' on':(!cur&&auto==='neg'?' auto':''))} aria-pressed={cur==='neg'} onClick={()=>onChange(cur==='neg'?'':'neg')} title={L('Negatif','Negative')}>−</button>
+    <button type="button" className={'pos'+(cur==='pos'?' on':(!cur&&auto==='pos'?' auto':''))} aria-pressed={cur==='pos'} onClick={()=>onChange(cur==='pos'?'':'pos')} title={L('Pozitif','Positive')}>+</button>
+  </div>);
+}
+
+/* ---- One FMS movement as its own card. It edits that movement's lines of the shared `fms`
+   record — the score, its clearing / mobility lines, the comment or findings — and shows the
+   final score and the running total of the whole screen. ---- */
+function FmsPartCard({item,test,ath,onUpdate}){
+  const f=test.fms||{};
+  const c=fmsCalc(f);
+  const it=c.items.find(i=>i.id===item.id)||{};
+  const hd=fmsHeader(test,ath);
+  const rows=fmsRowsOf(item.id);
+  const setTop=(k,v)=>onUpdate(t=>({fms:{...(t.fms||{}),[k]:v}}));
+  const setCell=(r,v)=>onUpdate(t=>{
+    const o=t.fms||{};
+    if(!r.side)return{fms:{...o,[r.f]:v}};
+    const cur=o[r.f];
+    const base=typeof cur==='string'&&cur?{right:cur,left:cur}:(cur&&typeof cur==='object'?cur:{});
+    return{fms:{...o,[r.f]:{...base,[r.side]:v}}};
+  });
+  const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
+  const setProblems=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),problems:{...((t.fms||{}).problems||{}),[id]:v}}}));
+  const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
+  let lab='';
+  const lines=rows.map(r=>{if(r.lab)lab=r.lab[1];return{r,lab:r.kind==='score'?L('Ham skor','Raw score'):lab};});
+  const cms=fmsCommentsOf(item.id);
+  const meas=item.id==='hurdleStep'||item.id==='inlineLunge'?['tibia',L('Tibia boyu','Tibia height'),hd.tibia]:item.id==='shoulderMobility'?['hand',L('El uzunluğu','Hand length'),hd.hand]:null;
+  return(<div className="tcard tcard-fms">
+    <div className="tcard-hd">
+      <img className="tcard-fmslogo" src="fms-logo-square.png" alt="FMS"/>
+      <div className="tcard-title">{item.en}</div>
+      <div className="tcard-tag">FMS</div>
+    </div>
+    <div className="tcard-col">
+      <div className="fmsc">
+        <div className="fmsc-rows">
+          {lines.map(({r,lab},i)=>{const v=fmsCell(f,r);const sd=r.side?(r.side==='right'?'R':'L'):'';
+            return(<div key={i} className={'fmsc-row'+(r.sub?' sub':'')}>
+              <span className="fmsc-l">{lab}</span><span className="fmsc-sd">{sd}</span>
+              {r.kind==='score'&&<div className="fmsl-seg" role="group" aria-label={`${item.en} ${sd}`}>
+                {['0','1','2','3'].map(n=>(<button type="button" key={n} className={'s'+n+(String(v)===n?' on':'')} aria-pressed={String(v)===n}
+                  onClick={()=>setCell(r,String(v)===n?'':n)}>{n}</button>))}</div>}
+              {r.kind==='clear'&&<div className="fmsl-seg clr" role="group" aria-label={`${lab} ${sd}`}>
+                <button type="button" className={'neg'+(v==='neg'?' on':'')} aria-pressed={v==='neg'} title={L('Negatif — ağrı yok','Negative — no pain')} onClick={()=>setCell(r,v==='neg'?'':'neg')}>−</button>
+                <button type="button" className={'pos'+(v==='pos'?' on':'')} aria-pressed={v==='pos'} title={L('Pozitif — ağrı var (skor 0)','Positive — pain (score 0)')} onClick={()=>setCell(r,v==='pos'?'':'pos')}>+</button></div>}
+              {r.kind==='ryg'&&<div className="fmsl-seg ryg" role="group" aria-label={`${lab} ${sd}`}>
+                {['r','y','g'].map(k=>(<button type="button" key={k} className={k+(v===k?' on':'')} aria-pressed={v===k} onClick={()=>setCell(r,v===k?'':k)}>{k.toUpperCase()}</button>))}</div>}
+            </div>);})}
+        </div>
+        <div className={'fmsc-fin '+tone(it.score)}>
+          <div className="k">{L('Nihai','Final')}</div>
+          <div className="v">{it.score!=null?it.score:'—'}<small>/3</small></div>
+          {it.cleared==='pos'&&<div className="fmsc-flag">{L('ağrı → 0','pain → 0')}</div>}
+          {it.asym!=null&&it.cleared!=='pos'&&<div className="fmsc-flag am">{L('asimetri','asym.')} {it.asym}</div>}
+        </div>
+      </div>
+      {meas&&<div className="fmsc-meas"><span>{meas[1]}</span>
+        <div className="mk-input sm"><LiveInput type="number" step="0.1" inputMode="decimal" value={meas[2]} onChange={v=>setTop(meas[0],v)}/><span className="mk-unit">cm</span></div></div>}
+      {cms.map(id=>FMS_PROBLEMS[id]
+        ?<div key={id} className="fmsc-cm"><div className="mk-flbl">{L('Tespit edilen problemler','Identified problems')}</div>
+            <FmsProblemPick opts={FMS_PROBLEMS[id]} value={(f.problems||{})[id]} onChange={v=>setProblems(id,v)} legacy={(f.comments||{})[id]}/></div>
+        :<div key={id} className="tc-obs fmsc-cm"><div className="tc-obs-l">{id==='ankle'?L('Ayak bileği yorumu','Ankle comment'):L('Yorum','Comment')}</div>
+            <LiveTextarea value={(f.comments||{})[id]||''} onChange={x=>setComment(id,x)} rows={2} placeholder={L('Kompanzasyon, ağrı, kalite notu…','Compensation, pain, quality note…')}/></div>)}
+      <div className="fmsc-tot">{L('FMS toplamı','FMS total')} <b>{c.total!=null?c.total:'—'}</b> / 21<span>{c.n}/7 {L('hareket','movements')}</span></div>
+    </div>
+  </div>);
+}
+
+/* ---- 20 m sprint: the timing gates in a row, the speed of each stretch under its gate, then
+   the F-V profile and the step / foot photos side by side. ---- */
+function SprintCard({hd,test,onUpdate,ath,obsVal,setObs}){
+  const sp=test.sprintSplits||{};
+  const gates=[{k:'t5',d:5,v:sp.t5},{k:'t10',d:10,v:sp.t10},{k:'time',d:20,v:test.sprint20m&&test.sprint20m.time,main:true},{k:'t30',d:30,v:sp.t30}];
+  const set=(g,v)=>onUpdate(t=>g.main?{sprint20m:{...(t.sprint20m||{}),time:v}}:{sprintSplits:{...(t.sprintSplits||{}),[g.k]:v}});
+  let prev={d:0,t:0};
+  const seg=gates.map(g=>{const t=tN(g.v);if(!(t>0))return null;
+    const out=t>prev.t?{from:prev.d,v:+((g.d-prev.d)/(t-prev.t)).toFixed(2)}:{bad:true};prev={d:g.d,t};return out;});
+  const s20=test.sprint20m||{};
+  const P=(k,lbl)=><MkUpload photo={s20[k]} onChange={v=>onUpdate(t=>({sprint20m:{...(t.sprint20m||{}),[k]:v}}))} label={lbl}/>;
+  return(<div className="tcard tcard-wide tcard-sprint">
+    {hd}
+    <div className="tcard-body-wide">
+      <div className="spr-track">
+        {gates.map((g,i)=>(<div key={g.k} className={'spr-gate'+(g.main?' main':'')}>
+          <div className="spr-gate-d"><b>{g.d} m</b>{g.main?<span>{L('ana süre','main time')}</span>:<span>{L('ara zaman','split')}</span>}</div>
+          <MkInput value={g.v} onChange={v=>set(g,v)} unit="s" step="0.01"/>
+          <div className={'spr-gate-v'+(seg[i]&&seg[i].bad?' bad':'')}>{seg[i]?(seg[i].bad?L('önceki kapıdan kısa olamaz','cannot be under the previous gate'):`${seg[i].from}–${g.d} m · ${seg[i].v} m/s`):'—'}</div>
+        </div>))}
+      </div>
+      <div className="spr-body">
+        <FvSprintResult test={test} ath={ath}/>
+        <div className="spr-photos">
+          <div className="mk-flbl">{L('Adım / ayak fotoğrafları','Step / foot photos')}</div>
+          <div className="mk-uploads sm">
+            {P('sideStep1',L('Adım 1','Step 1'))}{P('sideStep2',L('Adım 2','Step 2'))}{P('sideStep3',L('Adım 3','Step 3'))}
+            {P('frontRightFoot',L('Sağ ayak','R foot'))}{P('frontLeftFoot',L('Sol ayak','L foot'))}
+          </div>
+        </div>
+      </div>
+      <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, çıkış, reaksiyon notları…','Sprint mechanics, start, reaction notes…')}/>
+    </div>
+  </div>);
+}
+
 function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const u=(k,v)=>onUpdate({[k]:v});
   // Merged into the test as it is when the value lands: photos arrive after their upload,
@@ -585,7 +720,6 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const obsVal=id==='posture'?(test.posture?.observations||''):id==='ohs'?(test.ohs?.observations||''):id==='fms'?(test.fms?.observations||''):((test.obs||{})[id]||'');
   const setObs=id==='posture'?(v=>uN('posture','observations',v)):id==='ohs'?(v=>uN('ohs','observations',v)):id==='fms'?(v=>uN('fms','observations',v)):(v=>onUpdate({obs:{...(test.obs||{}),[id]:v}}));
   const badgeColor=BADGE_COLS[(index-1)%BADGE_COLS.length];
-  const wide=id==='anthro'||id==='circ'||id==='ohs'||id==='fms'||id==='sprint';
 
   const Hd=()=>(<div className="tcard-hd">
     <div className="tcard-badge">{index}</div>
@@ -667,7 +801,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
         <div className="tcard-badge">{index}</div>
         <div className="tcard-title">{name}</div>
         <button type="button" className="btn xs sec fmsl-print" onClick={()=>{try{printFmsSheet(test,athObj,{note:test.notes});}catch(e){alert(L('Çıktı hatası: ','Print error: ')+e.message);}}}
-          title={L('Puan kâğıdı tek A4 sayfada çıkar','The score sheet prints on one A4 page')}>⎙ {L('Kâğıdı yazdır','Print sheet')}</button>
+          title={L('Puan kâğıdı tek A4 sayfada çıkar','The score sheet prints on one A4 page')}>{L('Kâğıdı yazdır','Print sheet')}</button>
         <img className="fms-hd-logo" src="fms-logo.png" alt="FMS"/>
       </div>
       <div className="tcard-body-wide">
@@ -679,6 +813,154 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
         <MkObs value={obsVal} onChange={setObs} className="tc-obs-fms" autoGrow label={L('Genel gözlemler','Overall observations')} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
     </div>);
+  }
+
+  if(fmsPartItem(id)){
+    const athObj=(athletes||[]).find(a=>a.id===athId)||{id:athId};
+    return<FmsPartCard item={fmsPartItem(id)} test={test} ath={athObj} onUpdate={onUpdate}/>;
+  }
+
+  const athObj=(athletes||[]).find(a=>a.id===athId)||null;
+  const bw=fvBodyMass(test,athObj);
+  const card=(body,cls)=>(<div className={'tcard'+(cls?' '+cls:'')} style={{'--card-accent':badgeColor}}><Hd/><div className="tcard-col">{body}</div></div>);
+  const obs=ph=><MkObs value={obsVal} onChange={setObs} placeholder={ph}/>;
+
+  if(id==='accel'){
+    const a=accelCalc(test);
+    const set=(k,v)=>onUpdate(t=>({sprintSplits:{...(t.sprintSplits||{}),[k]:v}}));
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">0–5 m</div><MkInput value={test.sprintSplits?.t5} onChange={v=>set('t5',v)} unit="s" step="0.01"/></div>
+        <div className="mk-field"><div className="mk-flbl">0–10 m</div><MkInput value={test.sprintSplits?.t10} onChange={v=>set('t10',v)} unit="s" step="0.01"/></div>
+      </div>
+      {a.t5!=null&&a.t10!=null&&a.split==null&&<div className="help" style={{color:'var(--high-t)'}}>{L('10 m süresi 5 m süresinden uzun olmalı.','The 10 m time must be longer than the 5 m time.')}</div>}
+      <div className="mk-stats">
+        <MkStat k={L('5–10 m ara','5–10 m split')} v={a.split} u="s"/>
+        <MkStat k={L('0–5 m hız','0–5 m speed')} v={a.v5} u="m/s"/>
+        <MkStat k={L('5–10 m hız','5–10 m speed')} v={a.v510} u="m/s"/>
+      </div>
+      {obs(L('Çıkış, ilk adımlar, gövde açısı…','Start, first steps, trunk angle…'))}
+    </>);
+  }
+
+  if(id==='fiveZeroFive'){
+    const c=cod505Calc(test);
+    const set=(s,v)=>onUpdate(t=>{const o={...(t.cod505||{}),[s]:v};const b=cod505Calc({cod505:o}).best;return{cod505:o,fiveZeroFive:b!=null?String(b):''};});
+    const legacy=c.r==null&&c.l==null&&c.best!=null;
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Sağ ayak dönüş','Right-foot turn')}</div><MkInput value={test.cod505?.right} onChange={v=>set('right',v)} unit="s" step="0.01"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Sol ayak dönüş','Left-foot turn')}</div><MkInput value={test.cod505?.left} onChange={v=>set('left',v)} unit="s" step="0.01"/></div>
+      </div>
+      {legacy&&<div className="help">{L(`Önceki kayıt: ${c.best} s (taraf girilmemiş).`,`Earlier record: ${c.best} s (no side given).`)}</div>}
+      <div className="mk-stats">
+        <MkStat k={L('En iyi','Best')} v={c.best} u="s"/>
+        <MkStat k={L('Asimetri','Asymmetry')} v={c.pct!=null?pctTxt(c.pct):null} tone={asymLevel(c.pct)}/>
+        <MkStat k={L('Yavaş taraf','Slower side')} v={c.slow?(c.slow==='right'?L('Sağ','Right'):L('Sol','Left')):null}/>
+      </div>
+      {obs(L('Dönüş tekniği, yavaşlama, taraf tercihi…','Turn technique, deceleration, side preference…'))}
+    </>);
+  }
+
+  if(id==='hipRot'){
+    const h=hipRotCalc(test);
+    const set=k=>v=>uN('hipRot',k,v);
+    return card(<>
+      <MkLR unit="°" step="1" rows={[
+        {k:'ir',label:L('İç rotasyon','Internal rot.'),r:test.hipRot?.irR,l:test.hipRot?.irL,setR:set('irR'),setL:set('irL'),diff:h.dIr!=null?h.dIr+'°':null},
+        {k:'er',label:L('Dış rotasyon','External rot.'),r:test.hipRot?.erR,l:test.hipRot?.erL,setR:set('erR'),setL:set('erL'),diff:h.dEr!=null?h.dEr+'°':null},
+        {k:'tot',ro:true,label:L('Toplam ark','Total arc'),r:h.totR!=null?h.totR+'°':null,l:h.totL!=null?h.totL+'°':null,diff:h.dTot!=null?h.dTot+'°':null,cls:asymLevel(h.pTot)},
+      ]}/>
+      <MkAsym pct={h.pTot} extra={L('toplam ark','total arc')}/>
+      {obs(L('Oturarak, kalça-diz 90°; kompanzasyon, uç his…','Seated, hip and knee at 90°; compensation, end feel…'))}
+    </>);
+  }
+
+  if(id==='thomas'){
+    const th=thomasCalc(test);
+    const setS=(s,k,v)=>onUpdate(t=>({thomas:{...(t.thomas||{}),[s]:{...((t.thomas||{})[s]||{}),[k]:v}}}));
+    const raw=s=>(test.thomas||{})[s]||{};
+    return card(<>
+      <div className="mk-pair th-sides">
+        {[['right',L('Sağ','Right')],['left',L('Sol','Left')]].map(([s,lbl])=>(<div key={s} className="th-side">
+          <div className="th-side-h">{lbl}</div>
+          <div className="mk-pair">
+            <div className="mk-field"><div className="mk-flbl">{L('Uyluk açısı','Thigh angle')}</div><MkInput value={raw(s).hip} onChange={v=>setS(s,'hip',v)} unit="°" step="1" sm/></div>
+            <div className="mk-field"><div className="mk-flbl">{L('Diz fleksiyonu','Knee flexion')}</div><MkInput value={raw(s).knee} onChange={v=>setS(s,'knee',v)} unit="°" step="1" sm/></div>
+          </div>
+          {THOMAS_FIND.map(([k,nm,hint])=>(<div key={k} className="th-find">
+            <div className="th-find-t"><b>{nm}</b><span>{L(hint[0],hint[1])}</span></div>
+            <MkPM value={raw(s)[k]} auto={th[s].res[k]} onChange={v=>setS(s,k,v)} label={nm}/>
+          </div>))}
+        </div>))}
+      </div>
+      <div className="help">{L('Uyluk açısı yataya göre ölçülür (yatayın üstü +). Açı girildiğinde iliopsoas (açı > 0°) ve rectus femoris (diz < 80°) sonucu kendiliğinden gelir; düğmeyle değiştirilebilir.','The thigh angle is taken against the horizontal (above it is +). With angles entered, the iliopsoas (angle > 0°) and rectus femoris (knee < 80°) calls fill themselves in; the switch overrides them.')}</div>
+      {obs(L('Lomber kontrol, kompanzasyon…','Lumbar control, compensation…'))}
+    </>,'tcard-w2');
+  }
+
+  if(id==='tSpine'){
+    const x=tSpineCalc(test);
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Sağa rotasyon','Rotation right')}</div><MkInput value={test.tSpine?.right} onChange={v=>uN('tSpine','right',v)} unit="°" step="1"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Sola rotasyon','Rotation left')}</div><MkInput value={test.tSpine?.left} onChange={v=>uN('tSpine','left',v)} unit="°" step="1"/></div>
+      </div>
+      <MkAsym pct={x.pct} extra={x.diff!=null?x.diff+'°':''}/>
+      {obs(L('Pelvis sabit mi, lomber kompanzasyon…','Pelvis fixed?, lumbar compensation…'))}
+    </>);
+  }
+
+  if(STR_LIFTS.includes(id)){
+    const c=strCalc(test,id,bw);
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Yük','Load')}</div><MkInput value={test[id]?.load} onChange={v=>uN(id,'load',v)} unit="kg" step="0.5"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Tekrar','Reps')}</div><MkInput value={test[id]?.reps} onChange={v=>uN(id,'reps',v)} step="1"/></div>
+      </div>
+      <div className="mk-stats">
+        <MkStat k="e1RM" v={c.e1} u="kg"/>
+        <MkStat k={L('Göreli kuvvet','Relative')} v={c.rel} u="× BW"/>
+      </div>
+      <div className="help">{L('Epley tahmini; tek tekrarda yükün kendisi, 12 tekrardan sonrası hesaba katılmaz.','Epley estimate; a single is the load itself, reps past 12 are not counted.')}{bw?'':' '+L('Göreli kuvvet için kilo gir (Antropometri).','Enter body mass (Anthropometry) for relative strength.')}</div>
+      {obs(L('Teknik, derinlik, tempo…','Technique, depth, tempo…'))}
+    </>);
+  }
+
+  if(id==='pullUp'){
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Tam tekrar','Full reps')}</div><MkInput value={test.pullUp?.reps} onChange={v=>uN('pullUp','reps',v)} step="1"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Ek yük','Added load')}</div><MkInput value={test.pullUp?.load} onChange={v=>uN('pullUp','load',v)} unit="kg" step="0.5"/></div>
+      </div>
+      {obs(L('Tam açılma, kipping, tutuş…','Full hang, kipping, grip…'))}
+    </>);
+  }
+
+  if(id==='copenhagen'||id==='sidePlank'){
+    const h=holdCalc(test,id);
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Sağ','Right')}</div><MkInput value={test[id]?.right} onChange={v=>uN(id,'right',v)} unit="s" step="1"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Sol','Left')}</div><MkInput value={test[id]?.left} onChange={v=>uN(id,'left',v)} unit="s" step="1"/></div>
+      </div>
+      <MkAsym pct={h.pct} extra={h.weak?L('zayıf: ','weaker: ')+(h.weak==='right'?L('sağ','right'):L('sol','left')):''}/>
+      {obs(id==='copenhagen'?L('Kalça hizası, kasık ağrısı…','Hip alignment, groin pain…'):L('Pelvis düşmesi, omuz hizası…','Hip drop, shoulder alignment…'))}
+    </>);
+  }
+
+  if(id==='ift3015'){
+    const c=iftCalc(test,athObj,bw);
+    return card(<>
+      <div className="mk-field"><div className="mk-flbl">{L('VIFT — son tamamlanan kademe','VIFT — last stage completed')}</div>
+        <MkInput value={test.ift3015?.vift} onChange={v=>uN('ift3015','vift',v)} unit="km/h" step="0.5"/></div>
+      <div className="mk-stats">
+        <MkStat k={L('Tahmini VO2max','Est. VO2max')} v={c.vo2} u={L('ml/kg/dk','ml/kg/min')}/>
+        <MkStat k="VIFT" v={c.ms} u="m/s"/>
+      </div>
+      {c.vift>0&&c.missing.length>0&&<div className="help">{L('VO2max tahmini için profilde eksik: ','Missing for the VO2max estimate: ')}{c.missing.join(', ')}.</div>}
+      {obs(L('Bırakma nedeni, son kademe nabız…','Reason for stopping, final-stage heart rate…'))}
+    </>);
   }
 
   if(id==='ankleDF'){
@@ -711,82 +993,30 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 
   if(id==='yBalance'){
     const yb=ybCalc(test.yBalance);
-    const set=(k,v)=>onUpdate({yBalance:{...(test.yBalance||{}),[k]:v}});
-    const setSide=(s,k,v)=>onUpdate({yBalance:{...(test.yBalance||{}),[s]:{...((test.yBalance||{})[s]||{}),[k]:v}}});
-    const DIRS=[['ant',L('Anterior','Anterior')],['pm',L('Posteromedial','Posteromedial')],['pl',L('Posterolateral','Posterolateral')]];
-    const diffs=[[L('Anterior','Anterior'),yb.dAnt],[L('Posteromedial','Posteromedial'),yb.dPm],[L('Posterolateral','Posterolateral'),yb.dPl]];
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+    const set=(k,v)=>onUpdate(t=>({yBalance:{...(t.yBalance||{}),[k]:v}}));
+    const setSide=(s,k,v)=>onUpdate(t=>({yBalance:{...(t.yBalance||{}),[s]:{...((t.yBalance||{})[s]||{}),[k]:v}}}));
+    const d=v=>v==null?null:v.toFixed(1)+' cm';
+    const dc=v=>v==null?'':v<4?'ok':'bad';
+    const row=(k,lbl,dv)=>({k,label:lbl,r:test.yBalance?.right?.[k],l:test.yBalance?.left?.[k],setR:v=>setSide('right',k,v),setL:v=>setSide('left',k,v),diff:d(dv),cls:dc(dv)});
+    const cGap=yb.compR!=null&&yb.compL!=null?+Math.abs(yb.compR-yb.compL).toFixed(1):null;
+    return(<div className="tcard tcard-ybt" style={{'--card-accent':badgeColor}}>
       <Hd/>
-      <div className="tcard-body-wide">
-        <div className="yb-wrap">
-          <div className="yb-left">
-            <div className="mk-field" style={{maxWidth:360}}>
-              <div className="mk-flbl">{L('Bacak Uzunluğu (SİAS – Medial Malleol)','Leg Length (ASIS – Medial Malleolus)')}</div>
-              <MkInput value={test.yBalance?.limbLength} onChange={v=>set('limbLength',v)} unit="cm"/>
-            </div>
-            <div className="yb-sides">
-              {[['right',L('Sağ Ayak','Right Foot')],['left',L('Sol Ayak','Left Foot')]].map(([s,lbl])=>(
-                <div key={s} className="yb-side">
-                  <div className="yb-side-h"><YbDiag flip={s==='left'}/><span>{lbl}</span></div>
-                  {DIRS.map(([k,dl])=>(
-                    <div key={k} className="mk-field">
-                      <div className="mk-flbl">{dl}</div>
-                      <MkInput value={test.yBalance?.[s]?.[k]} onChange={v=>setSide(s,k,v)} unit="cm"/>
-                    </div>))}
-                </div>))}
-            </div>
-          </div>
-          <div className="yb-score">
-            <div className="yb-score-t">{L('Bileşik Skor','Composite Score')}</div>
-            <div className="yb-comps">
-              {[[L('Sağ','Right'),yb.compR],[L('Sol','Left'),yb.compL]].map(([lbl,v])=>(
-                <div key={lbl} className="yb-comp">
-                  <div className="yb-comp-l">{lbl}</div>
-                  <div className="yb-comp-v" style={{color:v!=null?'var(--card-accent,#0094ff)':'rgba(255,255,255,.25)'}}>{v!=null?v:'—'}<small>%</small></div>
-                </div>))}
-            </div>
-            {yb.compR!=null&&yb.compL!=null&&<div className="mk-asym-pill" style={{marginTop:0}}>{L('Asimetri','Asymmetry')} {Math.abs(yb.compR-yb.compL).toFixed(1)}%</div>}
-            <div className="yb-diffs">
-              <div className="yb-diffs-t">{L('Sağ / Sol Uzanma Farkı (< 4 cm)','R / L Reach Difference (< 4 cm)')}</div>
-              {diffs.map(([lbl,d])=>(
-                <div key={lbl} className="yb-diff-row">
-                  <span>{lbl}</span>
-                  <span className={'yb-diff-val'+(d==null?'':(d<4?' ok':' bad'))}>{d==null?'—':d.toFixed(1)+' cm'}</span>
-                </div>))}
-            </div>
-            <div className="yb-formula">{L('Bileşik = (ANT + PM + PL) / (3 × Bacak Uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × Leg Length) × 100')}</div>
-          </div>
+      <div className="tcard-col">
+        <div className="yb-limb"><span className="mk-flbl">{L('Bacak uzunluğu (SİAS – medial malleol)','Leg length (ASIS – medial malleolus)')}</span>
+          <MkInput value={test.yBalance?.limbLength} onChange={v=>set('limbLength',v)} unit="cm" sm/></div>
+        <MkLR unit="cm" diffHead={L('Fark < 4','Gap < 4')} rows={[row('ant','Anterior',yb.dAnt),row('pm','Posteromedial',yb.dPm),row('pl','Posterolateral',yb.dPl)]}/>
+        <div className="mk-stats">
+          <MkStat k={L('Bileşik sağ','Composite R')} v={yb.compR} u="%"/>
+          <MkStat k={L('Bileşik sol','Composite L')} v={yb.compL} u="%"/>
+          <MkStat k={L('Fark','Gap')} v={cGap} u="%"/>
         </div>
+        <div className="yb-formula">{L('Bileşik = (ANT + PM + PL) / (3 × bacak uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × leg length) × 100')}</div>
         <MkObs value={obsVal} onChange={setObs} placeholder={L('Denge stratejisi, salınım, yere temaslar…','Balance strategy, wobble, touch-downs…')}/>
       </div>
     </div>);
   }
 
-  if(id==='sprint'){
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
-      <Hd/>
-      <div className="tcard-content">
-        <div className="tc-fields">
-          <div className="mk-field">
-            <div className="mk-flbl">{L('20m Sprint Süresi','20m Sprint Time')}</div>
-            <div className="mk-input mk-solo"><input type="number" step="0.01" inputMode="decimal" value={test.sprint20m?.time||''} onChange={e=>uN('sprint20m','time',e.target.value)}/><span className="mk-unit">s</span></div>
-          </div>
-          <div>
-            <div className="mk-flbl" style={{marginBottom:10}}>{L('Adım / Ayak Fotoğrafları','Step / Foot Photos')}</div>
-            <div className="mk-uploads">
-              <MkUpload photo={test.sprint20m?.sideStep1} onChange={v=>uN('sprint20m','sideStep1',v)} label={L('Adım 1','Step 1')}/>
-              <MkUpload photo={test.sprint20m?.sideStep2} onChange={v=>uN('sprint20m','sideStep2',v)} label={L('Adım 2','Step 2')}/>
-              <MkUpload photo={test.sprint20m?.sideStep3} onChange={v=>uN('sprint20m','sideStep3',v)} label={L('Adım 3','Step 3')}/>
-              <MkUpload photo={test.sprint20m?.frontRightFoot} onChange={v=>uN('sprint20m','frontRightFoot',v)} label={L('Sağ Ayak','R Foot')}/>
-              <MkUpload photo={test.sprint20m?.frontLeftFoot} onChange={v=>uN('sprint20m','frontLeftFoot',v)} label={L('Sol Ayak','L Foot')}/>
-            </div>
-          </div>
-        </div>
-        <FvSprintInput test={test} onUpdate={onUpdate} ath={(athletes||[]).find(a=>a.id===athId)}/>
-        <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, reaksiyon süresi notları…','Sprint mechanics, reaction time notes…')}/>
-      </div>
-    </div>);
-  }
+  if(id==='sprint')return<SprintCard hd={<Hd/>} test={test} onUpdate={onUpdate} ath={(athletes||[]).find(a=>a.id===athId)} obsVal={obsVal} setObs={setObs}/>;
 
   if(id==='lateralCmj'){
     const r=Number(test.lateralCmj?.right)||0,l=Number(test.lateralCmj?.left)||0;
@@ -798,14 +1028,14 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           <div className="mk-field"><div className="mk-flbl">{L('Sağ','Right')}</div><MkInput value={test.lateralCmj?.right} onChange={v=>uN('lateralCmj','right',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Sol','Left')}</div><MkInput value={test.lateralCmj?.left} onChange={v=>uN('lateralCmj','left',v)} unit="cm"/></div>
         </div>
-        {(r>0&&l>0)&&<div className="mk-asym-pill">Asymmetry {diff.toFixed(1)} cm ({(diff/mx*100).toFixed(1)}%)</div>}
+        <MkAsym pct={asymPct(r,l,'hi')} extra={r>0&&l>0?diff.toFixed(1)+' cm':''}/>
         <MkObs value={obsVal} onChange={setObs} placeholder={L('İniş kontrolü, taraf baskınlığı…','Landing control, side dominance…')}/>
       </div>
     </div>);
   }
 
   if(MK_SOLO_UNIT[id]){
-    const step=(id==='dropJump'||id==='tTest'||id==='fiveZeroFive'||id==='shuttleRun')?'0.01':'0.1';
+    const step=(id==='dropJump'||id==='tTest'||id==='shuttleRun')?'0.01':'0.1';
     return(<div className="tcard tcard-score" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-col">
@@ -829,7 +1059,9 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
   const cTests=Array.isArray(customTests)?customTests:[];
   const ids=expandBattery(test.battery)||TEST_CATALOG.filter(c=>!c.retired||(TI_HAS[c.id]&&TI_HAS[c.id](test))).map(c=>c.id);
-  const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id));
+  // A record screened on the whole FMS sheet opens as that sheet, never also as its seven movements.
+  const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id))
+    .filter(id=>!(ids.includes('fms')&&FMS_PART_IDS.includes(id)));
   const u=(k,v)=>onUpdate({[k]:v});
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   return(<div className="panel" style={{borderColor:'var(--accent)',boxShadow:'0 0 0 1px rgba(0,148,255,.22)'}}>
@@ -841,9 +1073,9 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
       <div className="row" style={{gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
         <div><label style={{fontSize:11}}>{L('Tarih','Date')}</label><input type="date" value={test.date} onChange={e=>u('date',e.target.value)} style={{width:150}}/></div>
         <div><label style={{fontSize:11}}>{L('Dönem','Period')}</label><select value={test.period} onChange={e=>u('period',e.target.value)} style={{width:140}}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{exLabel(p.label)}</option>)}</select></div>
-        <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup,customTests,athletes);}catch(e){alert(L('PDF hatası: ','PDF error: ')+e.message);}}}>⎙ {L('Çıktı al','Print')}</button>
+        <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup,customTests,athletes);}catch(e){alert(L('PDF hatası: ','PDF error: ')+e.message);}}}>{L('Çıktı al','Print')}</button>
         <button className="btn sm sec" onClick={()=>{try{printTestCompare(test,ath,setup,customTests,athletes);}catch(e){alert(L('Rapor hatası: ','Report error: ')+e.message);}}}
-          title={L('Bu kayıttaki her ölçüm takım ortalamasına karşı (A4 dikey)','Every reading on this record set against the squad average (A4 portrait)')}>▤ {L('Rapor','Report')}</button>
+          title={L('Bu kayıttaki her ölçüm takım ortalamasına karşı (A4 dikey)','Every reading on this record set against the squad average (A4 portrait)')}>{L('Rapor','Report')}</button>
         <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')} ✕</button>
       </div>
     </div>

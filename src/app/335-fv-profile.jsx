@@ -141,6 +141,7 @@ const fvWhyText=(why)=>({
   mass:L('Vücut ağırlığı yok — Antropometri testine ya da Ölçüm kayıtlarına kilo gir.','No body mass — enter weight in the Anthropometry test or Measurements.'),
   hpo:L('İtiş mesafesi (hpo) gir (cm; çömelme pozisyonunda ayak bileği-kalça-diz tam uzadığında gövdenin yükselmesi).','Enter push-off distance (hpo, cm: how far the body rises from the squat start position to full extension).'),
   points:L('En az iki farklı yükle sıçrama gerekli (BW + bir ek yük).','At least two different loads are needed (bodyweight + one added load).'),
+  spoints:L('Profil için 20 m süresinin yanında en az bir ara zaman daha gir (5, 10 ya da 30 m; kapı/foto-hücre ile).','Enter at least one more split besides the 20 m time (5, 10 or 30 m; timing gates / photocells).'),
   flat:L('Yükler farklı sonuç vermedi: noktalar aynı hızda.','The loads did not change velocity.'),
   slope:L('Yük arttıkça hız düşmedi (eğim fizyolojik değil): veriyi kontrol et.','Velocity did not fall as load rose (non-physiological slope): check the data.'),
   order:L('Ara zamanlar mesafe arttıkça artmalı.','Split times must increase with distance.'),
@@ -168,29 +169,23 @@ function FvVerticalResult({res}){
     <div className="help">{L(`${res.n} nokta · R² ${res.r2.toFixed(2)}. Samozino yöntemi, tahmindir; ölçüm kalitesine bağlıdır.`,`${res.n} points · R² ${res.r2.toFixed(2)}. Samozino method; an estimate that depends on measurement quality.`)}</div>
   </div>);
 }
-/* ---- Sprint kartı içi: ara zamanlar + sonuç ---- */
-function FvSprintInput({test,onUpdate,ath}){
-  const sp=test.sprintSplits||{};
+/* ---- Sprint kartı içi: F-V sonucu. Ara zamanlar kartın kendi kapı şeridinden girilir
+   (5 / 10 m, 5-10m Acceleration testiyle ortaktır; 20 m ana süre; 30 m). ---- */
+function FvSprintResult({test,ath}){
   const mass=fvBodyMass(test,ath);
   const res=useMemo(()=>fvSprint(mass,fvSprintPoints(test)),[mass,test.sprint20m,test.sprintSplits]);
-  const set=(k,v)=>onUpdate(t=>({sprintSplits:{...(t.sprintSplits||{}),[k]:v}}));
-  const cell=(k,v,u)=><div className="ath-stat"><div className="k">{k}</div><div className="v">{v}<span className="u">{u}</span></div></div>;
+  const cell=(k,v,u)=><div className="mk-stat"><div className="k">{k}</div><div className="v">{v}<span className="u">{u}</span></div></div>;
   return(<div className="fv-box">
-    <div className="fv-h">{L('Sprint F-V profili (ara zamanlar)','Sprint F-V profile (split times)')}</div>
-    <div className="help" style={{marginBottom:8}}>{L('20 m süresi yukarıdaki kutudan gelir. En az bir ara zaman daha gir (kapı/foto-hücre ile; elle zamanlama güvenilir değildir).','The 20 m time comes from the box above. Add at least one more split (timing gates / photocells; hand timing is unreliable).')}</div>
-    <div className="row" style={{gap:10,flexWrap:'wrap'}}>
-      {[['t5','5 m'],['t10','10 m'],['t30','30 m']].map(([k,l])=><div key={k} className="mk-field" style={{margin:0}}>
-        <div className="mk-flbl">{l}</div><MkInput value={sp[k]} onChange={v=>set(k,v)} unit="s" step="0.01"/></div>)}
-    </div>
-    {res.ok?<div className="fv-res">
-      <div className="ath-stat-row" style={{gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))'}}>
+    <div className="fv-h">{L('Sprint kuvvet-hız profili','Sprint force-velocity profile')}</div>
+    {res.ok?<>
+      <div className="mk-stats">
         {cell('F0',res.F0rel.toFixed(2),'N/kg')}
         {cell('V0 (Vmax)',res.V0.toFixed(2),'m/s')}
         {cell('Pmax',res.Pmaxrel.toFixed(1),'W/kg')}
         {cell('τ',res.tau.toFixed(2),'s')}
       </div>
       <div className="help">{L(`${res.n} nokta · model hatası ${res.rmse} m. Yatay net kuvvet, hava direnci dahil değil. F0 ivmelenme (kuvvet) tarafını, V0 maksimum hız tarafını gösterir.`,`${res.n} points · model error ${res.rmse} m. Net horizontal force, air drag not included. F0 reflects the acceleration (force) side, V0 the top-speed side.`)}</div>
-    </div>:<div className="help" style={{marginTop:8}}>{fvWhyText(res.why)}</div>}
+    </>:<div className="help">{fvWhyText(res.why==='points'?'spoints':res.why)}</div>}
   </div>);
 }
 
