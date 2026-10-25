@@ -671,11 +671,11 @@ function FmsPartCard({item,test,ath,onUpdate}){
             <FmsProblemPick opts={FMS_PROBLEMS[id]} value={(f.problems||{})[id]} onChange={v=>setProblems(id,v)} legacy={(f.comments||{})[id]}/></div>
         :<div key={id} className="tc-obs fmsc-cm"><div className="tc-obs-l">{id==='ankle'?L('Ayak bileği yorumu','Ankle comment'):L('Yorum','Comment')}</div>
             <LiveTextarea value={(f.comments||{})[id]||''} onChange={x=>setComment(id,x)} rows={2} placeholder={L('Kompanzasyon, ağrı, kalite notu…','Compensation, pain, quality note…')}/></div>)}
-      <div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
-        <div className="mk-uploads sm">
+      {FMS_PHOTO_MOVES.includes(item.id)&&<div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
+        <div className="fmsc-ph-g">
           <MkUpload photo={ph.front} onChange={v=>setPhoto('front',v)} label={L('Önden','Front')}/>
           <MkUpload photo={ph.side} onChange={v=>setPhoto('side',v)} label={L('Yandan','Side')}/>
-        </div></div>
+        </div></div>}
       <div className="fmsc-tot">{L('FMS toplamı','FMS total')} <b>{c.total!=null?c.total:'—'}</b> / 21<span>{c.n}/7 {L('hareket','movements')}</span></div>
     </div>
   </div>);

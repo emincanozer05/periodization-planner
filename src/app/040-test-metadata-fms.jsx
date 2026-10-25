@@ -261,6 +261,8 @@ const fmsCell=(f,r)=>{const v=(f||{})[r.f];return r.side?((v&&v[r.side])||''):(v
    only its own lines of the sheet — the movement, and the clearing / mobility lines filed under
    it — in the shared `fms` record. */
 const FMS_PART_IDS=FMS_ITEMS.map(i=>'fms_'+i.id);
+/* The movements that take front / side photos (card and report); the others are scored only. */
+const FMS_PHOTO_MOVES=['deepSquat'];
 const fmsPartItem=id=>FMS_ITEMS.find(i=>'fms_'+i.id===id)||null;
 const FMS_ROW_OF={anklePain:'inlineLunge',ankleMob:'inlineLunge',shoulderClear:'shoulderMobility',pushupClear:'trunkPushup',rotaryClear:'rotary'};
 const fmsRowsOf=mid=>FMS_SHEET.filter(r=>(FMS_ROW_OF[r.f]||r.f)===mid);

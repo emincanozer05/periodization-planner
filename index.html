@@ -9390,6 +9390,12 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 :is(:root,:root[data-theme]) .mk-up-gd{width:auto;height:auto;padding:2px 6px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;background:rgba(10,11,13,.7);color:#fff;box-shadow:none}
 :is(:root,:root[data-theme]) .mk-up-ph{font-size:10px;font-weight:600;text-align:center;padding:0 6px}
 :is(:root,:root[data-theme]) .mk-lb-close{width:auto;height:auto;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600}
+
+/* FMS Deep Squat: önden / yandan fotoğraf kutuları kartın genişliğini ikiye bölüp doldurur */
+.fmsc-ph-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fmsc-ph-g .mk-up{align-items:stretch}
+:is(:root,:root[data-theme]) .fmsc-ph-g .mk-up-box{width:100%;height:auto;aspect-ratio:1/1.05}
+.fmsc-ph-g .mk-up-cap{text-align:center}
 </style>
 </head>
 <body>
@@ -10678,6 +10684,8 @@ const fmsCell=(f,r)=>{const v=(f||{})[r.f];return r.side?((v&&v[r.side])||''):(v
    only its own lines of the sheet — the movement, and the clearing / mobility lines filed under
    it — in the shared `fms` record. */
 const FMS_PART_IDS=FMS_ITEMS.map(i=>'fms_'+i.id);
+/* The movements that take front / side photos (card and report); the others are scored only. */
+const FMS_PHOTO_MOVES=['deepSquat'];
 const fmsPartItem=id=>FMS_ITEMS.find(i=>'fms_'+i.id===id)||null;
 const FMS_ROW_OF={anklePain:'inlineLunge',ankleMob:'inlineLunge',shoulderClear:'shoulderMobility',pushupClear:'trunkPushup',rotaryClear:'rotary'};
 const fmsRowsOf=mid=>FMS_SHEET.filter(r=>(FMS_ROW_OF[r.f]||r.f)===mid);
@@ -24504,7 +24512,9 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
     circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return blk('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
       [L('Uyluk R','Thigh R'),cm(c.thighRight||c.thigh)],[L('Uyluk L','Thigh L'),cm(c.thighLeft||c.thigh)],[L('Baldır R','Calf R'),cm(c.calfRight||c.calf)],[L('Baldır L','Calf L'),cm(c.calfLeft||c.calf)]]));},
     posture:()=>{const p=t.posture||{};if(!(p.frontPhoto||p.sidePhoto||p.backPhoto||p.sideLPhoto||p.observations))return{empty:true,name:tName('posture')};
-      return blk('posture',`<div class="photos">${ph(p.frontPhoto,L('Önden','Front'),132,190)}${ph(p.sidePhoto,L('Yandan (R)','Side (R)'),132,190)}${p.sideLPhoto?ph(p.sideLPhoto,L('Yandan (L)','Side (L)'),132,190):''}${ph(p.backPhoto,L('Arkadan','Back'),132,190)}</div>`);},
+      /* The photos share the full width of the box, each column the same. */
+      const shots=[ph(p.frontPhoto,L('Önden','Front'),132,190),ph(p.sidePhoto,L('Yandan (R)','Side (R)'),132,190),p.sideLPhoto?ph(p.sideLPhoto,L('Yandan (L)','Side (L)'),132,190):'',ph(p.backPhoto,L('Arkadan','Back'),132,190)].filter(Boolean);
+      return blk('posture',`<div class="photos fill" style="grid-template-columns:repeat(${shots.length},1fr)">${shots.join('')}</div>`);},
     ohs:()=>{const o=t.ohs||{};return blk('ohs',kv([[L('Skor','Score'),`${dash(o.score)} <small>/ 3</small>`,o.score!==''&&o.score!=null?` style="color:${fmsTone(o.score)}"`:'']])
       +((o.frontPhoto||o.sidePhoto)?`<div class="photos">${ph(o.frontPhoto,L('Önden','Front'),150,200)}${ph(o.sidePhoto,L('Yandan','Side'),150,200)}</div>`:''));},
     ankleDF:()=>{const a=t.ankleDF||{};const r=tN(a.right),l=tN(a.left);const d=r!=null&&l!=null?+Math.abs(r-l).toFixed(1):null;
@@ -24581,8 +24591,10 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       <div class="fm-v"${it.score!=null?` style="color:${fmsTone(it.score)}"`:''}>${it.score!=null?it.score:'—'}<small> / 3</small></div></div>`;
     const list=`<div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
       ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>`;
+    // Only the movements that take photos get the photo column; the rest are score | problems.
+    if(!FMS_PHOTO_MOVES.includes(mid))return box(esc(it.en),'FMS',`<div class="fm nop">${score}<div class="fm-r">${list}</div></div>`);
     return box(esc(it.en),'FMS',`<div class="fm">
-      <div class="fm-ph">${ph(pp.front,L('Önden','Front'),132,176)}${ph(pp.side,L('Yandan','Side'),132,176)}</div>
+      <div class="photos fill" style="grid-template-columns:1fr 1fr;margin:0">${ph(pp.front,L('Önden','Front'),132,176)}${ph(pp.side,L('Yandan','Side'),132,176)}</div>
       <div class="fm-r">${score}${list}</div></div>`);
   };
   const fmsPdfBlk=()=>`<div class="tb fms-sheet">
@@ -24679,8 +24691,12 @@ table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--bord
 .rt.lab td.l{font-size:9.5px;font-weight:500;color:var(--text2)}
 /* FMS movement: photos left, score and problems right */
 .fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
-.fm-ph{display:flex;justify-content:center;align-items:flex-start;gap:10px}
-.fm-ph .ph img,.fm-ph .phx{width:132px!important;height:176px!important;max-height:none!important;object-fit:cover!important}
+.fm.nop .fm-sc{display:flex;flex-direction:column}
+/* Photos that fill their box: equal columns, each picture as wide as its column, portrait 3:4 */
+.photos.fill{display:grid;gap:10px;align-items:start}
+.photos.fill .ph{display:block;min-width:0}
+.photos.fill .ph img,.photos.fill .phx{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:3/4;object-fit:cover!important}
+.photos.fill .phx{display:flex}
 .fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
 .fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .fm-sc{text-align:center}
@@ -25902,11 +25918,11 @@ function FmsPartCard({item,test,ath,onUpdate}){
             <FmsProblemPick opts={FMS_PROBLEMS[id]} value={(f.problems||{})[id]} onChange={v=>setProblems(id,v)} legacy={(f.comments||{})[id]}/></div>
         :<div key={id} className="tc-obs fmsc-cm"><div className="tc-obs-l">{id==='ankle'?L('Ayak bileği yorumu','Ankle comment'):L('Yorum','Comment')}</div>
             <LiveTextarea value={(f.comments||{})[id]||''} onChange={x=>setComment(id,x)} rows={2} placeholder={L('Kompanzasyon, ağrı, kalite notu…','Compensation, pain, quality note…')}/></div>)}
-      <div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
-        <div className="mk-uploads sm">
+      {FMS_PHOTO_MOVES.includes(item.id)&&<div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
+        <div className="fmsc-ph-g">
           <MkUpload photo={ph.front} onChange={v=>setPhoto('front',v)} label={L('Önden','Front')}/>
           <MkUpload photo={ph.side} onChange={v=>setPhoto('side',v)} label={L('Yandan','Side')}/>
-        </div></div>
+        </div></div>}
       <div className="fmsc-tot">{L('FMS toplamı','FMS total')} <b>{c.total!=null?c.total:'—'}</b> / 21<span>{c.n}/7 {L('hareket','movements')}</span></div>
     </div>
   </div>);
