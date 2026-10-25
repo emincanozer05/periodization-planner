@@ -355,7 +355,9 @@ const TEST_CATALOG=[
   /* The whole sheet as one test. No longer offered — new batteries pick the seven movements —
      but a record screened with it still opens as the full score sheet. */
   {id:'fms',           name:'FMS — Functional Movement Screen',short:'FMS',retired:true},
-  {id:'ohs',           name:'Overhead Squat Test',        short:'OHS'},
+  /* Retired from the picker: the FMS Deep Squat covers the same pattern. A record that was
+     screened with it still reads, prints and charts as before. */
+  {id:'ohs',           name:'Overhead Squat Test',        short:'OHS',retired:true},
   {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF'},
   /* Retired from the picker: the FMS Active Straight-Leg Raise replaces it. Kept here so a
      record that was screened with it still reads, prints and charts as before. */

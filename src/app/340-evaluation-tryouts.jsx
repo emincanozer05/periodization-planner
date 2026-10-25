@@ -697,15 +697,14 @@ function EvaluationView({team,updateTeam,data,setData}){
     <div className="ev2-bar">
       <div className="ev2-tabs">
         <button className={'ev2-tab'+(posFilter==='all'?' on':'')} onClick={()=>setPosFilter('all')}>
-          <TIc k="users" size={15}/>{Lx('Tüm Sporcular','All Athletes')}<span className="ev2-tab-n">({athletes.length})</span>
+          {Lx('Tüm Sporcular','All Athletes')}<span className="ev2-tab-n">({athletes.length})</span>
         </button>
         {posGroups.map(p=><button key={p} className={'ev2-tab'+(posFilter===p?' on':'')} onClick={()=>setPosFilter(p)}>
-          <TIc k="user" size={15}/>{POS_FULL[p]||p}<span className="ev2-tab-n">({athletes.filter(a=>posOfAth(a)===p).length})</span>
+          {POS_FULL[p]||p}<span className="ev2-tab-n">({athletes.filter(a=>posOfAth(a)===p).length})</span>
         </button>)}
       </div>
       <div className="ev2-bar-sp"/>
       <div className="ev2-search">
-        <span className="ev2-search-ic"><TIc k="search" size={15}/></span>
         <input placeholder={Lx('Sporcu ara…','Search athlete…')} value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
       <select className="ev2-sort" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
@@ -714,8 +713,8 @@ function EvaluationView({team,updateTeam,data,setData}){
         <option value="tests">{Lx('Test Sayısı (Çoktan Aza)','Test Count (most first)')}</option>
       </select>
       <div className="ev2-vt">
-        <button className={listView?'':'on'} onClick={()=>setListView(false)} title={Lx('Kart görünümü','Card view')}><TIc k="grid" size={15}/></button>
-        <button className={listView?'on':''} onClick={()=>setListView(true)} title={Lx('Liste görünümü','List view')}><TIc k="list" size={15}/></button>
+        <button className={listView?'':'on'} onClick={()=>setListView(false)} title={Lx('Kart görünümü','Card view')}>{Lx('Kart','Cards')}</button>
+        <button className={listView?'on':''} onClick={()=>setListView(true)} title={Lx('Liste görünümü','List view')}>{Lx('Liste','List')}</button>
       </div>
     </div>
 
@@ -729,7 +728,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-card-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
         <div className="ev2-card-nm">{a.name}</div>
         <div className="ev2-card-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
-        <div className="ev2-card-chk">{on?'✓':''}</div>
+        <div className="ev2-card-chk"/>
       </div>);
     })}</div>}
 
@@ -741,7 +740,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-lrow-nm">{a.name}</div>
         <div className="ev2-lrow-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
         <div className="ev2-lrow-mt" style={{flex:'0 0 86px'}}>{n} {Lx('test',n===1?'test':'tests')}</div>
-        <div className="ev2-card-chk" style={{position:'static'}}>{on?'✓':''}</div>
+        <div className="ev2-card-chk" style={{position:'static'}}/>
       </div>);
     })}</div>}
 
@@ -757,7 +756,7 @@ function EvaluationView({team,updateTeam,data,setData}){
           <div className="ev2-step-a">
             <button className="btn xs sec" onClick={()=>setPick(new Set(fullCatalog.map(c=>c.id)))}>{Lx('Tümünü Seç','Select All')}</button>
             <button className="btn xs sec" onClick={()=>setPick(new Set())}>{Lx('Temizle','Clear')}</button>
-            <button className="btn xs sec" onClick={saveTemplate}>🔖 {Lx('Şablon Kaydet','Save Template')}</button>
+            <button className="btn xs sec" onClick={saveTemplate}>{Lx('Şablon Kaydet','Save Template')}</button>
           </div>
         </div>
         <div className="ev2-step-bd">
@@ -767,7 +766,7 @@ function EvaluationView({team,updateTeam,data,setData}){
             </span>
             {templates.map(t=><span key={t.id} className="ev2-tpl" onClick={()=>setPick(new Set(tplIds(t)))}>
               {t.name}<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,opacity:.6}}>{tplIds(t).length}</span>
-              <button className="ev2-tpl-x" onClick={e=>{e.stopPropagation();delTemplate(t.id);}} title={Lx('Sil','Delete')}>✕</button>
+              <button className="ev2-tpl-x" onClick={e=>{e.stopPropagation();delTemplate(t.id);}} title={Lx('Şablonu sil','Delete template')}>{Lx('Sil','Delete')}</button>
             </span>)}
           </div>}
           <div className="ev2-pick">
@@ -789,11 +788,11 @@ function EvaluationView({team,updateTeam,data,setData}){
                     <div className="ev2-tile-t">{fmsP?c.name.replace(/^FMS /,''):c.name}</div>
                     <div className="ev2-tile-s">{m.tr?Lx(m.tr,m.en):Lx('Özel test','Custom test')}</div>
                   </div>
-                  <div className="ev2-tile-chk">{on?'✓':''}</div>
-                  {c.custom&&<button className="ev2-tile-x" title={Lx('Sil','Remove')} onClick={e=>{e.stopPropagation();delCustom(c.id);}}>✕</button>}
+                  <div className="ev2-tile-chk"/>
+                  {c.custom&&<button className="ev2-tile-x" title={Lx('Özel testi sil','Remove custom test')} onClick={e=>{e.stopPropagation();delCustom(c.id);}}>{Lx('Sil','Remove')}</button>}
                 </div>);})}
               {(cat==='all'||cat==='custom')&&<div className="ev2-tile add" onClick={addCustomTest}>
-                <div className="ev2-tile-tx"><div className="ev2-tile-t" style={{color:'var(--accent2)'}}>＋ {Lx('Özel Test','Custom Test')}</div>
+                <div className="ev2-tile-tx"><div className="ev2-tile-t" style={{color:'var(--accent2)'}}>{Lx('Özel Test Ekle','Add Custom Test')}</div>
                   <div className="ev2-tile-s">{Lx('Kendi ölçümünü ekle','Add your own measure')}</div></div>
               </div>}
             </div>
@@ -806,7 +805,7 @@ function EvaluationView({team,updateTeam,data,setData}){
                 {TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
               </select></div>
             <button className="btn ev2-go" disabled={pick.size===0} onClick={takeTest}>
-              ▶ {Lx('Testi Başlat','Start Test')} ({pick.size}) →
+              {Lx('Testi Başlat','Start Test')} <span className="ev2-go-n">{pick.size}</span>
             </button>
           </div>
         </div>
@@ -846,8 +845,8 @@ function EvaluationView({team,updateTeam,data,setData}){
                 <div className="ev2-res-a">
                   <button className="btn xs sec" style={isAdding?{background:'var(--accent)',color:'#0a0b0d',borderColor:'var(--accent)'}:{}}
                     onClick={e=>{e.stopPropagation();setAddBatId(isAdding?null:t.id);}}
-                    title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>＋ {Lx('Test Ekle','Add Tests')}</button>
-                  <button className="btn xs sec" onClick={e=>{e.stopPropagation();setEditingId(t.id);}}>👁 {Lx('Görüntüle','Open')}</button>
+                    title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>{Lx('Test Ekle','Add Tests')}</button>
+                  <button className="btn xs sec" onClick={e=>{e.stopPropagation();setEditingId(t.id);}}>{Lx('Görüntüle','Open')}</button>
                   {/* A bare ✕ beside "Open" reads as "close", not "delete for good". It
                       says what it does, and it is the only red thing on the row. */}
                   <button className="btn xs danger" onClick={e=>{e.stopPropagation();delTest(t.id);}}
@@ -860,10 +859,10 @@ function EvaluationView({team,updateTeam,data,setData}){
                       return(<div key={c.id} className={'tpc'+(onB?' on':'')} onClick={()=>toggleBattery(t,c.id)}>
                         {c.custom&&<div className="tpc-tag">{Lx('özel','custom')}</div>}
                         <div className="tpc-t">{c.name}</div>
-                        <div className="tpc-chk">{onB?'✓':''}</div>
+                        <div className="tpc-chk"/>
                       </div>);})}
                     <div className="tpc add" onClick={()=>addCustomToTest(t)}>
-                      <div className="tpc-t">＋ {Lx('Özel Test','Custom Test')}</div>
+                      <div className="tpc-t">{Lx('Özel Test Ekle','Add Custom Test')}</div>
                     </div>
                   </div>
                 </div>}
