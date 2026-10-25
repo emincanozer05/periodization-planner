@@ -48,6 +48,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19g-motion-tabs.css` | Joint by Joint, Test ve Değerlendirme ve Yük Takibi: düz tonlu rozetler, seçim vurguları, kategori/metrik renk şeritleri, eklem değerlendirme çubuğu ve yumuşak geçişler: sekme/bölüm gelişi, seçimde renk-kenar geçişi, monotoni işaretinin kayması, Higgsfield ile netleştirilmiş manken görselinin sabit oranı; az-hareket koruması |
 | `19h-team-data.css` | Takım Verileri (`td-*`): koyu ışıklı başlık bandı, özet kutuları, metrik çipleri, gelişim grafik kartları; az-hareket korumalı |
 | `19i-tests-v3.css` | Test ve Değerlendirme kartları v3: kompakt ızgara (2-4 sütun), alçak değer kutuları, sağ/sol tablosu (`mk-lr`), okuma kutuları (`mk-stat`), FMS hareket kartı (`fmsc-*`, sol üstte FMS logosu), kapı şeritli 20 m sprint (`spr-*`), Thomas testi (`th-*`); düz yüzey, gradyan yok |
+| `19j-tests-v4.css` | Test ve Değerlendirme v4: simgesiz ve emojisiz (yazı sekmeler, Kart/Liste anahtarı, yazılı fotoğraf kutuları), onay işareti yerine dolan seçim kutusu, tarih sütunu ayrılmış kayıt satırları, mono sıra numaralı (`01`) kart başlıkları, düz (eğik olmayan) seçici başlıkları |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |

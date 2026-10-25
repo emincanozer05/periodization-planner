@@ -271,14 +271,18 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   /* One test in the body: its name, its numbers and the coach's note — only the athlete's own
      readings and photos. What the test is, with its picture, is explained once at the end. */
   const shown=[];
+  /* The test's name in the left column, its numbers and the note in the right. A test on the
+     battery that has no reading at all is one quiet line instead of a table of dashes. */
   const blk=(id,res,extra)=>{
     shown.push(id);
     const note=obsOf(id);
-    return`<div class="tb">
+    const hasNote=note&&String(note).trim();
+    let empty=false;try{empty=!!(TI_HAS[id]&&!TI_HAS[id](test))&&!hasNote;}catch(e){}
+    return`<div class="tb${empty?' tb-empty':''}">
+      <div class="tb-t">${esc(tName(id))}</div>
       <div class="tb-bd">
-        <div class="tb-t">${esc(tName(id))}</div>
-        ${res||''}
-        ${note&&String(note).trim()?`<div class="tb-note"><b>${L('Gözlem','Observation')}:</b> ${esc(note)}</div>`:''}
+        ${empty?`<div class="tb-none">${L('Bu kayıtta değer girilmedi.','No values were entered on this record.')}</div>`:(res||'')}
+        ${hasNote?`<div class="tb-note"><b>${L('Gözlem','Observation')}:</b> ${esc(note)}</div>`:''}
       </div>
     </div>${extra||''}`;
   };
@@ -292,7 +296,7 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       return`<div class="ti">${img?`<div class="ti-img"><img src="${esc(abs(img))}" alt=""/></div>`:''}<div class="ti-n">${esc(tName(id))}</div><div class="ti-w">${esc(o.w)}</div><div class="ti-p">${esc(o.p)}</div></div>`;};
     // Pictured tests in an even grid; the ones without a picture as a text list under it.
     const pic=list.filter(id=>TEST_IMG[id]),txt=list.filter(id=>!TEST_IMG[id]);
-    return`<div class="ti-sec"><div class="grp-h">${L('Testler Hakkında','About the Tests')}</div>
+    return`<div class="ti-sec">${gh(L('Testler Hakkında','About the Tests'))}
       ${pic.length?`<div class="ti-grid">${pic.map(card).join('')}</div>`:''}
       ${txt.length?`<div class="ti-list">${txt.map(card).join('')}</div>`:''}</div>`;
   };
@@ -366,18 +370,21 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   /* The FMS in the body of the report is one line: the final score of each movement screened and
      the total. The sheet itself and what each movement is for follow on pages of their own. */
   const fmsBlk=()=>{
-    if(fmsPages.length)return`<div class="tb fms-sheet noimg"><div class="tb-bd">
-      <div class="tb-t"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div>
+    if(fmsPages.length)return`<div class="tb fms-sheet wide">
+      <div class="tb-t"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div><div class="tb-bd">
       <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
       <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div></div></div>`;
     if(!fmsR.any)return'';
     const its=fmsR.items.filter(i=>fmsMoves.includes(i.id));
-    return`<div class="tb noimg"><div class="tb-bd">
-      <div class="tb-t"><span>FMS — Functional Movement Screen</span><span class="k">${L('Toplam','Total')} ${fmsR.total!=null?fmsR.total+' / 21':'—'}</span></div>
+    return`<div class="tb">
+      <div class="tb-t"><span>FMS — Functional Movement Screen</span><span class="k">${L('Toplam','Total')} ${fmsR.total!=null?fmsR.total+' / 21':'—'}</span></div><div class="tb-bd">
       <table class="rt"><tr>${its.map(i=>`<th>${esc(i.en)}</th>`).join('')}</tr><tr>${its.map(i=>`<td${i.score!=null?` style="color:${fmsTone(i.score)}"`:''}>${i.score!=null?i.score:'—'}${i.cleared==='pos'?' <small>'+L('ağrı','pain')+'</small>':''}${i.asym!=null&&i.cleared!=='pos'?' <small>'+L('asim.','asym.')+'</small>':''}</td>`).join('')}</tr></table>
       <div class="tb-avg">${L('Puan kâğıdı ve hareket açıklamaları (görselli) ayrı sayfalarda.','The score sheet and the movement descriptions (with pictures) are on pages of their own.')}</div>
     </div></div>`;
   };
+  /* Section headings are numbered in the order they print: 01 Temel Ölçümler, 02 … */
+  let secN=0;
+  const gh=(title,cls)=>`<div class="grp-h${cls?' '+cls:''}"><span class="grp-n">${String(++secN).padStart(2,'0')}</span>${title}</div>`;
   const groups=TEST_GROUPS.filter(g=>g.id!=='all'&&g.id!=='custom').map(g=>{
     const mine=ids.filter(id=>(TEST_META[id]||{}).g===g.id&&!FMS_PART_IDS.includes(id)&&id!=='fms');
     const parts=[];
@@ -391,10 +398,20 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       else body.push(p);
     });
     for(let i=0;i<body.length;i++)if(body[i].minis)body[i]=`<div class="mc-row">${body[i].minis.join('')}</div>`;
-    return body.length?`<div class="grp-h">${L(g.tr,g.en)}</div>${body.join('')}`:'';
+    return body.length?`${gh(L(g.tr,g.en))}${body.join('')}`:'';
   }).join('');
-  const custom=customSel.length?`<div class="grp-h">${L('Özel Testler','Custom Tests')}</div>
-    <div class="tb noimg"><div class="tb-bd">${grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}]))}</div></div>`:'';
+  const custom=customSel.length?`${gh(L('Özel Testler','Custom Tests'))}
+    <div class="tb wide"><div class="tb-bd">${grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}]))}</div></div>`:'';
+  const notesH=test.notes?gh(L('Gözlemler ve Yorumlar','Observations &amp; Comments'),'notes-h'):'';
+  /* The headline numbers of the record, in one strip under the athlete: only what was taken and
+     measured, at most six. */
+  const key=[];
+  const kp=(id,lab,v,u)=>{if(!taken(id))return;const n=tN(v);if(n!=null)key.push([lab,n,u]);};
+  kp('anthro',L('Boy','Height'),t.height,'cm');kp('anthro',L('Kilo','Weight'),t.weight,'kg');kp('anthro',L('Yağ oranı','Body fat'),t.bodyFat,'%');
+  kp('cmj','CMJ',t.cmj,'cm');kp('squatJump','Squat Jump',t.squatJump,'cm');kp('sprint','20 m Sprint',(t.sprint20m||{}).time,'s');
+  kp('fiveZeroFive','505 COD',cod505Calc(t).best,'s');kp('tTest','T-Agility',t.tTest,'s');kp('dropJump','RSI',t.dropJump,'');
+  if(fmsOn&&fmsR.total!=null)key.unshift(['FMS',fmsR.total,'/ 21']);
+  const kpis=key.length?`<div class="kpis">${key.slice(0,6).map(([l,v,u])=>`<div class="kpi"><div class="kpi-l">${esc(l)}</div><div class="kpi-v">${esc(v)}${u?` <small>${esc(u)}</small>`:''}</div></div>`).join('')}</div>`:'';
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
   const gen=L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)));
 
@@ -406,35 +423,49 @@ ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.45;background:#fff}
-/* Athlete header — one flat dark band */
-.athlete-header{display:flex;gap:16px;align-items:center;padding:14px 18px;margin-bottom:6px;background:#0a0b0d;color:#fff;border-radius:10px;break-inside:avoid}
-.athlete-photo,.athlete-photo-x{width:64px;height:80px;border-radius:7px;object-fit:cover;flex-shrink:0;border:1px solid #2a2d33}
-.athlete-photo-x{display:flex;align-items:center;justify-content:center;background:#1c1f24;color:var(--accent);font-size:22px;font-weight:700}
+/* Athlete header: white, the name large, closed by a heavy rule. Ink goes on the numbers. */
+.athlete-header{display:flex;gap:16px;align-items:flex-end;padding:0 0 12px;margin-bottom:0;border-bottom:2.5px solid var(--text);break-inside:avoid}
+.athlete-photo,.athlete-photo-x{width:60px;height:74px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
+.athlete-photo-x{display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);font-size:20px;font-weight:700}
 .athlete-info{flex:1;min-width:0}
-.athlete-info h1{font-size:21px;font-weight:700;letter-spacing:-.01em;line-height:1.1;margin-bottom:4px}
-.athlete-info .meta{font-size:10px;color:rgba(255,255,255,.7);line-height:1.55}
-.athlete-info .date{display:inline-block;margin-top:7px;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:3px 9px;border-radius:5px;letter-spacing:.05em}
-.right-block{text-align:right}
-.right-block .ttl{font-size:11px;font-weight:600;color:rgba(255,255,255,.6);letter-spacing:.12em;line-height:1.4;text-transform:uppercase}
-.right-block .coach-line{margin-top:10px;font-size:9.5px;color:rgba(255,255,255,.75)}
-/* Category heading, then one block per test */
-.grp-h{margin-top:14px;padding:0 0 5px;border-bottom:1.5px solid #0a0b0d;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
-.tb{padding:10px 0 11px;border-bottom:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
+.athlete-info h1{font-size:25px;font-weight:700;letter-spacing:-.015em;line-height:1.05;margin-bottom:5px;text-transform:uppercase}
+.athlete-info .meta{font-size:9.5px;color:var(--muted);line-height:1.55}
+.athlete-info .date{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;color:var(--text);letter-spacing:.04em;padding-left:8px;border-left:3px solid var(--accent)}
+.right-block{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
+.right-block .ttl{font-size:10px;font-weight:700;color:var(--text);letter-spacing:.16em;line-height:1.45;text-transform:uppercase}
+.right-block .coach-line{margin-top:10px;font-size:8.5px;color:var(--muted)}
+/* Headline numbers: one strip, hairlines between the cells */
+.kpis{display:flex;border-bottom:1px solid var(--border);break-inside:avoid}
+.kpi{flex:1 1 0;min-width:0;padding:9px 10px 10px;border-left:1px solid var(--border)}
+.kpi:first-child{border-left:none;padding-left:0}
+.kpi-l{font-size:7.6px;font-weight:600;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-v{margin-top:3px;font-size:19px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-v small{font-size:8.5px;font-weight:500;color:var(--muted)}
+/* Numbered section heading, then one row per test: name on the left, results on the right */
+.grp-h{display:flex;align-items:baseline;gap:9px;margin-top:16px;padding:0 0 5px;border-bottom:1.5px solid var(--text);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
+.grp-n{font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.tb{display:grid;grid-template-columns:132px minmax(0,1fr);gap:14px;padding:10px 0 11px;border-bottom:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
+.tb.wide{display:block}
+.tb.wide .tb-t{margin-bottom:6px}
 .tb-bd{min-width:0;display:flex;flex-direction:column;gap:6px}
-.tb-t{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:700;line-height:1.2}
-.tb-t .k{margin-left:auto;font-size:9.5px;font-weight:700;color:var(--text)}
+.tb-t{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;line-height:1.25;padding-top:2px}
+.tb.wide .tb-t{flex-direction:row;align-items:baseline;gap:8px}
+.tb-t .k{font-size:9px;font-weight:700;color:var(--text2)}
+.tb.wide .tb-t .k{margin-left:auto}
+.tb-empty{padding:7px 0 8px}
+.tb-none{font-size:9px;color:var(--dim);padding-top:2px}
 .tb-sub{font-size:9px;color:var(--text2)}
 .tb-avg{font-size:8.2px;color:var(--muted);line-height:1.35}
 .tb-avg span{white-space:nowrap}
-.tb-note{font-size:9px;color:var(--text2);line-height:1.45;padding:5px 8px;background:var(--bg2);border-left:2px solid var(--accent);border-radius:0 5px 5px 0}
+.tb-note{font-size:9px;color:var(--text2);line-height:1.45;padding:2px 0 2px 8px;border-left:2px solid var(--accent)}
 .tb-note b{color:var(--text);font-weight:600}
-/* Results: light heading row, the number large */
-table.rt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:6px;overflow:hidden}
-.rt th{background:var(--bg2);color:var(--muted);font-weight:600;font-size:7.6px;letter-spacing:.07em;text-transform:uppercase;padding:4px 5px;text-align:center;border-bottom:1px solid var(--border);line-height:1.25}
-.rt td{padding:5px 5px;text-align:center;font-size:12px;font-weight:600;color:var(--text);border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+/* Results: a quiet heading row, the number large; rules only between rows */
+table.rt{width:100%;border-collapse:collapse;table-layout:fixed}
+.rt th{color:var(--muted);font-weight:600;font-size:7.4px;letter-spacing:.08em;text-transform:uppercase;padding:0 5px 4px;text-align:left;border-bottom:1px solid var(--border2);line-height:1.25}
+.rt td{padding:5px 5px 4px;text-align:left;font-size:13px;font-weight:700;color:var(--text);border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
 .rt tr:nth-child(2) td{border-top:none}
 .rt td small{font-size:8px;font-weight:500;color:var(--muted)}
-.rt.lab th.l,.rt.lab td.l{text-align:left;width:34%}
+.rt.lab th.l,.rt.lab td.l{width:38%}
 .rt.lab td{font-size:10.5px}
 .rt.lab td.l{font-size:9.5px;font-weight:500;color:var(--text2)}
 .photos{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:4px 0 2px}
@@ -454,14 +485,15 @@ table.rt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed
 .ti-w,.ti-p{font-size:8px;line-height:1.4;color:var(--text2)}
 .ti-p{color:var(--muted)}
 .ti-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
-/* tek değerli testler: yan yana küçük kartlar */
-.mc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 0 11px;border-bottom:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
-.mc{border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;break-inside:avoid}
-.mc-t{font-size:10.5px;font-weight:700;line-height:1.25}
-.mc-v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+/* tek değerli testler: yan yana, üstte ince çizgiyle ayrılan sütunlar */
+.mc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0 16px;padding:10px 0 11px;border-bottom:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
+.mc{padding:6px 0 4px;border-top:2px solid var(--text);display:flex;flex-direction:column;gap:3px;break-inside:avoid}
+.mc-row .mc:nth-child(n+4){margin-top:10px}
+.mc-t{font-size:9.5px;font-weight:700;line-height:1.25;color:var(--text2)}
+.mc-v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
 .mc-v small{font-size:9px;font-weight:500;color:var(--muted)}
-.mc .tb-note{font-size:8.5px;padding:4px 6px}
-.obs-box{background:var(--bg2);padding:9px 12px;font-size:10.5px;border-radius:6px;border-left:3px solid var(--accent);margin-top:7px;color:var(--text2);line-height:1.55;break-inside:avoid}
+.mc .tb-note{font-size:8.5px}
+.obs-box{padding:8px 0 2px 10px;font-size:10.5px;border-left:3px solid var(--accent);margin-top:9px;color:var(--text);line-height:1.6;break-inside:avoid}
 /* A scanned FMS sheet is kept whole on one page; the live sheet is its own page, after everything else. */
 .fmsx-page{break-before:page;page-break-before:always}
 ${FMS_SHEET_CSS}
@@ -475,7 +507,9 @@ ${FMS_INFO_CSS}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:inherit;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
-.scr-sp{height:62px}
+.scr-sp{height:96px}
+/* On screen the sheet reads as a page: the printed width, centred. */
+@media screen{body{max-width:186mm;margin:0 auto;padding:0 12px 28px}}
 @media print{.print-bar,.scr-sp{display:none}}
 </style>
 </head><body>
@@ -492,14 +526,14 @@ ${FMS_INFO_CSS}
     <div class="date">${fdL(test.date)} · ${esc(periodLabel)} ${esc(test.year)}</div>
   </div>
   <div class="right-block">
-    <div class="ttl">${L('ÖLÇÜM &amp;','TEST &amp;')}</div>
-    <div class="ttl">${L('DEĞERLENDİRME','ASSESSMENT')}</div>
+    <div class="ttl">${L('Ölçüm &amp;<br>Değerlendirme','Test &amp;<br>Assessment')}</div>
     <div class="coach-line">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div>
   </div>
 </div>
+${kpis}
 ${groups}
 ${custom}
-${test.notes?`<div class="grp-h notes-h">${L('Gözlemler ve Yorumlar','Observations &amp; Comments')}</div><div class="obs-box">${esc(test.notes).replace(/\n/g,'<br>')}</div>`:''}
+${test.notes?`${notesH}<div class="obs-box">${esc(test.notes).replace(/\n/g,'<br>')}</div>`:''}
 ${fmsOn&&fmsR.any&&!fmsPages.length
   /* The score sheet is page 2. It is written last, with the "generated" line at its foot, which is
      right when the report fits on page 1; when it does not, fmsToPage2 moves it in front of the

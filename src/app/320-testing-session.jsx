@@ -291,11 +291,11 @@ function MkTeamAvg({id,value,athletes,athId}){
     <span className="mk-tavg-l">{L('Takım ort.','Team avg')}</span>
     <span className="mk-tavg-v">{teamAvgFmt(ta.avg,id)}{meta.u?' '+meta.u:''}</span>
     {d&&<span className={'mk-tavg-d '+d.level}>
-      {d.level==='same'?'on the average':`${Math.abs(d.pct).toFixed(1)}% ${d.pct>0?'above':'below'}`}</span>}
+      {d.level==='same'?L('ortalamada','on the average'):`${L('%'+Math.abs(d.pct).toFixed(1),Math.abs(d.pct).toFixed(1)+'%')} ${d.pct>0?L('üstünde','above'):L('altında','below')}`}</span>}
   </div>);
 }
 function MkObs({value,onChange,placeholder,className,label,autoGrow}){
-  const lbl=label===undefined?'Observations':label;
+  const lbl=label===undefined?L('Gözlem','Observations'):label;
   const ta=useRef(null);
   /* Grow the box downwards as the coach types so long notes stay fully visible
      (min-height from CSS is the floor; deleting text shrinks it back). */
@@ -337,12 +337,12 @@ function MkUpload({photo,onChange,label}){
       {photo
         ?<React.Fragment>
             {isDrive&&imgErr
-              ?<div className="mk-up-ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></div>
+              ?<div className="mk-up-ph">{L('Drive medyası','Drive media')}</div>
               :<img src={mediaSrc(thumbSrc)} alt={label} onError={()=>setImgErr(true)}/>}
-            {isDrive&&<span className="mk-up-gd" title={L('Google Drive medyası','Google Drive media')}>▶</span>}
-            <button className="mk-up-rm" onClick={e=>{e.stopPropagation();onChange(null);}}>✕</button>
+            {isDrive&&<span className="mk-up-gd" title={L('Google Drive medyası','Google Drive media')}>Drive</span>}
+            <button className="mk-up-rm" title={L('Fotoğrafı kaldır','Remove photo')} onClick={e=>{e.stopPropagation();onChange(null);}}>{L('Kaldır','Remove')}</button>
           </React.Fragment>
-        :<React.Fragment><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><button className="mk-up-drive" title={L('Google Drive bağlantısı kullan (görsel ya da video)','Use a Google Drive link (image or video)')} onClick={e=>{e.stopPropagation();pickDrive();}}>🔗</button><button className="mk-up-paste" title={L('Kopyalanan fotoğrafı yapıştır','Paste copied photo')} onClick={e=>{e.stopPropagation();pasteHere();}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button></React.Fragment>}
+        :<React.Fragment><span className="mk-up-add">{L('Fotoğraf ekle','Add photo')}</span><span className="mk-up-alt"><button className="mk-up-drive" title={L('Google Drive bağlantısı kullan (görsel ya da video)','Use a Google Drive link (image or video)')} onClick={e=>{e.stopPropagation();pickDrive();}}>Drive</button><button className="mk-up-paste" title={L('Kopyalanan fotoğrafı yapıştır','Paste copied photo')} onClick={e=>{e.stopPropagation();pasteHere();}}>{L('Yapıştır','Paste')}</button></span></React.Fragment>}
     </div>
     <div className="mk-up-cap">{label}</div>
     <input ref={ref} type="file" accept="image/*" style={{display:'none'}}
@@ -353,8 +353,8 @@ function MkUpload({photo,onChange,label}){
           {isDrive
             ?<iframe className="mk-lb-frame" src={`https://drive.google.com/file/d/${dId}/preview`} allow="autoplay; fullscreen" allowFullScreen title={label}/>
             :<img className="mk-lb-img" src={mediaSrc(photo)} alt={label}/>}
-          <button className="mk-lb-close" onClick={()=>setOpen(false)}>✕</button>
-          {!isDrive&&<button className="mk-lb-change" onClick={pick}>↻ {L('Fotoğrafı değiştir','Change photo')}</button>}
+          <button className="mk-lb-close" onClick={()=>setOpen(false)}>{L('Kapat','Close')}</button>
+          {!isDrive&&<button className="mk-lb-change" onClick={pick}>{L('Fotoğrafı değiştir','Change photo')}</button>}
         </div>
       </div>, document.body)}
   </div>);
@@ -722,7 +722,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const badgeColor=BADGE_COLS[(index-1)%BADGE_COLS.length];
 
   const Hd=()=>(<div className="tcard-hd">
-    <div className="tcard-badge">{index}</div>
+    <div className="tcard-badge">{String(index).padStart(2,'0')}</div>
     <div className="tcard-title">{name}</div>
     {tag&&<div className="tcard-tag">{tag}</div>}
   </div>);
@@ -798,7 +798,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
     const athObj=(athletes||[]).find(a=>a.id===athId)||{id:athId};
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <div className="tcard-hd">
-        <div className="tcard-badge">{index}</div>
+        <div className="tcard-badge">{String(index).padStart(2,'0')}</div>
         <div className="tcard-title">{name}</div>
         <button type="button" className="btn xs sec fmsl-print" onClick={()=>{try{printFmsSheet(test,athObj,{note:test.notes});}catch(e){alert(L('Çıktı hatası: ','Print error: ')+e.message);}}}
           title={L('Puan kâğıdı tek A4 sayfada çıkar','The score sheet prints on one A4 page')}>{L('Kâğıdı yazdır','Print sheet')}</button>
@@ -1076,7 +1076,7 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
         <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup,customTests,athletes);}catch(e){alert(L('PDF hatası: ','PDF error: ')+e.message);}}}>{L('Çıktı al','Print')}</button>
         <button className="btn sm sec" onClick={()=>{try{printTestCompare(test,ath,setup,customTests,athletes);}catch(e){alert(L('Rapor hatası: ','Report error: ')+e.message);}}}
           title={L('Bu kayıttaki her ölçüm takım ortalamasına karşı (A4 dikey)','Every reading on this record set against the squad average (A4 portrait)')}>{L('Rapor','Report')}</button>
-        <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')} ✕</button>
+        <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button>
       </div>
     </div>
     <div className="ts-wrap">
@@ -1084,7 +1084,7 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
       {valid.length===0&&<div className="empty-st">{L('Bu bataryada test yok.','No tests in this battery.')}</div>}
       <div className="tcard tcard-wide tcard-summary" style={{'--card-accent':'#0094ff'}}>
         <div className="tcard-hd">
-          <div className="tcard-badge">✎</div>
+          <div className="tcard-badge">{String(valid.length+1).padStart(2,'0')}</div>
           <div className="tcard-title">{L('Gözlemler ve Yorumlar','Observations & Comments')}</div>
           <div className="tcard-tag">{L('ÖZET','SUMMARY')}</div>
         </div>
