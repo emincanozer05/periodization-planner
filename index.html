@@ -11154,7 +11154,8 @@ const TI_HAS={
   ohs:t=>!!(t.ohs&&(tiNum(t.ohs.score)||t.ohs.observations||t.ohs.frontPhoto||t.ohs.sidePhoto||t.ohs.backPhoto)),
   fms:t=>FMS_HAS(t),
   ...Object.fromEntries(FMS_ITEMS.map(it=>['fms_'+it.id,t=>{const f=t.fms||{};const c=fmsCalc(f).items.find(i=>i.id===it.id);
-    return!!(c&&(c.filled||c.cleared))||fmsCommentsOf(it.id).some(k=>(f.comments||{})[k]||((f.problems||{})[k]||[]).length);}])),
+    const ph=(f.photos||{})[it.id]||{};
+    return!!(c&&(c.filled||c.cleared))||!!(ph.front||ph.side)||fmsCommentsOf(it.id).some(k=>(f.comments||{})[k]||((f.problems||{})[k]||[]).length);}])),
   hipRot:t=>{const h=hipRotCalc(t);return[h.irR,h.irL,h.erR,h.erL].some(v=>v!=null);},
   thomas:t=>thomasCalc(t).any,
   tSpine:t=>{const x=tSpineCalc(t);return x.r!=null||x.l!=null;},
@@ -24418,12 +24419,6 @@ tbody tr.grp:first-child td{border-top:none}
 }
 
 function generateTestPDF(test,ath,setup,customTests,athletes){
-  /* A record that is only the FMS — the whole sheet or its movements — prints as the score sheet
-     itself: one page laid out like the official sheet, and the movement page behind it. */
-  const only=expandBattery(test.battery);
-  if(Array.isArray(only)&&only.length&&only.every(id=>id==='fms'||FMS_PART_IDS.includes(id))&&!(test.fms&&test.fms.pdf)){
-    printFmsSheet(test,ath,{note:test.notes});return;
-  }
   const w=window.open('','_blank','width=900,height=1200');
   if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period;
@@ -24562,28 +24557,45 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       +`<div class="tb-avg">${L('e1RM: Epley tahmini (tek tekrarda yükün kendisi, en fazla 12 tekrar).','e1RM: Epley estimate (a single is the load itself, at most 12 reps).')}</div>`);};});
   ['copenhagen','sidePlank'].forEach(id=>{B[id]=()=>{const h=holdCalc(t,id);
     return blk(id,kv([[R,h.r!=null?h.r+' <small>s</small>':'—'],[Lf,h.l!=null?h.l+' <small>s</small>':'—'],[L('Asimetri','Asymmetry'),pct(h.pct),colAsym(h.pct)]]));};});
-  /* The FMS in the body of the report is one line: the final score of each movement screened and
-     the total. The sheet itself and what each movement is for follow on pages of their own. */
-  const fmsBlk=()=>{
-    if(fmsPages.length)return`<div class="tb fms-sheet">
+  /* The FMS: each movement screened is its own box, like any other test: the raw score per side,
+     its clearing test, the final score, the findings ticked against it and its front / side photos.
+     An uploaded score sheet (PDF) still prints as its pages. */
+  const fmsF=test.fms||{};
+  const fmsWord=v=>v==='pos'?[L('Pozitif','Positive'),' style="color:#dc2626"']:v==='neg'?[L('Negatif','Negative'),' style="color:#16a34a"']:['—',''];
+  const fmsMove=mid=>{
+    const it=fmsR.items.find(i=>i.id===mid);if(!it)return'';
+    const id='fms_'+mid;shown.push(id);
+    let has=false;try{has=TI_HAS[id](test);}catch(e){}
+    if(!has)return{empty:true,name:it.en};
+    const pp=(fmsF.photos||{})[mid]||{};
+    const cms=fmsCommentsOf(mid);
+    const probs=cms.flatMap(k=>fmsProblemLabels(fmsF,k));
+    const notes=cms.map(k=>String((fmsF.comments||{})[k]||'').trim()).filter(Boolean);
+    const sc=(h,v)=>[h,v!=null?String(v):'—',v!=null?` style="color:${fmsTone(v)}"`:''];
+    const cells=it.bi?[sc(L('Ham skor · Sağ','Raw score · Right'),it.right),sc(L('Ham skor · Sol','Raw score · Left'),it.left)]:[sc(L('Ham skor','Raw score'),it.single)];
+    if(it.clear){const w=fmsWord(it.cleared);cells.push([esc(it.clearEn),w[0],w[1]]);}
+    if(mid==='inlineLunge'){const m=fmsF.ankleMob||{};const g=x=>({r:L('Kırmızı','Red'),y:L('Sarı','Yellow'),g:L('Yeşil','Green')})[x]||'—';
+      if(m.right||m.left)cells.push([L('Ayak bileği mob. (S / L)','Ankle mobility (R / L)'),`${g(m.right)} / ${g(m.left)}`,'']);}
+    cells.push([L('Nihai skor','Final score'),it.score!=null?`${it.score} <small>/ 3</small>`:'—',it.score!=null?` style="color:${fmsTone(it.score)}"`:'']);
+    const photos=(pp.front||pp.side)?`<div class="photos">${ph(pp.front,L('Önden','Front'),118,160)}${ph(pp.side,L('Yandan','Side'),118,160)}</div>`:'';
+    const pr=probs.length?`<div class="tb-note"><b>${L('Tespit edilen problemler','Identified problems')}:</b> ${probs.map(esc).join(', ')}</div>`:'';
+    const nt=notes.length?`<div class="tb-note"><b>${L('Yorum','Comment')}:</b> ${notes.map(esc).join(' · ')}</div>`:'';
+    return box(esc(it.en),'FMS',kv(cells)+photos+pr+nt);
+  };
+  const fmsPdfBlk=()=>`<div class="tb fms-sheet">
       <div class="tb-h"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div><div class="tb-bd">
       <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
       <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div></div></div>`;
-    if(!fmsR.any)return'';
-    const its=fmsR.items.filter(i=>fmsMoves.includes(i.id));
-    return`<div class="tb">
-      <div class="tb-h"><span>FMS — Functional Movement Screen</span><span class="k">${L('Toplam','Total')} ${fmsR.total!=null?fmsR.total+' / 21':'—'}</span></div><div class="tb-bd">
-      <table class="rt"><tr>${its.map(i=>`<th>${esc(i.en)}</th>`).join('')}</tr><tr>${its.map(i=>`<td${i.score!=null?` style="color:${fmsTone(i.score)}"`:''}>${i.score!=null?i.score:'—'}${i.cleared==='pos'?' <small>'+L('ağrı','pain')+'</small>':''}${i.asym!=null&&i.cleared!=='pos'?' <small>'+L('asim.','asym.')+'</small>':''}</td>`).join('')}</tr></table>
-      <div class="tb-avg">${L('Puan kâğıdı ve hareket açıklamaları (görselli) ayrı sayfalarda.','The score sheet and the movement descriptions (with pictures) are on pages of their own.')}</div>
-    </div></div>`;
-  };
   /* Section headings are numbered in the order they print: 01 Temel Ölçümler, 02 … */
   let secN=0;
   const gh=(title,cls)=>`<div class="grp-h${cls?' '+cls:''}"><span class="grp-n">${String(++secN).padStart(2,'0')}</span>${title}</div>`;
   const groups=TEST_GROUPS.filter(g=>g.id!=='all'&&g.id!=='custom').map(g=>{
     const mine=ids.filter(id=>(TEST_META[id]||{}).g===g.id&&!FMS_PART_IDS.includes(id)&&id!=='fms');
     const parts=[];
-    if(g.id==='move'&&fmsOn)parts.push(fmsBlk());
+    if(g.id==='move'&&fmsOn){
+      if(fmsPages.length)parts.push(fmsPdfBlk());
+      else fmsMoves.forEach(m=>parts.push(fmsMove(m)));
+    }
     mine.forEach(id=>{const f=B[id];if(f)parts.push(f());});
     /* The group's one-number tests share one box, where the first of them stands: one table, a
        column per test, four to a row; a short last row is padded so the columns stay the same width.
@@ -24614,15 +24626,6 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const custom=customSel.length?`${gh(L('Özel Testler','Custom Tests'))}
     ${box(null,'',grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}])))}`:'';
   const notesH=test.notes?gh(L('Gözlemler ve Yorumlar','Observations &amp; Comments'),'notes-h'):'';
-  /* The headline numbers of the record, in one strip under the athlete: only what was taken and
-     measured, at most six. */
-  const key=[];
-  const kp=(id,lab,v,u)=>{if(!taken(id))return;const n=tN(v);if(n!=null)key.push([lab,n,u]);};
-  kp('anthro',L('Boy','Height'),t.height,'cm');kp('anthro',L('Kilo','Weight'),t.weight,'kg');kp('anthro',L('Yağ oranı','Body fat'),t.bodyFat,'%');
-  kp('cmj','CMJ',t.cmj,'cm');kp('squatJump','Squat Jump',t.squatJump,'cm');kp('sprint','20 m Sprint',(t.sprint20m||{}).time,'s');
-  kp('fiveZeroFive','505 COD',cod505Calc(t).best,'s');kp('tTest','T-Agility',t.tTest,'s');kp('dropJump','RSI',t.dropJump,'');
-  if(fmsOn&&fmsR.total!=null)key.unshift(['FMS',fmsR.total,'/ 21']);
-  const kpis=key.length?`<div class="kpis">${key.slice(0,6).map(([l,v,u])=>`<div class="kpi"><div class="kpi-l">${esc(l)}</div><div class="kpi-v">${esc(v)}${u?` <small>${esc(u)}</small>`:''}</div></div>`).join('')}</div>`:'';
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
   const gen=L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)));
 
@@ -24645,13 +24648,6 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px
 .right-block{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
 .right-block .ttl{font-size:10px;font-weight:700;color:var(--text);letter-spacing:.16em;line-height:1.45;text-transform:uppercase}
 .right-block .coach-line{margin-top:10px;font-size:8.5px;color:var(--muted)}
-/* Headline numbers: one strip, hairlines between the cells */
-.kpis{display:flex;margin-top:10px;border:1px solid var(--border2);border-radius:5px;break-inside:avoid}
-.kpi{flex:1 1 0;min-width:0;padding:8px 6px 9px;border-left:1px solid var(--border);text-align:center}
-.kpi:first-child{border-left:none}
-.kpi-l{font-size:7.6px;font-weight:600;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi-v{margin-top:3px;font-size:19px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-.kpi-v small{font-size:8.5px;font-weight:500;color:var(--muted)}
 /* Numbered section heading, then one box per test, all the same width and the same shape */
 .grp-h{display:flex;align-items:baseline;gap:9px;margin-top:16px;margin-bottom:8px;padding:0 0 5px;border-bottom:1.5px solid var(--text);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
 .grp-n{font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.04em;font-variant-numeric:tabular-nums}
@@ -24690,16 +24686,13 @@ table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--bord
 .ti-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px;margin-top:10px}
 .ti{break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;gap:3px}
 .ti-img{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);margin-bottom:3px}
-.ti-img img{display:block;width:100%;height:100%;object-fit:cover}
+.ti-img img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1)}
 .ti-n{font-size:10px;font-weight:700;line-height:1.25}
 .ti-w,.ti-p{font-size:8px;line-height:1.4;color:var(--text2)}
 .ti-p{color:var(--muted)}
 .ti-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
 .obs-box{padding:8px 10px;font-size:10px;border:1px solid var(--border2);border-radius:5px;color:var(--text);line-height:1.6;break-inside:avoid}
 /* A scanned FMS sheet is kept whole on one page; the live sheet is its own page, after everything else. */
-.fmsx-page{break-before:page;page-break-before:always}
-${FMS_SHEET_CSS}
-${FMS_INFO_CSS}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:4px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
 .fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,195mm);max-width:100%;border:1px solid var(--border);border-radius:4px;background:#fff}
@@ -24732,18 +24725,10 @@ ${FMS_INFO_CSS}
     <div class="coach-line">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div>
   </div>
 </div>
-${kpis}
 ${groups}
 ${custom}
 ${test.notes?`${notesH}<div class="obs-box">${esc(test.notes).replace(/\n/g,'<br>')}</div>`:''}
-${fmsOn&&fmsR.any&&!fmsPages.length
-  /* The score sheet is page 2. It is written last, with the "generated" line at its foot, which is
-     right when the report fits on page 1; when it does not, fmsToPage2 moves it in front of the
-     first block that would spill over, and the report's own footer goes back at the end. */
-  ?`<div class="fmsx-page">${fmsSheetHtml(test,ath,{foot:gen+' · '+esc(setup.teamName)})}</div>
-${fmsInfoHtml(fmsMoves)}
-<div class="footer" style="display:none">${gen} · ${esc(setup.teamName)}</div>`
-  :`<div class="footer">${gen} · ${esc(setup.teamName)}</div>`}
+<div class="footer">${gen} · ${esc(setup.teamName)}</div>
 ${infoSec()}
 </body></html>`;
 
@@ -24751,35 +24736,7 @@ ${infoSec()}
   w.document.close();
   // Posture / OHS / sprint photos are full-size and remote, so give them a longer
   // cap than the session sheets before the dialog opens regardless.
-  printWhenImagesReady(w,{safety:15000,before:fmsToPage2});
-}
-/* Puts the FMS score sheet on page 2 of the report (the movement-pattern page follows it as page 3). The page is laid out at the printed width
-   (A4 less the 12mm margins) and the blocks after the athlete card are measured against one page
-   height: the sheet goes in front of the first block that does not end on page 1, and that block
-   follows on page 3. Images are loaded by now, so their heights are real. */
-function fmsToPage2(w){
-  const d=w.document,sheet=d.querySelector('.fmsx-page');if(!sheet)return;
-  const b=d.body,prevW=b.style.width;
-  b.style.width='186mm';
-  try{
-    const probe=d.createElement('div');probe.style.cssText='position:absolute;visibility:hidden;height:273mm';
-    b.appendChild(probe);const pageH=probe.offsetHeight*0.97;probe.remove();
-    const top=d.documentElement.getBoundingClientRect().top;
-    const head=d.querySelector('.athlete-header');
-    let el=head&&head.nextElementSibling,cut=null;
-    for(;el&&el!==sheet;el=el.nextElementSibling){
-      if(el.getBoundingClientRect().bottom-top>pageH){cut=el;break;}
-    }
-    if(!cut)return;
-    // A category heading never stays behind at the foot of page 1 without its first test.
-    const pv=cut.previousElementSibling;if(pv&&pv.classList.contains('grp-h'))cut=pv;
-    const info=d.querySelector('.fmsi');
-    b.insertBefore(sheet,cut);
-    sheet.style.breakAfter='page';sheet.style.pageBreakAfter='always';
-    if(info){b.insertBefore(info,cut);info.style.breakAfter='page';info.style.pageBreakAfter='always';}   // page 3: what the movements are for
-    const gen=sheet.querySelector('.fmsx-gen');if(gen)gen.remove();
-    const foot=d.querySelector('body > .footer');if(foot)foot.style.display='';
-  }finally{b.style.width=prevW;}
+  printWhenImagesReady(w,{safety:15000});
 }
 
 /* =========================================================
@@ -25885,6 +25842,9 @@ function FmsPartCard({item,test,ath,onUpdate}){
   });
   const setComment=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),comments:{...((t.fms||{}).comments||{}),[id]:v}}}));
   const setProblems=(id,v)=>onUpdate(t=>({fms:{...(t.fms||{}),problems:{...((t.fms||{}).problems||{}),[id]:v}}}));
+  /* Front and side photos of the movement, kept per movement in `fms.photos`; the report prints them. */
+  const ph=(f.photos||{})[item.id]||{};
+  const setPhoto=(k,v)=>onUpdate(t=>{const o=t.fms||{},all=o.photos||{};return{fms:{...o,photos:{...all,[item.id]:{...(all[item.id]||{}),[k]:v}}}};});
   const tone=v=>v==null||v===''?'':'t'+Math.max(1,Math.min(3,Number(v)));
   let lab='';
   const lines=rows.map(r=>{if(r.lab)lab=r.lab[1];return{r,lab:r.kind==='score'?L('Ham skor','Raw score'):lab};});
@@ -25926,6 +25886,11 @@ function FmsPartCard({item,test,ath,onUpdate}){
             <FmsProblemPick opts={FMS_PROBLEMS[id]} value={(f.problems||{})[id]} onChange={v=>setProblems(id,v)} legacy={(f.comments||{})[id]}/></div>
         :<div key={id} className="tc-obs fmsc-cm"><div className="tc-obs-l">{id==='ankle'?L('Ayak bileği yorumu','Ankle comment'):L('Yorum','Comment')}</div>
             <LiveTextarea value={(f.comments||{})[id]||''} onChange={x=>setComment(id,x)} rows={2} placeholder={L('Kompanzasyon, ağrı, kalite notu…','Compensation, pain, quality note…')}/></div>)}
+      <div className="fmsc-ph"><div className="mk-flbl">{L('Fotoğraflar','Photos')}</div>
+        <div className="mk-uploads sm">
+          <MkUpload photo={ph.front} onChange={v=>setPhoto('front',v)} label={L('Önden','Front')}/>
+          <MkUpload photo={ph.side} onChange={v=>setPhoto('side',v)} label={L('Yandan','Side')}/>
+        </div></div>
       <div className="fmsc-tot">{L('FMS toplamı','FMS total')} <b>{c.total!=null?c.total:'—'}</b> / 21<span>{c.n}/7 {L('hareket','movements')}</span></div>
     </div>
   </div>);
