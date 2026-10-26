@@ -24,9 +24,12 @@ const devNiceStep=x=>{const p=Math.pow(10,Math.floor(Math.log10(x)));const m=x/p
    series as a glowing line over a gradient (or as bars), every point's value while they fit,
    the best reading ringed and named, the average as a dashed line and an optional target. The
    line draws itself in; hover a point for its date. pts: [{v, x: axis label, t: hover title}]
-   `W` is the drawing width: a half-width card draws narrower so its text keeps its size. */
-function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,W=760}){
-  const H=W<600?240:260,pl=46,pr=20,pt=30,pb=34;
+   Drawn at the box's own pixel width (useElW), so its text is the same small size on every
+   screen instead of growing with the card. */
+function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,H=210}){
+  const boxRef=useRef(null);
+  const W=useElW(boxRef,480);
+  const pl=40,pr=14,pt=24,pb=26;
   const fv=fmtV||devFv;
   const vs=pts.map(p=>p.v);
   let lo=Math.min(...vs),hi=Math.max(...vs);
@@ -44,20 +47,20 @@ function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,W=760}){
   const area=`${line} L${P[n-1][0].toFixed(1)} ${H-pb} L${P[0][0].toFixed(1)} ${H-pb} Z`;
   const bestK=dir?vs.indexOf(dir==='hi'?Math.max(...vs):Math.min(...vs)):-1;
   const avg=vs.reduce((s,x)=>s+x,0)/n;
-  const labelAll=n<=12,xEvery=Math.max(1,Math.ceil(n/9));
+  const labelAll=n<=Math.max(4,Math.floor((W-pl-pr)/46)),xEvery=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((W-pl-pr)/64))));
   const gid='dbg-'+id,bw=Math.min(30,band*.62);
-  return(<svg className="dr-big" viewBox={`0 0 ${W} ${H}`} role="img">
+  return(<div ref={boxRef} className="dr-big-box"><svg className="dr-big" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img">
     <defs>
       <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".38"/><stop offset="1" stopColor={col} stopOpacity="0"/></linearGradient>
     </defs>
     {ticks.map(v=><g key={v}><line x1={pl} x2={W-pr} y1={Y(v)} y2={Y(v)} className="dr-big-grid"/>
-      <text x={pl-8} y={Y(v)+4} textAnchor="end" className="dr-big-tick">{devFv(v)}</text></g>)}
+      <text x={pl-7} y={Y(v)+3.5} textAnchor="end" className="dr-big-tick">{devFv(v)}</text></g>)}
     {/* the average's name sits at the left end, clear of the latest value at the right; with a
         target beside it, the target's name goes under its line */}
     {n>1&&<g><line x1={pl} x2={W-pr} y1={Y(avg)} y2={Y(avg)} className="dr-big-avg"/>
       <text x={pl+6} y={Y(avg)-6} className="dr-big-avgt">{L('ort.','avg')} {fv(avg)}</text></g>}
     {target!=null&&<g><line x1={pl} x2={W-pr} y1={Y(target)} y2={Y(target)} className="dr-big-target"/>
-      <text x={pl+6} y={Y(target)+(n>1?15:-6)} className="dr-big-tgtt">{targetLbl}</text></g>}
+      <text x={pl+6} y={Y(target)+(n>1?13:-5)} className="dr-big-tgtt">{targetLbl}</text></g>}
     {bars?pts.map((p,k)=>{const y=Y(p.v),ok=target==null||p.v>=target;
       return(<g key={k}><title>{p.t}</title>
         <rect x={P[k][0]-bw/2} y={y} width={bw} height={Math.max(0,H-pb-y)} rx="5" fill={col} opacity={ok?1:.42} className="dr-big-bar" style={{animationDelay:Math.min(k*25,600)+'ms'}}/>
@@ -65,19 +68,19 @@ function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,W=760}){
       </g>);})
     :<>
       <path d={area} fill={`url(#${gid})`} className="dr-big-area"/>
-      <path d={line} fill="none" stroke={col} strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" pathLength="1" className="dr-big-line" style={{'--gc':col}}/>
+      <path d={line} fill="none" stroke={col} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" pathLength="1" className="dr-big-line" style={{'--gc':col}}/>
       {P.map((q,k)=>{const best=k===bestK&&n>1,lastP=k===n-1;
         return(<g key={k}><title>{pts[k].t}</title>
           <circle cx={q[0]} cy={q[1]} r="14" fill="transparent"/>
-          {best&&<circle cx={q[0]} cy={q[1]} r="11" fill="none" stroke={col} strokeOpacity=".45" strokeWidth="2" className="dr-big-pulse"/>}
-          <circle cx={q[0]} cy={q[1]} r={lastP||best?6:4.5} fill={lastP?col:'var(--panel)'} stroke={lastP?'var(--panel)':col} strokeWidth={lastP?3:2.4}/>
-          {(labelAll||lastP||best)&&<text x={q[0]} y={q[1]-13} textAnchor="middle" className="dr-big-v">{fv(pts[k].v)}</text>}
-          {best&&<text x={q[0]} y={q[1]+24} textAnchor="middle" className="dr-big-best" fill={col}>{L('EN İYİ','BEST')}</text>}
+          {best&&<circle cx={q[0]} cy={q[1]} r="9" fill="none" stroke={col} strokeOpacity=".45" strokeWidth="2" className="dr-big-pulse"/>}
+          <circle cx={q[0]} cy={q[1]} r={lastP||best?5:3.8} fill={lastP?col:'var(--panel)'} stroke={lastP?'var(--panel)':col} strokeWidth={lastP?2.5:2}/>
+          {(labelAll||lastP||best)&&<text x={q[0]} y={q[1]-10} textAnchor="middle" className="dr-big-v">{fv(pts[k].v)}</text>}
+          {best&&<text x={q[0]} y={q[1]+19} textAnchor="middle" className="dr-big-best" fill={col}>{L('EN İYİ','BEST')}</text>}
         </g>);})}
     </>}
-    {pts.map((p,k)=>(n-1-k)%xEvery===0?<text key={'x'+k} x={P[k][0]} y={H-10} textAnchor="middle" className="dr-big-x">{p.x}</text>:null)}
-    {unit&&<text x={pl-8} y={pt-14} textAnchor="end" className="dr-big-tick">{unit}</text>}
-  </svg>);
+    {pts.map((p,k)=>(n-1-k)%xEvery===0?<text key={'x'+k} x={P[k][0]} y={H-8} textAnchor="middle" className="dr-big-x">{p.x}</text>:null)}
+    {unit&&<text x={pl-8} y={pt-12} textAnchor="end" className="dr-big-tick">{unit}</text>}
+  </svg></div>);
 }
 
 /* One measure of a charted group: its name and which way is better, four numbers (latest,
@@ -85,17 +88,72 @@ function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,W=760}){
 function DevMetricChart({r,tests,col}){
   const vs=r.pts.map(p=>p.v);
   const best=r.m.dir?(r.m.dir==='hi'?Math.max(...vs):Math.min(...vs)):null;
+  const one=r.pts.length<2;
   const u=r.m.u||'';
   return(<div className="dr-fc" style={{'--gc':col}}>
-    <div className="dr-fc-h"><div><b>{cmpLabel(r.m)}</b><span>{r.m.dir==='hi'?L('yüksek daha iyi','higher is better'):r.m.dir==='lo'?L('düşük daha iyi','lower is better'):''}</span></div><DevDelta r={r}/></div>
+    <div className="dr-fc-h"><div><b>{cmpLabel(r.m)}</b><span>{r.m.dir==='hi'?L('yüksek daha iyi','higher is better'):r.m.dir==='lo'?L('düşük daha iyi','lower is better'):''}</span></div>{one?null:<DevDelta r={r}/>}</div>
     <div className="dr-fc-s">
-      <div><span>{L('Son','Latest')}</span><b>{devFv(r.b.v)}<small>{u}</small></b></div>
-      <div><span>{L('İlk','First')}</span><b>{devFv(r.a.v)}<small>{u}</small></b></div>
-      {best!=null&&<div><span>{L('En iyi','Best')}</span><b>{devFv(best)}<small>{u}</small></b></div>}
-      <div><span>{L('Ölçüm','Readings')}</span><b>{r.pts.length}</b></div>
+      <div><span>{one?fdL(tests[r.b.i].date):L('Son','Latest')}</span><b>{devFv(r.b.v)}<small>{u}</small></b></div>
+      {!one&&<div><span>{L('İlk','First')}</span><b>{devFv(r.a.v)}<small>{u}</small></b></div>}
+      {!one&&best!=null&&<div><span>{L('En iyi','Best')}</span><b>{devFv(best)}<small>{u}</small></b></div>}
+      {!one&&<div><span>{L('Ölçüm','Readings')}</span><b>{r.pts.length}</b></div>}
     </div>
-    <DevBigChart id={r.m.id} col={col} dir={r.m.dir} unit={u} W={480}
+    {one&&<div className="dr-fc-note">{L('Tek ölçüm — bir sonraki testle gelişim eğrisi burada oluşur.','One reading — the next test draws the development curve here.')}</div>}
+    <DevBigChart id={r.m.id} col={col} dir={r.m.dir} unit={u} H={one?120:210}
       pts={r.pts.map(p=>{const t=tests[p.i];return{v:p.v,x:devShortD(t.date),t:`${fdL(t.date)} · ${devPer(t)}: ${devFv(p.v)}${u?' '+u:''}`};})}/>
+  </div>);
+}
+
+/* Lateral CMJ: right and left as two lines on one axis, and under each test its right–left
+   asymmetry (|R − L| / the better side), coloured by the usual bands (< 10 % fine, 10–15 %
+   watch, ≥ 15 % clear). */
+const DEV_LAT_IDS=['lcjR','lcjL','lcjD'];
+function DevLatChart({tests,col}){
+  const boxRef=useRef(null);
+  const W=useElW(boxRef,480);
+  const colL='#a78bfa';
+  const pts=tests.map(t=>{const a=t.lateralCmj||{};const r=cmpN(a.right),l=cmpN(a.left);
+    return(r==null&&l==null)?null:{t,r,l,p:asymPct(a.right,a.left,'hi')};}).filter(Boolean);
+  if(!pts.length)return null;
+  const n=pts.length,one=n<2,H=one?150:230,pl=62,pr=18,pt=24,pb=46;
+  const vs=pts.flatMap(p=>[p.r,p.l]).filter(v=>v!=null);
+  let lo=Math.min(...vs),hi=Math.max(...vs);if(lo===hi){lo-=1;hi+=1;}
+  const pad=(hi-lo)*.15;lo-=pad;hi+=pad;
+  const step=devNiceStep((hi-lo)/4);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;
+  const ticks=[];for(let v=lo;v<=hi+step*1e-6;v+=step)ticks.push(+v.toFixed(6));
+  const X=k=>pl+(n>1?k/(n-1):.5)*(W-pl-pr);
+  const Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
+  const path=key=>pts.map((p,k)=>p[key]==null?null:[X(k),Y(p[key])]).filter(Boolean).map((q,k)=>(k?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  const last=pts[n-1],first=pts[0];
+  const lastP=[...pts].reverse().find(p=>p.p!=null);
+  const lbl=n<=Math.max(4,Math.floor((W-pl-pr)/60));
+  return(<div className="dr-fc" style={{'--gc':col}}>
+    <div className="dr-fc-h"><div><b>Lateral CMJ</b><span>{L('sağ ve sol bacak, asimetri ile','right and left leg, with asymmetry')}</span></div>
+      <div className="dr-lg"><span><i style={{background:col}}/>{L('Sağ','Right')}</span><span><i style={{background:colL}}/>{L('Sol','Left')}</span></div></div>
+    <div className="dr-fc-s">
+      <div><span>{L('Sağ','Right')}</span><b style={{color:col}}>{devFv(last.r)}<small>cm</small></b></div>
+      <div><span>{L('Sol','Left')}</span><b style={{color:colL}}>{devFv(last.l)}<small>cm</small></b></div>
+      <div><span>{L('Asimetri','Asymmetry')}</span><b style={{color:lastP?ASYM_COL[asymLevel(lastP.p)]:undefined}}>{lastP?L('%'+lastP.p,lastP.p+'%'):'—'}</b></div>
+      {!one&&<div><span>{L('İlk asimetri','First asymmetry')}</span><b>{first.p!=null?L('%'+first.p,first.p+'%'):'—'}</b></div>}
+    </div>
+    {one&&<div className="dr-fc-note">{L('Tek ölçüm — bir sonraki testle gelişim eğrisi burada oluşur.','One reading — the next test draws the development curve here.')}</div>}
+    <div ref={boxRef} className="dr-big-box"><svg className="dr-big" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img">
+      {ticks.map(v=><g key={v}><line x1={pl} x2={W-pr} y1={Y(v)} y2={Y(v)} className="dr-big-grid"/>
+        <text x={pl-7} y={Y(v)+3.5} textAnchor="end" className="dr-big-tick">{devFv(v)}</text></g>)}
+      <text x={pl-7} y={pt-12} textAnchor="end" className="dr-big-tick">cm</text>
+      {[['r',col],['l',colL]].map(([key,c])=>(<g key={key}>
+        {n>1&&<path d={path(key)} fill="none" stroke={c} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" pathLength="1" className="dr-big-line" style={{'--gc':c}}/>}
+        {pts.map((p,k)=>p[key]==null?null:(<g key={k}>
+          <title>{`${fdL(p.t.date)} · ${key==='r'?L('Sağ','Right'):L('Sol','Left')}: ${devFv(p[key])} cm`}</title>
+          <circle cx={X(k)} cy={Y(p[key])} r={k===n-1?5:3.8} fill={k===n-1?c:'var(--panel)'} stroke={k===n-1?'var(--panel)':c} strokeWidth={k===n-1?2.5:2}/>
+          {(lbl||k===n-1)&&<text x={X(k)+(key==='r'?-8:8)} y={Y(p[key])+(p.r!=null&&p.l!=null&&((key==='r')===(p.r>=p.l))?-8:14)} textAnchor={key==='r'?'end':'start'} className="dr-big-v">{devFv(p[key])}</text>}
+        </g>))}
+      </g>))}
+      {pts.map((p,k)=><text key={'x'+k} x={X(k)} y={H-28} textAnchor="middle" className="dr-big-x">{devShortD(p.t.date)}</text>)}
+      <text x={6} y={H-8} className="dr-big-tick">{L('Asimetri','Asym.')}</text>
+      {pts.map((p,k)=>p.p==null?null:<text key={'a'+k} x={X(k)} y={H-8} textAnchor="middle" className="dr-lat-a" fill={ASYM_COL[asymLevel(p.p)]}>{L('%'+p.p,p.p+'%')}</text>)}
+    </svg></div>
+    <div className="dr-fc-note">{L('Asimetri = |sağ − sol| / iyi taraf. %10 altı dengeli, %10–15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / better side. Under 10 % balanced, 10–15 % watch, 15 % and above clear.')}</div>
   </div>);
 }
 
@@ -112,7 +170,7 @@ function DevRecovery({S,id,title,sub,col,unit,fmtV,bars,target,targetLbl}){
       <div><span>{L('En yüksek','Highest')}</span><b>{fmtV(S.max)}<small>{unit}</small></b></div>
       <div><span>{L('Kayıt','Entries')}</span><b>{S.n}<small>{L('gün','days')}</small></b></div>
     </div>
-    <DevBigChart id={id} col={col} dir={S.dir} unit={unit} fmtV={fmtV} bars={bars} target={target} targetLbl={targetLbl}
+    <DevBigChart id={id} col={col} dir={S.dir} unit={unit} fmtV={fmtV} bars={bars} target={target} targetLbl={targetLbl} H={240}
       pts={S.pts.map(p=>({v:p.v,x:devShortD(p.date).replace(/ \d+$/,'')+' '+parseD(p.date).getDate(),
         t:`${S.weekly?L('Hafta: ','Week of '):''}${fdL(p.date)}: ${fmtV(p.v)} ${unit}${p.n?` (${p.n} ${L('gün','days')})`:''}`}))}/>
   </div>);
@@ -139,6 +197,7 @@ function DevReportPage({ath,setup,customTests,onBack}){
   const[psIdx,setPsIdx]=useState(0);
   const[baView,setBaView]=useState(null);
   const[tblOpen,setTblOpen]=useState({});
+  const[mSel,setMSel]=useState({});   // the measure whose chart a charted group shows
   useEffect(()=>{try{rootRef.current&&rootRef.current.scrollIntoView({block:'start'});}catch(e){}},[ath&&ath.id]);
   const back=<button className="dr-btn ghost" onClick={onBack}>← {L('Testlere dön','Back to tests')}</button>;
   if(!D)return(<div className="dr" ref={rootRef}><div className="dr-bar">{back}</div><div className="empty-st">{L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.')}</div></div>);
@@ -234,15 +293,28 @@ function DevReportPage({ath,setup,customTests,onBack}){
       if(x.kind==='sleep')return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>{head()}
         <DevRecovery S={sleep} id="sleep" title={L('Uyku Süresi','Sleep Duration')} sub={L('gece kaydı, hedef 8 saat','night log, 8-hour target')}
           col={x.col} unit={L('sa','h')} fmtV={v=>(Math.round(v*10)/10).toFixed(1)} bars target={8} targetLbl={L('hedef 8 sa','target 8 h')}/></section>);
-      const{g,list}=x;const charted=x.chart?list.filter(r=>r.pts.length>1):[];
+      const{g,list}=x;const charted=x.chart?list:[];
+      // only the tests that hold a value in this group get a column
+      const cols=tests.map((t,i)=>i).filter(i=>list.some(r=>r.vals[i]!=null));
       const open=!charted.length||!!tblOpen[g.id];
       return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>
         {head(charted.length>0&&<button className="dr-btn ghost sm" onClick={()=>setTblOpen(o=>({...o,[g.id]:!open}))}>{open?L('Tabloyu gizle','Hide table'):L('Tabloyu göster','Show table')}</button>)}
-        {charted.length>0&&<div className="dr-fcs">{charted.map(r=><DevMetricChart key={r.m.id} r={r} tests={tests} col={x.col}/>)}</div>}
+        {charted.length>0&&(()=>{
+          /* One chart at a time: the chips pick the measure. Lateral CMJ's right, left and gap
+             are one chip and one chart. */
+          const items=[];charted.forEach(r=>{
+            if(DEV_LAT_IDS.includes(r.m.id)){if(!items.some(it=>it.id==='lcj'))items.push({id:'lcj',label:'Lateral CMJ'});}
+            else items.push({id:r.m.id,label:cmpLabel(r.m),r});});
+          const cur=items.find(it=>it.id===mSel[g.id])||items[0];
+          return(<>
+            <div className="dr-mtabs">{items.map(it=><button key={it.id} className={it===cur?'on':''} style={{'--gc':x.col}}
+              onClick={()=>setMSel(o=>({...o,[g.id]:it.id}))}>{it.label}{it.r&&it.r.d!=null&&it.r.tone!=='neu'&&<i className={it.r.tone}/>}</button>)}</div>
+            {cur.id==='lcj'?<DevLatChart key="lcj" tests={tests} col={x.col}/>:<DevMetricChart key={cur.id} r={cur.r} tests={tests} col={x.col}/>}
+          </>);})()}
         {open&&<div className="dr-tbl"><table>
-          <thead><tr><th className="l">{L('Ölçüm','Measure')}</th>{tests.map((t,i)=><th key={i}>{fd(t.date)}<span>{devPer(t)}</span></th>)}<th>{L('Değişim','Change')}</th></tr></thead>
+          <thead><tr><th className="l">{L('Ölçüm','Measure')}</th>{cols.map(i=><th key={i}>{fd(tests[i].date)}<span>{devPer(tests[i])}</span></th>)}<th>{L('Değişim','Change')}</th></tr></thead>
           <tbody>{list.map(r=><tr key={r.m.id}><td className="l">{cmpLabel(r.m)}{r.m.u&&<small> {r.m.u}</small>}</td>
-            {r.vals.map((v,i)=><td key={i} className={i===r.b.i?'cur':''}>{v!=null?devFv(v):<span className="na">·</span>}</td>)}
+            {cols.map(i=><td key={i} className={i===r.b.i&&cols.length>1?'cur':''}>{r.vals[i]!=null?devFv(r.vals[i]):<span className="na">·</span>}</td>)}
             <td><DevDelta r={r}/></td></tr>)}</tbody>
         </table></div>}
       </section>);})}

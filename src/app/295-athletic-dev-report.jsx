@@ -169,14 +169,17 @@ function printDevReport(ath,setup,customTests){
     <div class="mc-v">${fv(r.b.v)}${unit(r.m)}<span class="mc-f">${L('ilk','first')} ${fv(r.a.v)}</span></div>
     ${chart(r)}</div>`;
 
-  /* The table shows every test while they fit; past seven, the first and the latest six. */
-  const colIdx=n<=7?tests.map((_,i)=>i):[0,...tests.map((_,i)=>i).slice(-6)];
-  const table=list=>`<div class="ct-wrap"><table class="ct"><thead><tr><th class="l">${L('Ölçüm','Measure')}</th>
-      ${colIdx.map((i,k)=>`${n>7&&k===1?'<th class="gap">…</th>':''}<th>${esc(fd(tests[i].date))}<span>${esc(per(tests[i]))}</span></th>`).join('')}
+  /* The table shows the tests that hold a value in its group; past seven, the first and the
+     latest six. */
+  const table=list=>{
+    const has=tests.map((_,i)=>i).filter(i=>list.some(r=>r.vals[i]!=null));
+    const colIdx=has.length<=7?has:[has[0],...has.slice(-6)];const cut=has.length>7;
+    return`<div class="ct-wrap"><table class="ct"><thead><tr><th class="l">${L('Ölçüm','Measure')}</th>
+      ${colIdx.map((i,k)=>`${cut&&k===1?'<th class="gap">…</th>':''}<th>${esc(fd(tests[i].date))}<span>${esc(per(tests[i]))}</span></th>`).join('')}
       <th>${L('Değişim','Change')}<span>${L('ilk → son','first → latest')}</span></th></tr></thead>
     <tbody>${list.map(r=>`<tr><td class="l">${esc(cmpLabel(r.m))}${r.m.u?` <small>${esc(r.m.u)}</small>`:''}</td>
-      ${colIdx.map((i,k)=>`${n>7&&k===1?'<td class="gap"></td>':''}<td${i===r.b.i?' class="cur"':''}>${r.vals[i]!=null?fv(r.vals[i]):'<span class="na">·</span>'}</td>`).join('')}
-      <td>${chip(r)}</td></tr>`).join('')}</tbody></table></div>`;
+      ${colIdx.map((i,k)=>`${cut&&k===1?'<td class="gap"></td>':''}<td${i===r.b.i?' class="cur"':''}>${r.vals[i]!=null?fv(r.vals[i]):'<span class="na">·</span>'}</td>`).join('')}
+      <td>${chip(r)}</td></tr>`).join('')}</tbody></table></div>`;};
 
   let secN=0;
   const sh=(title,sub)=>`<div class="sh"><span class="sh-n">${String(++secN).padStart(2,'0')}</span><span>${title}</span>${sub?`<span class="sh-s">${sub}</span>`:''}</div>`;
@@ -201,7 +204,7 @@ function printDevReport(ath,setup,customTests){
   /* Sections in the page's order: the charted groups, then resting heart rate and sleep
      (recovSec, below), then the tables. */
   const grpSec=({g,list})=>{
-    const charted=DEV_CHART_GROUPS.includes(g.id)?list.filter(r=>r.pts.length>1):[];
+    const charted=DEV_CHART_GROUPS.includes(g.id)?list:[];
     return`<section class="grp">${sh(L(g.tr,g.en),`${list.length} ${L('ölçüm','measures')}`)}
       ${charted.length?`<div class="mcs">${charted.map(card).join('')}</div>`:''}
       ${table(list)}</section>`;
