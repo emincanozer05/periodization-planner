@@ -145,7 +145,26 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
         const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
         const o=r[2]||{},u=o.u||'';
         return`<td><b>${fv(v)}${u}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${u}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
-  const tcCard=(d,latest)=>`<div class="tc${latest?' sm':''}${d.id==='fms_deepSquat'&&dsPh?' ds':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
+  /* The FMS scale, worded for the reader of the sheet: what each score means and what was seen. */
+  const FMS_SCALE=[
+    {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
+    {tr:'Disfonksiyonel hareket',en:'Dysfunctional movement',dTr:'Sporcu hareketi testin minimum tamamlama kriterlerine uygun şekilde gerçekleştiremez.',dEn:'The athlete cannot perform the movement to the test’s minimum completion criteria.'},
+    {tr:'Fonksiyonel ancak kompansasyonlu hareket',en:'Functional movement with compensation',dTr:'Sporcu hareketi tamamlar ancak bazı hareket kısıtlılıkları veya kompansasyonlar gözlenir.',dEn:'The athlete completes the movement, but some restrictions or compensations are seen.'},
+    {tr:'Fonksiyonel hareket',en:'Functional movement',dTr:'Sporcu hareketi belirlenen kriterlere uygun, kompansasyon olmadan tamamlar.',dEn:'The athlete completes the movement to the set criteria, without compensation.'},
+  ];
+  const fmsTone=v=>v<=1?'#dc2626':v===2?'#b88400':'#16a34a';
+  /* The Deep Squat card with the athlete's own photos: beside them its name, date and what the
+     movement tests (the full FMS description), and under that the latest score with its meaning. */
+  const dsCard=d=>{const last=d.pts[d.pts.length-1],v=last.vs[0];const m=v!=null&&FMS_SCALE[v];
+    const info=FMS_INFO.find(x=>x.id==='deepSquat');
+    return`<div class="tc ds">${tcImg(d)}<div class="ds-r">
+      <div class="ds-h"><div class="tc-n" lang="en">FMS Deep Squat <em>/3</em><span class="ds-dt">${fd(last.date)}</span></div>
+        <div class="ds-w">${esc(info?L(info.tr,info.en):tcWhat(d))}</div></div>
+      <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small></div>
+        ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}</div></div>`:''}</div>
+    </div></div>`;};
+  const tcCard=(d,latest)=>d.id==='fms_deepSquat'&&dsPh?dsCard(d)
+    :`<div class="tc${latest?' sm':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
   const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
   const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
   const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
@@ -317,7 +336,16 @@ td.r,th.r{text-align:right}
 .tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
 .tc-im.none{background:none}
 .tc-im.ph img{object-fit:contain;background:var(--soft)}
-.tc.ds{grid-column:1/-1;grid-template-columns:62mm minmax(0,1fr) auto}
+.tc.ds{grid-column:1/-1;grid-template-columns:62mm minmax(0,1fr);align-items:stretch;gap:10px}
+.ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
+.ds-h .tc-n{display:flex;align-items:baseline;gap:5px;font-size:10px}
+.ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
+.ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
+.ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
+.ds-v{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
+.ds-v small{font-size:10px;font-weight:500;color:var(--mu)}
+.ds-m{font-size:10px;font-weight:700}
+.ds-x{font-size:8.6px;line-height:1.4;color:var(--t2);margin-top:2px}
 .tc.ds .tc-im{height:auto;gap:4px;background:none;overflow:visible}
 .tc.ds figure{flex:1;min-width:0;text-align:center}
 .tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
