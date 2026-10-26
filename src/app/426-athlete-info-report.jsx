@@ -4,15 +4,15 @@
    One A4 portrait document in five parts, in the order of the tabs it is drawn from:
    the Athlete Profile, the Head Coach's Observations, the Athletic Profile, the
    anthropometric measurements over time and the Injuries. The technical-tactical
-   criteria close the first page; the mental, character and social skills open the second,
-   which ends on the latest static posture and overhead squat photographs; Joint by Joint
-   opens the third. Everything those tabs hold is on it, laid out to be read by someone who
-   has never opened the app: numbers in boxes, judgements in words, every scale with its
-   key. It opens in its own window and goes straight to the print dialog, where "Save as
+   criteria close the first page; the mental, character and social skills open the second.
+   The Athletic Profile prints every Movement Screen, Jump & Reactivity and Speed & Agility
+   test the athlete has taken beside its (grey-scale) picture and what it measures — the
+   movement screen as its latest result, jump and speed as a date-by-date table like the
+   anthropometry's — then the latest static posture across the full width. Everything those
+   tabs hold is on it, laid out to be read by someone who has never opened the app: numbers
+   in boxes, judgements in words, every scale with its key. It opens in its own window and goes straight to the print dialog, where "Save as
    PDF" writes the file; the browser paginates it, and no block is cut across a page.
    ═══════════════════════════════════════════════════════════════════════════ */
-const AIR_LV_C={low:'#16a34a',medium:'#ca8a04',high:'#dc2626'};
-const AIR_NEED_C={mobility:'#2f7fe0',stability:'#e08a0b'};
 /* The radar of a rated section, as markup for the printed sheet (light colours). */
 function airRadarSvg(items,vals){
   const N=items.length,W=380,H=262,cx=W/2,cy=H/2+2,R=76;
@@ -41,26 +41,12 @@ function airRadarSvg(items,vals){
     o+=`<text x="${x.toFixed(1)}" y="${y0.toFixed(1)}" text-anchor="${an}" font-size="10.2" font-weight="700" fill="#1f2731">${ls.map((l,j)=>`<tspan x="${x.toFixed(1)}" dy="${j?12:0}">${esc(l)}</tspan>`).join('')}</text>`;});
   return o+'</svg>';
 }
-/* The joint map with every rated joint coloured, as markup for the printed sheet. */
-function airJointFigure(joints){
-  let o=`<div class="jbf"><img src="${location.origin}/${ATP_JB_IMG.src}" alt=""/><svg viewBox="0 0 ${ATP_JB_IMG.w} ${ATP_JB_IMG.h}">`;
-  ATP_JB_MARKS.forEach(m=>{
-    const need=atpJbRow(m.keys[0]).joint.need;
-    const lv=Math.max(0,...m.keys.map(k=>atpJointLv((joints[k]||{}).level)));
-    const id=lv?ATP_JOINT_LEVELS[lv-1].id:null;
-    const[x,y]=m.at,R=m.r;
-    o+=`<g transform="translate(${x} ${y})"><circle r="${R-1.5}" fill="${id?AIR_LV_C[id]:'#1d232c'}"/>`+
-      `<circle r="${R-2.5}" fill="none" stroke="${AIR_NEED_C[need]}" stroke-width="5"/>`+
-      (id?`<text text-anchor="middle" dy="7" font-size="20" font-weight="700" fill="#fff">${atpJbLetter(id)}</text>`:`<circle r="5.5" fill="${AIR_NEED_C[need]}"/>`)+`</g>`;
-  });
-  return o+`</svg><span class="cap" style="left:25%">${atpT('Front')}</span><span class="cap" style="left:75%">${atpT('Back')}</span></div>`;
-}
-function printAthleteInfo(ath,setup,exercises){
+function printAthleteInfo(ath,setup,exercises,teamDays){
   const w=window.open('','_blank','width=980,height=1200');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const txt=s=>{const t=String(s||'').trim();return t?`<div class="txt">${esc(t)}</div>`:`<div class="txt none">—</div>`;};
-  const{age,h,w:wt,ws,bf,sc:scYears}=athProfileBasics(ath);
+  const{age,h,w:wt,ws,bf}=athProfileBasics(ath);
   const scout=ath.scout||{},grp=g=>scout[g]||{};
   const pNow=scPos(scout.posNow),pPot=scPos(scout.posPot);
   const tech=scRead(SC_TECH,grp('tech')),mind=scRead(SC_MIND,grp('mind'));
@@ -68,7 +54,6 @@ function printAthleteInfo(ath,setup,exercises){
   const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
   const notes=athNotesList(ath);
   const tp=atpRead(ath);
-  const tests=athLatestTests(ath);
   const injuries=(ath.injuries||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const num=(v,d=1)=>v==null?'—':String(+Number(v).toFixed(d));
@@ -88,7 +73,7 @@ function printAthleteInfo(ath,setup,exercises){
   /* ── 1 · Athlete profile ── */
   const s1=`<section>
     ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler, deneyim, hedefler ve bireysel gözlemler','Key measures, experience, goals and individual observations'))}
-    <div class="kvs">${kv(L('Yaş','Age'),age!=null?age:'—',L('yıl','yrs'))}${kv(L('Boy','Height'),h?num(h.v):'—','cm')}${kv(L('Kilo','Weight'),wt?num(wt.v):'—','kg')}${kv(L('Kulaç','Wingspan'),ws?num(ws.v):'—','cm')}${kv(L('Yağ Oranı','Body Fat'),bf?num(bf.v):'—','%')}${kv(L('S&C Deneyimi','S&C Experience'),scYears!=null?num(scYears):'—',L('yıl','yrs'))}</div>
+    <div class="kvs">${kv(L('Yaş','Age'),age!=null?age:'—',L('yıl','yrs'))}${kv(L('Boy','Height'),h?num(h.v):'—','cm')}${kv(L('Kilo','Weight'),wt?num(wt.v):'—','kg')}${kv(L('Kulaç','Wingspan'),ws?num(ws.v):'—','cm')}${kv(L('Yağ Oranı','Body Fat'),bf?num(bf.v):'—','%')}</div>
     <div class="two">
       <div class="card blk">${subH(L('Kısa Vadeli Performans Hedefleri','Short-Term Performance Goals'))}${txt(goals.short)}</div>
       <div class="card blk">${subH(L('Uzun Vadeli Performans Hedefleri','Long-Term Performance Goals'))}${txt(goals.long)}</div>
@@ -116,47 +101,98 @@ function printAthleteInfo(ath,setup,exercises){
     <div class="card blk">${subH(L('Baş Antrenör Genel Değerlendirmesi','Head Coach’s Overall Assessment'))}${txt(verdict.summary)}
       <div class="sign"><span>${L('Baş Antrenör','Head Coach')}: <b>${esc(verdict.coach||'—')}</b></span><span>${L('Tarih','Date')}: <b>${esc(verdict.date||'—')}</b></span></div></div>
   </section>`;
-  /* ── 3 · Athletic profile ── */
-  const testGroups=ATH_TEST_GROUPS.map(g=>({meta:TEST_GROUPS.find(x=>x.id===g),items:tests.filter(b=>b.g===g)})).filter(x=>x.items.length);
-  /* The unit sits right beside the result ("33.1 cm"), not up in the corner of the box. */
-  const testBox=b=>`<div class="tb"><div class="tn">${esc(L(b.tr,b.en))}</div>${b.bi
-    ?`<div class="tv bi"><span><small>${L('Sağ','R')}</small>${athTestFmt(b.v[0])}</span><span><small>${L('Sol','L')}</small>${athTestFmt(b.v[1])}</span>${b.u?`<em class="u">${esc(b.u)}</em>`:''}</div>`
-    :`<div class="tv">${athTestFmt(b.v)}${b.u?`<em class="u">${esc(b.u)}</em>`:''}${b.delta!=null&&b.delta!==0?`<i class="${b.good==null?'':b.good?'up':'dn'}">${b.delta>0?'+':''}${athTestFmt(b.delta)}</i>`:''}</div>`}
-    <div class="td">${fd(b.date)}</div></div>`;
-  const jbRows=ATP_JOINTS.map(j=>{const rs=ATP_JOINT_ROWS.filter(r=>r.joint.id===j.id);
-    const cell=r=>{const v=(tp.joints[r.key]||{});const id=v.level;
-      return`${id?`<span class="lv" style="color:${AIR_LV_C[id]}"><i style="background:${AIR_LV_C[id]}"></i>${esc(atpT(ATP_JOINT_LEVELS[atpJointLv(id)-1].en))}</span>`:'<span class="sw">—</span>'}${v.note?`<div class="jn">${esc(v.note)}</div>`:''}`;};
-    return`<tr><td class="b">${esc(atpT(j.en))}</td><td><span class="need" style="color:${AIR_NEED_C[j.need]}">${esc(atpT(j.need==='mobility'?'Mobility':'Stability'))}</span></td>${j.bi?`<td>${cell(rs[0])}</td><td>${cell(rs[1])}</td>`:`<td colspan="2" class="mid">${cell(rs[0])}</td>`}</tr>`;}).join('');
+  /* ── 3 · Athletic profile ── every Movement Screen, Jump & Reactivity and Speed & Agility
+     test on the record, one card each: its picture (grey-scale, small), its name and what it
+     measures, and its numbers. The movement screen shows the latest result (and its change
+     from the one before); jump and speed show every date, like the anthropometric tables.
+     The FMS Deep Squat card carries the athlete's own front and side photos instead of the
+     stock picture, when they were taken. */
+  const datedTests=[...(ath.tests||[])].filter(t=>t&&t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  const fmsIt=(t,id)=>fmsCalc(t.fms).items.find(i=>i.id===id)||{};
+  const RS=[L('Sağ','R'),L('Sol','L')];
+  const fmsTest=it=>({g:'move',id:'fms_'+it.id,tr:'FMS '+it.en,en:'FMS '+it.en,u:'/3',dir:'hi',
+    rows:it.bi?[[RS[0],t=>fmsIt(t,it.id).right],[RS[1],t=>fmsIt(t,it.id).left]]:[[L('Skor','Score'),t=>fmsIt(t,it.id).score]]});
+  const lr=k=>[[RS[0],t=>cmpN(t[k]&&t[k].right)],[RS[1],t=>cmpN(t[k]&&t[k].left)]];
+  const one=get=>[['',get]];
+  const AIR_TESTS=[
+    ...FMS_ITEMS.map(fmsTest),
+    {g:'move',id:'ankleDF',tr:'Ayak Bileği Dorsifleksiyon',en:'Ankle Dorsiflexion',u:'°',dir:'hi',rows:lr('ankleDF')},
+    {g:'move',id:'aslr',tr:'Aktif Düz Bacak Kaldırma (ASLR)',en:'Active Straight Leg Raise (ASLR)',u:'/3',dir:'hi',rows:lr('aslr')},
+    {g:'move',id:'ohs',tr:'Overhead Squat',en:'Overhead Squat',u:'/3',dir:'hi',rows:one(t=>cmpN(t.ohs&&t.ohs.score))},
+    {g:'move',id:'hipRot',tr:'Kalça İç/Dış Rotasyon',en:'Hip Internal/External Rotation',u:'°',dir:'hi',
+      rows:[[`IR ${RS[0]}`,t=>hipRotCalc(t).irR],[`IR ${RS[1]}`,t=>hipRotCalc(t).irL],[`ER ${RS[0]}`,t=>hipRotCalc(t).erR],[`ER ${RS[1]}`,t=>hipRotCalc(t).erL]]},
+    {g:'move',id:'thomas',tr:'Thomas Testi',en:'Thomas Test',u:'°',
+      rows:[[`${L('Kalça','Hip')} ${RS[0]}`,t=>thomasCalc(t).right.hip],[`${L('Kalça','Hip')} ${RS[1]}`,t=>thomasCalc(t).left.hip],
+        [`${L('Diz','Knee')} ${RS[0]}`,t=>thomasCalc(t).right.knee],[`${L('Diz','Knee')} ${RS[1]}`,t=>thomasCalc(t).left.knee]]},
+    {g:'move',id:'tSpine',tr:'Torasik Rotasyon',en:'Thoracic Rotation',u:'°',dir:'hi',rows:[[RS[0],t=>tSpineCalc(t).r],[RS[1],t=>tSpineCalc(t).l]]},
+    {g:'move',id:'yBalance',tr:'Y Denge Testi',en:'Y Balance Test',u:'%',dir:'hi',rows:[[RS[0],t=>ybCalc(t.yBalance).compR],[RS[1],t=>ybCalc(t.yBalance).compL]]},
+    {g:'jump',id:'verticalJump',tr:'Dikey Sıçrama',en:'Vertical Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.verticalJump))},
+    {g:'jump',id:'cmj',tr:'CMJ (Countermovement Jump)',en:'CMJ (Countermovement Jump)',u:'cm',dir:'hi',rows:one(t=>cmpN(t.cmj))},
+    {g:'jump',id:'squatJump',tr:'Squat Jump',en:'Squat Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.squatJump))},
+    {g:'jump',id:'dropJump',tr:'Drop Jump',en:'Drop Jump',u:'RSI',dir:'hi',rows:one(t=>cmpN(t.dropJump))},
+    {g:'jump',id:'horizontalJump',tr:'Yatay Sıçrama',en:'Horizontal Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.horizontalJump))},
+    {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',rows:lr('lateralCmj')},
+    {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:one(t=>cmpN(t.sprint20m&&t.sprint20m.time))},
+    {g:'speed',id:'accel',tr:'5-10 m İvmelenme',en:'5-10 m Acceleration',u:'s',dir:'lo',rows:[['5 m',t=>accelCalc(t).t5],['10 m',t=>accelCalc(t).t10]]},
+    {g:'speed',id:'tTest',tr:'T-Çeviklik Testi',en:'T-Agility Test',u:'s',dir:'lo',rows:one(t=>cmpN(t.tTest))},
+    {g:'speed',id:'fiveZeroFive',tr:'505 Yön Değiştirme',en:'505 Change of Direction',u:'s',dir:'lo',rows:[[RS[0],t=>cod505Calc(t).r],[RS[1],t=>cod505Calc(t).l]]},
+  ];
+  const safe=(f,t)=>{try{const v=f(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}};
+  /* A test's readings: the dates any of its rows was taken, and each row's value per date. */
+  const airSeries=d=>{const pts=datedTests.map(t=>({date:t.date,t,vs:d.rows.map(r=>safe(r[1],t))})).filter(p=>p.vs.some(v=>v!=null));
+    return pts.length?{...d,pts}:null;};
+  /* The athlete's own Deep Squat photos (front and side), off the newest test that has them. */
+  const dsPh=(()=>{for(let i=datedTests.length-1;i>=0;i--){const ph=(((datedTests[i].fms||{}).photos||{}).deepSquat)||{};
+    if(hasMedia(ph.front)||hasMedia(ph.side))return ph;}return null;})();
+  const abs=p=>`${location.origin}/${p}`;
+  const tcImg=d=>{
+    if(d.id==='fms_deepSquat'&&dsPh)return`<div class="tc-im ph">${['front','side'].filter(k=>hasMedia(dsPh[k])).map(k=>`<img src="${esc(mediaSrc(dsPh[k]))}" alt=""/>`).join('')}</div>`;
+    return TEST_IMG[d.id]?`<div class="tc-im"><img src="${esc(abs(TEST_IMG[d.id]))}" alt=""/></div>`:'<div class="tc-im none"></div>';};
+  /* What the test measures: its "used to assess" line; an FMS movement's is its scoring rule,
+     so those say the quality the movement screens instead. */
+  const tcWhat=d=>{if(/^fms_/.test(d.id)){const m=TEST_META[d.id];return m?L(m.tr,m.en):'';}
+    const i=TEST_INFO[d.id];return i?L(i.tr,i.en).p:'';};
+  const tcInfo=d=>{const w=tcWhat(d);
+    return`<div class="tc-i"><div class="tc-n">${esc(L(d.tr,d.en))} <em>${esc(d.u)}</em></div>${w?`<div class="tc-w">${esc(w)}</div>`:''}</div>`;};
+  const TC_PER_ROW=6;
+  /* The readings as a slim table, dates along the top. `latest` keeps only the newest date,
+     with its change from the reading before. */
+  const tcTable=(d,latest)=>{
+    const all=d.pts.map((p,i)=>({...p,i}));
+    const cols=latest?all.slice(-1):all;
+    const prevOf=(ri,i)=>{for(let j=i-1;j>=0;j--)if(all[j].vs[ri]!=null)return all[j].vs[ri];return null;};
+    const tone=dv=>!d.dir||!dv?'':((d.dir==='hi')===(dv>0)?'up':'dn');
+    const chunks=[];for(let i=0;i<cols.length;i+=TC_PER_ROW)chunks.push(cols.slice(i,i+TC_PER_ROW));
+    const n=Math.min(cols.length,TC_PER_ROW);
+    const hasLbl=d.rows.some(r=>r[0]);
+    const pad=(c,tag)=>`<${tag}></${tag}>`.repeat(n-c.length);
+    return`<table class="tc-t">${chunks.map(c=>`<tr class="an-d">${hasLbl?'<th class="rl"></th>':''}${c.map(p=>`<th>${fd(p.date)}</th>`).join('')}${pad(c,'th')}</tr>
+      ${d.rows.map((r,ri)=>`<tr class="an-v">${hasLbl?`<td class="rl">${esc(r[0])}</td>`:''}${c.map(p=>{const v=p.vs[ri];if(v==null)return'<td><span class="sw">—</span></td>';
+        const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
+        return`<td><b>${athTestFmt(v)}</b>${dv?`<i class="${tone(dv)}">${dv>0?'+':''}${athTestFmt(dv)}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
+  const tcCard=(d,latest)=>`<div class="tc${latest?' sm':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
+  const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
+  const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
+  const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
+    :x.g==='move'?` <span class="hv">${L('son sonuçlar','latest results')}</span>`:` <span class="hv">${L('gelişim','progress')}</span>`}`;
+  const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
+      <div class="${x.g==='move'?'tcs2':'tcs'}">${x.list.map(d=>tcCard(d,x.g==='move')).join('')}</div></div>`).join('')
+    :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
   const pri=ATP_PRIORITY.map(p=>{const its=ATP_QUALITIES.filter(it=>(tp.qualities[it.id]||{}).priority===p.id);
     return`<div class="card lane"><div class="pk" style="color:${{high:'#dc2626',medium:'#a16207',low:'#2f5fd0'}[p.id]}">${esc(atpT(p.en))} <span class="cnt">${its.length}</span></div>
       <div class="pd2">${esc(L(p.dTr,p.dEn))}</div>${its.length?`<ul class="ql">${its.map(it=>`<li>${esc(atpT(it.en))}<span>${esc(atpT(it.group))}</span></li>`).join('')}</ul>`:'<div class="none">—</div>'}</div>`;}).join('');
-  /* The latest static posture and overhead squat, side by side: each its three photos
-     (small, so the pair still closes the second page) and the coach's words under them. */
+  /* The latest static posture across the full width: its three photos and the coach's words under them. */
   const newestT=f=>[...(ath.tests||[])].filter(t=>t&&t.date&&f(t)).sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
   const pT=newestT(t=>{const p=t.posture||{};return!!(p.frontPhoto||p.sidePhoto||p.backPhoto||String(p.observations||'').trim());});
-  const oT=newestT(t=>{const o=t.ohs||{};return!!(o.frontPhoto||o.sidePhoto||o.backPhoto||String(o.observations||'').trim()
-    ||(o.score!==''&&o.score!=null)||(o.problems||[]).some(x=>String(x||'').trim()));});
   const shot=(photo,lbl)=>`<figure class="sh">${photo?`<img src="${esc(mediaSrc(photo))}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${lbl}</figcaption></figure>`;
   const shots=o=>`<div class="shs">${shot(o.frontPhoto,L('Önden','Front'))}${shot(o.sidePhoto,L('Yandan','Side'))}${shot(o.backPhoto,L('Arkadan','Back'))}</div>`;
-  const postureCard=`<div class="card pt">
+  const postureCard=`<div class="card pt wide">
       <div class="pk">${L('Statik Postür','Static Posture')}${pT?` <span class="ptd">${fd(pT.date)}</span>`:''}</div>
       ${pT?`${shots(pT.posture)}${txt(pT.posture.observations)}`:`<div class="none">${L('Statik postür testi yok.','No static posture test.')}</div>`}</div>`;
-  const ohsProb=oT?((oT.ohs.problems||[]).map(x=>String(x||'').trim()).filter(Boolean)):[];
-  const ohsCard=`<div class="card pt">
-      <div class="pk">Overhead Squat${oT?`${oT.ohs.score!==''&&oT.ohs.score!=null?` <span class="pts">${esc(oT.ohs.score)} / 3</span>`:''} <span class="ptd">${fd(oT.date)}</span>`:''}</div>
-      ${oT?`${shots(oT.ohs)}${ohsProb.length?`<ul class="pp">${ohsProb.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${String(oT.ohs.observations||'').trim()||!ohsProb.length?txt(oT.ohs.observations):''}`
-        :`<div class="none">${L('Overhead squat testi yok.','No overhead squat test.')}</div>`}</div>`;
   const s3=`<section>
-    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Son test sonuçları, Joint by Joint ve gelişim öncelikleri','Latest test results, Joint by Joint and development priorities'))}
-    <div class="blk">${subH(L('Son Test Sonuçları','Latest Test Results'))}
-      ${testGroups.length?testGroups.map(g=>`<div class="tg"><div class="tgh">${esc(L(g.meta.tr,g.meta.en))}</div><div class="tbs">${g.items.map(testBox).join('')}</div></div>`).join('')
-        :`<div class="none">${L('Hareket Kalitesi, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Quality, Jump & Reactivity or Speed & Agility test.')}</div>`}</div>
-    <div class="blk"><div class="two">${postureCard}${ohsCard}</div></div>
-    <div class="blk pg2">${subH('<span lang="en">Joint by Joint</span>')}
-      <div class="jb">${airJointFigure(tp.joints)}
-        <div class="jb-r"><table class="jbt"><tr><th>${esc(atpT('Joint'))}</th><th>${esc(atpT('Need'))}</th><th>${esc(atpT('Right'))}</th><th>${esc(atpT('Left'))}</th></tr>${jbRows}</table>
-          <div class="key"><span><i style="background:${AIR_NEED_C.mobility}"></i>${esc(atpT('Mobile Joints'))}</span><span><i style="background:${AIR_NEED_C.stability}"></i>${esc(atpT('Stable Joints'))}</span>${ATP_JOINT_LEVELS.map(l=>`<span><i style="background:${AIR_LV_C[l.id]}"></i>${esc(atpT(l.en))}</span>`).join('')}</div></div>
-      </div></div>
+    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Hareket taraması, sıçrama ve sürat testleri, statik postür ve gelişim öncelikleri','Movement screen, jump and speed tests, static posture and development priorities'))}
+    <div class="tests">${testSec}</div>
+    <div class="blk">${postureCard}</div>
     <div class="blk">${subH(L('Atletik Gelişim Öncelikleri','Athletic Development Priorities'))}<div class="three">${pri}</div></div>
   </section>`;
   /* ── 4 · Anthropometric tracking ── one slim table per measure: its dates along the top,
@@ -191,17 +227,20 @@ function printAthleteInfo(ath,setup,exercises){
   const ctxTr={Training:L('Antrenman','Training'),Match:L('Maç','Match'),Other:L('Diğer','Other')};
   const sideTr={Right:L('Sağ','Right'),Left:L('Sol','Left'),Bilateral:L('Çift taraflı','Bilateral'),'N/A':''};
   const tissueTr={Muscle:L('Kas','Muscle'),Ligament:L('Bağ','Ligament'),Tendon:'Tendon',Bone:L('Kemik','Bone'),Cartilage:L('Kıkırdak','Cartilage'),'Joint capsule':L('Eklem kapsülü','Joint capsule'),Nerve:L('Sinir','Nerve'),Other:L('Diğer','Other')};
-  let missD=0,missM=0;
-  const injRows=injuries.map(i=>{const m=injMissed(i,setup);if(m.days)missD+=m.days;if(m.matches)missM+=m.matches;const act=!i.actualReturn;
+  /* Missed sessions off the team calendar's tick lists (see injMissedSessions): the totals
+     over the whole record, and each injury's own count while the athlete was out. */
+  const missAll=injMissedSessions(ath.id,teamDays,null,null);
+  let missD=0;
+  const injRows=injuries.map(i=>{const m=injMissed(i,ath.id,teamDays);if(m.days)missD+=m.days;const act=!i.actualReturn;
     return`<tr><td>${i.date?fd(i.date):'—'}</td><td class="b">${esc([sideTr[i.side]||'',i.location||''].filter(Boolean).join(' ')||'—')}${i.type?`<div class="sw">${esc(i.type)}</div>`:''}</td>
       <td>${esc(tissueTr[i.tissueType]||i.tissueType||'—')}</td><td>${i.grade?esc(i.grade):'—'}</td><td>${esc(ctxTr[i.context]||'—')}${i.mechanism?`<div class="sw">${esc(i.mechanism)}</div>`:''}</td>
       <td>${i.sidelinedDate?fd(i.sidelinedDate):'—'} → ${i.actualReturn?fd(i.actualReturn):(i.estimatedReturn?`${fd(i.estimatedReturn)} <span class="sw">(${L('tahmini','est.')})</span>`:'—')}</td>
-      <td class="r">${m.days!=null?m.days:'—'}</td><td class="r">${m.matches!=null?m.matches:'—'}</td>
-      <td><span class="pill ${act?'act':'ok'}">${act?L('Aktif','Active'):L('İyileşti','Recovered')}</span></td></tr>${i.notes?`<tr class="nr"><td></td><td colspan="8">${esc(i.notes)}</td></tr>`:''}`;}).join('');
+      <td class="r">${m.days!=null?m.days:'—'}</td>${INJ_MISS_KINDS.map(k=>`<td class="r">${m[k.id]!=null?m[k.id]:'—'}</td>`).join('')}
+      <td><span class="pill ${act?'act':'ok'}">${act?L('Aktif','Active'):L('İyileşti','Recovered')}</span></td></tr>${i.notes?`<tr class="nr"><td></td><td colspan="10">${esc(i.notes)}</td></tr>`:''}`;}).join('');
   const s5=`<section>
-    ${secH(5,L('Sakatlıklar','Injuries'),L('Sakatlık kaydı, kaçırılan antrenman ve maçlar','Injury record, missed training and matches'))}
-    <div class="kvs sm">${kv(L('Kayıt','Records'),injuries.length)}${kv(L('Aktif','Active'),injuries.filter(i=>!i.actualReturn).length)}${kv(L('Kaçırılan antrenman','Missed training'),missD,L('gün','days'))}${kv(L('Kaçırılan maç','Missed matches'),missM)}</div>
-    ${injuries.length?`<table class="inj"><tr><th>${L('Tarih','Date')}</th><th>${L('Bölge / Tip','Region / Type')}</th><th>${L('Doku','Tissue')}</th><th>${L('Derece','Grade')}</th><th>${L('Bağlam','Context')}</th><th>${L('Kadro dışı → Dönüş','Sidelined → Return')}</th><th class="r">${L('Gün','Days')}</th><th class="r">${L('Maç','Matches')}</th><th>${L('Durum','Status')}</th></tr>${injRows}</table>`
+    ${secH(5,L('Sakatlıklar','Injuries'),L('Sakatlık kaydı; takvimde işaretlenmediği takım antrenmanı, kuvvet & kondisyon ve müsabakalar','Injury record; the team practices, strength & conditioning sessions and competitions the athlete was not ticked on'))}
+    <div class="kvs sm">${kv(L('Kayıt','Records'),injuries.length)}${kv(L('Aktif','Active'),injuries.filter(i=>!i.actualReturn).length)}${kv(L('Kadro dışı','Days out'),missD,L('gün','days'))}${INJ_MISS_KINDS.map(k=>kv(L(`Kaçırılan ${k.tr}`,`Missed ${k.en}`),missAll[k.id])).join('')}</div>
+    ${injuries.length?`<table class="inj"><tr><th>${L('Tarih','Date')}</th><th>${L('Bölge / Tip','Region / Type')}</th><th>${L('Doku','Tissue')}</th><th>${L('Derece','Grade')}</th><th>${L('Bağlam','Context')}</th><th>${L('Kadro dışı → Dönüş','Sidelined → Return')}</th><th class="r">${L('Gün','Days')}</th><th class="r">${L('Tak. Ant.','Team Pr.')}</th><th class="r">K&amp;K</th><th class="r">${L('Maç','Match')}</th><th>${L('Durum','Status')}</th></tr>${injRows}</table>`
       :`<div class="card none">${L('Kayıtlı sakatlık yok.','No injuries recorded.')}</div>`}
   </section>`;
   const today_=fdL(fmt(today));
@@ -226,7 +265,10 @@ body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 a
 .hd h1{font-size:23px;line-height:1.1;letter-spacing:-.01em}
 .hd h1 span{font-size:14px;color:var(--dim);font-weight:600;margin-left:6px}
 .hd .meta{color:var(--mu);font-size:11px;margin-top:4px}
-.hd .r{margin-left:auto;text-align:right}
+.hd .r{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.hd .r .tm{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.hd .r .tm img{height:22px;width:auto;max-width:40px;object-fit:contain}
+.hd .r .tm span{font-size:10px;font-weight:700;color:var(--ink)}
 .hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
 .hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
 section{margin-top:12px}
@@ -252,8 +294,9 @@ section{margin-top:12px}
 .an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
 .txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
 .none,.txt.none{color:var(--dim);font-size:10px}
-.kvs{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px}
-.kvs.sm{grid-template-columns:repeat(4,1fr)}
+.kvs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
+.kvs.sm{grid-template-columns:repeat(6,1fr)}
+.kvs.sm .kv .k{font-size:7.6px;letter-spacing:.06em;line-height:1.25}
 .kv{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--soft)}
 .kv .k{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:600}
 .kv .v{font-size:18px;font-weight:700;margin-top:2px;line-height:1.1}
@@ -304,20 +347,30 @@ td.r,th.r{text-align:right}
 .key i{width:8px;height:8px;border-radius:2px}
 .sign{display:flex;gap:24px;margin-top:9px;padding-top:7px;border-top:1px dashed var(--ln2);font-size:10px;color:var(--mu)}
 .sign b{color:var(--ink)}
-.tg{margin-bottom:7px}
-.tgh{font-size:9px;font-weight:700;color:var(--t2);margin-bottom:4px}
-.tbs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.tb{border:1px solid var(--ln);border-radius:8px;padding:6px 8px;break-inside:avoid}
-.tn{font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);display:flex;justify-content:space-between;gap:4px}
-.tn em{font-style:normal;color:var(--dim);font-weight:500;text-transform:none}
-.tv{font-size:16px;font-weight:700;margin-top:2px;display:flex;align-items:baseline;gap:5px}
-.tv i{font-style:normal;font-size:9px;font-weight:600;color:var(--mu)}
-.tv em.u{font-style:normal;font-size:9px;font-weight:500;color:var(--dim);margin-left:-2px}
-.tv.bi em.u{margin-left:0}
-.tv i.up{color:#16a34a}.tv i.dn{color:#dc2626}
-.tv.bi{gap:10px;font-size:14px}
-.tv.bi small{font-size:8px;color:var(--mu);font-weight:600;margin-right:3px}
-.td{font-size:8.5px;color:var(--dim)}
+.tgs{margin-bottom:8px}
+.tcs{display:flex;flex-direction:column;gap:5px}
+.tcs2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tc{display:grid;grid-template-columns:30mm 46mm minmax(0,1fr);gap:8px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
+.tc.sm{grid-template-columns:24mm minmax(0,1fr) auto;gap:6px}
+.tc-im{height:17mm;display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
+.tc.sm .tc-im{height:14mm}
+.tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
+.tc-im.none{background:none}
+.tc-im.ph img{object-fit:contain;background:var(--soft)}
+.tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
+.tc-n em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
+.tc-w{font-size:7.8px;line-height:1.32;color:var(--t2);margin-top:2px}
+.tc-t{table-layout:fixed;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.tc.sm .tc-t{width:auto;min-width:22mm}
+.tc-t th,.tc-t td{padding:1.5px 4px;text-align:center;border-bottom:0;background:#fff}
+.tc-t .an-d th{font-size:7px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
+.tc-t .an-v td{font-size:9px;white-space:nowrap}
+.tc-t .an-v b{font-size:10px;font-weight:700}
+.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:2px}
+.tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
+.tc-t .rl{width:11mm;text-align:left;font-size:7.2px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
+.tc-t th.rl{background:var(--soft)}
+.tc.sm .tc-t .rl{width:auto}
 .card.pt{padding:7px 9px}
 .pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
 .pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
@@ -326,22 +379,11 @@ td.r,th.r{text-align:right}
 .sh{text-align:center}
 .sh img,.shx{width:100%;height:40mm;object-fit:contain;background:var(--soft);border:1px solid var(--ln);border-radius:6px;display:block}
 .shx{display:grid;place-items:center;color:var(--dim);font-size:12px}
+.pt.wide .sh img,.pt.wide .shx{height:88mm}
+.pt.wide .txt{font-size:9.6px;line-height:1.45}
 .sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .pt .txt{font-size:9px;line-height:1.38}
 .pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.jb{display:grid;grid-template-columns:54mm 1fr;gap:10px;align-items:start}
-.jbf{position:relative;border-radius:9px;overflow:hidden;background:#11151b;line-height:0}
-.jbf img{width:100%;height:auto;display:block}
-.jbf svg{position:absolute;inset:0;width:100%;height:100%}
-.jbf .cap{position:absolute;bottom:6px;transform:translateX(-50%);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#cfd4db;line-height:1}
-.jbt td,.jbt th{padding:1.5px 4px;line-height:1.25}
-.jbt td{font-size:8.5px}
-.jbt th{font-size:7.5px}
-.jbt td.mid{text-align:left}
-.lv{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:8.5px}
-.lv i{width:6px;height:6px;border-radius:50%}
-.need{font-size:8.5px;font-weight:600}
-.jn{font-size:7.5px;color:var(--mu)}
 .lane .cnt{color:var(--mu);font-weight:600}
 .pd2{font-size:8.8px;color:var(--mu);margin-bottom:5px}
 .ql{list-style:none;display:flex;flex-direction:column;gap:3px}
@@ -357,8 +399,8 @@ td.r,th.r{text-align:right}
 <div class="hd">
   ${ath.photo?`<img class="av" src="${esc(mediaSrc(ath.photo))}" alt=""/>`:`<div class="avp">${esc(initials)}</div>`}
   <div><h1>${esc(ath.name||L('Adsız Sporcu','Unnamed Athlete'))}${ath.number?`<span>#${esc(ath.number)}</span>`:''}</h1>
-    <div class="meta">${[ath.position?esc(POS_FULL[ath.position]||ath.position):'',pNow?esc(`${pNow.k} · ${L(pNow.tr,pNow.en)}`):'',esc(setup.teamName||'')].filter(Boolean).join(' · ')}</div></div>
-  <div class="r"><div class="t">${L('Sporcu Bilgi Formu','Athlete Information Sheet')}</div><div class="d">${today_}</div></div>
+    <div class="meta">${[ath.position?esc(POS_FULL[ath.position]||ath.position):'',pNow?esc(`${pNow.k} · ${L(pNow.tr,pNow.en)}`):''].filter(Boolean).join(' · ')}</div></div>
+  <div class="r">${hasMedia(setup.logo)||setup.teamName?`<div class="tm">${hasMedia(setup.logo)?`<img src="${esc(mediaSrc(setup.logo))}" alt=""/>`:''}${setup.teamName?`<span>${esc(setup.teamName)}</span>`:''}</div>`:''}<div class="t">${L('Sporcu Bilgi Formu','Athlete Information Sheet')}</div><div class="d">${today_}</div></div>
 </div>
 ${s1}${s2}${s3}${s4}${s5}
 <div class="ft"><span>${esc(setup.teamName||'')} · CoachOS</span><span>${L(`${today_} tarihinde oluşturuldu`,`Generated ${today_}`)}</span></div>

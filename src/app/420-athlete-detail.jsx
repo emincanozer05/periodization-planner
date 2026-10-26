@@ -17,7 +17,7 @@ const ATH_IC={
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
 const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
-function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
+function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,customTests,initialTab}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   const[rpeOpen,setRpeOpen]=useState(false);
@@ -102,7 +102,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
       </div>
       {/* The athlete on paper, for the people the coach reports to: profile, the head
           coach's observations, the athletic profile and the injury record, A4 portrait. */}
-      <button className="ap-info" onClick={()=>printAthleteInfo(ath,setup,exercises)}
+      <button className="ap-info" onClick={()=>printAthleteInfo(ath,setup,exercises,teamDays)}
         title={L('Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil ve Sakatlıklar — A4 dikey PDF','Athlete Profile, Head Coach Observations, Athletic Profile and Injuries — A4 portrait PDF')}>{L('Bilgileri Al','Get Info')}</button>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
@@ -146,7 +146,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
         </div>
       </div>
     </div>}
-    {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup}/>}
+    {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup} teamDays={teamDays}/>}
     {tab==='body'&&<AthBody ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={()=>{}} weeks={weeks}
@@ -251,19 +251,55 @@ function AthRpeScores({ath,updAth,onClose}){
    A record is a single line until it is opened — status, where, the grade, when it
    happened and how long it kept the athlete out — so a long history stays one screen
    tall. A record just added opens itself; it is waiting to be filled in. */
-function injMissed(inj,setup){
-  const sd=inj.sidelinedDate,ar=inj.actualReturn;
-  if(!sd)return{days:null,matches:null};
-  const endDate=ar||fmt(today);
-  if(endDate<sd)return{days:null,matches:null};
-  return{days:Math.max(0,diffD(sd,endDate)),matches:(setup.competitions||[]).filter(c=>c.date>=sd&&c.date<=endDate).length};
+/* Missed work, counted off the team calendar: a team session the athlete is not ticked on
+   (its "Katılan Sporcular" list names others, not them) is one they missed. Sessions are
+   sorted into team practice, strength & conditioning (the Strength & Power and On-Court
+   Performance blocks, read off their focus) and matches; conditioning, recovery and test
+   sessions are not counted. Only days up to today count — a plan is not yet a miss. */
+const INJ_MISS_KINDS=[{id:'tp',tr:'Takım Antrenmanı',en:'Team Practice'},
+  {id:'sc',tr:'Kuvvet & Kondisyon',en:'Strength & Conditioning'},{id:'match',tr:'Müsabaka',en:'Competition'}];
+function injSesKind(s){
+  const k=sesKind(s);
+  if(k==='tp'||k==='match')return k;
+  if(k==='test')return null;
+  return sesFocus(s).some(f=>f==='Strength'||f==='Power'||f==='Speed')?'sc':null;
 }
-function AthInjuries({ath,updAth,setup}){
+function injMissedSessions(athId,teamDays,from,to){
+  const r={tp:0,sc:0,match:0};
+  const end=to&&to<fmt(today)?to:fmt(today);
+  Object.entries(teamDays||{}).forEach(([k,d])=>{
+    if((from&&k<from)||k>end)return;
+    ((d&&d.sessions)||[]).forEach(s=>{
+      const kind=injSesKind(s);if(!kind)return;
+      const on=teamSessionCovers(s,athId)||(s.blocks||[]).some(b=>Array.isArray(b.athletes)&&b.athletes.includes(athId));
+      if(!on)r[kind]++;
+    });
+  });
+  return r;
+}
+/* An injury's days out and the sessions missed while out (sidelined → return, or today). */
+function injMissed(inj,athId,teamDays){
+  const sd=inj.sidelinedDate,ar=inj.actualReturn;
+  if(!sd)return{days:null,tp:null,sc:null,match:null};
+  const endDate=ar||fmt(today);
+  if(endDate<sd)return{days:null,tp:null,sc:null,match:null};
+  return{days:Math.max(0,diffD(sd,endDate)),...injMissedSessions(athId,teamDays,sd,endDate)};
+}
+/* The three missed-session boxes, under one heading. */
+function InjMissStats({m,title}){
+  return(<div className="inj-miss">
+    {title&&<div className="inj-miss-h">{title}</div>}
+    <div className="inj-miss-g">{INJ_MISS_KINDS.map(k=><div key={k.id} className={`inj-stat inj-k-${k.id}`}>
+      <div className="k">{L(k.tr,k.en)}</div><div className="v">{m[k.id]!=null?m[k.id]:'—'}</div></div>)}</div>
+  </div>);
+}
+function AthInjuries({ath,updAth,setup,teamDays}){
   const[open,setOpen]=useState(null);
   const oneAth=useMemo(()=>[ath],[ath]);
   const list=ath.injuries||[];
   const order=list.map((inj,idx)=>({inj,idx})).sort((a,b)=>(b.inj.date||'').localeCompare(a.inj.date||''));
   const nActive=list.filter(i=>!i.actualReturn).length;
+  const missAll=useMemo(()=>injMissedSessions(ath.id,teamDays,null,null),[ath.id,teamDays]);
   const add=()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};
     updAth(ath.id,{injuries:[...list,inj]});setOpen(inj.id);};
   const sideTr={Right:L('Sağ','Right'),Left:L('Sol','Left'),Bilateral:L('Çift taraflı','Bilateral'),'N/A':''};
@@ -272,11 +308,12 @@ function AthInjuries({ath,updAth,setup}){
       <h2 className="ath-h2">{L('Sporcu Sakatlık Kaydı','Athlete Injury Record')} <span>{list.length} {L('kayıt','records')}{nActive?` · ${nActive} ${L('aktif','active')}`:''}</span></h2>
       <button className="btn sm" onClick={add}>+ {L('Sakatlık Ekle','Add Injury')}</button>
     </div>
+    <InjMissStats m={missAll} title={L('Kaçırılan Antrenman ve Müsabakalar','Missed Training and Competitions')}/>
     {list.length===0&&<div className="empty-st">{L('Kayıtlı sakatlık yok','No injuries recorded')}</div>}
     <InjurySurveillance athletes={oneAth} setup={setup} compact title={L('Bu sporcunun sürveyansı','Athlete surveillance')}/>
     <div className="inj-list">{order.map(({inj,idx})=>{
       const ui=(k,v)=>{const a=[...ath.injuries];a[idx]={...a[idx],[k]:v};updAth(ath.id,{injuries:a});};
-      const miss=injMissed(inj,setup);
+      const miss=injMissed(inj,ath.id,teamDays);
       const isActive=!inj.actualReturn;
       const key=inj.id||idx;
       const isOpen=open===key;
@@ -311,8 +348,8 @@ function AthInjuries({ath,updAth,setup}){
           </div>
           <div style={{marginBottom:10}}><label>{L('Notlar','Notes')}</label><textarea value={inj.notes||''} onChange={e=>ui('notes',e.target.value)} rows={2} placeholder={L('Tedavi, rehabilitasyon, dönüş kriterleri…','Treatment, rehabilitation, return criteria…')}/></div>
           <div className="inj-foot">
-            <div className="inj-stat"><div className="k">{L('Kaçırılan Antrenman','Missed Training')}</div><div className="v">{miss.days!=null?miss.days:'—'}<span className="u">{L('gün','days')}</span></div></div>
-            <div className="inj-stat"><div className="k">{L('Kaçırılan Maç','Missed Matches')}</div><div className="v">{miss.matches!=null?miss.matches:'—'}</div></div>
+            <div className="inj-stat"><div className="k">{L('Kadro Dışı','Days Out')}</div><div className="v">{miss.days!=null?miss.days:'—'}<span className="u">{L('gün','days')}</span></div></div>
+            {INJ_MISS_KINDS.map(k=><div key={k.id} className={`inj-stat inj-k-${k.id}`}><div className="k">{L(`Kaçırılan ${k.tr}`,`Missed ${k.en}`)}</div><div className="v">{miss[k.id]!=null?miss[k.id]:'—'}</div></div>)}
             <button className="btn xs danger" onClick={()=>{if(confirm(L('Bu sakatlık kaydı silinsin mi?','Delete this injury record?'))){updAth(ath.id,{injuries:ath.injuries.filter((_,j)=>j!==idx)});setOpen(null);}}}>✕ {L('Sil','Delete')}</button>
           </div>
         </div>}
