@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1762**, yinelenen: **0**
+- Üst düzey ad sayısı: **1763**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -22,8 +22,8 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 | `test-metadata-fms` | 19 | 3 |
 | `exercise-taxonomy-text` | 18 | 3 |
 | `move-taxonomy` | 14 | 2 |
+| `rhr-team-sync-picker` | 12 | 5 |
 | `athlete-detail-snapshot` | 12 | 4 |
-| `exercise-library-export` | 12 | 10 |
 
 ## Bağımsız adaylar
 
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **101** / toplam bağ 584
+- Geriye bağ sayısı: **101** / toplam bağ 585
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 57 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -94,11 +94,11 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 46 | `scouting-notes` | 14 | `prelude`, `dates-language-factories` |
 | 47 | `profile-tab` | 3 | `prelude`, `dates-language-factories`, `scouting-notes` |
 | 48 | `atp-profile-ui` | 27 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `fv-profile`, `atp-athlete-training-profile`↑ |
-| 49 | `athlete-detail` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`¹, `periods-weeks-load-monotony`, `chart-wrapper`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `test-pdf`, `test-reports-recommends`, `profile-tab`, `atp-profile-ui`, `athlete-phv`↑, `injury-surveillance`↑, `athlete-info-report`↑ |
+| 49 | `athlete-detail` | 14 | `prelude`, `constants-session-focus`, `dates-language-factories`¹, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `test-pdf`, `test-reports-recommends`, `profile-tab`, `atp-profile-ui`, `athlete-phv`↑, `injury-surveillance`↑, `athlete-info-report`↑ |
 | 50 | `athlete-phv` | 12 | `prelude`, `dates-language-factories` |
 | 51 | `injury-surveillance` | 15 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony` |
 | 52 | `athlete-wellness-hrv` | 17 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `athlete-detail-snapshot` |
-| 53 | `athlete-info-report` | 5 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `photo-local-media-store`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑, `atp-athlete-training-profile`↑ |
+| 53 | `athlete-info-report` | 2 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `photo-local-media-store`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑, `atp-athlete-training-profile`↑ |
 | 54 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv` |
 | 55 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 56 | `sync-infra-chunking-merge` | 77 | `team-data-migration` |

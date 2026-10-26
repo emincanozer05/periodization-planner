@@ -307,7 +307,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
   const fmtLoad=v=>v?v.toLocaleString('en-US').replace(/,/g,'.'):'—';
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
-    return<AthleteDetail key={ath.id+':'+(focusTab||'')} ath={ath} onBack={()=>{setSel(null);setFocusTab(null);}} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai} customTests={customTests} initialTab={focusTab}/>;}
+    return<AthleteDetail key={ath.id+':'+(focusTab||'')} ath={ath} onBack={()=>{setSel(null);setFocusTab(null);}} updAth={updAth} setup={team.setup} teamDays={team.days} weeks={weeks} exercises={exercises} ai={ai} customTests={customTests} initialTab={focusTab}/>;}
   return(<div>
     <PageHero title={L('Kadro','Roster')}
       sub={L(`Sezonun yazıldığı kadro · ${team.setup.teamName}`,`The squad the season is written for · ${team.setup.teamName}`)}
