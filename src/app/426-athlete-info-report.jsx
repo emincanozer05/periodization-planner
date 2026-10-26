@@ -63,8 +63,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
       <div class="sign"><span>${L('Baş Antrenör','Head Coach')}: <b>${esc(verdict.coach||'—')}</b></span><span>${L('Tarih','Date')}: <b>${esc(verdict.date||'—')}</b></span></div></div>
   </section>`;
   /* ── 3 · Athletic profile ── every Movement Screen, Jump & Reactivity and Speed & Agility
-     test on the record, one card each: its picture (grey-scale, small), its name and what it
-     measures, and its numbers. The movement screen shows the latest result (and its change
+     test on the record, one wide card each: its picture (grey-scale, the same size on every card),
+     its name and what it measures, and its numbers, each with its unit beside it. The movement screen shows the latest result (and its change
      from the one before); jump and speed show every date, like the anthropometric tables.
      The FMS Deep Squat card carries the athlete's own front and side photos (in colour, larger,
      across the full width) instead of the stock picture, when they were taken. */
@@ -124,9 +124,9 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     const i=TEST_INFO[d.id];return i?L(i.tr,i.en).p:'';};
   const tcInfo=d=>{const w=tcWhat(d);
     /* An English test name is marked so: upper-cased under the sheet's Turkish it would read
-       "ACTİVE STRAİGHT-LEG RAİSE". */
+       "ACTİVE STRAİGHT-LEG RAİSE". The unit is not here: it prints beside every value. */
     const n=L(d.tr,d.en),en=n===d.en&&REPORT_LANG==='tr';
-    return`<div class="tc-i"><div class="tc-n"${en?' lang="en"':''}>${esc(n)} <em>${esc(d.u)}</em></div>${w?`<div class="tc-w">${esc(w)}</div>`:''}</div>`;};
+    return`<div class="ds-h"><div class="tc-n"${en?' lang="en"':''}>${esc(n)}</div>${w?`<div class="ds-w">${esc(w)}</div>`:''}</div>`;};
   const TC_PER_ROW=6;
   /* The readings as a slim table, dates along the top. `latest` keeps only the newest date,
      with its change from the reading before. */
@@ -143,8 +143,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     return`<table class="tc-t">${chunks.map(c=>`<tr class="an-d">${hasLbl?'<th class="rl"></th>':''}${c.map(p=>`<th>${fd(p.date)}</th>`).join('')}${pad(c,'th')}</tr>
       ${d.rows.map((r,ri)=>`<tr class="an-v">${hasLbl?`<td class="rl">${esc(r[0])}</td>`:''}${c.map(p=>{const v=p.vs[ri];if(v==null)return'<td><span class="sw">—</span></td>';
         const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
-        const o=r[2]||{},u=o.u||'';
-        return`<td><b>${fv(v)}${u}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${u}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
+        const o=r[2]||{},u=o.u||d.u||'',du=o.u||'';
+        return`<td><b>${fv(v)}${u?`<small${/^[°%]$/.test(u)?' class="g"':''}>${esc(u)}</small>`:''}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${du}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
   /* The FMS scale, worded for the reader of the sheet: what each score means and what was seen. */
   const FMS_SCALE=[
     {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
@@ -162,19 +162,21 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     const info=FMS_INFO.find(x=>x.id===id);const ds=id==='deepSquat'&&dsPh;
     const sides=c.bi?`<div class="ds-lr"><span>${RS[0]} <b>${c.right!=null?c.right:'—'}</b></span><span>${RS[1]} <b>${c.left!=null?c.left:'—'}</b></span></div>`:'';
     return`<div class="tc ds${ds?' ph':''}">${tcImg(d)}<div class="ds-r">
-      <div class="ds-h"><div class="tc-n" lang="en">${esc(d.en)} <em>/3</em><span class="ds-dt">${fd(last.date)}</span></div>
+      <div class="ds-h"><div class="tc-n" lang="en"><img class="fms-lg" src="${FMS_LOGO_SQ}" alt="FMS"/>${esc(d.en.replace(/^FMS\s+/,''))}<span class="ds-dt">${fd(last.date)}</span></div>
         <div class="ds-w">${esc(info?L(info.tr,info.en):tcWhat(d))}</div></div>
       <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small>${sides}</div>
         ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}${c.bi&&c.right!=null&&c.left!=null&&c.right!==c.left?` ${L('Düşük taraf skoru geçerlidir.','The lower side is the score.')}`:''}${c.cleared==='pos'?` ${L('Ağrı kontrolü pozitif.','Clearing test positive.')}`:''}</div></div>`:''}</div>
     </div></div>`;};
+  /* Every other test in the same wide card: the same picture size as the movement screen's, its
+     name and what it measures, and under them its readings. */
   const tcCard=(d,latest)=>/^fms_/.test(d.id)?fmsCard(d)
-    :`<div class="tc${latest?' sm':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
+    :`<div class="tc ds">${tcImg(d)}<div class="ds-r">${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div></div>`;
   const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
   const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
   const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
     :x.g==='move'?` <span class="hv">${L('son sonuçlar','latest results')}</span>`:` <span class="hv">${L('gelişim','progress')}</span>`}`;
   const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
-      <div class="${x.g==='move'?'tcs2':'tcs'}">${x.list.map(d=>tcCard(d,x.g==='move')).join('')}</div></div>`).join('')
+      <div class="tcs">${x.list.map(d=>tcCard(d,x.g==='move')).join('')}</div></div>`).join('')
     :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
   const pri=ATP_PRIORITY.map(p=>{const its=ATP_QUALITIES.filter(it=>(tp.qualities[it.id]||{}).priority===p.id);
     return`<div class="card lane"><div class="pk" style="color:${{high:'#dc2626',medium:'#a16207',low:'#2f5fd0'}[p.id]}">${esc(atpT(p.en))} <span class="cnt">${its.length}</span></div>
@@ -226,8 +228,9 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const sideTr={Right:L('Sağ','Right'),Left:L('Sol','Left'),Bilateral:L('Çift taraflı','Bilateral'),'N/A':''};
   const tissueTr={Muscle:L('Kas','Muscle'),Ligament:L('Bağ','Ligament'),Tendon:'Tendon',Bone:L('Kemik','Bone'),Cartilage:L('Kıkırdak','Cartilage'),'Joint capsule':L('Eklem kapsülü','Joint capsule'),Nerve:L('Sinir','Nerve'),Other:L('Diğer','Other')};
   /* Missed sessions off the team calendar's tick lists (see injMissedSessions): the totals
-     over the whole record, and each injury's own count while the athlete was out. */
-  const missAll=injMissedSessions(ath.id,teamDays,null,null);
+     over every injury period (injMissedAll; a session missed while fit is not counted), and
+     each injury's own count while the athlete was out. */
+  const missAll=injMissedAll(injuries,ath.id,teamDays);
   let missD=0;
   const injRows=injuries.map(i=>{const m=injMissed(i,ath.id,teamDays);if(m.days)missD+=m.days;const act=!i.actualReturn;
     return`<tr><td>${i.date?fd(i.date):'—'}</td><td class="b">${esc([sideTr[i.side]||'',i.location||''].filter(Boolean).join(' ')||'—')}${i.type?`<div class="sw">${esc(i.type)}</div>`:''}</td>
@@ -332,19 +335,18 @@ td.r,th.r{text-align:right}
 .sign b{color:var(--ink)}
 .tgs{margin-bottom:8px}
 .tcs{display:flex;flex-direction:column;gap:5px}
-.tcs2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.tc{display:grid;grid-template-columns:30mm 46mm minmax(0,1fr);gap:8px;align-items:center;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
-.tc.sm{grid-template-columns:24mm minmax(0,1fr) auto;gap:6px}
-.tc-im{height:17mm;display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
-.tc.sm .tc-im{height:14mm}
+.tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
+.tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
 .tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
 .tc-im.none{background:none}
 .tc-im.ph img{object-fit:contain;background:var(--soft)}
-.tc.ds{grid-column:1/-1;grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
+.tc.ds{grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
 .tc.ds.ph{grid-template-columns:62mm minmax(0,1fr)}
 .tc.ds:not(.ph) .tc-im{height:auto;aspect-ratio:16/9;align-self:center}
 .ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
-.ds-h .tc-n{display:flex;align-items:baseline;gap:5px;font-size:10px}
+.ds-r>.tc-d{margin-top:auto}
+.ds-h .tc-n{display:flex;align-items:center;gap:5px;font-size:10px}
+.fms-lg{height:16px;width:16px;border-radius:2px;flex:none;display:block}
 .ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
 .ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
 .ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
@@ -359,19 +361,17 @@ td.r,th.r{text-align:right}
 .tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
 .tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
-.tc-n em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.tc-w{font-size:7.8px;line-height:1.32;color:var(--t2);margin-top:2px}
-.tc-t{table-layout:fixed;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
-.tc.sm .tc-t{width:auto;min-width:22mm}
-.tc-t th,.tc-t td{padding:1.5px 4px;text-align:center;border-bottom:0;background:#fff}
-.tc-t .an-d th{font-size:7px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
-.tc-t .an-v td{font-size:9px;white-space:nowrap}
-.tc-t .an-v b{font-size:10px;font-weight:700}
-.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:2px}
+.tc-t{width:auto;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.tc-t th,.tc-t td{padding:2px 6px;text-align:center;border-bottom:0;background:#fff}
+.tc-t .an-d th{width:18mm;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
+.tc-t .an-v td{font-size:9px;white-space:nowrap;padding-bottom:3px}
+.tc-t .an-v b{font-size:11.5px;font-weight:700}
+.tc-t .an-v b small{font-size:8px;font-weight:600;color:var(--mu);margin-left:2px}
+.tc-t .an-v b small.g{margin-left:0}
+.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:3px}
 .tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
-.tc-t .rl{width:11mm;text-align:left;font-size:7.2px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
-.tc-t th.rl{background:var(--soft)}
-.tc.sm .tc-t .rl{width:auto}
+.tc-t .rl{width:11mm;text-align:left;font-size:7.5px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
+.tc-t th.rl{width:11mm;background:var(--soft)}
 .card.pt{padding:7px 9px}
 .pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
 .pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}

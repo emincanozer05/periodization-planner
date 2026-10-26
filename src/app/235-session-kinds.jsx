@@ -64,7 +64,9 @@ const SkIcHeart=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 const SkIcPin=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>;
 const SkIcCal=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>;
 
-/* Players as a grid of chips — who took part in a practice, who made the match squad. */
+/* Players as a grid of chips — who took part in a practice, who made the match squad —
+   each with the player's photo (or initials), name and number. With `max` (the match's
+   twelve) a bar under the count fills as the squad does. */
 function SkPlayerPick({athletes,selected,onChange,max,readOnly}){
   const sel=new Set(selected||[]);
   const n=(selected||[]).length;
@@ -76,17 +78,21 @@ function SkPlayerPick({athletes,selected,onChange,max,readOnly}){
   if(!athletes||!athletes.length)return<div className="dw-empty">{L('Kadroda sporcu yok — Sporcular sekmesinden ekle.','No athletes on the roster — add them in the Athletes tab.')}</div>;
   return(<div className="sk-pick">
     <div className="sk-pick-h">
-      <span className={'sk-pick-n'+(max&&n>=max?' full':'')}>{n}{max?` / ${max}`:` / ${athletes.length}`}</span>
+      <span className={'sk-pick-n'+(max&&n>=max?' full':'')}>{n}{max?` / ${max}`:` / ${athletes.length}`}
+        {max?<span className="sk-pick-bar" aria-hidden="true"><i style={{width:`${Math.min(100,n/max*100)}%`}}/></span>:null}</span>
       {!readOnly&&<>
         {!max&&<button type="button" className="btn xs sec" onClick={()=>onChange(athletes.map(a=>a.id))}>{L('Tümünü seç','Select all')}</button>}
         <button type="button" className="btn xs sec" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>
       </>}
     </div>
-    <div className="ath-pick-grid">
+    <div className="sk-pp-grid">
       {athletes.map(a=>{const on=sel.has(a.id);const off=!on&&max&&n>=max;
-        return(<label key={a.id} className={`ath-chip${on?' on':''}${off?' off':''}`}>
+        return(<label key={a.id} className={`sk-pp${on?' on':''}${off?' off':''}${readOnly?' ro':''}`}>
           <input type="checkbox" checked={on} disabled={readOnly||off} onChange={()=>toggle(a.id)}/>
-          <span>{a.name}</span>{a.number?<span className="num">#{a.number}</span>:null}
+          <span className="sk-pp-av">{a.photo?<img src={mediaSrc(a.photo)} alt="" loading="lazy"/>:skInit(a.name)}</span>
+          <span className="sk-pp-nm">{a.name}</span>
+          {a.number?<span className="sk-pp-num">#{a.number}</span>:null}
+          <span className="sk-pp-ck" aria-hidden="true"/>
         </label>);})}
     </div>
   </div>);
@@ -249,10 +255,13 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
     const usAb=compAbbr(teamName)||L('BİZ','US'),themAb=compAbbr(m.opponent)||L('RAK','OPP');
     const field=(k,ph,cls)=>readOnly?<span className={'sk-mf-v '+(cls||'')}>{m[k]||'—'}</span>
       :<LiveInput className={'sk-mf-in '+(cls||'')} value={m[k]||''} onChange={v=>um({[k]:v})} placeholder={ph}/>;
-    /* The game at a glance: the two sides and the score across the middle, where it was
-       played and what it counted for above, when below. Every field here is also the
-       fixture's on the Season screen — typed in either place, it shows in both. */
+    /* The game at a glance on the left: the two sides and the score across the middle,
+       where it was played and what it counted for above, when below. Every field here is
+       also the fixture's on the Season screen — typed in either place, it shows in both.
+       The squad is picked beside it, on the right (under it on a narrow window). */
+    const pickSquad=team&&!fromTeam;
     return(<div className="sk">
+      <div className={'sk-mgrid'+(pickSquad?'':' one')}>
       <div className={'sk-match'+(res?' '+res.k:'')}>
         <div className="sk-mh">
           <span className="sk-mh-comp"><SkIcCal/>{field('comp',L('Lig / turnuva','League / tournament'))}</span>
@@ -285,11 +294,13 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
           {dateKey&&<span className="sk-mf-i sk-mf-date">{fdLong(dateKey)}</span>}
         </div>
       </div>
-      {team&&!fromTeam&&<SkSec title={L('İlk 12','Match Squad (12)')}
-        sub={L('Maç kadrosu — seçilenlerin kişisel takvimine eklenir','The game-day twelve — added to their own calendars')}>
+      {pickSquad&&<section className="sk-squad">
+        <div className="sk-sec-h"><span>{L('Maç Kadrosu · İlk 12','Match Squad · 12')}</span>
+          <em>{L('Seçilenlerin kişisel takvimine eklenir','Added to their own calendars')}</em></div>
         <SkPlayerPick athletes={roster} selected={s.athletes||[]} onChange={ids=>u({athletes:ids})} max={12} readOnly={readOnly}/>
-      </SkSec>}
-      {team&&!fromTeam&&<SkSec title={L('Kadro Dışı','Left Out')}
+      </section>}
+      </div>
+      {pickSquad&&<SkSec title={L('Kadro Dışı','Left Out')}
         sub={squad.length?L(`${out.length} oyuncu`,`${out.length} players`):L('Önce ilk 12\'yi seç','Pick the squad first')}>
         {squad.length===0?<div className="dw-empty">{L('İlk 12 seçilince kadro dışı kalanlar burada listelenir.','Once the twelve are picked, everyone left out is listed here.')}</div>
           :out.length===0?<div className="dw-empty">{L('Kadro dışı oyuncu yok.','Nobody left out.')}</div>

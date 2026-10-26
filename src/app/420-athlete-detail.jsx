@@ -265,10 +265,14 @@ function injSesKind(s){
   return sesFocus(s).some(f=>f==='Strength'||f==='Power'||f==='Speed')?'sc':null;
 }
 function injMissedSessions(athId,teamDays,from,to){
-  const r={tp:0,sc:0,match:0};
   const end=to&&to<fmt(today)?to:fmt(today);
+  return injMissedOn(athId,teamDays,k=>!(from&&k<from)&&k<=end);
+}
+/* The sessions missed on the days `inDay` accepts (none after today). */
+function injMissedOn(athId,teamDays,inDay){
+  const r={tp:0,sc:0,match:0},tod=fmt(today);
   Object.entries(teamDays||{}).forEach(([k,d])=>{
-    if((from&&k<from)||k>end)return;
+    if(k>tod||!inDay(k))return;
     ((d&&d.sessions)||[]).forEach(s=>{
       const kind=injSesKind(s);if(!kind)return;
       const on=teamSessionCovers(s,athId)||(s.blocks||[]).some(b=>Array.isArray(b.athletes)&&b.athletes.includes(athId));
@@ -285,6 +289,15 @@ function injMissed(inj,athId,teamDays){
   if(endDate<sd)return{days:null,tp:null,sc:null,match:null};
   return{days:Math.max(0,diffD(sd,endDate)),...injMissedSessions(athId,teamDays,sd,endDate)};
 }
+/* The sessions missed while injured, over the whole record: only the days inside some injury's
+   sidelined → return window (or today, while it is still open) count, each day once however many
+   injuries overlap it. A missed session outside every injury is not an injury's. */
+function injMissedAll(injuries,athId,teamDays){
+  const tod=fmt(today);
+  const wins=(injuries||[]).map(i=>[i&&i.sidelinedDate,(i&&i.actualReturn)||tod]).filter(([a,b])=>a&&b>=a);
+  if(!wins.length)return{tp:0,sc:0,match:0};
+  return injMissedOn(athId,teamDays,k=>wins.some(([a,b])=>k>=a&&k<=b));
+}
 /* The three missed-session boxes, under one heading. */
 function InjMissStats({m,title}){
   return(<div className="inj-miss">
@@ -299,7 +312,7 @@ function AthInjuries({ath,updAth,setup,teamDays}){
   const list=ath.injuries||[];
   const order=list.map((inj,idx)=>({inj,idx})).sort((a,b)=>(b.inj.date||'').localeCompare(a.inj.date||''));
   const nActive=list.filter(i=>!i.actualReturn).length;
-  const missAll=useMemo(()=>injMissedSessions(ath.id,teamDays,null,null),[ath.id,teamDays]);
+  const missAll=useMemo(()=>injMissedAll(list,ath.id,teamDays),[list,ath.id,teamDays]);
   const add=()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};
     updAth(ath.id,{injuries:[...list,inj]});setOpen(inj.id);};
   const sideTr={Right:L('Sağ','Right'),Left:L('Sol','Left'),Bilateral:L('Çift taraflı','Bilateral'),'N/A':''};
