@@ -49,6 +49,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19h-team-data.css` | Takım Verileri (`td-*`): koyu ışıklı başlık bandı, özet kutuları, metrik çipleri, gelişim grafik kartları; az-hareket korumalı |
 | `19i-tests-v3.css` | Test ve Değerlendirme kartları v3: kompakt ızgara (2-4 sütun), alçak değer kutuları, sağ/sol tablosu (`mk-lr`), okuma kutuları (`mk-stat`), FMS hareket kartı (`fmsc-*`, sol üstte FMS logosu), kapı şeritli 20 m sprint (`spr-*`), Thomas testi (`th-*`); düz yüzey, gradyan yok |
 | `19j-tests-v4.css` | Test ve Değerlendirme v4: simgesiz ve emojisiz (yazı sekmeler, Kart/Liste anahtarı, yazılı fotoğraf kutuları), onay işareti yerine dolan seçim kutusu, tarih sütunu ayrılmış kayıt satırları, mono sıra numaralı (`01`) kart başlıkları, düz (eğik olmayan) seçici başlıkları |
+| `19k-dev-report.css` | Atletik Gelişim Raporu sayfası (`dr-*`): koyu ışıklı başlık bandı (fotoğraf, gelişim halkası, dört sayı), test yolculuğu, gelişen/geriye düşen ölçümler, kategori trend kartları ve tabloları, önce/sonra fotoğraf kaydırıcısı; az-hareket korumalı |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -82,7 +83,8 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/270-interval-timer.jsx` | INTERVAL TIMER |
 | `app/280-reports-photo-cell.jsx` | GENERIC REPORTS RENDERER (used by team & athletes) · TEAM REPORTS · PHOTO CELL — small reusable photo uploader (auto-resize) |
 | `app/290-test-pdf.jsx` | TEST PDF GENERATOR — A4 portrait single-test report |
-| `app/295-athletic-dev-report.jsx` | ATLETİK GELİŞİM RAPORU — sporcunun ilk testinden bugüne karşılaştırmalı raporu (özet, grafikler, tablolar, tarih tarih görsel karşılaştırma), ayrı sayfada açılır, Çıktı Al ile A4 |
+| `app/295-athletic-dev-report.jsx` | ATLETİK GELİŞİM RAPORU — sporcunun ilk testinden bugüne karşılaştırmalı raporu (özet, grafikler, tablolar, tarih tarih görsel karşılaştırma), A4 çıktısı (`printDevReport`) ve sayfa ile çıktının ortak verisi (`devReportData`) |
+| `app/296-dev-report-page.jsx` | ATLETİK GELİŞİM RAPORU — SAYFA (`DevReportPage`): sporcu kartındaki düğmeyle Test ve Değerlendirme'nin yerine açılır; "Çıktı Al" düğmesi bu sayfada |
 | `app/300-athlete-vs-squad.jsx` | ATHLETE vs SQUAD — the comparison report |
 | `app/310-drive-embed-body-model.jsx` | GOOGLE DRIVE EMBED HELPERS · 2D BODY CIRCUMFERENCE MODEL |
 | `app/320-testing-session.jsx` | TESTING SESSION — every test renders its own purpose-built, |
