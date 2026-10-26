@@ -542,6 +542,7 @@ function EvaluationView({team,updateTeam,data,setData}){
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
   const[compare,setCompare]=useState(false);    // the whole-roster comparison table
+  const[devId,setDevId]=useState(null);         // athlete whose development report page is open
   const[addBatId,setAddBatId]=useState(null);   // test whose battery is being extended
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
@@ -675,15 +676,19 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catalogShown=cat==='all'?fullCatalog:fullCatalog.filter(c=>testGroupOf(c)===cat);
   const seasonLabel=seasonYears(setup)||String(new Date().getFullYear());
   /* The athlete's two ways in, on their card: their test records (selects them and scrolls to
-     the list) and the development report, which opens as its own page. */
+     the list) and the development report, which opens as its own page in place of the tab
+     (DevReportPage); its printout is a button on that page. */
   const openResults=id=>{setSelId(id);setEditingId(null);
     setTimeout(()=>{const el=document.getElementById('ev2-results');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);};
   const athActs=(a,cls)=>{const dated=(a.tests||[]).some(t=>t.date);
     return(<div className={cls} onClick={e=>e.stopPropagation()}>
       <button className="btn xs sec" onClick={()=>openResults(a.id)}>{Lx('Test Sonuçları','Test Results')}</button>
-      <button className="btn xs" disabled={!dated} onClick={()=>printDevReport(a,setup,customTests)}
+      <button className="btn xs" disabled={!dated} onClick={()=>setDevId(a.id)}
         title={dated?Lx('İlk testten bugüne karşılaştırmalı rapor (ayrı sayfada açılır)','Comparative report from the first test to today (opens on its own page)'):Lx('Bu sporcunun henüz test kaydı yok','No test records for this athlete yet')}>{Lx('Atletik Gelişim Raporu','Athletic Development Report')}</button>
     </div>);};
+
+  const devAth=devId?athletes.find(a=>a.id===devId):null;
+  if(devAth)return(<DevReportPage ath={devAth} setup={setup} customTests={customTests} onBack={()=>{setSelId(devAth.id);setDevId(null);}}/>);
 
   return(<div>
     <PageHero title={Lx('Test ve Değerlendirme','Testing & Assessment')}

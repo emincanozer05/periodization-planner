@@ -44,21 +44,13 @@ function devPhotoSets(){
   ];
 }
 
-function printDevReport(ath,setup,customTests){
+/* Everything the report shows, computed once for both the page and its printout: the dated
+   tests in order, every metric read off every test (change = first → latest reading), the
+   summary counts and highlights, the category groups and the photo sets to compare. */
+function devReportData(ath,customTests){
   const tests=[...((ath&&ath.tests)||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
-  if(!tests.length){alert(L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.'));return;}
-  const w=window.open('','_blank','width=1100,height=1200');
-  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
-  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const psrc=p=>esc(mediaSrc(p));
-  // Two decimals at most: a sprint's 3.31 s is not 3.3 s, and a change of 0.07 s is not 0.1 s.
-  const fv=v=>v==null?'—':String(+(Math.round(v*100)/100));
-  const pctTxt=p=>p==null?'':L('%'+Math.abs(p),Math.abs(p)+'%');
-  const shortD=ds=>{const d=parseD(ds);return`${MN[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;};
-  const per=t=>(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
+  if(!tests.length)return null;
   const n=tests.length,first=tests[0],last=tests[n-1];
-
-  /* Every metric read off every test, in date order; the change is first → last reading. */
   const rows=devMetrics(customTests).map(m=>{
     const vals=tests.map(t=>{try{const v=m.get(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}});
     const pts=vals.map((v,i)=>({v,i})).filter(p=>p.v!=null);
@@ -77,6 +69,34 @@ function printDevReport(ath,setup,customTests){
   const topDown=hl.filter(r=>r.tone==='down').sort((x,y)=>Math.abs(y.pct)-Math.abs(x.pct)).slice(0,4);
   const days=Math.round((parseD(last.date)-parseD(first.date))/864e5);
   const spanTxt=days<1?L('Tek gün','One day'):days<60?`${days} ${L('gün','days')}`:`${Math.round(days/30.44)} ${L('ay','months')}`;
+  const groups=DEV_GROUPS.map(g=>({g,list:rows.filter(r=>r.m.g===g.id)})).filter(x=>x.list.length);
+  /* Photos side by side, a row per test date (the first and the latest three past four). */
+  const photoSets=devPhotoSets().map(s=>{
+    const has=(t,k)=>{const v=s.get(t)[k];return!!(v&&hasMedia(v));};
+    let dated=tests.filter(t=>s.views.some(([k])=>has(t,k)));
+    if(!dated.length)return null;
+    if(dated.length>4)dated=[dated[0],...dated.slice(-3)];
+    return{s,dated,views:s.views.filter(([k])=>dated.some(t=>has(t,k))),has};
+  }).filter(Boolean);
+  return{tests,n,first,last,rows,scored,upN,downN,sameN,topUp,topDown,days,spanTxt,groups,photoSets};
+}
+// Two decimals at most: a sprint's 3.31 s is not 3.3 s, and a change of 0.07 s is not 0.1 s.
+const devFv=v=>v==null?'—':String(+(Math.round(v*100)/100));
+const devPer=t=>(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
+const devShortD=ds=>{const d=parseD(ds);return`${MN[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;};
+
+/* The printout: the same report as an A4 portrait sheet in its own window, printed as soon as
+   its photos have loaded. */
+function printDevReport(ath,setup,customTests){
+  const D=devReportData(ath,customTests);
+  if(!D){alert(L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.'));return;}
+  const w=window.open('','_blank','width=1100,height=1200');
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
+  const{tests,n,first,last,rows,upN,downN,sameN,topUp,topDown,spanTxt}=D;
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const psrc=p=>esc(mediaSrc(p));
+  const fv=devFv,shortD=devShortD,per=devPer;
+  const pctTxt=p=>p==null?'':L('%'+Math.abs(p),Math.abs(p)+'%');
 
   const chip=r=>{if(r.d==null)return'<span class="chip neu">—</span>';
     const s=`${r.d>0?'+':r.d<0?'−':''}${fv(Math.abs(r.d))}${r.m.u&&!r.m.u.startsWith('/')?' '+esc(r.m.u):''}`;
@@ -144,8 +164,7 @@ function printDevReport(ath,setup,customTests){
     <div class="tl">${tests.map((t,i)=>{const b=expandBattery(t.battery);const k=Array.isArray(b)?b.length:null;
       return`<div class="tl-i${i===n-1?' cur':''}"><div class="tl-d"></div><div class="tl-t">${esc(fdL(t.date))}</div><div class="tl-s">${esc(per(t))}${k?` · ${k} ${L('test',k===1?'test':'tests')}`:''}</div></div>`;}).join('')}</div>`;
 
-  const groups=DEV_GROUPS.map(g=>{
-    const list=rows.filter(r=>r.m.g===g.id);if(!list.length)return'';
+  const groups=D.groups.map(({g,list})=>{
     const charted=list.filter(r=>r.pts.length>1);
     return`<section class="grp">${sh(L(g.tr,g.en),`${list.length} ${L('ölçüm','measures')}`)}
       ${charted.length?`<div class="mcs">${charted.map(card).join('')}</div>`:''}
@@ -153,12 +172,7 @@ function printDevReport(ath,setup,customTests){
   }).join('');
 
   /* Photos side by side, a row per test date, each picture whole (never cropped). */
-  const photos=devPhotoSets().map(s=>{
-    const has=(t,k)=>{const v=s.get(t)[k];return!!(v&&hasMedia(v));};
-    let dated=tests.filter(t=>s.views.some(([k])=>has(t,k)));
-    if(!dated.length)return'';
-    if(dated.length>4)dated=[dated[0],...dated.slice(-3)];
-    const views=s.views.filter(([k])=>dated.some(t=>has(t,k)));
+  const photos=D.photoSets.map(({s,dated,views})=>{
     const h=views.length<=2?78:views.length===3?64:views.length===4?54:44;
     return`<div class="pc">
       <div class="pc-h"><span>${esc(L(s.tr,s.en))}</span><span class="k">${dated.length>1?L(dated.length+' test karşılaştırması',dated.length+' tests compared'):L('Tek kayıt','Single record')}</span></div>
@@ -169,7 +183,7 @@ function printDevReport(ath,setup,customTests){
           ${views.map(([k])=>{const v=s.get(t)[k];return`<div class="pc-ph" style="height:${h}mm">${v&&hasMedia(v)?`<img src="${psrc(v)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'—'}))"/>`:'<span>—</span>'}</div>`;}).join('')}
           ${note&&String(note).trim()?`<div></div><div class="pc-n" style="grid-column:span ${views.length}">${esc(note)}</div>`:''}`;}).join('')}
       </div></div>`;
-  }).filter(Boolean);
+  });
   const photoSec=photos.length?`<section class="grp">${sh(L('Görsel Karşılaştırma','Visual Comparison'),L('tarihe göre','by date'))}${photos.join('')}</section>`:'';
 
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
@@ -287,5 +301,5 @@ ${photoSec}
 </body></html>`;
   w.document.write(html);
   w.document.close();
-  setTimeout(()=>{try{w.focus();}catch(e){}},300);
+  printWhenImagesReady(w,{safety:15000});
 }
