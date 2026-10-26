@@ -813,7 +813,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               guards and the forwards get different work on the same day — and this one
               could only speak for the whole session, so it fought the buttons in the
               editor that do the real job. ✎ Edit is one press away from them. */}
-          <button className="btn sm white" style={{marginRight:8}} onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ {L('Düzenle','Edit')}</button>
+          {/* A match is written in full in this window, so it has no Edit button. */}
+          {drwKind!=='match'&&<button className="btn sm white" style={{marginRight:8}} onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ {L('Düzenle','Edit')}</button>}
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
         {/* The exercises take the left of the drawer — they are what the session IS — and
