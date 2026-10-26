@@ -637,7 +637,7 @@ function FmsPartCard({item,test,ath,onUpdate}){
   const meas=item.id==='hurdleStep'||item.id==='inlineLunge'?['tibia',L('Tibia boyu','Tibia height'),hd.tibia]:item.id==='shoulderMobility'?['hand',L('El uzunluğu','Hand length'),hd.hand]:null;
   return(<div className="tcard tcard-fms">
     <div className="tcard-hd">
-      <img className="tcard-fmslogo" src="fms-logo-square.png" alt="FMS"/>
+      <img className="tcard-fmslogo" src={FMS_LOGO_SQ} alt="FMS"/>
       <div className="tcard-title">{item.en}</div>
       <div className="tcard-tag">FMS</div>
     </div>

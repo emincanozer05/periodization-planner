@@ -144,14 +144,15 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   /* The athlete's own Deep Squat photos (front and side), off the newest test that has them. */
   const dsPh=(()=>{for(let i=datedTests.length-1;i>=0;i--){const ph=(((datedTests[i].fms||{}).photos||{}).deepSquat)||{};
     if(hasMedia(ph.front)||hasMedia(ph.side))return ph;}return null;})();
-  /* The stock pictures print from their small grey-scale copies (`tests/sm/`, `fms/sm/`, about
-     10 KB each against 60 KB): twenty full-size photos were still loading when the sheet's
-     print dialog opened, and printed as broken boxes. Resolved against the page's own address,
-     so a copy served from a sub-folder finds them too. */
+  /* The stock pictures print from their small grey-scale copies, carried in the page itself
+     (TEST_THUMB, 045): fetched from the site they came up as broken boxes wherever the fetch
+     failed or the print dialog opened first. A picture without a copy is fetched, resolved
+     against the page's own address so a site served from a sub-folder still finds it. */
   const abs=p=>{const q=String(p).replace(/^(tests|fms)\//,'$1/sm/');try{return new URL(q,location.href).href;}catch(e){return q;}};
   const tcImg=d=>{
     if(d.id==='fms_deepSquat'&&dsPh)return`<div class="tc-im ph">${['front','side'].filter(k=>hasMedia(dsPh[k])).map(k=>`<img src="${esc(mediaSrc(dsPh[k]))}" alt=""/>`).join('')}</div>`;
-    return TEST_IMG[d.id]?`<div class="tc-im"><img src="${esc(abs(TEST_IMG[d.id]))}" alt=""/></div>`:'<div class="tc-im none"></div>';};
+    const p=TEST_IMG[d.id];
+    return p?`<div class="tc-im"><img src="${esc(TEST_THUMB[p]||abs(p))}" alt=""/></div>`:'<div class="tc-im none"></div>';};
   /* What the test measures: its "used to assess" line; an FMS movement's is its scoring rule,
      so those say the quality the movement screens instead. */
   const tcWhat=d=>{if(/^fms_/.test(d.id)){const m=TEST_META[d.id];return m?L(m.tr,m.en):'';}

@@ -797,7 +797,7 @@ function EvaluationView({team,updateTeam,data,setData}){
                 const fmsP=FMS_PART_IDS.includes(c.id);
                 return(<div key={c.id} className={'ev2-tile g-'+testGroupOf(c)+(on?' on':'')+(fmsP?' fmsp-tile':'')}
                   onClick={()=>toggle(c.id)} title={c.name}>
-                  {fmsP&&<img className="ev2-tile-fms" src="fms-logo-square.png" alt="FMS"/>}
+                  {fmsP&&<img className="ev2-tile-fms" src={FMS_LOGO_SQ} alt="FMS"/>}
                   <div className="ev2-tile-tx">
                     {!fmsP&&<div className="ev2-tile-k">{c.custom?Lx('Özel','Custom'):(cat0.short||'')}</div>}
                     <div className="ev2-tile-t">{fmsP?c.name.replace(/^FMS /,''):c.name}</div>

@@ -55,6 +55,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
 | `app/030-dates-language-factories.jsx` | DATE HELPERS · output). Persisted to localStorage and reactive: any component that calls · FACTORIES |
 | `app/040-test-metadata-fms.jsx` | Test metadata for the picker: which drawer a test lives in, · FMS — Functional Movement Screen · TEST INFO — what each test is, and why it is taken · COMPARE ATHLETES — the metric model behind the comparison table. · CURRENT TEAM AVERAGE — for the plain single-score tests |
+| `app/045-test-thumbs.jsx` | TEST THUMBNAILS — test görsellerinin küçük siyah-beyaz kopyaları data URL olarak (`TEST_THUMB`); `node tools/gen-test-thumbs.js` üretir, elle düzenlenmez |
 | `app/050-athlete-boxes.jsx` | ATHLETES BOXES — main / secondary need classification |
 | `app/060-session-load-clipboard.jsx` | LOAD CALC — AU is the source of truth |
 | `app/070-team-data-migration.jsx` | DEFAULT DATA & MIGRATION · SEASONS |
