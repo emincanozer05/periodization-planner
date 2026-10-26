@@ -33053,7 +33053,11 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   /* The athlete's own Deep Squat photos (front and side), off the newest test that has them. */
   const dsPh=(()=>{for(let i=datedTests.length-1;i>=0;i--){const ph=(((datedTests[i].fms||{}).photos||{}).deepSquat)||{};
     if(hasMedia(ph.front)||hasMedia(ph.side))return ph;}return null;})();
-  const abs=p=>`${location.origin}/${p}`;
+  /* The stock pictures print from their small grey-scale copies (`tests/sm/`, `fms/sm/`, about
+     10 KB each against 60 KB): twenty full-size photos were still loading when the sheet's
+     print dialog opened, and printed as broken boxes. Resolved against the page's own address,
+     so a copy served from a sub-folder finds them too. */
+  const abs=p=>{const q=String(p).replace(/^(tests|fms)\//,'$1/sm/');try{return new URL(q,location.href).href;}catch(e){return q;}};
   const tcImg=d=>{
     if(d.id==='fms_deepSquat'&&dsPh)return`<div class="tc-im ph">${['front','side'].filter(k=>hasMedia(dsPh[k])).map(k=>`<img src="${esc(mediaSrc(dsPh[k]))}" alt=""/>`).join('')}</div>`;
     return TEST_IMG[d.id]?`<div class="tc-im"><img src="${esc(abs(TEST_IMG[d.id]))}" alt=""/></div>`:'<div class="tc-im none"></div>';};
@@ -33153,8 +33157,9 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
       :`<div class="card none">${L('Kayıtlı sakatlık yok.','No injuries recorded.')}</div>`}
   </section>`;
   const today_=fdL(fmt(today));
-  /* The sheet opens the print dialog itself once its photo and fonts are in (or after a
-     short wait — a font that never arrives must not hold the dialog back). Its closing
+  /* The sheet opens the print dialog itself once every picture has loaded (or failed) and
+     the fonts are in — a dialog opened earlier prints the pictures still loading as broken
+     boxes. A font that never arrives holds it back 3 s at most, a picture 20 s. Its closing
      script tag is written escaped below, or it would end the app's own script block. */
   const html=`<!DOCTYPE html><html lang="${REPORT_LANG==='tr'?'tr':'en'}"><head><meta charset="utf-8"><title>${esc(ath.name||'')} — ${L('Sporcu Bilgileri','Athlete Information')}</title>
 <style>
@@ -33318,9 +33323,9 @@ ${s1}${s2}${s3}${s4}${s5}
 var imgs=[].slice.call(document.images);var left=imgs.filter(function(i){return!i.complete;}).length;
 var done=function(){if(--left<=0)ready();};var fired=false;
 function ready(){if(fired)return;fired=true;var f=document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve();
-Promise.race([f,new Promise(function(r){setTimeout(r,1500);})]).then(go,go);}
+Promise.race([f,new Promise(function(r){setTimeout(r,3000);})]).then(go,go);}
 if(!left)ready();else imgs.forEach(function(i){if(!i.complete){i.addEventListener('load',done);i.addEventListener('error',done);}});
-setTimeout(ready,4000);})();
+setTimeout(ready,20000);})();
 <\/script>
 </body></html>`;
   w.document.open();w.document.write(html);w.document.close();
