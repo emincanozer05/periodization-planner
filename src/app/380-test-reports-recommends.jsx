@@ -192,7 +192,7 @@ function TestReportsTab({ath,setup,ai,exercises}){
   const period=(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
   const h=num(t.height),w=num(t.weight);const bmi=(h&&w)?(w/((h/100)**2)):null;
   const anthro=[['Height',t.height,'cm'],['Weight',t.weight,'kg'],['Body Fat',t.bodyFat,'%'],['Wingspan',t.wingspan,'cm'],
-    ['Leg Length',t.legLength,'cm'],['Sitting Height',t.sittingHeight,'cm']];
+    ['Est. Leg Length',estLegLen(t),'cm'],['Sitting Height',t.sittingHeight,'cm']];
   const power=[['Vertical Jump',t.verticalJump,'cm'],['CMJ',t.cmj,'cm'],
     ['Lateral CMJ — R',t.lateralCmj&&t.lateralCmj.right,'cm'],['Lateral CMJ — L',t.lateralCmj&&t.lateralCmj.left,'cm'],
     ['Squat Jump',t.squatJump,'cm'],['Drop Jump',t.dropJump,'RSI'],['Horizontal Jump',t.horizontalJump,'cm']];

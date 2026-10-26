@@ -323,13 +323,14 @@ function AthInjuries({ath,updAth,setup}){
 
 /* ---- Anthropometry ----
    Six measures, two to a row and kept short, so the trend of each is read without
-   scrolling: height, weight, body fat, wingspan, leg length and trunk length. */
+   scrolling: height, weight, body fat, wingspan, estimated leg length (height − sitting
+   height, `get`) and trunk length. */
 const BODY_FIELDS=[
   {k:'height',tr:'Boy',en:'Height',u:'cm',c:'#a855f7',good:null},
   {k:'weight',tr:'Kilo',en:'Weight',u:'kg',c:'#3b82f6',good:null},
   {k:'bodyFat',tr:'Yağ Oranı',en:'Body Fat',u:'%',c:'#f97316',good:false},
   {k:'wingspan',tr:'Kulaç',en:'Wingspan',u:'cm',c:'#10b981',good:null},
-  {k:'legLength',tr:'Bacak Uzunluğu',en:'Leg Length',u:'cm',c:'#0ea5e9',good:null},
+  {k:'legLength',tr:'Tahmini Bacak Uzunluğu',en:'Est. Leg Length',u:'cm',c:'#0ea5e9',good:null,get:estLegLen},
   {k:'trunkLength',tr:'Gövde Uzunluğu',en:'Trunk Length',u:'cm',c:'#e11d48',good:null},
 ];
 function AthBody({ath,updAth,setup}){
@@ -345,7 +346,7 @@ function AthBody({ath,updAth,setup}){
   const labels=sorted.map(m=>{const dt=parseD(m.date);return MN[dt.getMonth()];});
   const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:"'Archivo','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
   const card=f=>{
-    const data=sorted.map(m=>{const raw=m[f.k];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
+    const data=sorted.map(m=>{const raw=f.get?f.get(m):m[f.k];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
     const valid=data.filter(v=>v!=null);
     const last=valid.length?valid[valid.length-1]:null,first=valid.length?valid[0]:null;
     const imp=valid.length>1?+((last-first).toFixed(1)):null;
@@ -393,7 +394,7 @@ function AthBody({ath,updAth,setup}){
           <button className="btn sec sm" onClick={()=>setTableOpen(o=>!o)}>{tableOpen?L('▲ Gizle','▲ Hide'):L('▼ Göster','▼ Show')}</button>
         </div>
         {tableOpen&&(()=>{const rev=ms.map((m,i)=>({m,i})).sort((a,b)=>(b.m.date||'').localeCompare(a.m.date||''));const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
-          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Bacak (cm)','Leg (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Oturma Boyu (cm)','Sitting Ht (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
+          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Oturma Boyu (cm)','Sitting Ht (cm)')}</th><th>{L('Tahmini Bacak (cm)','Est. Leg (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
             {vis.map(({m,i:realIdx},idx)=>{
               const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
               // Rows mirrored from an Anthropometric Measurement test are read-only here —
@@ -402,7 +403,8 @@ function AthBody({ath,updAth,setup}){
               const num=(k,ph,wd)=><td><input type="number" step="0.1" value={m[k]??''} onChange={e=>um(k,e.target.value)} placeholder={ph} style={{width:wd}} disabled={synced}/></td>;
               return<tr key={m.id||idx} style={synced?{opacity:.92}:undefined}>
                 <td><input type="date" value={m.date} onChange={e=>um('date',e.target.value)} style={{width:130}} disabled={synced}/><div className="help">{fd(m.date)}</div></td>
-                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('legLength','cm',76)}{num('trunkLength','cm',76)}{num('sittingHeight','cm',76)}
+                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('trunkLength','cm',76)}{num('sittingHeight','cm',76)}
+                <td style={{textAlign:'center',color:'var(--text2)'}} title={L('Boy − Oturma Boyu','Height − Sitting Height')}>{estLegLen(m)??'—'}</td>
                 <td><input value={m.notes||''} onChange={e=>um('notes',e.target.value)} placeholder={L('Notlar…','Notes…')}/></td>
                 <td>{synced?<span className="help" title={L('Test sekmesinden yönetiliyor','Managed by the Testing tab')} style={{fontSize:16}}>🔗</span>:<button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button>}</td>
               </tr>;})}

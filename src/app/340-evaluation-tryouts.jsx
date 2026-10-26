@@ -674,6 +674,16 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catCount=g=>g==='all'?fullCatalog.length:fullCatalog.filter(c=>testGroupOf(c)===g).length;
   const catalogShown=cat==='all'?fullCatalog:fullCatalog.filter(c=>testGroupOf(c)===cat);
   const seasonLabel=seasonYears(setup)||String(new Date().getFullYear());
+  /* The athlete's two ways in, on their card: their test records (selects them and scrolls to
+     the list) and the development report, which opens as its own page. */
+  const openResults=id=>{setSelId(id);setEditingId(null);
+    setTimeout(()=>{const el=document.getElementById('ev2-results');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);};
+  const athActs=(a,cls)=>{const dated=(a.tests||[]).some(t=>t.date);
+    return(<div className={cls} onClick={e=>e.stopPropagation()}>
+      <button className="btn xs sec" onClick={()=>openResults(a.id)}>{Lx('Test Sonuçları','Test Results')}</button>
+      <button className="btn xs" disabled={!dated} onClick={()=>printDevReport(a,setup,customTests)}
+        title={dated?Lx('İlk testten bugüne karşılaştırmalı rapor (ayrı sayfada açılır)','Comparative report from the first test to today (opens on its own page)'):Lx('Bu sporcunun henüz test kaydı yok','No test records for this athlete yet')}>{Lx('Atletik Gelişim Raporu','Athletic Development Report')}</button>
+    </div>);};
 
   return(<div>
     <PageHero title={Lx('Test ve Değerlendirme','Testing & Assessment')}
@@ -728,7 +738,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-card-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
         <div className="ev2-card-nm">{a.name}</div>
         <div className="ev2-card-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
-        <div className="ev2-card-chk"/>
+        {athActs(a,'ev2-card-acts')}
       </div>);
     })}</div>}
 
@@ -740,7 +750,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-lrow-nm">{a.name}</div>
         <div className="ev2-lrow-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
         <div className="ev2-lrow-mt" style={{flex:'0 0 86px'}}>{n} {Lx('test',n===1?'test':'tests')}</div>
-        <div className="ev2-card-chk" style={{position:'static'}}/>
+        {athActs(a,'ev2-lrow-acts')}
       </div>);
     })}</div>}
 
@@ -812,7 +822,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       </div>
 
       {/* ---- step 2 — what has already been recorded ---- */}
-      <div className="ev2-step">
+      <div className="ev2-step" id="ev2-results" style={{scrollMarginTop:72}}>
         <div className="ev2-step-hd">
           <div className="ev2-step-n">2</div>
           <div className="ev2-step-tx">
@@ -846,9 +856,9 @@ function EvaluationView({team,updateTeam,data,setData}){
                   <button className="btn xs sec" style={isAdding?{background:'var(--accent)',color:'#0a0b0d',borderColor:'var(--accent)'}:{}}
                     onClick={e=>{e.stopPropagation();setAddBatId(isAdding?null:t.id);}}
                     title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>{Lx('Test Ekle','Add Tests')}</button>
-                  <button className="btn xs sec" onClick={e=>{e.stopPropagation();setEditingId(t.id);}}>{Lx('Görüntüle','Open')}</button>
-                  {/* A bare ✕ beside "Open" reads as "close", not "delete for good". It
-                      says what it does, and it is the only red thing on the row. */}
+                  {/* The row itself opens the record, so it has no separate "open" button. A bare ✕
+                      reads as "close", not "delete for good": it says what it does, and it is the
+                      only red thing on the row. */}
                   <button className="btn xs danger" onClick={e=>{e.stopPropagation();delTest(t.id);}}
                     title={Lx('Bu test kaydını sil','Delete this test record')}>{Lx('Testi Sil','Delete Test')}</button>
                 </div>

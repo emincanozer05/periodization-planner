@@ -166,7 +166,7 @@ function buildProgramDesignInput(ath,setup){
       kilo_kg:pull('weight'),
       vucut_yag_yuzde:pull('bodyFat'),
       kol_acikligi_cm:pull('wingspan'),
-      bacak_uzunlugu_cm:n(t&&t.legLength)??n(t&&t.yBalance&&t.yBalance.limbLength),
+      bacak_uzunlugu_cm:estLegLen(t)??n(t&&t.yBalance&&t.yBalance.limbLength),
       oturma_yuksekligi_cm:n(t&&t.sittingHeight),
       cevre_olcumleri:Object.keys(cevre).length?cevre:null,
     },

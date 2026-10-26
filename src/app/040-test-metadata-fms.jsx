@@ -731,7 +731,7 @@ FMS_INFO.forEach(m=>{TEST_INFO['fms_'+m.id]={n:'FMS '+m.name,
    itself; an older one without one is read from its own readings, so a sheet
    never explains a test that was never taken. */
 const TI_HAS={
-  anthro:t=>['height','weight','wingspan','bodyFat','legLength','sittingHeight'].some(k=>tiNum(t[k])),
+  anthro:t=>['height','weight','wingspan','bodyFat','sittingHeight'].some(k=>tiNum(t[k])),
   circ:t=>Object.keys(t.circ||{}).some(k=>tiNum(t.circ[k])),
   posture:t=>!!(t.posture&&(t.posture.frontPhoto||t.posture.sidePhoto||t.posture.backPhoto||t.posture.observations)),
   ankleDF:t=>tiNum(t.ankleDF&&t.ankleDF.right)||tiNum(t.ankleDF&&t.ankleDF.left),
@@ -845,7 +845,7 @@ const CMP_METRICS=[
      support. The athlete's own record still carries it. */
   {id:'bodyFat', g:'anthro',tr:'Yağ Oranı',  en:'Body Fat',    u:'%', dir:'lo',st:'Yağ',se:'Fat',get:t=>cmpN(t.bodyFat)},
   {id:'wingspan',g:'anthro',tr:'Kulaç',      en:'Wingspan',    u:'cm',st:'Kulaç',se:'Wing',get:t=>cmpN(t.wingspan)},
-  {id:'legLen',  g:'anthro',tr:'Bacak Uz.',  en:'Leg Length',  u:'cm',st:'Bacak',se:'Leg',get:t=>cmpN(t.legLength)},
+  {id:'legLen',  g:'anthro',tr:'Tahmini Bacak Uz.',en:'Est. Leg Length',u:'cm',st:'Bacak',se:'Leg',get:t=>estLegLen(t)},
   {id:'sitHt',   g:'anthro',tr:'Oturma Yük.',en:'Sitting Ht.', u:'cm',st:'Oturma',se:'Sit Ht',get:t=>cmpN(t.sittingHeight)},
   {id:'adfR', g:'mob',tr:'Ayak Bileği DF R',en:'Ankle DF R',u:'°',dir:'hi',st:'ADF R',se:'ADF R',get:t=>cmpN(t.ankleDF&&t.ankleDF.right)},
   {id:'adfL', g:'mob',tr:'Ayak Bileği DF L',en:'Ankle DF L',u:'°',dir:'hi',st:'ADF L',se:'ADF L',get:t=>cmpN(t.ankleDF&&t.ankleDF.left)},

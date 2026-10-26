@@ -751,8 +751,11 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           <div className="mk-field"><div className="mk-flbl">{L('Kilo','Weight')}</div><MkInput value={test.weight} onChange={v=>u('weight',v)} unit="kg"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Kulaç','Wingspan')}</div><MkInput value={test.wingspan} onChange={v=>u('wingspan',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Yağ Oranı','Body Fat')}</div><MkInput value={test.bodyFat} onChange={v=>u('bodyFat',v)} unit="%"/></div>
-          <div className="mk-field"><div className="mk-flbl">{L('Bacak Uzunluğu (SİAS – Medial Malleol)','Leg Length (ASIS – Medial Malleolus)')}</div><MkInput value={test.legLength} onChange={v=>u('legLength',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Oturma Yüksekliği','Sitting Height')}</div><MkInput value={test.sittingHeight} onChange={v=>u('sittingHeight',v)} unit="cm"/></div>
+          {/* Hesaplanır, yazılmaz: boy − oturma yüksekliği */}
+          <div className="mk-field"><div className="mk-flbl">{L('Tahmini Bacak Uzunluğu','Estimated Leg Length')}</div>
+            <div className="mk-input"><input type="text" readOnly tabIndex={-1} value={estLegLen(test)??''} placeholder={L('Boy − oturma','Height − sitting')}
+              title={L('Boy − Oturma Yüksekliği ile otomatik hesaplanır','Calculated automatically as Height − Sitting Height')} style={{cursor:'default',opacity:.85}}/><span className="mk-unit">cm</span></div></div>
         </div>
       </div>
     </div>);

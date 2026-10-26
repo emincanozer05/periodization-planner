@@ -9396,6 +9396,12 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .fmsc-ph-g .mk-up{align-items:stretch}
 :is(:root,:root[data-theme]) .fmsc-ph-g .mk-up-box{width:100%;height:auto;aspect-ratio:1/1.05}
 .fmsc-ph-g .mk-up-cap{text-align:center}
+
+/* Sporcu kartı: seçim kutusu yok; altta "Test Sonuçları" ve "Atletik Gelişim Raporu" düğmeleri */
+.ev2-card-acts{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.ev2-card-acts .btn{width:100%;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev2-lrow-acts{flex:none;display:flex;gap:6px}
+@media (max-width:640px){.ev2-lrow-acts{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -10305,9 +10311,17 @@ const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
     methods:Array.isArray(p.methods)?p.methods:[],region:p.region||'',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null,
     ...(p.kind?{kind:p.kind}:{}),...(p.rpeCat?{rpeCat:p.rpeCat}:{})};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
+/* Tahmini bacak uzunluğu = boy − oturma yüksekliği (cm). Test ve ölçüm kayıtlarında ekran,
+   çıktı ve karşılaştırmalar bunu okur; elle girilmiş eski `legLength` artık gösterilmez.
+   Boy ya da oturma yüksekliği yoksa değer yoktur. */
+const estLegLen=o=>{
+  if(!o||o.height===''||o.height==null||o.sittingHeight===''||o.sittingHeight==null)return null;
+  const h=Number(o.height),s=Number(o.sittingHeight);
+  return(isFinite(h)&&isFinite(s)&&s>0&&h>s)?+(h-s).toFixed(1):null;
+};
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
-  // Anthropometrics — legLength = ASIS → medial malleolus (cm), sittingHeight = seated stature (cm)
+  // Anthropometrics — sittingHeight = seated stature (cm); leg length is estLegLen (height − sitting height)
   height:'',weight:'',wingspan:'',bodyFat:'',legLength:'',sittingHeight:'',
   // Circumferences (cm) — bilateral for thigh & calf
   circ:{shoulder:'',waist:'',hip:'',thighRight:'',thighLeft:'',calfRight:'',calfLeft:''},
@@ -11154,7 +11168,7 @@ FMS_INFO.forEach(m=>{TEST_INFO['fms_'+m.id]={n:'FMS '+m.name,
    itself; an older one without one is read from its own readings, so a sheet
    never explains a test that was never taken. */
 const TI_HAS={
-  anthro:t=>['height','weight','wingspan','bodyFat','legLength','sittingHeight'].some(k=>tiNum(t[k])),
+  anthro:t=>['height','weight','wingspan','bodyFat','sittingHeight'].some(k=>tiNum(t[k])),
   circ:t=>Object.keys(t.circ||{}).some(k=>tiNum(t.circ[k])),
   posture:t=>!!(t.posture&&(t.posture.frontPhoto||t.posture.sidePhoto||t.posture.backPhoto||t.posture.observations)),
   ankleDF:t=>tiNum(t.ankleDF&&t.ankleDF.right)||tiNum(t.ankleDF&&t.ankleDF.left),
@@ -11268,7 +11282,7 @@ const CMP_METRICS=[
      support. The athlete's own record still carries it. */
   {id:'bodyFat', g:'anthro',tr:'Yağ Oranı',  en:'Body Fat',    u:'%', dir:'lo',st:'Yağ',se:'Fat',get:t=>cmpN(t.bodyFat)},
   {id:'wingspan',g:'anthro',tr:'Kulaç',      en:'Wingspan',    u:'cm',st:'Kulaç',se:'Wing',get:t=>cmpN(t.wingspan)},
-  {id:'legLen',  g:'anthro',tr:'Bacak Uz.',  en:'Leg Length',  u:'cm',st:'Bacak',se:'Leg',get:t=>cmpN(t.legLength)},
+  {id:'legLen',  g:'anthro',tr:'Tahmini Bacak Uz.',en:'Est. Leg Length',u:'cm',st:'Bacak',se:'Leg',get:t=>estLegLen(t)},
   {id:'sitHt',   g:'anthro',tr:'Oturma Yük.',en:'Sitting Ht.', u:'cm',st:'Oturma',se:'Sit Ht',get:t=>cmpN(t.sittingHeight)},
   {id:'adfR', g:'mob',tr:'Ayak Bileği DF R',en:'Ankle DF R',u:'°',dir:'hi',st:'ADF R',se:'ADF R',get:t=>cmpN(t.ankleDF&&t.ankleDF.right)},
   {id:'adfL', g:'mob',tr:'Ayak Bileği DF L',en:'Ankle DF L',u:'°',dir:'hi',st:'ADF L',se:'ADF L',get:t=>cmpN(t.ankleDF&&t.ankleDF.left)},
@@ -24508,7 +24522,7 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const t=test;
   const B={
     anthro:()=>blk('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
-      [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Bacak uz.','Leg length'),dash(t.legLength)+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
+      [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Tahmini bacak uz.','Est. leg length'),dash(estLegLen(t))+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
     circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return blk('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
       [L('Uyluk R','Thigh R'),cm(c.thighRight||c.thigh)],[L('Uyluk L','Thigh L'),cm(c.thighLeft||c.thigh)],[L('Baldır R','Calf R'),cm(c.calfRight||c.calf)],[L('Baldır L','Calf L'),cm(c.calfLeft||c.calf)]]));},
     posture:()=>{const p=t.posture||{};if(!(p.frontPhoto||p.sidePhoto||p.backPhoto||p.sideLPhoto||p.observations))return{empty:true,name:tName('posture')};
@@ -24692,11 +24706,12 @@ table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--bord
 /* FMS movement: photos left, score and problems right */
 .fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
 .fm.nop .fm-sc{display:flex;flex-direction:column}
-/* Photos that fill their box: equal columns, each picture as wide as its column, portrait 3:4 */
-.photos.fill{display:grid;gap:10px;align-items:start}
+/* Photos that fill their box: equal columns, each picture as wide as its column and shown whole
+   (never cropped) at its own proportions; an empty slot keeps a portrait 3:4 frame. */
+.photos.fill{display:grid;gap:10px;align-items:end}
 .photos.fill .ph{display:block;min-width:0}
-.photos.fill .ph img,.photos.fill .phx{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:3/4;object-fit:cover!important}
-.photos.fill .phx{display:flex}
+.photos.fill .ph img{width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
+.photos.fill .phx{width:100%!important;height:auto!important;aspect-ratio:3/4;display:flex}
 .fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
 .fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .fm-sc{text-align:center}
@@ -24771,6 +24786,297 @@ ${infoSec()}
   printWhenImagesReady(w,{safety:15000});
 }
 
+/* =========================================================
+   ATLETİK GELİŞİM RAPORU — sporcunun ilk testinden bugüne bütün kayıtları tek sayfada:
+   özet, test takvimi, kategori kategori grafikler ve karşılaştırma tabloları, fotoğrafı
+   olan testlerde tarih tarih görsel karşılaştırma. Ayrı bir pencerede (sayfa) açılır;
+   üstteki "Çıktı Al" düğmesi A4 dikey yazdırır / PDF kaydeder.
+   Metrik modeli Takım Verileri tablosununki (cmpMetrics); buna çevre ölçüleri ve FMS
+   skorları eklenir — burada sporcu yalnızca kendi geçmişiyle karşılaştırılır.
+   ========================================================= */
+const DEV_GROUPS=[
+  {id:'anthro',tr:'Antropometri',en:'Anthropometry'},
+  {id:'circ',tr:'Çevre Ölçümleri',en:'Body Circumference'},
+  {id:'fms',tr:'FMS — Fonksiyonel Hareket Taraması',en:'FMS — Functional Movement Screen'},
+  {id:'mob',tr:'Mobilite & Hareket',en:'Mobility & Movement'},
+  {id:'pow',tr:'Güç & Sıçrama',en:'Power & Jump'},
+  {id:'spd',tr:'Sürat & Çeviklik',en:'Speed & Agility'},
+  {id:'str',tr:'Kuvvet',en:'Strength'},
+  {id:'end',tr:'Dayanıklılık',en:'Endurance'},
+  {id:'cust',tr:'Özel Testler',en:'Custom Tests'},
+];
+function devMetrics(customTests){
+  const circ=[['shoulder','Omuz','Shoulder'],['waist','Bel','Waist'],['hip','Kalça','Hip'],
+    ['thighRight','Uyluk R','Thigh R','thigh'],['thighLeft','Uyluk L','Thigh L','thigh'],
+    ['calfRight','Baldır R','Calf R','calf'],['calfLeft','Baldır L','Calf L','calf']]
+    .map(([k,tr,en,old])=>({id:'circ_'+k,g:'circ',tr,en,u:'cm',
+      get:t=>{const c=t.circ||{};return cmpN(c[k]!==''&&c[k]!=null?c[k]:(old?c[old]:null));}}));
+  const fms=[...FMS_ITEMS.map(it=>({id:'fms_'+it.id,g:'fms',tr:it.en,en:it.en,u:'/3',dir:'hi',
+      get:t=>{const c=fmsCalc(t.fms).items.find(i=>i.id===it.id);return c?c.score:null;}})),
+    // The total only when all seven movements were scored: a partial sum is not out of 21.
+    {id:'fmsTot',g:'fms',tr:'FMS Toplam',en:'FMS Total',u:'/21',dir:'hi',
+      get:t=>{const r=fmsCalc(t.fms);return r.n===FMS_ITEMS.length?r.total:null;}}];
+  return[...cmpMetrics(customTests),...circ,...fms];
+}
+/* Photo sets compared date by date: each a test's views, read off the record. */
+function devPhotoSets(){
+  return[
+    {id:'posture',tr:'Statik Postür',en:'Static Posture',get:t=>t.posture||{},note:t=>(t.posture||{}).observations,
+      views:[['frontPhoto','Önden','Front'],['sidePhoto','Yandan (R)','Side (R)'],['sideLPhoto','Yandan (L)','Side (L)'],['backPhoto','Arkadan','Back']]},
+    {id:'ohs',tr:'Overhead Squat',en:'Overhead Squat',get:t=>t.ohs||{},note:t=>(t.ohs||{}).observations,
+      views:[['frontPhoto','Önden','Front'],['sidePhoto','Yandan','Side'],['backPhoto','Arkadan','Back']]},
+    ...FMS_ITEMS.map(it=>({id:'fms_'+it.id,tr:'FMS '+it.en,en:'FMS '+it.en,get:t=>((t.fms||{}).photos||{})[it.id]||{},
+      views:[['front','Önden','Front'],['side','Yandan','Side']]})),
+    {id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',get:t=>t.sprint20m||{},
+      views:[['sideStep1','1. adım','Step 1'],['sideStep2','2. adım','Step 2'],['sideStep3','3. adım','Step 3'],['frontRightFoot','Sağ ayak','Right foot'],['frontLeftFoot','Sol ayak','Left foot']]},
+  ];
+}
+
+function printDevReport(ath,setup,customTests){
+  const tests=[...((ath&&ath.tests)||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!tests.length){alert(L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.'));return;}
+  const w=window.open('','_blank','width=1100,height=1200');
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const psrc=p=>esc(mediaSrc(p));
+  // Two decimals at most: a sprint's 3.31 s is not 3.3 s, and a change of 0.07 s is not 0.1 s.
+  const fv=v=>v==null?'—':String(+(Math.round(v*100)/100));
+  const pctTxt=p=>p==null?'':L('%'+Math.abs(p),Math.abs(p)+'%');
+  const shortD=ds=>{const d=parseD(ds);return`${MN[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;};
+  const per=t=>(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
+  const n=tests.length,first=tests[0],last=tests[n-1];
+
+  /* Every metric read off every test, in date order; the change is first → last reading. */
+  const rows=devMetrics(customTests).map(m=>{
+    const vals=tests.map(t=>{try{const v=m.get(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}});
+    const pts=vals.map((v,i)=>({v,i})).filter(p=>p.v!=null);
+    if(!pts.length)return null;
+    const a=pts[0],b=pts[pts.length-1];
+    const d=pts.length>1?+(b.v-a.v).toFixed(2):null;
+    const pct=(d!=null&&a.v)?+((d/Math.abs(a.v))*100).toFixed(1):null;
+    const tone=(d==null||d===0||!m.dir)?'neu':((m.dir==='hi')===(d>0)?'up':'down');
+    return{m,vals,pts,a,b,d,pct,tone};
+  }).filter(Boolean);
+  const scored=rows.filter(r=>r.m.dir&&r.d!=null);
+  const upN=scored.filter(r=>r.tone==='up').length,downN=scored.filter(r=>r.tone==='down').length,sameN=scored.length-upN-downN;
+  // Highlights leave out the side-to-side gaps: a 2° gap halving reads as "−50%", which says more than it means.
+  const hl=scored.filter(r=>r.pct!=null&&!/D$/.test(r.m.id));
+  const topUp=hl.filter(r=>r.tone==='up').sort((x,y)=>Math.abs(y.pct)-Math.abs(x.pct)).slice(0,4);
+  const topDown=hl.filter(r=>r.tone==='down').sort((x,y)=>Math.abs(y.pct)-Math.abs(x.pct)).slice(0,4);
+  const days=Math.round((parseD(last.date)-parseD(first.date))/864e5);
+  const spanTxt=days<1?L('Tek gün','One day'):days<60?`${days} ${L('gün','days')}`:`${Math.round(days/30.44)} ${L('ay','months')}`;
+
+  const chip=r=>{if(r.d==null)return'<span class="chip neu">—</span>';
+    const s=`${r.d>0?'+':r.d<0?'−':''}${fv(Math.abs(r.d))}${r.m.u&&!r.m.u.startsWith('/')?' '+esc(r.m.u):''}`;
+    return`<span class="chip ${r.tone}">${s}${r.pct!=null&&r.d!==0?` <i>(${r.d>0?'+':'−'}${pctTxt(r.pct)})</i>`:''}</span>`;};
+  const unit=m=>m.u?` <small>${esc(m.u)}</small>`:'';
+
+  /* A metric's trend: one ink line over the tests it was measured in, the latest reading
+     marked in the accent colour; values written on the points while there is room for them. */
+  const chart=r=>{
+    const W=300,H=112,pl=14,pr=14,pt=20,pb=20;
+    const vs=r.pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
+    if(lo===hi){lo-=1;hi+=1;}const pad=(hi-lo)*.18;lo-=pad;hi+=pad;
+    const xs=r.pts.map((_,k)=>pl+(r.pts.length>1?k/(r.pts.length-1):.5)*(W-pl-pr));
+    const Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
+    const P=r.pts.map((p,k)=>[xs[k],Y(p.v)]);
+    const line=P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
+    const base=H-pb;
+    const area=`${P[0][0].toFixed(1)},${base} ${line} ${P[P.length-1][0].toFixed(1)},${base}`;
+    const many=r.pts.length>6;
+    const showLbl=k=>!many||k===0||k===r.pts.length-1;
+    const showX=k=>!many||k===0||k===r.pts.length-1||k%Math.ceil(r.pts.length/5)===0;
+    return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cmpLabel(r.m))}">
+      <line x1="${pl}" y1="${base}" x2="${W-pr}" y2="${base}" stroke="#e5e7eb"/>
+      <polygon points="${area}" fill="rgba(15,23,42,.05)"/>
+      <polyline points="${line}" fill="none" stroke="#1f2937" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${P.map((q,k)=>{const isLast=k===P.length-1;const t=tests[r.pts[k].i];
+        return`<g><title>${esc(fdL(t.date))}: ${fv(r.pts[k].v)}${r.m.u?' '+esc(r.m.u):''}</title>
+        <circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="10" fill="transparent"/>
+        <circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${isLast?5:4}" fill="${isLast?'#9aab3a':'#fff'}" stroke="${isLast?'#fff':'#1f2937'}" stroke-width="${isLast?2:1.6}"/>
+        ${showLbl(k)?`<text x="${q[0].toFixed(1)}" y="${(q[1]-9).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${fv(r.pts[k].v)}</text>`:''}</g>`;}).join('')}
+      ${P.map((q,k)=>showX(k)?`<text x="${q[0].toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#8b9099">${esc(shortD(tests[r.pts[k].i].date))}</text>`:'').join('')}
+    </svg>`;
+  };
+  const card=r=>`<div class="mc">
+    <div class="mc-h"><span class="mc-t">${esc(cmpLabel(r.m))}</span>${chip(r)}</div>
+    <div class="mc-v">${fv(r.b.v)}${unit(r.m)}<span class="mc-f">${L('ilk','first')} ${fv(r.a.v)}</span></div>
+    ${chart(r)}</div>`;
+
+  /* The table shows every test while they fit; past seven, the first and the latest six. */
+  const colIdx=n<=7?tests.map((_,i)=>i):[0,...tests.map((_,i)=>i).slice(-6)];
+  const table=list=>`<div class="ct-wrap"><table class="ct"><thead><tr><th class="l">${L('Ölçüm','Measure')}</th>
+      ${colIdx.map((i,k)=>`${n>7&&k===1?'<th class="gap">…</th>':''}<th>${esc(fd(tests[i].date))}<span>${esc(per(tests[i]))}</span></th>`).join('')}
+      <th>${L('Değişim','Change')}<span>${L('ilk → son','first → latest')}</span></th></tr></thead>
+    <tbody>${list.map(r=>`<tr><td class="l">${esc(cmpLabel(r.m))}${r.m.u?` <small>${esc(r.m.u)}</small>`:''}</td>
+      ${colIdx.map((i,k)=>`${n>7&&k===1?'<td class="gap"></td>':''}<td${i===r.b.i?' class="cur"':''}>${r.vals[i]!=null?fv(r.vals[i]):'<span class="na">·</span>'}</td>`).join('')}
+      <td>${chip(r)}</td></tr>`).join('')}</tbody></table></div>`;
+
+  let secN=0;
+  const sh=(title,sub)=>`<div class="sh"><span class="sh-n">${String(++secN).padStart(2,'0')}</span><span>${title}</span>${sub?`<span class="sh-s">${sub}</span>`:''}</div>`;
+
+  const summary=`${sh(L('Özet','Summary'))}
+    <div class="kpis">
+      <div class="kpi"><div class="k">${L('Test kaydı','Test records')}</div><div class="v">${n}</div><div class="s">${esc(fdL(first.date))}${n>1?' → '+esc(fdL(last.date)):''}</div></div>
+      <div class="kpi"><div class="k">${L('Takip süresi','Tracked for')}</div><div class="v">${esc(spanTxt)}</div><div class="s">${rows.length} ${L('farklı ölçüm','measures')}</div></div>
+      <div class="kpi up"><div class="k">${L('Gelişen','Improved')}</div><div class="v">${upN}</div><div class="s">${L('ilk teste göre','vs the first test')}</div></div>
+      <div class="kpi down"><div class="k">${L('Gerileyen','Declined')}</div><div class="v">${downN}</div><div class="s">${sameN?`${sameN} ${L('ölçüm aynı','unchanged')}`:L('ilk teste göre','vs the first test')}</div></div>
+    </div>
+    ${n<2?`<div class="note">${L('Karşılaştırma için en az iki test kaydı gerekir; bu rapor şimdilik tek testin değerlerini gösteriyor.','A comparison needs at least two test records; for now this report shows the single test’s values.')}</div>`
+    :(topUp.length||topDown.length)?`<div class="hl">
+      <div class="hl-c"><div class="hl-t up">${L('En çok gelişen','Most improved')}</div>
+        ${topUp.length?topUp.map(r=>`<div class="hl-r"><span>${esc(cmpLabel(r.m))}</span><span class="hl-v">${fv(r.a.v)} → <b>${fv(r.b.v)}</b>${unit(r.m)}</span>${chip(r)}</div>`).join(''):`<div class="hl-x">—</div>`}</div>
+      <div class="hl-c"><div class="hl-t down">${L('Takip edilmesi gereken','To keep an eye on')}</div>
+        ${topDown.length?topDown.map(r=>`<div class="hl-r"><span>${esc(cmpLabel(r.m))}</span><span class="hl-v">${fv(r.a.v)} → <b>${fv(r.b.v)}</b>${unit(r.m)}</span>${chip(r)}</div>`).join(''):`<div class="hl-x">${L('Gerileyen ölçüm yok.','No measure declined.')}</div>`}</div>
+    </div>`:''}
+    <div class="tl">${tests.map((t,i)=>{const b=expandBattery(t.battery);const k=Array.isArray(b)?b.length:null;
+      return`<div class="tl-i${i===n-1?' cur':''}"><div class="tl-d"></div><div class="tl-t">${esc(fdL(t.date))}</div><div class="tl-s">${esc(per(t))}${k?` · ${k} ${L('test',k===1?'test':'tests')}`:''}</div></div>`;}).join('')}</div>`;
+
+  const groups=DEV_GROUPS.map(g=>{
+    const list=rows.filter(r=>r.m.g===g.id);if(!list.length)return'';
+    const charted=list.filter(r=>r.pts.length>1);
+    return`<section class="grp">${sh(L(g.tr,g.en),`${list.length} ${L('ölçüm','measures')}`)}
+      ${charted.length?`<div class="mcs">${charted.map(card).join('')}</div>`:''}
+      ${table(list)}</section>`;
+  }).join('');
+
+  /* Photos side by side, a row per test date, each picture whole (never cropped). */
+  const photos=devPhotoSets().map(s=>{
+    const has=(t,k)=>{const v=s.get(t)[k];return!!(v&&hasMedia(v));};
+    let dated=tests.filter(t=>s.views.some(([k])=>has(t,k)));
+    if(!dated.length)return'';
+    if(dated.length>4)dated=[dated[0],...dated.slice(-3)];
+    const views=s.views.filter(([k])=>dated.some(t=>has(t,k)));
+    const h=views.length<=2?78:views.length===3?64:views.length===4?54:44;
+    return`<div class="pc">
+      <div class="pc-h"><span>${esc(L(s.tr,s.en))}</span><span class="k">${dated.length>1?L(dated.length+' test karşılaştırması',dated.length+' tests compared'):L('Tek kayıt','Single record')}</span></div>
+      <div class="pc-g" style="grid-template-columns:74px repeat(${views.length},1fr)">
+        <div></div>${views.map(([,tr,en])=>`<div class="pc-vh">${esc(L(tr,en))}</div>`).join('')}
+        ${dated.map(t=>{const note=s.note&&s.note(t);
+          return`<div class="pc-d"><b>${esc(fd(t.date))}</b><span>${esc(per(t))}</span></div>
+          ${views.map(([k])=>{const v=s.get(t)[k];return`<div class="pc-ph" style="height:${h}mm">${v&&hasMedia(v)?`<img src="${psrc(v)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'—'}))"/>`:'<span>—</span>'}</div>`;}).join('')}
+          ${note&&String(note).trim()?`<div></div><div class="pc-n" style="grid-column:span ${views.length}">${esc(note)}</div>`:''}`;}).join('')}
+      </div></div>`;
+  }).filter(Boolean);
+  const photoSec=photos.length?`<section class="grp">${sh(L('Görsel Karşılaştırma','Visual Comparison'),L('tarihe göre','by date'))}${photos.join('')}</section>`:'';
+
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${L('Atletik Gelişim Raporu','Athletic Development Report')} — ${esc(ath.name)}</title>
+<style>
+@page{size:A4 portrait;margin:12mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--up:#15803d;--upb:#dcfce7;--down:#b91c1c;--downb:#fee2e2}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.45;background:#fff}
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;background:#0a0b0d;color:#fff;padding:11px 16px;font-size:12.5px;font-weight:500}
+.bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:inherit;font-weight:700;cursor:pointer;font-size:13px}
+.bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);font-weight:500}
+.bar .hint{flex-basis:100%;text-align:center;font-size:10.5px;opacity:.75;font-weight:400}
+.sheet{background:#fff}
+@media screen{body{background:#eceef1}.sheet{max-width:200mm;margin:22px auto 40px;padding:14mm 13mm;border-radius:6px;box-shadow:0 2px 18px rgba(15,23,42,.1)}}
+@media screen and (max-width:640px){.sheet{margin:0;padding:18px 14px;border-radius:0}.kpis{grid-template-columns:1fr 1fr!important}.mcs{grid-template-columns:1fr!important}.hl{grid-template-columns:1fr!important}.ct-wrap{overflow-x:auto}}
+@media print{.bar{display:none}}
+/* header */
+.hd{display:flex;gap:16px;align-items:flex-end;padding-bottom:12px;border-bottom:2.5px solid var(--text)}
+.hd .ph,.hd .phx{width:60px;height:74px;border-radius:4px;object-fit:cover;flex:none;border:1px solid var(--border)}
+.hd .phx{display:flex;align-items:center;justify-content:center;background:var(--bg2);font-size:20px;font-weight:700;color:var(--text2)}
+.hd .in{flex:1;min-width:0}
+.hd h1{font-size:25px;font-weight:700;letter-spacing:-.015em;line-height:1.05;margin-bottom:5px;text-transform:uppercase}
+.hd .meta{font-size:9.5px;color:var(--muted)}
+.hd .date{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;padding-left:8px;border-left:3px solid var(--accent)}
+.hd .rt{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
+.hd .ttl{font-size:10px;font-weight:700;letter-spacing:.16em;line-height:1.45;text-transform:uppercase}
+.hd .coach{font-size:8.5px;color:var(--muted)}
+/* sections */
+.sh{display:flex;align-items:baseline;gap:9px;margin:18px 0 9px;padding-bottom:5px;border-bottom:1.5px solid var(--text);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
+.sh-n{font-size:9px;font-weight:600;color:var(--dim)}
+.sh-s{margin-left:auto;font-size:8.5px;font-weight:500;color:var(--dim);letter-spacing:.06em}
+.grp{break-inside:auto}
+/* summary */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kpi{border:1px solid var(--border2);border-radius:6px;padding:9px 11px;break-inside:avoid}
+.kpi .k{font-size:7.6px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.kpi .v{font-size:22px;font-weight:700;line-height:1.15;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:8.5px;color:var(--dim);margin-top:2px}
+.kpi.up{border-top:3px solid var(--up)}.kpi.down{border-top:3px solid var(--down)}
+.note{margin-top:8px;padding:8px 10px;border:1px dashed var(--border2);border-radius:6px;font-size:9.5px;color:var(--text2)}
+.hl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.hl-c{border:1px solid var(--border2);border-radius:6px;padding:8px 11px;break-inside:avoid}
+.hl-t{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.hl-t.up{color:var(--up)}.hl-t.down{color:var(--down)}
+.hl-r{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid var(--border);font-size:9.5px}
+.hl-r:first-of-type{border-top:none}
+.hl-v{color:var(--text2);font-variant-numeric:tabular-nums}
+.hl-v small{color:var(--dim)}
+.hl-x{font-size:9px;color:var(--dim);padding:4px 0}
+.chip{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip i{font-style:normal;font-weight:500;opacity:.85}
+.chip.up{color:var(--up);background:var(--upb)}.chip.down{color:var(--down);background:var(--downb)}.chip.neu{color:var(--text2);background:var(--bg2)}
+/* timeline */
+.tl{display:flex;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border2);padding-top:0}
+.tl-i{position:relative;flex:1 1 90px;min-width:90px;max-width:150px;padding:10px 6px 0 0}
+.tl-d{position:absolute;top:-5px;left:0;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--text)}
+.tl-i.cur .tl-d{background:var(--accent);border-color:var(--accent)}
+.tl-t{font-size:9.5px;font-weight:700}
+.tl-s{font-size:8.5px;color:var(--muted)}
+/* metric cards */
+.mcs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px}
+.mc{border:1px solid var(--border2);border-radius:6px;padding:8px 9px 4px;break-inside:avoid;page-break-inside:avoid;min-width:0}
+.mc-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.mc-t{font-size:9.5px;font-weight:700;line-height:1.25;min-width:0}
+.mc-v{font-size:19px;font-weight:700;line-height:1.1;margin-top:3px;font-variant-numeric:tabular-nums}
+.mc-v small{font-size:9px;font-weight:500;color:var(--muted)}
+.mc-f{margin-left:8px;font-size:8.5px;font-weight:500;color:var(--dim)}
+.mc svg{display:block;width:100%;height:auto;margin-top:2px;font-family:'Google Sans',Arial,sans-serif}
+/* comparison table */
+table.ct{width:100%;border-collapse:collapse;table-layout:auto;margin-bottom:6px}
+.ct th{font-size:7.6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 5px 5px;border-bottom:1.5px solid var(--text);vertical-align:bottom;white-space:nowrap}
+.ct th span{display:block;font-size:7px;font-weight:500;color:var(--dim);letter-spacing:.04em}
+.ct th.l,.ct td.l{text-align:left}
+.ct td{padding:4px 5px;border-bottom:1px solid var(--border);text-align:center;font-size:10px;font-variant-numeric:tabular-nums}
+.ct td.l{font-weight:600;font-size:9.5px}
+.ct td.l small{font-weight:400;color:var(--dim);font-size:8px}
+.ct td.cur{font-weight:700}
+.ct .gap{color:var(--dim);width:14px}
+.ct .na{color:#c2c6cc}
+.ct tr{break-inside:avoid;page-break-inside:avoid}
+/* photo comparison */
+.pc{border:1px solid var(--border2);border-radius:6px;margin-bottom:9px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.pc-h{display:flex;justify-content:space-between;align-items:baseline;padding:5px 10px;background:var(--bg2);border-bottom:1px solid var(--border2);font-size:10.5px;font-weight:700}
+.pc-h .k{font-size:9px;color:var(--text2)}
+.pc-g{display:grid;gap:7px;padding:8px 10px 10px;align-items:center}
+.pc-vh{font-size:7.6px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
+.pc-d{font-size:9.5px;line-height:1.3}.pc-d span{display:block;font-size:8px;color:var(--muted)}
+.pc-ph{display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden;color:var(--dim);min-width:0}
+.pc-ph img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+.pc-n{font-size:8.5px;color:var(--text2);line-height:1.4;margin-top:-3px}
+.foot{text-align:center;font-size:8.5px;color:var(--dim);margin-top:18px;padding-top:8px;border-top:1px solid var(--border);letter-spacing:.06em}
+</style></head><body>
+<div class="bar">${L('Atletik Gelişim Raporu','Athletic Development Report')} · ${esc(ath.name)}
+  <button onclick="window.print()">${L('Çıktı Al / PDF','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button>
+  <div class="hint">${L('Yazdırma penceresinde tam renk için "Arka plan grafikleri" seçeneğini (Diğer ayarlar) açın.','In the print dialog, enable "Background graphics" (More settings) for full colours.')}</div></div>
+<div class="sheet">
+<div class="hd">
+  ${ath.photo?`<img class="ph" src="${psrc(ath.photo)}" alt=""/>`:`<div class="phx">${esc(initials)}</div>`}
+  <div class="in"><h1>${esc(ath.name)}</h1>
+    <div class="meta">${ath.number?'#'+esc(ath.number)+' · ':''}${esc(posOf(ath.position))}</div>
+    <div class="meta">${esc(setup.teamName)}${setup.sport?' · '+esc(setup.sport):''}</div>
+    <div class="date">${esc(fdL(first.date))}${n>1?' → '+esc(fdL(last.date)):''} · ${n} ${L('test kaydı',n===1?'test record':'test records')}</div></div>
+  <div class="rt"><div class="ttl">${L('Atletik<br>Gelişim Raporu','Athletic<br>Development Report')}</div>
+    <div class="coach">${L('Hazırlayan Antrenör: Emincan Özer','Prepared by: Emincan Özer')}</div></div>
+</div>
+${summary}
+${groups}
+${photoSec}
+<div class="foot">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(setup.teamName)} · ${L('Değişim, her ölçümün ilk ve son değeri arasındadır; yeşil gelişmeyi, kırmızı gerilemeyi gösterir.','Change is between each measure’s first and latest reading; green is an improvement, red a decline.')}</div>
+</div>
+</body></html>`;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();}catch(e){}},300);
+}
 /* =========================================================
    ATHLETE vs SQUAD — the comparison report
    ---------------------------------------------------------
@@ -25998,8 +26304,11 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           <div className="mk-field"><div className="mk-flbl">{L('Kilo','Weight')}</div><MkInput value={test.weight} onChange={v=>u('weight',v)} unit="kg"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Kulaç','Wingspan')}</div><MkInput value={test.wingspan} onChange={v=>u('wingspan',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Yağ Oranı','Body Fat')}</div><MkInput value={test.bodyFat} onChange={v=>u('bodyFat',v)} unit="%"/></div>
-          <div className="mk-field"><div className="mk-flbl">{L('Bacak Uzunluğu (SİAS – Medial Malleol)','Leg Length (ASIS – Medial Malleolus)')}</div><MkInput value={test.legLength} onChange={v=>u('legLength',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">{L('Oturma Yüksekliği','Sitting Height')}</div><MkInput value={test.sittingHeight} onChange={v=>u('sittingHeight',v)} unit="cm"/></div>
+          {/* Hesaplanır, yazılmaz: boy − oturma yüksekliği */}
+          <div className="mk-field"><div className="mk-flbl">{L('Tahmini Bacak Uzunluğu','Estimated Leg Length')}</div>
+            <div className="mk-input"><input type="text" readOnly tabIndex={-1} value={estLegLen(test)??''} placeholder={L('Boy − oturma','Height − sitting')}
+              title={L('Boy − Oturma Yüksekliği ile otomatik hesaplanır','Calculated automatically as Height − Sitting Height')} style={{cursor:'default',opacity:.85}}/><span className="mk-unit">cm</span></div></div>
         </div>
       </div>
     </div>);
@@ -26371,7 +26680,7 @@ function TestProgressionCharts({tests}){
           {label:L('Boy (cm)','Height (cm)'),data:sorted.map(t=>Number(t.height)||null),borderColor:'#a855f7',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#d8b4fe')},
           {label:L('Kilo (kg)','Weight (kg)'),data:sorted.map(t=>Number(t.weight)||null),borderColor:'#06b6d4',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#67e8f9')},
           {label:L('Kulaç (cm)','Wingspan (cm)'),data:sorted.map(t=>Number(t.wingspan)||null),borderColor:'#22d3ee',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#a5f3fc')},
-          {label:L('Bacak Uzunluğu (cm)','Leg Length (cm)'),data:sorted.map(t=>Number(t.legLength)||null),borderColor:'#84cc16',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#bef264')},
+          {label:L('Tahmini Bacak Uzunluğu (cm)','Est. Leg Length (cm)'),data:sorted.map(t=>estLegLen(t)),borderColor:'#84cc16',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#bef264')},
           {label:L('Oturma Yüksekliği (cm)','Sitting Height (cm)'),data:sorted.map(t=>Number(t.sittingHeight)||null),borderColor:'#eab308',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#fde047')},
           {label:L('Yağ Oranı (%)','Body Fat (%)'),data:sorted.map(t=>Number(t.bodyFat)||null),borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle,datalabels:labelOpt('#fdba74')},
         ]}} options={{...baseOpt,
@@ -28191,6 +28500,16 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catCount=g=>g==='all'?fullCatalog.length:fullCatalog.filter(c=>testGroupOf(c)===g).length;
   const catalogShown=cat==='all'?fullCatalog:fullCatalog.filter(c=>testGroupOf(c)===cat);
   const seasonLabel=seasonYears(setup)||String(new Date().getFullYear());
+  /* The athlete's two ways in, on their card: their test records (selects them and scrolls to
+     the list) and the development report, which opens as its own page. */
+  const openResults=id=>{setSelId(id);setEditingId(null);
+    setTimeout(()=>{const el=document.getElementById('ev2-results');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);};
+  const athActs=(a,cls)=>{const dated=(a.tests||[]).some(t=>t.date);
+    return(<div className={cls} onClick={e=>e.stopPropagation()}>
+      <button className="btn xs sec" onClick={()=>openResults(a.id)}>{Lx('Test Sonuçları','Test Results')}</button>
+      <button className="btn xs" disabled={!dated} onClick={()=>printDevReport(a,setup,customTests)}
+        title={dated?Lx('İlk testten bugüne karşılaştırmalı rapor (ayrı sayfada açılır)','Comparative report from the first test to today (opens on its own page)'):Lx('Bu sporcunun henüz test kaydı yok','No test records for this athlete yet')}>{Lx('Atletik Gelişim Raporu','Athletic Development Report')}</button>
+    </div>);};
 
   return(<div>
     <PageHero title={Lx('Test ve Değerlendirme','Testing & Assessment')}
@@ -28245,7 +28564,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-card-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
         <div className="ev2-card-nm">{a.name}</div>
         <div className="ev2-card-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
-        <div className="ev2-card-chk"/>
+        {athActs(a,'ev2-card-acts')}
       </div>);
     })}</div>}
 
@@ -28257,7 +28576,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-lrow-nm">{a.name}</div>
         <div className="ev2-lrow-mt">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
         <div className="ev2-lrow-mt" style={{flex:'0 0 86px'}}>{n} {Lx('test',n===1?'test':'tests')}</div>
-        <div className="ev2-card-chk" style={{position:'static'}}/>
+        {athActs(a,'ev2-lrow-acts')}
       </div>);
     })}</div>}
 
@@ -28329,7 +28648,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       </div>
 
       {/* ---- step 2 — what has already been recorded ---- */}
-      <div className="ev2-step">
+      <div className="ev2-step" id="ev2-results" style={{scrollMarginTop:72}}>
         <div className="ev2-step-hd">
           <div className="ev2-step-n">2</div>
           <div className="ev2-step-tx">
@@ -28363,9 +28682,9 @@ function EvaluationView({team,updateTeam,data,setData}){
                   <button className="btn xs sec" style={isAdding?{background:'var(--accent)',color:'#0a0b0d',borderColor:'var(--accent)'}:{}}
                     onClick={e=>{e.stopPropagation();setAddBatId(isAdding?null:t.id);}}
                     title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>{Lx('Test Ekle','Add Tests')}</button>
-                  <button className="btn xs sec" onClick={e=>{e.stopPropagation();setEditingId(t.id);}}>{Lx('Görüntüle','Open')}</button>
-                  {/* A bare ✕ beside "Open" reads as "close", not "delete for good". It
-                      says what it does, and it is the only red thing on the row. */}
+                  {/* The row itself opens the record, so it has no separate "open" button. A bare ✕
+                      reads as "close", not "delete for good": it says what it does, and it is the
+                      only red thing on the row. */}
                   <button className="btn xs danger" onClick={e=>{e.stopPropagation();delTest(t.id);}}
                     title={Lx('Bu test kaydını sil','Delete this test record')}>{Lx('Testi Sil','Delete Test')}</button>
                 </div>
@@ -28452,7 +28771,7 @@ function buildAthleteSnapshot(ath,setup,exercises){
     if(lcjR!=null||lcjL!=null)out.push(`- Lateral CMJ (yana sıçrama): R ${lcjR??'—'} cm / L ${lcjL??'—'} cm${(lcjR!=null&&lcjL!=null)?` (fark ${Math.abs(lcjR-lcjL).toFixed(1)} cm)`:''}`);
     add('20m sprint',t.sprint20m&&t.sprint20m.time,' s');add('T-Test çeviklik',t.tTest,' s');add('Shuttle/dayanıklılık',t.shuttleRun,' s');
     add('Boy',t.height,' cm');add('Kilo',t.weight,' kg');add('Yağ',t.bodyFat,' %');add('Kulaç',t.wingspan,' cm');
-    add('Bacak uzunluğu (ASIS–medial malleol)',t.legLength,' cm');add('Oturma yüksekliği',t.sittingHeight,' cm');
+    add('Tahmini bacak uzunluğu (boy − oturma yüksekliği)',estLegLen(t),' cm');add('Oturma yüksekliği',t.sittingHeight,' cm');
     const adfR=recNum(t.ankleDF&&t.ankleDF.right),adfL=recNum(t.ankleDF&&t.ankleDF.left);
     if(adfR!=null||adfL!=null){const diff=(adfR!=null&&adfL!=null)?Math.abs(adfR-adfL).toFixed(1):'—';out.push(`- Ayak bileği dorsifleksiyon: R ${adfR??'—'}° / L ${adfL??'—'}° (fark ${diff}°)`);}
     const asR=recNum(t.aslr&&t.aslr.right),asL=recNum(t.aslr&&t.aslr.left);
@@ -28646,7 +28965,7 @@ function buildProgramDesignInput(ath,setup){
       kilo_kg:pull('weight'),
       vucut_yag_yuzde:pull('bodyFat'),
       kol_acikligi_cm:pull('wingspan'),
-      bacak_uzunlugu_cm:n(t&&t.legLength)??n(t&&t.yBalance&&t.yBalance.limbLength),
+      bacak_uzunlugu_cm:estLegLen(t)??n(t&&t.yBalance&&t.yBalance.limbLength),
       oturma_yuksekligi_cm:n(t&&t.sittingHeight),
       cevre_olcumleri:Object.keys(cevre).length?cevre:null,
     },
@@ -29420,7 +29739,7 @@ function TestReportsTab({ath,setup,ai,exercises}){
   const period=(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
   const h=num(t.height),w=num(t.weight);const bmi=(h&&w)?(w/((h/100)**2)):null;
   const anthro=[['Height',t.height,'cm'],['Weight',t.weight,'kg'],['Body Fat',t.bodyFat,'%'],['Wingspan',t.wingspan,'cm'],
-    ['Leg Length',t.legLength,'cm'],['Sitting Height',t.sittingHeight,'cm']];
+    ['Est. Leg Length',estLegLen(t),'cm'],['Sitting Height',t.sittingHeight,'cm']];
   const power=[['Vertical Jump',t.verticalJump,'cm'],['CMJ',t.cmj,'cm'],
     ['Lateral CMJ — R',t.lateralCmj&&t.lateralCmj.right,'cm'],['Lateral CMJ — L',t.lateralCmj&&t.lateralCmj.left,'cm'],
     ['Squat Jump',t.squatJump,'cm'],['Drop Jump',t.dropJump,'RSI'],['Horizontal Jump',t.horizontalJump,'cm']];
@@ -30995,13 +31314,14 @@ function AthInjuries({ath,updAth,setup}){
 
 /* ---- Anthropometry ----
    Six measures, two to a row and kept short, so the trend of each is read without
-   scrolling: height, weight, body fat, wingspan, leg length and trunk length. */
+   scrolling: height, weight, body fat, wingspan, estimated leg length (height − sitting
+   height, `get`) and trunk length. */
 const BODY_FIELDS=[
   {k:'height',tr:'Boy',en:'Height',u:'cm',c:'#a855f7',good:null},
   {k:'weight',tr:'Kilo',en:'Weight',u:'kg',c:'#3b82f6',good:null},
   {k:'bodyFat',tr:'Yağ Oranı',en:'Body Fat',u:'%',c:'#f97316',good:false},
   {k:'wingspan',tr:'Kulaç',en:'Wingspan',u:'cm',c:'#10b981',good:null},
-  {k:'legLength',tr:'Bacak Uzunluğu',en:'Leg Length',u:'cm',c:'#0ea5e9',good:null},
+  {k:'legLength',tr:'Tahmini Bacak Uzunluğu',en:'Est. Leg Length',u:'cm',c:'#0ea5e9',good:null,get:estLegLen},
   {k:'trunkLength',tr:'Gövde Uzunluğu',en:'Trunk Length',u:'cm',c:'#e11d48',good:null},
 ];
 function AthBody({ath,updAth,setup}){
@@ -31017,7 +31337,7 @@ function AthBody({ath,updAth,setup}){
   const labels=sorted.map(m=>{const dt=parseD(m.date);return MN[dt.getMonth()];});
   const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:"'Archivo','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
   const card=f=>{
-    const data=sorted.map(m=>{const raw=m[f.k];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
+    const data=sorted.map(m=>{const raw=f.get?f.get(m):m[f.k];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
     const valid=data.filter(v=>v!=null);
     const last=valid.length?valid[valid.length-1]:null,first=valid.length?valid[0]:null;
     const imp=valid.length>1?+((last-first).toFixed(1)):null;
@@ -31065,7 +31385,7 @@ function AthBody({ath,updAth,setup}){
           <button className="btn sec sm" onClick={()=>setTableOpen(o=>!o)}>{tableOpen?L('▲ Gizle','▲ Hide'):L('▼ Göster','▼ Show')}</button>
         </div>
         {tableOpen&&(()=>{const rev=ms.map((m,i)=>({m,i})).sort((a,b)=>(b.m.date||'').localeCompare(a.m.date||''));const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
-          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Bacak (cm)','Leg (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Oturma Boyu (cm)','Sitting Ht (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
+          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Oturma Boyu (cm)','Sitting Ht (cm)')}</th><th>{L('Tahmini Bacak (cm)','Est. Leg (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
             {vis.map(({m,i:realIdx},idx)=>{
               const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
               // Rows mirrored from an Anthropometric Measurement test are read-only here —
@@ -31074,7 +31394,8 @@ function AthBody({ath,updAth,setup}){
               const num=(k,ph,wd)=><td><input type="number" step="0.1" value={m[k]??''} onChange={e=>um(k,e.target.value)} placeholder={ph} style={{width:wd}} disabled={synced}/></td>;
               return<tr key={m.id||idx} style={synced?{opacity:.92}:undefined}>
                 <td><input type="date" value={m.date} onChange={e=>um('date',e.target.value)} style={{width:130}} disabled={synced}/><div className="help">{fd(m.date)}</div></td>
-                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('legLength','cm',76)}{num('trunkLength','cm',76)}{num('sittingHeight','cm',76)}
+                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('trunkLength','cm',76)}{num('sittingHeight','cm',76)}
+                <td style={{textAlign:'center',color:'var(--text2)'}} title={L('Boy − Oturma Boyu','Height − Sitting Height')}>{estLegLen(m)??'—'}</td>
                 <td><input value={m.notes||''} onChange={e=>um('notes',e.target.value)} placeholder={L('Notlar…','Notes…')}/></td>
                 <td>{synced?<span className="help" title={L('Test sekmesinden yönetiliyor','Managed by the Testing tab')} style={{fontSize:16}}>🔗</span>:<button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button>}</td>
               </tr>;})}
@@ -41135,7 +41456,7 @@ function diBundle(ath,setup,ref,opts){
       height_cm:recNum(lastTest&&lastTest.height)??recNum(ath.height),
       weight_kg:recNum(lastTest&&lastTest.weight)??recNum(ath.weight),
       wingspan_cm:recNum(lastTest&&lastTest.wingspan),
-      leg_length_cm:recNum(lastTest&&lastTest.legLength),
+      leg_length_cm:estLegLen(lastTest),
     },
     readiness:{score:readiness.score,status:readiness.status?L(readiness.status.label[0],readiness.status.label[1]):null,
       status_id:readiness.status?readiness.status.id:null,

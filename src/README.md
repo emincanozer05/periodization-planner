@@ -82,6 +82,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/270-interval-timer.jsx` | INTERVAL TIMER |
 | `app/280-reports-photo-cell.jsx` | GENERIC REPORTS RENDERER (used by team & athletes) · TEAM REPORTS · PHOTO CELL — small reusable photo uploader (auto-resize) |
 | `app/290-test-pdf.jsx` | TEST PDF GENERATOR — A4 portrait single-test report |
+| `app/295-athletic-dev-report.jsx` | ATLETİK GELİŞİM RAPORU — sporcunun ilk testinden bugüne karşılaştırmalı raporu (özet, grafikler, tablolar, tarih tarih görsel karşılaştırma), ayrı sayfada açılır, Çıktı Al ile A4 |
 | `app/300-athlete-vs-squad.jsx` | ATHLETE vs SQUAD — the comparison report |
 | `app/310-drive-embed-body-model.jsx` | GOOGLE DRIVE EMBED HELPERS · 2D BODY CIRCUMFERENCE MODEL |
 | `app/320-testing-session.jsx` | TESTING SESSION — every test renders its own purpose-built, |

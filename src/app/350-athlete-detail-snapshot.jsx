@@ -56,7 +56,7 @@ function buildAthleteSnapshot(ath,setup,exercises){
     if(lcjR!=null||lcjL!=null)out.push(`- Lateral CMJ (yana sıçrama): R ${lcjR??'—'} cm / L ${lcjL??'—'} cm${(lcjR!=null&&lcjL!=null)?` (fark ${Math.abs(lcjR-lcjL).toFixed(1)} cm)`:''}`);
     add('20m sprint',t.sprint20m&&t.sprint20m.time,' s');add('T-Test çeviklik',t.tTest,' s');add('Shuttle/dayanıklılık',t.shuttleRun,' s');
     add('Boy',t.height,' cm');add('Kilo',t.weight,' kg');add('Yağ',t.bodyFat,' %');add('Kulaç',t.wingspan,' cm');
-    add('Bacak uzunluğu (ASIS–medial malleol)',t.legLength,' cm');add('Oturma yüksekliği',t.sittingHeight,' cm');
+    add('Tahmini bacak uzunluğu (boy − oturma yüksekliği)',estLegLen(t),' cm');add('Oturma yüksekliği',t.sittingHeight,' cm');
     const adfR=recNum(t.ankleDF&&t.ankleDF.right),adfL=recNum(t.ankleDF&&t.ankleDF.left);
     if(adfR!=null||adfL!=null){const diff=(adfR!=null&&adfL!=null)?Math.abs(adfR-adfL).toFixed(1):'—';out.push(`- Ayak bileği dorsifleksiyon: R ${adfR??'—'}° / L ${adfL??'—'}° (fark ${diff}°)`);}
     const asR=recNum(t.aslr&&t.aslr.right),asL=recNum(t.aslr&&t.aslr.left);

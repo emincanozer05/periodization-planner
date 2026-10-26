@@ -302,7 +302,7 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const t=test;
   const B={
     anthro:()=>blk('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
-      [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Bacak uz.','Leg length'),dash(t.legLength)+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
+      [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Tahmini bacak uz.','Est. leg length'),dash(estLegLen(t))+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
     circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return blk('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
       [L('Uyluk R','Thigh R'),cm(c.thighRight||c.thigh)],[L('Uyluk L','Thigh L'),cm(c.thighLeft||c.thigh)],[L('Baldır R','Calf R'),cm(c.calfRight||c.calf)],[L('Baldır L','Calf L'),cm(c.calfLeft||c.calf)]]));},
     posture:()=>{const p=t.posture||{};if(!(p.frontPhoto||p.sidePhoto||p.backPhoto||p.sideLPhoto||p.observations))return{empty:true,name:tName('posture')};
@@ -486,11 +486,12 @@ table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--bord
 /* FMS movement: photos left, score and problems right */
 .fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
 .fm.nop .fm-sc{display:flex;flex-direction:column}
-/* Photos that fill their box: equal columns, each picture as wide as its column, portrait 3:4 */
-.photos.fill{display:grid;gap:10px;align-items:start}
+/* Photos that fill their box: equal columns, each picture as wide as its column and shown whole
+   (never cropped) at its own proportions; an empty slot keeps a portrait 3:4 frame. */
+.photos.fill{display:grid;gap:10px;align-items:end}
 .photos.fill .ph{display:block;min-width:0}
-.photos.fill .ph img,.photos.fill .phx{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:3/4;object-fit:cover!important}
-.photos.fill .phx{display:flex}
+.photos.fill .ph img{width:100%!important;height:auto!important;max-height:none!important;object-fit:contain!important}
+.photos.fill .phx{width:100%!important;height:auto!important;aspect-ratio:3/4;display:flex}
 .fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
 .fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .fm-sc{text-align:center}
