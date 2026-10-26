@@ -17,7 +17,7 @@ function TestProgressionCharts({tests}){
           {label:L('Boy (cm)','Height (cm)'),data:sorted.map(t=>Number(t.height)||null),borderColor:'#a855f7',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#d8b4fe')},
           {label:L('Kilo (kg)','Weight (kg)'),data:sorted.map(t=>Number(t.weight)||null),borderColor:'#06b6d4',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#67e8f9')},
           {label:L('Kulaç (cm)','Wingspan (cm)'),data:sorted.map(t=>Number(t.wingspan)||null),borderColor:'#22d3ee',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#a5f3fc')},
-          {label:L('Bacak Uzunluğu (cm)','Leg Length (cm)'),data:sorted.map(t=>Number(t.legLength)||null),borderColor:'#84cc16',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#bef264')},
+          {label:L('Tahmini Bacak Uzunluğu (cm)','Est. Leg Length (cm)'),data:sorted.map(t=>estLegLen(t)),borderColor:'#84cc16',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#bef264')},
           {label:L('Oturma Yüksekliği (cm)','Sitting Height (cm)'),data:sorted.map(t=>Number(t.sittingHeight)||null),borderColor:'#eab308',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#fde047')},
           {label:L('Yağ Oranı (%)','Body Fat (%)'),data:sorted.map(t=>Number(t.bodyFat)||null),borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle,datalabels:labelOpt('#fdba74')},
         ]}} options={{...baseOpt,

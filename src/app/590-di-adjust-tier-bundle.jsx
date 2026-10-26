@@ -285,7 +285,7 @@ function diBundle(ath,setup,ref,opts){
       height_cm:recNum(lastTest&&lastTest.height)??recNum(ath.height),
       weight_kg:recNum(lastTest&&lastTest.weight)??recNum(ath.weight),
       wingspan_cm:recNum(lastTest&&lastTest.wingspan),
-      leg_length_cm:recNum(lastTest&&lastTest.legLength),
+      leg_length_cm:estLegLen(lastTest),
     },
     readiness:{score:readiness.score,status:readiness.status?L(readiness.status.label[0],readiness.status.label[1]):null,
       status_id:readiness.status?readiness.status.id:null,

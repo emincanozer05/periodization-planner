@@ -271,9 +271,17 @@ const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
     methods:Array.isArray(p.methods)?p.methods:[],region:p.region||'',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null,
     ...(p.kind?{kind:p.kind}:{}),...(p.rpeCat?{rpeCat:p.rpeCat}:{})};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
+/* Tahmini bacak uzunluğu = boy − oturma yüksekliği (cm). Test ve ölçüm kayıtlarında ekran,
+   çıktı ve karşılaştırmalar bunu okur; elle girilmiş eski `legLength` artık gösterilmez.
+   Boy ya da oturma yüksekliği yoksa değer yoktur. */
+const estLegLen=o=>{
+  if(!o||o.height===''||o.height==null||o.sittingHeight===''||o.sittingHeight==null)return null;
+  const h=Number(o.height),s=Number(o.sittingHeight);
+  return(isFinite(h)&&isFinite(s)&&s>0&&h>s)?+(h-s).toFixed(1):null;
+};
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
-  // Anthropometrics — legLength = ASIS → medial malleolus (cm), sittingHeight = seated stature (cm)
+  // Anthropometrics — sittingHeight = seated stature (cm); leg length is estLegLen (height − sitting height)
   height:'',weight:'',wingspan:'',bodyFat:'',legLength:'',sittingHeight:'',
   // Circumferences (cm) — bilateral for thigh & calf
   circ:{shoulder:'',waist:'',hip:'',thighRight:'',thighLeft:'',calfRight:'',calfLeft:''},
