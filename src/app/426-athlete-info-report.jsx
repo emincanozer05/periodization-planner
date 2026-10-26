@@ -127,17 +127,18 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
        "ACTİVE STRAİGHT-LEG RAİSE". The unit is not here: it prints beside every value. */
     const n=L(d.tr,d.en),en=n===d.en&&REPORT_LANG==='tr';
     return`<div class="ds-h"><div class="tc-n"${en?' lang="en"':''}>${esc(n)}</div>${w?`<div class="ds-w">${esc(w)}</div>`:''}</div>`;};
-  const TC_PER_ROW=6;
+  /* Dates per table row: a full-width card holds six, a half-width one (jump, speed) four. */
+  const TC_PER_ROW=6,TC_PER_ROW_HALF=4;
   /* The readings as a slim table, dates along the top. `latest` keeps only the newest date,
      with its change from the reading before. */
-  const tcTable=(d,latest)=>{
+  const tcTable=(d,latest,half)=>{const TC_PER_ROW_=half?TC_PER_ROW_HALF:TC_PER_ROW;
     const all=d.pts.map((p,i)=>({...p,i}));
     const cols=latest?all.slice(-1):all;
     const prevOf=(ri,i)=>{for(let j=i-1;j>=0;j--)if(all[j].vs[ri]!=null)return all[j].vs[ri];return null;};
     const tone=(dv,dir)=>!dir||!dv?'':((dir==='hi')===(dv>0)?'up':'dn');
     const fv=v=>{const t=athTestFmt(v);return d.dec&&!t.includes('.')?Number(v).toFixed(d.dec):t;};
-    const chunks=[];for(let i=0;i<cols.length;i+=TC_PER_ROW)chunks.push(cols.slice(i,i+TC_PER_ROW));
-    const n=Math.min(cols.length,TC_PER_ROW);
+    const chunks=[];for(let i=0;i<cols.length;i+=TC_PER_ROW_)chunks.push(cols.slice(i,i+TC_PER_ROW_));
+    const n=Math.min(cols.length,TC_PER_ROW_);
     const hasLbl=d.rows.some(r=>r[0]);
     const pad=(c,tag)=>`<${tag}></${tag}>`.repeat(n-c.length);
     return`<table class="tc-t">${chunks.map(c=>`<tr class="an-d">${hasLbl?'<th class="rl"></th>':''}${c.map(p=>`<th>${fd(p.date)}</th>`).join('')}${pad(c,'th')}</tr>
@@ -167,16 +168,18 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
       <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small>${sides}</div>
         ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}${c.bi&&c.right!=null&&c.left!=null&&c.right!==c.left?` ${L('Düşük taraf skoru geçerlidir.','The lower side is the score.')}`:''}${c.cleared==='pos'?` ${L('Ağrı kontrolü pozitif.','Clearing test positive.')}`:''}</div></div>`:''}</div>
     </div></div>`;};
-  /* Every other test in the same wide card: the same picture size as the movement screen's, its
-     name and what it measures, and under them its readings. */
-  const tcCard=(d,latest)=>/^fms_/.test(d.id)?fmsCard(d)
+  /* Every other test in the same card: the same picture size as the movement screen's, its
+     name and what it measures, and under them its readings. Jump and speed cards stand two
+     side by side (`half`): their readings run under the picture, across the card. */
+  const tcCard=(d,latest,half)=>/^fms_/.test(d.id)?fmsCard(d)
+    :half?`<div class="tc ds half">${tcImg(d)}<div class="ds-r">${tcInfo(d)}</div><div class="tc-d">${tcTable(d,latest,true)}</div></div>`
     :`<div class="tc ds">${tcImg(d)}<div class="ds-r">${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div></div>`;
   const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
   const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
   const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
     :x.g==='move'?` <span class="hv">${L('son sonuçlar','latest results')}</span>`:` <span class="hv">${L('gelişim','progress')}</span>`}`;
   const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
-      <div class="tcs">${x.list.map(d=>tcCard(d,x.g==='move')).join('')}</div></div>`).join('')
+      <div class="tcs${x.g==='move'?'':' pair'}">${x.list.map(d=>tcCard(d,x.g==='move',x.g!=='move')).join('')}</div></div>`).join('')
     :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
   const pri=ATP_PRIORITY.map(p=>{const its=ATP_QUALITIES.filter(it=>(tp.qualities[it.id]||{}).priority===p.id);
     return`<div class="card lane"><div class="pk" style="color:${{high:'#dc2626',medium:'#a16207',low:'#2f5fd0'}[p.id]}">${esc(atpT(p.en))} <span class="cnt">${its.length}</span></div>
@@ -335,6 +338,10 @@ td.r,th.r{text-align:right}
 .sign b{color:var(--ink)}
 .tgs{margin-bottom:8px}
 .tcs{display:flex;flex-direction:column;gap:5px}
+.tcs.pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tc.ds.half{grid-template-columns:50mm minmax(0,1fr);row-gap:6px;column-gap:8px}
+.tc.ds.half .ds-r{gap:4px}
+.tc.ds.half .tc-d{grid-column:1/-1}
 .tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
 .tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
 .tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
