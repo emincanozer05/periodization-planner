@@ -32952,34 +32952,6 @@ function AthWellness({ath,updAth}){
    in boxes, judgements in words, every scale with its key. It opens in its own window and goes straight to the print dialog, where "Save as
    PDF" writes the file; the browser paginates it, and no block is cut across a page.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* The radar of a rated section, as markup for the printed sheet (light colours). */
-function airRadarSvg(items,vals){
-  const N=items.length,W=380,H=262,cx=W/2,cy=H/2+2,R=76;
-  const ang=i=>-Math.PI/2+i*2*Math.PI/N;
-  const at=(i,r)=>[cx+r*Math.cos(ang(i)),cy+r*Math.sin(ang(i))];
-  const poly=r=>items.map((_,i)=>at(i,r).map(v=>v.toFixed(1)).join(',')).join(' ');
-  const sc=items.map(it=>{const v=Number((vals[it.k]||{}).s);return v>=1&&v<=4?v:0;});
-  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const lines=t=>{if(t.length<=15)return[t];const amp=t.indexOf(' & ');if(amp>0)return[t.slice(0,amp)+' &',t.slice(amp+3)];
-    const par=t.indexOf(' (');if(par>0)return[t.slice(0,par),t.slice(par+1)];
-    const mid=t.length/2;let b=-1;for(let k=0;k<t.length;k++)if(t[k]===' '&&(b<0||Math.abs(k-mid)<Math.abs(b-mid)))b=k;
-    return b>0?[t.slice(0,b),t.slice(b+1)]:[t];};
-  let o=`<svg viewBox="0 0 ${W} ${H}" class="radar">`;
-  [1,2,3,4].forEach(k=>{o+=`<polygon points="${poly(R*k/4)}" fill="none" stroke="${k===4?'#cfd4db':'#e2e5ea'}" stroke-width="1"/>`;});
-  items.forEach((_,i)=>{const[x,y]=at(i,R);o+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e2e5ea"/>`;});
-  [1,2,3].forEach(k=>{o+=`<text x="${cx+4}" y="${(cy-R*k/4+3).toFixed(1)}" font-size="8" fill="#9aa1ac">${k}</text>`;});
-  if(sc.some(v=>v>0)){
-    o+=`<polygon points="${sc.map((v,i)=>at(i,R*v/4).map(q=>q.toFixed(1)).join(',')).join(' ')}" fill="rgba(10,108,220,.16)" stroke="#0a6cdc" stroke-width="2" stroke-linejoin="round"/>`;
-    sc.forEach((v,i)=>{if(!v)return;const[x,y]=at(i,R*v/4),[lx,ly]=at(i,v===4?R*v/4-15:R*v/4+14);
-      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${scColor(v)}" stroke="#fff" stroke-width="1.4"/>`+
-        `<text x="${lx.toFixed(1)}" y="${(ly+3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#0f1720">${v.toFixed(1)}</text>`;});
-  }
-  items.forEach((it,i)=>{const c=Math.cos(ang(i)),s=Math.sin(ang(i));const[x,y]=at(i,R+20);
-    const an=c>0.3?'start':c<-0.3?'end':'middle';const ls=lines(L(it.tr,it.en));
-    const y0=y-(ls.length-1)*6+(s>0.5?8:s<-0.5?-3:4);
-    o+=`<text x="${x.toFixed(1)}" y="${y0.toFixed(1)}" text-anchor="${an}" font-size="10.2" font-weight="700" fill="#1f2731">${ls.map((l,j)=>`<tspan x="${x.toFixed(1)}" dy="${j?12:0}">${esc(l)}</tspan>`).join('')}</text>`;});
-  return o+'</svg>';
-}
 function printAthleteInfo(ath,setup,exercises,teamDays){
   const w=window.open('','_blank','width=980,height=1200');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
@@ -32988,7 +32960,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const{age,h,w:wt,ws,bf}=athProfileBasics(ath);
   const scout=ath.scout||{},grp=g=>scout[g]||{};
   const pNow=scPos(scout.posNow),pPot=scPos(scout.posPot);
-  const tech=scRead(SC_TECH,grp('tech')),mind=scRead(SC_MIND,grp('mind'));
+  const mind=scRead(SC_MIND,grp('mind'));
   const verdict=grp('verdict');
   const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
   const notes=athNotesList(ath);
@@ -33007,17 +32979,16 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
       return`<tr><td class="b">${esc(L(it.tr,it.en))}</td><td>${ok?`${scoreCells(v)}<b class="sv" style="color:${scColor(v)}">${v}</b> <span class="sw">${esc(L(SC_SCALE[v-1].tr,SC_SCALE[v-1].en))}</span>`:'<span class="sw">—</span>'}</td><td>${esc(c.n||'')||'<span class="sw">—</span>'}</td></tr>`;}).join('')}
   </table>`;
   const scaleKey=`<div class="key">${SC_SCALE.map(s=>`<span><i style="background:${s.c}"></i>${s.n} ${esc(L(s.tr,s.en))}</span>`).join('')}</div>`;
-  const listOf=(arr,empty)=>arr.length?`<ul class="ls">${arr.map(r=>`<li><i style="background:${scColor(r.s)}"></i><span>${esc(L(r.it.tr,r.it.en))}${r.n?`<em>${esc(r.n)}</em>`:''}</span><b style="color:${scColor(r.s)}">${r.s}</b></li>`).join('')}</ul>`:`<div class="none">${empty}</div>`;
   const posCard=(lbl,p)=>`<div class="card pos"><div class="pk">${lbl}</div>${p?`<div class="pn"><b>${p.k}</b>${esc(L(p.tr,p.en))}</div><div class="pd">${esc(L(p.defTr,p.defEn))} <span class="pe">${L('Örnek oyuncular','Example players')}: ${esc(p.ex.join(', '))}</span></div>`:`<div class="pn none">—</div>`}</div>`;
   /* ── 1 · Athlete profile ── */
   const s1=`<section>
-    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler, deneyim, hedefler ve bireysel gözlemler','Key measures, experience, goals and individual observations'))}
+    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler, hedefler ve atletik koç değerlendirmesi','Key measures, goals and the athletic coach’s assessment'))}
     <div class="kvs">${kv(L('Yaş','Age'),age!=null?age:'—',L('yıl','yrs'))}${kv(L('Boy','Height'),h?num(h.v):'—','cm')}${kv(L('Kilo','Weight'),wt?num(wt.v):'—','kg')}${kv(L('Kulaç','Wingspan'),ws?num(ws.v):'—','cm')}${kv(L('Yağ Oranı','Body Fat'),bf?num(bf.v):'—','%')}</div>
     <div class="two">
       <div class="card blk">${subH(L('Kısa Vadeli Performans Hedefleri','Short-Term Performance Goals'))}${txt(goals.short)}</div>
       <div class="card blk">${subH(L('Uzun Vadeli Performans Hedefleri','Long-Term Performance Goals'))}${txt(goals.long)}</div>
     </div>
-    <div class="card blk">${subH(L('Bireysel Gözlemler','Individual Observations'))}
+    <div class="card blk">${subH(L('Atletik Koç Değerlendirmesi','Athletic Coach Assessment'))}
       ${notes.length?`<div class="notes">${notes.map(n=>`<div class="note"><span class="nd">${n.date?fd(n.date):'—'}</span><div class="txt">${esc(n.text)}</div></div>`).join('')}</div>`:'<div class="txt none">—</div>'}</div>
   </section>`;
   /* ── 2 · Head coach's observations ── */
@@ -33025,17 +32996,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const s2=`<section>
     ${secH(2,L('Baş Antrenör Gözlemleri','Head Coach Observations'),L('Modern pozisyon, teknik-taktik ve zihinsel değerlendirme, genel değerlendirme · ölçek 1–4','Modern position, technical-tactical and mental assessment, overall verdict · scale 1–4'))}
     <div class="blk">${subH(L('Modern Pozisyon','Modern Position'))}<div class="two">${posCard(L('Mevcut','Current'),pNow)}${posCard(L('Potansiyel','Potential'),pPot)}</div></div>
-    <div class="blk">${subH(L('Teknik ve Taktik Değerlendirme','Technical & Tactical Assessment'))}
-      <div class="tt">
-        <div class="card rd">${airRadarSvg(SC_TECH,grp('tech'))}</div>
-        <div class="tt-side">
-          <div class="card avg"><div class="pk">${L('Genel Ortalama','Overall Average')}</div><div class="av"><b>${avgB(tech)}</b><span>/ 4</span></div><div class="bar"><i style="width:${tech.avg==null?0:tech.avg/4*100}%"></i></div></div>
-          <div class="card"><div class="pk acc">${L('Güçlü Yönler','Strengths')}</div>${listOf(tech.strong,L('3–4 puanlı kriter yok','No criterion scored 3–4'))}</div>
-          <div class="card"><div class="pk acc">${L('Geliştirilmesi Gereken Yönler','Areas to Develop')}</div>${listOf(tech.develop,L('1–2 puanlı kriter yok','No criterion scored 1–2'))}</div>
-        </div>
-      </div>
-    </div>
-    <div class="blk">${critTable(SC_TECH,grp('tech'))}</div>
+    <div class="blk">${subH(L('Teknik ve Taktik Değerlendirme','Technical & Tactical Assessment'))}${critTable(SC_TECH,grp('tech'))}</div>
     <div class="blk pg2">${subH(`${L('Zihinsel, Karakter ve Sosyal Beceriler','Mental, Character & Social Skills')} <span class="hv">${L('ortalama','average')} ${avgB(mind)} / 4</span>`)}${critTable(SC_MIND,grp('mind'))}${scaleKey}</div>
     <div class="card blk">${subH(L('Baş Antrenör Genel Değerlendirmesi','Head Coach’s Overall Assessment'))}${txt(verdict.summary)}
       <div class="sign"><span>${L('Baş Antrenör','Head Coach')}: <b>${esc(verdict.coach||'—')}</b></span><span>${L('Tarih','Date')}: <b>${esc(verdict.date||'—')}</b></span></div></div>
@@ -33044,19 +33005,21 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
      test on the record, one card each: its picture (grey-scale, small), its name and what it
      measures, and its numbers. The movement screen shows the latest result (and its change
      from the one before); jump and speed show every date, like the anthropometric tables.
-     The FMS Deep Squat card carries the athlete's own front and side photos instead of the
-     stock picture, when they were taken. */
+     The FMS Deep Squat card carries the athlete's own front and side photos (in colour, larger,
+     across the full width) instead of the stock picture, when they were taken. */
   const datedTests=[...(ath.tests||[])].filter(t=>t&&t.date).sort((a,b)=>a.date.localeCompare(b.date));
   const fmsIt=(t,id)=>fmsCalc(t.fms).items.find(i=>i.id===id)||{};
   const RS=[L('Sağ','R'),L('Sol','L')];
   const fmsTest=it=>({g:'move',id:'fms_'+it.id,tr:'FMS '+it.en,en:'FMS '+it.en,u:'/3',dir:'hi',
     rows:it.bi?[[RS[0],t=>fmsIt(t,it.id).right],[RS[1],t=>fmsIt(t,it.id).left]]:[[L('Skor','Score'),t=>fmsIt(t,it.id).score]]});
+  /* A row is [label, reading, options]: options.u prints a unit beside each value (the asymmetry
+     row's %), options.dir overrides the test's better direction for that row (a smaller gap is
+     better). A test's `dec` is the fewest decimals its values print with (RSI 2 → 2.0). */
   const lr=k=>[[RS[0],t=>cmpN(t[k]&&t[k].right)],[RS[1],t=>cmpN(t[k]&&t[k].left)]];
   const one=get=>[['',get]];
   const AIR_TESTS=[
     ...FMS_ITEMS.map(fmsTest),
     {g:'move',id:'ankleDF',tr:'Ayak Bileği Dorsifleksiyon',en:'Ankle Dorsiflexion',u:'°',dir:'hi',rows:lr('ankleDF')},
-    {g:'move',id:'aslr',tr:'Aktif Düz Bacak Kaldırma (ASLR)',en:'Active Straight Leg Raise (ASLR)',u:'/3',dir:'hi',rows:lr('aslr')},
     {g:'move',id:'ohs',tr:'Overhead Squat',en:'Overhead Squat',u:'/3',dir:'hi',rows:one(t=>cmpN(t.ohs&&t.ohs.score))},
     {g:'move',id:'hipRot',tr:'Kalça İç/Dış Rotasyon',en:'Hip Internal/External Rotation',u:'°',dir:'hi',
       rows:[[`IR ${RS[0]}`,t=>hipRotCalc(t).irR],[`IR ${RS[1]}`,t=>hipRotCalc(t).irL],[`ER ${RS[0]}`,t=>hipRotCalc(t).erR],[`ER ${RS[1]}`,t=>hipRotCalc(t).erL]]},
@@ -33068,9 +33031,10 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     {g:'jump',id:'verticalJump',tr:'Dikey Sıçrama',en:'Vertical Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.verticalJump))},
     {g:'jump',id:'cmj',tr:'CMJ (Countermovement Jump)',en:'CMJ (Countermovement Jump)',u:'cm',dir:'hi',rows:one(t=>cmpN(t.cmj))},
     {g:'jump',id:'squatJump',tr:'Squat Jump',en:'Squat Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.squatJump))},
-    {g:'jump',id:'dropJump',tr:'Drop Jump',en:'Drop Jump',u:'RSI',dir:'hi',rows:one(t=>cmpN(t.dropJump))},
+    {g:'jump',id:'dropJump',tr:'Drop Jump',en:'Drop Jump',u:'RSI',dir:'hi',dec:1,rows:one(t=>cmpN(t.dropJump))},
     {g:'jump',id:'horizontalJump',tr:'Yatay Sıçrama',en:'Horizontal Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.horizontalJump))},
-    {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',rows:lr('lateralCmj')},
+    {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',rows:[...lr('lateralCmj'),
+      [L('Asimetri','Asymmetry'),t=>asymPct(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left,'hi'),{u:'%',dir:'lo'}]]},
     {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:one(t=>cmpN(t.sprint20m&&t.sprint20m.time))},
     {g:'speed',id:'accel',tr:'5-10 m İvmelenme',en:'5-10 m Acceleration',u:'s',dir:'lo',rows:[['5 m',t=>accelCalc(t).t5],['10 m',t=>accelCalc(t).t10]]},
     {g:'speed',id:'tTest',tr:'T-Çeviklik Testi',en:'T-Agility Test',u:'s',dir:'lo',rows:one(t=>cmpN(t.tTest))},
@@ -33089,7 +33053,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
      against the page's own address so a site served from a sub-folder still finds it. */
   const abs=p=>{const q=String(p).replace(/^(tests|fms)\//,'$1/sm/');try{return new URL(q,location.href).href;}catch(e){return q;}};
   const tcImg=d=>{
-    if(d.id==='fms_deepSquat'&&dsPh)return`<div class="tc-im ph">${['front','side'].filter(k=>hasMedia(dsPh[k])).map(k=>`<img src="${esc(mediaSrc(dsPh[k]))}" alt=""/>`).join('')}</div>`;
+    if(d.id==='fms_deepSquat'&&dsPh)return`<div class="tc-im ph">${[['front',L('Önden','Front')],['side',L('Yandan','Side')]].map(([k,l])=>
+      `<figure>${hasMedia(dsPh[k])?`<img src="${esc(mediaSrc(dsPh[k]))}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${l}</figcaption></figure>`).join('')}</div>`;
     const p=TEST_IMG[d.id];
     return p?`<div class="tc-im"><img src="${esc(TEST_THUMB[p]||abs(p))}" alt=""/></div>`:'<div class="tc-im none"></div>';};
   /* What the test measures: its "used to assess" line; an FMS movement's is its scoring rule,
@@ -33097,7 +33062,10 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const tcWhat=d=>{if(/^fms_/.test(d.id)){const m=TEST_META[d.id];return m?L(m.tr,m.en):'';}
     const i=TEST_INFO[d.id];return i?L(i.tr,i.en).p:'';};
   const tcInfo=d=>{const w=tcWhat(d);
-    return`<div class="tc-i"><div class="tc-n">${esc(L(d.tr,d.en))} <em>${esc(d.u)}</em></div>${w?`<div class="tc-w">${esc(w)}</div>`:''}</div>`;};
+    /* An English test name is marked so: upper-cased under the sheet's Turkish it would read
+       "ACTİVE STRAİGHT-LEG RAİSE". */
+    const n=L(d.tr,d.en),en=n===d.en&&REPORT_LANG==='tr';
+    return`<div class="tc-i"><div class="tc-n"${en?' lang="en"':''}>${esc(n)} <em>${esc(d.u)}</em></div>${w?`<div class="tc-w">${esc(w)}</div>`:''}</div>`;};
   const TC_PER_ROW=6;
   /* The readings as a slim table, dates along the top. `latest` keeps only the newest date,
      with its change from the reading before. */
@@ -33105,7 +33073,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     const all=d.pts.map((p,i)=>({...p,i}));
     const cols=latest?all.slice(-1):all;
     const prevOf=(ri,i)=>{for(let j=i-1;j>=0;j--)if(all[j].vs[ri]!=null)return all[j].vs[ri];return null;};
-    const tone=dv=>!d.dir||!dv?'':((d.dir==='hi')===(dv>0)?'up':'dn');
+    const tone=(dv,dir)=>!dir||!dv?'':((dir==='hi')===(dv>0)?'up':'dn');
+    const fv=v=>{const t=athTestFmt(v);return d.dec&&!t.includes('.')?Number(v).toFixed(d.dec):t;};
     const chunks=[];for(let i=0;i<cols.length;i+=TC_PER_ROW)chunks.push(cols.slice(i,i+TC_PER_ROW));
     const n=Math.min(cols.length,TC_PER_ROW);
     const hasLbl=d.rows.some(r=>r[0]);
@@ -33113,8 +33082,9 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     return`<table class="tc-t">${chunks.map(c=>`<tr class="an-d">${hasLbl?'<th class="rl"></th>':''}${c.map(p=>`<th>${fd(p.date)}</th>`).join('')}${pad(c,'th')}</tr>
       ${d.rows.map((r,ri)=>`<tr class="an-v">${hasLbl?`<td class="rl">${esc(r[0])}</td>`:''}${c.map(p=>{const v=p.vs[ri];if(v==null)return'<td><span class="sw">—</span></td>';
         const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
-        return`<td><b>${athTestFmt(v)}</b>${dv?`<i class="${tone(dv)}">${dv>0?'+':''}${athTestFmt(dv)}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
-  const tcCard=(d,latest)=>`<div class="tc${latest?' sm':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
+        const o=r[2]||{},u=o.u||'';
+        return`<td><b>${fv(v)}${u}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${u}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
+  const tcCard=(d,latest)=>`<div class="tc${latest?' sm':''}${d.id==='fms_deepSquat'&&dsPh?' ds':''}">${tcImg(d)}${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div>`;
   const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
   const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
   const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
@@ -33259,22 +33229,6 @@ section{margin-top:12px}
 .pos .pn{font-size:11.5px}
 .pos .pd{font-size:8.6px;line-height:1.35;color:var(--t2);margin-top:3px}
 .pos .pe{color:var(--mu);font-style:italic}
-.tt{display:grid;grid-template-columns:1.25fr 1fr;gap:8px;margin-bottom:0}
-.tt-side{display:flex;flex-direction:column;gap:6px}
-.tt-side .card{padding:6px 10px}
-.rd{display:flex;align-items:center;justify-content:center}
-.radar{width:100%;height:auto;max-height:178px}
-.avg .av{display:flex;align-items:baseline;gap:5px}
-.avg .av b{font-size:20px;color:var(--acc);line-height:1}
-.avg .av span{font-size:12px;color:var(--mu)}
-.avg .bar{height:5px;border-radius:999px;background:var(--ln);margin-top:5px;overflow:hidden}
-.avg .bar i{display:block;height:100%;background:var(--acc);border-radius:999px}
-.ls{list-style:none;display:flex;flex-direction:column;gap:2px}
-.ls li{display:flex;align-items:flex-start;gap:7px;font-size:10px}
-.ls li i{width:7px;height:7px;border-radius:2px;margin-top:3px;flex:none}
-.ls li span{flex:1}
-.ls li em{font-style:normal;color:var(--mu);font-size:8.5px;margin-left:5px}
-.ls li b{font-size:10.5px}
 table{width:100%;border-collapse:collapse}
 th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);text-align:left;font-weight:700;padding:5px 6px;border-bottom:1px solid var(--ln2);background:var(--soft)}
 td{font-size:9.8px;padding:5px 6px;border-bottom:1px solid var(--ln);vertical-align:top}
@@ -33302,6 +33256,11 @@ td.r,th.r{text-align:right}
 .tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
 .tc-im.none{background:none}
 .tc-im.ph img{object-fit:contain;background:var(--soft)}
+.tc.ds{grid-column:1/-1;grid-template-columns:62mm minmax(0,1fr) auto}
+.tc.ds .tc-im{height:auto;gap:4px;background:none;overflow:visible}
+.tc.ds figure{flex:1;min-width:0;text-align:center}
+.tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
+.tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
 .tc-n em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
 .tc-w{font-size:7.8px;line-height:1.32;color:var(--t2);margin-top:2px}

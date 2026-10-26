@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1765**, yinelenen: **0**
+- Üst düzey ad sayısı: **1764**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -99,7 +99,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 51 | `athlete-phv` | 12 | `prelude`, `dates-language-factories` |
 | 52 | `injury-surveillance` | 15 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony` |
 | 53 | `athlete-wellness-hrv` | 17 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `athlete-detail-snapshot` |
-| 54 | `athlete-info-report` | 2 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑, `atp-athlete-training-profile`↑ |
+| 54 | `athlete-info-report` | 1 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑, `atp-athlete-training-profile`↑ |
 | 55 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv` |
 | 56 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 57 | `sync-infra-chunking-merge` | 77 | `team-data-migration` |
