@@ -2,7 +2,8 @@
    ATLETİK GELİŞİM RAPORU — SAYFA. Test ve Değerlendirme'de sporcu kartındaki düğme bu
    sayfayı açar (sekmenin yerini alır, "Testlere dön" ile çıkılır). Koyu ışıklı başlık bandı
    (sporcu, gelişim halkası, dört sayı), test zaman çizgisi, en çok gelişen / takip edilmesi
-   gereken ölçümler, kategori kategori trend kartları ve tablolar, fotoğraflı testlerde tarih
+   gereken ölçümler; Güç & Sıçrama ve Sürat & Çeviklik'te her ölçüm, dinlenik kalp atım hızı ve
+   uyku süresi kendi büyük grafiğiyle, diğer kategoriler tablo; fotoğraflı testlerde tarih
    tarih ve önce/sonra kaydırmalı karşılaştırma. "Çıktı Al" aynı veriden A4 çıktıyı açar
    (printDevReport). Veri: devReportData (295).
    ========================================================= */
@@ -17,33 +18,104 @@ function DevDelta({r}){
   </span>);
 }
 
-/* A metric's trend as a small area chart: the line in its category's colour, the latest
-   reading ringed, values on the first and latest point; hover a point for its date. */
-function DevSpark({r,tests,col}){
-  const W=280,H=92,pl=12,pr=12,pt=18,pb=18;
-  const vs=r.pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
-  if(lo===hi){lo-=1;hi+=1;}const pad=(hi-lo)*.2;lo-=pad;hi+=pad;
-  const X=k=>pl+(r.pts.length>1?k/(r.pts.length-1):.5)*(W-pl-pr);
+/* A step on a readable axis: 1, 2, 2.5 or 5 times a power of ten. */
+const devNiceStep=x=>{const p=Math.pow(10,Math.floor(Math.log10(x)));const m=x/p;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;};
+/* The big chart: one measure over time, on a real axis. Gridlines with their values, the
+   series as a glowing line over a gradient (or as bars), every point's value while they fit,
+   the best reading ringed and named, the average as a dashed line and an optional target. The
+   line draws itself in; hover a point for its date. pts: [{v, x: axis label, t: hover title}]
+   `W` is the drawing width: a half-width card draws narrower so its text keeps its size. */
+function DevBigChart({pts,col,dir,fmtV,unit,bars,target,targetLbl,id,W=760}){
+  const H=W<600?240:260,pl=46,pr=20,pt=30,pb=34;
+  const fv=fmtV||devFv;
+  const vs=pts.map(p=>p.v);
+  let lo=Math.min(...vs),hi=Math.max(...vs);
+  if(target!=null){lo=Math.min(lo,target);hi=Math.max(hi,target);}
+  if(lo===hi){lo-=1;hi+=1;}
+  const pad=(hi-lo)*.12;if(!bars)lo-=pad;hi+=pad;
+  const step=devNiceStep((hi-lo)/4);
+  lo=bars?0:Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;
+  const ticks=[];for(let v=lo;v<=hi+step*1e-6;v+=step)ticks.push(+v.toFixed(6));
+  const n=pts.length,band=(W-pl-pr)/n;
+  const X=k=>bars?pl+band*(k+.5):pl+(n>1?k/(n-1):.5)*(W-pl-pr);
   const Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
-  const P=r.pts.map((p,k)=>[X(k),Y(p.v)]);
+  const P=pts.map((p,k)=>[X(k),Y(p.v)]);
   const line=P.map((q,k)=>(k?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
-  const area=`${line} L${P[P.length-1][0].toFixed(1)} ${H-pb} L${P[0][0].toFixed(1)} ${H-pb} Z`;
-  const gid='drg-'+r.m.id;
-  const lastK=P.length-1;
-  return(<svg className="dr-spark" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={cmpLabel(r.m)}>
-    <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".32"/><stop offset="1" stopColor={col} stopOpacity="0"/></linearGradient></defs>
-    <line x1={pl} y1={H-pb} x2={W-pr} y2={H-pb} className="dr-spark-base"/>
-    <path d={area} fill={`url(#${gid})`}/>
-    <path d={line} fill="none" stroke={col} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"/>
-    {P.map((q,k)=>{const t=tests[r.pts[k].i];const lbl=k===0||k===lastK||r.pts.length<=4;
-      return(<g key={k}>
-        <title>{`${fdL(t.date)} · ${devPer(t)}: ${devFv(r.pts[k].v)}${r.m.u?' '+r.m.u:''}`}</title>
-        <circle cx={q[0]} cy={q[1]} r="11" fill="transparent"/>
-        <circle cx={q[0]} cy={q[1]} r={k===lastK?5:3.5} fill={k===lastK?col:'var(--panel)'} stroke={k===lastK?'var(--panel)':col} strokeWidth={k===lastK?2.5:2}/>
-        {lbl&&<text x={q[0]} y={q[1]-9} textAnchor="middle" className="dr-spark-v">{devFv(r.pts[k].v)}</text>}
-      </g>);})}
-    {P.map((q,k)=>(k===0||k===lastK)?<text key={'x'+k} x={q[0]} y={H-4} textAnchor={k===0&&P.length>1?'start':k===lastK&&P.length>1?'end':'middle'} className="dr-spark-x">{devShortD(tests[r.pts[k].i].date)}</text>:null)}
+  const area=`${line} L${P[n-1][0].toFixed(1)} ${H-pb} L${P[0][0].toFixed(1)} ${H-pb} Z`;
+  const bestK=dir?vs.indexOf(dir==='hi'?Math.max(...vs):Math.min(...vs)):-1;
+  const avg=vs.reduce((s,x)=>s+x,0)/n;
+  const labelAll=n<=12,xEvery=Math.max(1,Math.ceil(n/9));
+  const gid='dbg-'+id,bw=Math.min(30,band*.62);
+  return(<svg className="dr-big" viewBox={`0 0 ${W} ${H}`} role="img">
+    <defs>
+      <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".38"/><stop offset="1" stopColor={col} stopOpacity="0"/></linearGradient>
+    </defs>
+    {ticks.map(v=><g key={v}><line x1={pl} x2={W-pr} y1={Y(v)} y2={Y(v)} className="dr-big-grid"/>
+      <text x={pl-8} y={Y(v)+4} textAnchor="end" className="dr-big-tick">{devFv(v)}</text></g>)}
+    {/* the average's name sits at the left end, clear of the latest value at the right; with a
+        target beside it, the target's name goes under its line */}
+    {n>1&&<g><line x1={pl} x2={W-pr} y1={Y(avg)} y2={Y(avg)} className="dr-big-avg"/>
+      <text x={pl+6} y={Y(avg)-6} className="dr-big-avgt">{L('ort.','avg')} {fv(avg)}</text></g>}
+    {target!=null&&<g><line x1={pl} x2={W-pr} y1={Y(target)} y2={Y(target)} className="dr-big-target"/>
+      <text x={pl+6} y={Y(target)+(n>1?15:-6)} className="dr-big-tgtt">{targetLbl}</text></g>}
+    {bars?pts.map((p,k)=>{const y=Y(p.v),ok=target==null||p.v>=target;
+      return(<g key={k}><title>{p.t}</title>
+        <rect x={P[k][0]-bw/2} y={y} width={bw} height={Math.max(0,H-pb-y)} rx="5" fill={col} opacity={ok?1:.42} className="dr-big-bar" style={{animationDelay:Math.min(k*25,600)+'ms'}}/>
+        {(labelAll||k===n-1||k===bestK)&&<text x={P[k][0]} y={y-7} textAnchor="middle" className="dr-big-v">{fv(p.v)}</text>}
+      </g>);})
+    :<>
+      <path d={area} fill={`url(#${gid})`} className="dr-big-area"/>
+      <path d={line} fill="none" stroke={col} strokeWidth="3.2" strokeLinejoin="round" strokeLinecap="round" pathLength="1" className="dr-big-line" style={{'--gc':col}}/>
+      {P.map((q,k)=>{const best=k===bestK&&n>1,lastP=k===n-1;
+        return(<g key={k}><title>{pts[k].t}</title>
+          <circle cx={q[0]} cy={q[1]} r="14" fill="transparent"/>
+          {best&&<circle cx={q[0]} cy={q[1]} r="11" fill="none" stroke={col} strokeOpacity=".45" strokeWidth="2" className="dr-big-pulse"/>}
+          <circle cx={q[0]} cy={q[1]} r={lastP||best?6:4.5} fill={lastP?col:'var(--panel)'} stroke={lastP?'var(--panel)':col} strokeWidth={lastP?3:2.4}/>
+          {(labelAll||lastP||best)&&<text x={q[0]} y={q[1]-13} textAnchor="middle" className="dr-big-v">{fv(pts[k].v)}</text>}
+          {best&&<text x={q[0]} y={q[1]+24} textAnchor="middle" className="dr-big-best" fill={col}>{L('EN İYİ','BEST')}</text>}
+        </g>);})}
+    </>}
+    {pts.map((p,k)=>(n-1-k)%xEvery===0?<text key={'x'+k} x={P[k][0]} y={H-10} textAnchor="middle" className="dr-big-x">{p.x}</text>:null)}
+    {unit&&<text x={pl-8} y={pt-14} textAnchor="end" className="dr-big-tick">{unit}</text>}
   </svg>);
+}
+
+/* One measure of a charted group: its name and which way is better, four numbers (latest,
+   first, best, change) and the big chart over its tests. */
+function DevMetricChart({r,tests,col}){
+  const vs=r.pts.map(p=>p.v);
+  const best=r.m.dir?(r.m.dir==='hi'?Math.max(...vs):Math.min(...vs)):null;
+  const u=r.m.u||'';
+  return(<div className="dr-fc" style={{'--gc':col}}>
+    <div className="dr-fc-h"><div><b>{cmpLabel(r.m)}</b><span>{r.m.dir==='hi'?L('yüksek daha iyi','higher is better'):r.m.dir==='lo'?L('düşük daha iyi','lower is better'):''}</span></div><DevDelta r={r}/></div>
+    <div className="dr-fc-s">
+      <div><span>{L('Son','Latest')}</span><b>{devFv(r.b.v)}<small>{u}</small></b></div>
+      <div><span>{L('İlk','First')}</span><b>{devFv(r.a.v)}<small>{u}</small></b></div>
+      {best!=null&&<div><span>{L('En iyi','Best')}</span><b>{devFv(best)}<small>{u}</small></b></div>}
+      <div><span>{L('Ölçüm','Readings')}</span><b>{r.pts.length}</b></div>
+    </div>
+    <DevBigChart id={r.m.id} col={col} dir={r.m.dir} unit={u} W={480}
+      pts={r.pts.map(p=>{const t=tests[p.i];return{v:p.v,x:devShortD(t.date),t:`${fdL(t.date)} · ${devPer(t)}: ${devFv(p.v)}${u?' '+u:''}`};})}/>
+  </div>);
+}
+
+/* Resting heart rate / sleep: four numbers and the big chart, daily or weekly. */
+function DevRecovery({S,id,title,sub,col,unit,fmtV,bars,target,targetLbl}){
+  const dTxt=S.d==null?'—':`${S.d>0?'+':S.d<0?'−':''}${fmtV(Math.abs(S.d))} ${unit}`;
+  return(<div className="dr-fc dr-rc" style={{'--gc':col}}>
+    <div className="dr-fc-h"><div><b>{title}</b><span>{sub} · {S.weekly?L('haftalık ortalama','weekly mean'):L('günlük','daily')} · {fdL(S.from)} → {fdL(S.to)}</span></div>
+      <span className={'dr-pill '+S.tone}>{dTxt}</span></div>
+    <div className="dr-fc-s">
+      <div><span>{L('Son','Latest')}</span><b>{fmtV(S.b.v)}<small>{unit}</small></b></div>
+      <div><span>{L('Ortalama','Average')}</span><b>{fmtV(S.avg)}<small>{unit}</small></b></div>
+      <div><span>{L('En düşük','Lowest')}</span><b>{fmtV(S.min)}<small>{unit}</small></b></div>
+      <div><span>{L('En yüksek','Highest')}</span><b>{fmtV(S.max)}<small>{unit}</small></b></div>
+      <div><span>{L('Kayıt','Entries')}</span><b>{S.n}<small>{L('gün','days')}</small></b></div>
+    </div>
+    <DevBigChart id={id} col={col} dir={S.dir} unit={unit} fmtV={fmtV} bars={bars} target={target} targetLbl={targetLbl}
+      pts={S.pts.map(p=>({v:p.v,x:devShortD(p.date).replace(/ \d+$/,'')+' '+parseD(p.date).getDate(),
+        t:`${S.weekly?L('Hafta: ','Week of '):''}${fdL(p.date)}: ${fmtV(p.v)} ${unit}${p.n?` (${p.n} ${L('gün','days')})`:''}`}))}/>
+  </div>);
 }
 
 /* Before / after: the earliest and the latest photo of one view laid over each other, a
@@ -70,7 +142,16 @@ function DevReportPage({ath,setup,customTests,onBack}){
   useEffect(()=>{try{rootRef.current&&rootRef.current.scrollIntoView({block:'start'});}catch(e){}},[ath&&ath.id]);
   const back=<button className="dr-btn ghost" onClick={onBack}>← {L('Testlere dön','Back to tests')}</button>;
   if(!D)return(<div className="dr" ref={rootRef}><div className="dr-bar">{back}</div><div className="empty-st">{L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.')}</div></div>);
-  const{tests,n,first,last,rows,scored,upN,downN,sameN,topUp,topDown,spanTxt,groups,photoSets}=D;
+  const{tests,n,first,last,rows,scored,upN,downN,sameN,topUp,topDown,spanTxt,groups,photoSets,rhr,sleep}=D;
+  /* Sections in reading order: Power & Jump and Speed & Agility as one big chart per measure,
+     resting heart rate and sleep, then every other group as its table. */
+  const grpSec=(x,chart)=>({kind:'group',id:x.g.id,g:x.g,list:x.list,chart,title:L(x.g.tr,x.g.en),sub:`${x.list.length} ${L('ölçüm','measures')}`,col:DEV_GROUP_COL[x.g.id]||'var(--accent)'});
+  const secs=[
+    ...DEV_CHART_GROUPS.map(id=>groups.find(x=>x.g.id===id)).filter(Boolean).map(x=>grpSec(x,true)),
+    ...(rhr?[{kind:'rhr',id:'rhr',title:L('Dinlenik Kalp Atım Hızı','Resting Heart Rate'),sub:`${rhr.n} ${L('gün','days')}`,col:'#f472b6'}]:[]),
+    ...(sleep?[{kind:'sleep',id:'sleep',title:L('Uyku Süresi','Sleep Duration'),sub:`${sleep.n} ${L('gece','nights')}`,col:'#818cf8'}]:[]),
+    ...groups.filter(x=>!DEV_CHART_GROUPS.includes(x.g.id)).map(x=>grpSec(x,false)),
+  ];
   const age=(()=>{if(!ath.dateOfBirth)return null;const b=parseD(ath.dateOfBirth),t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})();
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rate=scored.length?Math.round(upN/scored.length*100):null;
@@ -139,22 +220,25 @@ function DevReportPage({ath,setup,customTests,onBack}){
 
     {/* ---- category nav ---- */}
     <div className="dr-nav">
-      {groups.map(({g})=><button key={g.id} onClick={()=>go(g.id)}><i style={{background:DEV_GROUP_COL[g.id]}}/>{L(g.tr,g.en)}</button>)}
+      {secs.map(x=><button key={x.id} onClick={()=>go(x.id)}><i style={{background:x.col}}/>{x.title}</button>)}
       {photoSets.length>0&&<button onClick={()=>go('photos')}><i style={{background:'var(--text2)'}}/>{L('Görsel Karşılaştırma','Visual Comparison')}</button>}
     </div>
 
-    {/* ---- categories ---- */}
-    {groups.map(({g,list},gi)=>{const col=DEV_GROUP_COL[g.id]||'var(--accent)';const charted=list.filter(r=>r.pts.length>1);
-      const open=tblOpen[g.id]!==undefined?tblOpen[g.id]:charted.length===0;
-      return(<section key={g.id} id={'dr-sec-'+g.id} className="dr-sec" style={{'--gc':col}}>
-        <div className="dr-sec-h"><span className="dr-sec-n">{String(gi+1).padStart(2,'0')}</span><h2>{L(g.tr,g.en)}</h2>
-          <small>{list.length} {L('ölçüm','measures')}</small>
-          <button className="dr-btn ghost sm" onClick={()=>setTblOpen(o=>({...o,[g.id]:!open}))}>{open?L('Tabloyu gizle','Hide table'):L('Tabloyu göster','Show table')}</button></div>
-        {charted.length>0&&<div className="dr-mcs">{charted.map(r=>(<div key={r.m.id} className="dr-mc">
-          <div className="dr-mc-h"><span>{cmpLabel(r.m)}</span><DevDelta r={r}/></div>
-          <div className="dr-mc-v">{devFv(r.b.v)}{r.m.u&&<small>{r.m.u}</small>}<em>{L('ilk','first')} {devFv(r.a.v)}</em></div>
-          <DevSpark r={r} tests={tests} col={col}/>
-        </div>))}</div>}
+    {/* ---- sections: the charted ones first, then the tables ---- */}
+    {secs.map((x,si)=>{
+      const head=(extra)=>(<div className="dr-sec-h"><span className="dr-sec-n">{String(si+1).padStart(2,'0')}</span><h2>{x.title}</h2>
+        {x.sub&&<small>{x.sub}</small>}{extra}</div>);
+      if(x.kind==='rhr')return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>{head()}
+        <DevRecovery S={rhr} id="rhr" title={L('Dinlenik Kalp Atım Hızı','Resting Heart Rate')} sub={L('sabah check-in, düşük daha iyi','morning check-in, lower is better')}
+          col={x.col} unit="bpm" fmtV={v=>String(Math.round(v))}/></section>);
+      if(x.kind==='sleep')return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>{head()}
+        <DevRecovery S={sleep} id="sleep" title={L('Uyku Süresi','Sleep Duration')} sub={L('gece kaydı, hedef 8 saat','night log, 8-hour target')}
+          col={x.col} unit={L('sa','h')} fmtV={v=>(Math.round(v*10)/10).toFixed(1)} bars target={8} targetLbl={L('hedef 8 sa','target 8 h')}/></section>);
+      const{g,list}=x;const charted=x.chart?list.filter(r=>r.pts.length>1):[];
+      const open=!charted.length||!!tblOpen[g.id];
+      return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>
+        {head(charted.length>0&&<button className="dr-btn ghost sm" onClick={()=>setTblOpen(o=>({...o,[g.id]:!open}))}>{open?L('Tabloyu gizle','Hide table'):L('Tabloyu göster','Show table')}</button>)}
+        {charted.length>0&&<div className="dr-fcs">{charted.map(r=><DevMetricChart key={r.m.id} r={r} tests={tests} col={x.col}/>)}</div>}
         {open&&<div className="dr-tbl"><table>
           <thead><tr><th className="l">{L('Ölçüm','Measure')}</th>{tests.map((t,i)=><th key={i}>{fd(t.date)}<span>{devPer(t)}</span></th>)}<th>{L('Değişim','Change')}</th></tr></thead>
           <tbody>{list.map(r=><tr key={r.m.id}><td className="l">{cmpLabel(r.m)}{r.m.u&&<small> {r.m.u}</small>}</td>
@@ -165,7 +249,7 @@ function DevReportPage({ath,setup,customTests,onBack}){
 
     {/* ---- photos ---- */}
     {ps&&<section id="dr-sec-photos" className="dr-sec" style={{'--gc':'var(--text2)'}}>
-      <div className="dr-sec-h"><span className="dr-sec-n">{String(groups.length+1).padStart(2,'0')}</span><h2>{L('Görsel Karşılaştırma','Visual Comparison')}</h2><small>{L('tarihe göre','by date')}</small></div>
+      <div className="dr-sec-h"><span className="dr-sec-n">{String(secs.length+1).padStart(2,'0')}</span><h2>{L('Görsel Karşılaştırma','Visual Comparison')}</h2><small>{L('tarihe göre','by date')}</small></div>
       {photoSets.length>1&&<div className="dr-tabs">{photoSets.map((p,i)=><button key={p.s.id} className={p===ps?'on':''} onClick={()=>{setPsIdx(i);setBaView(null);}}>{L(p.s.tr,p.s.en)}</button>)}</div>}
       {(()=>{const{s,dated,views,has}=ps;
         const pair=dated.length>1?[dated[0],dated[dated.length-1]]:null;

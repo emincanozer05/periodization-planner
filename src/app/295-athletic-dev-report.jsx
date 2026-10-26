@@ -44,9 +44,39 @@ function devPhotoSets(){
   ];
 }
 
+/* The groups drawn as charts, one large chart per measure; every other group is a table. */
+const DEV_CHART_GROUPS=['pow','spd'];
+/* A daily recovery reading over time — resting heart rate from the morning check-in
+   (`ath.wellness[].RHR`) or sleep from the night log (`ath.nightLog`, nightSleepMin) — from the
+   first test on (all of it when nothing falls there). One value per day, the day's last entry;
+   past 30 days the points become weekly means (Monday weeks), the latest 52. The change is the
+   first point against the latest; `dir` says which way is better. */
+function devDailySeries(raw,from,dir){
+  const byDay=new Map();
+  raw.filter(p=>p.date&&p.v!=null&&isFinite(p.v)&&p.v>0).sort((a,b)=>a.date.localeCompare(b.date)).forEach(p=>byDay.set(p.date,p.v));
+  let days=[...byDay].map(([date,v])=>({date,v}));
+  const inRange=days.filter(p=>p.date>=from);
+  if(inRange.length)days=inRange;
+  if(!days.length)return null;
+  let pts=days.slice(-30),weekly=false;
+  if(days.length>30){
+    weekly=true;
+    const wk=new Map();
+    days.forEach(p=>{const d=parseD(p.date);const k=fmt(addD(d,-((d.getDay()+6)%7)));(wk.get(k)||wk.set(k,[]).get(k)).push(p.v);});
+    pts=[...wk].map(([date,vs])=>({date,v:vs.reduce((s,x)=>s+x,0)/vs.length,n:vs.length})).slice(-52);
+  }
+  const vs=days.map(p=>p.v);
+  const a=pts[0],b=pts[pts.length-1];
+  const d=pts.length>1?b.v-a.v:null;
+  const tone=(d==null||Math.abs(d)<1e-9)?'neu':((dir==='hi')===(d>0)?'up':'down');
+  return{pts,weekly,n:days.length,from:days[0].date,to:days[days.length-1].date,
+    avg:vs.reduce((s,x)=>s+x,0)/vs.length,min:Math.min(...vs),max:Math.max(...vs),a,b,d,tone,dir};
+}
+
 /* Everything the report shows, computed once for both the page and its printout: the dated
    tests in order, every metric read off every test (change = first → latest reading), the
-   summary counts and highlights, the category groups and the photo sets to compare. */
+   summary counts and highlights, the category groups, resting heart rate and sleep, and the
+   photo sets to compare. */
 function devReportData(ath,customTests){
   const tests=[...((ath&&ath.tests)||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
   if(!tests.length)return null;
@@ -78,7 +108,9 @@ function devReportData(ath,customTests){
     if(dated.length>4)dated=[dated[0],...dated.slice(-3)];
     return{s,dated,views:s.views.filter(([k])=>dated.some(t=>has(t,k))),has};
   }).filter(Boolean);
-  return{tests,n,first,last,rows,scored,upN,downN,sameN,topUp,topDown,days,spanTxt,groups,photoSets};
+  const rhr=devDailySeries((ath.wellness||[]).map(w=>({date:w&&w.date,v:recNum(w&&w.RHR)})),first.date,'lo');
+  const sleep=devDailySeries((ath.nightLog||[]).map(x=>{const m=nightSleepMin(x);return{date:x&&x.date,v:m!=null?m/60:null};}),first.date,'hi');
+  return{tests,n,first,last,rows,scored,upN,downN,sameN,topUp,topDown,days,spanTxt,groups,photoSets,rhr,sleep};
 }
 // Two decimals at most: a sprint's 3.31 s is not 3.3 s, and a change of 0.07 s is not 0.1 s.
 const devFv=v=>v==null?'—':String(+(Math.round(v*100)/100));
@@ -103,33 +135,35 @@ function printDevReport(ath,setup,customTests){
     return`<span class="chip ${r.tone}">${s}${r.pct!=null&&r.d!==0?` <i>(${r.d>0?'+':'−'}${pctTxt(r.pct)})</i>`:''}</span>`;};
   const unit=m=>m.u?` <small>${esc(m.u)}</small>`:'';
 
-  /* A metric's trend: one ink line over the tests it was measured in, the latest reading
-     marked in the accent colour; values written on the points while there is room for them. */
-  const chart=r=>{
-    const W=300,H=112,pl=14,pr=14,pt=20,pb=20;
-    const vs=r.pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
+  /* A trend: one ink line over its points ({v, x: axis label, t: hover title, s: value text}),
+     the latest marked in the accent colour; values written on the points while there is room.
+     `W` widens it for the full-width recovery charts. */
+  const lineSvg=(pts,label,W=300)=>{
+    const H=112,pl=14,pr=14,pt=20,pb=20;
+    const vs=pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
     if(lo===hi){lo-=1;hi+=1;}const pad=(hi-lo)*.18;lo-=pad;hi+=pad;
-    const xs=r.pts.map((_,k)=>pl+(r.pts.length>1?k/(r.pts.length-1):.5)*(W-pl-pr));
+    const xs=pts.map((_,k)=>pl+(pts.length>1?k/(pts.length-1):.5)*(W-pl-pr));
     const Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
-    const P=r.pts.map((p,k)=>[xs[k],Y(p.v)]);
+    const P=pts.map((p,k)=>[xs[k],Y(p.v)]);
     const line=P.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
     const base=H-pb;
     const area=`${P[0][0].toFixed(1)},${base} ${line} ${P[P.length-1][0].toFixed(1)},${base}`;
-    const many=r.pts.length>6;
-    const showLbl=k=>!many||k===0||k===r.pts.length-1;
-    const showX=k=>!many||k===0||k===r.pts.length-1||k%Math.ceil(r.pts.length/5)===0;
-    return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cmpLabel(r.m))}">
+    const many=pts.length>(W>400?14:6);
+    const showLbl=k=>!many||k===0||k===pts.length-1;
+    const showX=k=>!many||k===0||k===pts.length-1||k%Math.ceil(pts.length/(W>400?8:5))===0;
+    return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
       <line x1="${pl}" y1="${base}" x2="${W-pr}" y2="${base}" stroke="#e5e7eb"/>
       <polygon points="${area}" fill="rgba(15,23,42,.05)"/>
       <polyline points="${line}" fill="none" stroke="#1f2937" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      ${P.map((q,k)=>{const isLast=k===P.length-1;const t=tests[r.pts[k].i];
-        return`<g><title>${esc(fdL(t.date))}: ${fv(r.pts[k].v)}${r.m.u?' '+esc(r.m.u):''}</title>
+      ${P.map((q,k)=>{const isLast=k===P.length-1;
+        return`<g><title>${esc(pts[k].t)}</title>
         <circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="10" fill="transparent"/>
         <circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${isLast?5:4}" fill="${isLast?'#9aab3a':'#fff'}" stroke="${isLast?'#fff':'#1f2937'}" stroke-width="${isLast?2:1.6}"/>
-        ${showLbl(k)?`<text x="${q[0].toFixed(1)}" y="${(q[1]-9).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${fv(r.pts[k].v)}</text>`:''}</g>`;}).join('')}
-      ${P.map((q,k)=>showX(k)?`<text x="${q[0].toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#8b9099">${esc(shortD(tests[r.pts[k].i].date))}</text>`:'').join('')}
+        ${showLbl(k)?`<text x="${q[0].toFixed(1)}" y="${(q[1]-9).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${esc(pts[k].s)}</text>`:''}</g>`;}).join('')}
+      ${P.map((q,k)=>showX(k)?`<text x="${q[0].toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#8b9099">${esc(pts[k].x)}</text>`:'').join('')}
     </svg>`;
   };
+  const chart=r=>lineSvg(r.pts.map(p=>{const t=tests[p.i];return{v:p.v,x:shortD(t.date),s:fv(p.v),t:`${fdL(t.date)}: ${fv(p.v)}${r.m.u?' '+r.m.u:''}`};}),cmpLabel(r.m));
   const card=r=>`<div class="mc">
     <div class="mc-h"><span class="mc-t">${esc(cmpLabel(r.m))}</span>${chip(r)}</div>
     <div class="mc-v">${fv(r.b.v)}${unit(r.m)}<span class="mc-f">${L('ilk','first')} ${fv(r.a.v)}</span></div>
@@ -164,12 +198,31 @@ function printDevReport(ath,setup,customTests){
     <div class="tl">${tests.map((t,i)=>{const b=expandBattery(t.battery);const k=Array.isArray(b)?b.length:null;
       return`<div class="tl-i${i===n-1?' cur':''}"><div class="tl-d"></div><div class="tl-t">${esc(fdL(t.date))}</div><div class="tl-s">${esc(per(t))}${k?` · ${k} ${L('test',k===1?'test':'tests')}`:''}</div></div>`;}).join('')}</div>`;
 
-  const groups=D.groups.map(({g,list})=>{
-    const charted=list.filter(r=>r.pts.length>1);
+  /* Sections in the page's order: the charted groups, then resting heart rate and sleep
+     (recovSec, below), then the tables. */
+  const grpSec=({g,list})=>{
+    const charted=DEV_CHART_GROUPS.includes(g.id)?list.filter(r=>r.pts.length>1):[];
     return`<section class="grp">${sh(L(g.tr,g.en),`${list.length} ${L('ölçüm','measures')}`)}
       ${charted.length?`<div class="mcs">${charted.map(card).join('')}</div>`:''}
       ${table(list)}</section>`;
-  }).join('');
+  };
+  const chartGroups=DEV_CHART_GROUPS.map(id=>D.groups.find(x=>x.g.id===id)).filter(Boolean).map(grpSec).join('');
+
+  /* Resting heart rate and sleep: four numbers and the trend across the page. */
+  const recov=(S,title,unitTxt,fmtV)=>{if(!S)return'';
+    const dTxt=S.d==null?'—':`${S.d>0?'+':S.d<0?'−':''}${fmtV(Math.abs(S.d))} ${unitTxt}`;
+    return`<section class="grp">${sh(title,S.weekly?L('haftalık ortalama','weekly mean'):L('günlük','daily'))}
+      <div class="kpis">
+        <div class="kpi"><div class="k">${L('Son','Latest')}</div><div class="v">${fmtV(S.b.v)} <small>${unitTxt}</small></div><div class="s">${esc(fdL(S.b.date))}</div></div>
+        <div class="kpi"><div class="k">${L('Ortalama','Average')}</div><div class="v">${fmtV(S.avg)} <small>${unitTxt}</small></div><div class="s">${S.n} ${L('gün','days')}</div></div>
+        <div class="kpi"><div class="k">${L('En düşük / en yüksek','Low / high')}</div><div class="v">${fmtV(S.min)} – ${fmtV(S.max)}</div><div class="s">${unitTxt}</div></div>
+        <div class="kpi ${S.tone==='up'?'up':S.tone==='down'?'down':''}"><div class="k">${L('Değişim','Change')}</div><div class="v">${dTxt}</div><div class="s">${L('ilk → son nokta','first → latest point')}</div></div>
+      </div>
+      ${S.pts.length>1?`<div class="mc wide">${lineSvg(S.pts.map(p=>({v:p.v,x:shortD(p.date),s:fmtV(p.v),t:`${S.weekly?L('Hafta ','Week of '):''}${fdL(p.date)}: ${fmtV(p.v)} ${unitTxt}`})),title,640)}</div>`:''}
+    </section>`;};
+  const recovSec=recov(D.rhr,L('Dinlenik Kalp Atım Hızı','Resting Heart Rate'),'bpm',v=>String(Math.round(v)))
+    +recov(D.sleep,L('Uyku Süresi','Sleep Duration'),L('sa','h'),v=>(Math.round(v*10)/10).toFixed(1));
+  const tableGroups=D.groups.filter(x=>!DEV_CHART_GROUPS.includes(x.g.id)).map(grpSec).join('');
 
   /* Photos side by side, a row per test date, each picture whole (never cropped). */
   const photos=D.photoSets.map(({s,dated,views})=>{
@@ -255,6 +308,8 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px
 .mc-v{font-size:19px;font-weight:700;line-height:1.1;margin-top:3px;font-variant-numeric:tabular-nums}
 .mc-v small{font-size:9px;font-weight:500;color:var(--muted)}
 .mc-f{margin-left:8px;font-size:8.5px;font-weight:500;color:var(--dim)}
+.mc.wide{margin-top:8px;padding-bottom:6px}
+.kpi .v small{font-size:10px;font-weight:500;color:var(--muted)}
 .mc svg{display:block;width:100%;height:auto;margin-top:2px;font-family:'Google Sans',Arial,sans-serif}
 /* comparison table */
 table.ct{width:100%;border-collapse:collapse;table-layout:auto;margin-bottom:6px}
@@ -294,7 +349,9 @@ table.ct{width:100%;border-collapse:collapse;table-layout:auto;margin-bottom:6px
     <div class="coach">${L('Hazırlayan Antrenör: Emincan Özer','Prepared by: Emincan Özer')}</div></div>
 </div>
 ${summary}
-${groups}
+${chartGroups}
+${recovSec}
+${tableGroups}
 ${photoSec}
 <div class="foot">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(setup.teamName)} · ${L('Değişim, her ölçümün ilk ve son değeri arasındadır; yeşil gelişmeyi, kırmızı gerilemeyi gösterir.','Change is between each measure’s first and latest reading; green is an improvement, red a decline.')}</div>
 </div>
