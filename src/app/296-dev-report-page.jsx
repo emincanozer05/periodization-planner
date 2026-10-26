@@ -104,6 +104,59 @@ function DevMetricChart({r,tests,col}){
   </div>);
 }
 
+/* Lateral CMJ: right and left as two lines on one axis, and under each test its right–left
+   asymmetry (|R − L| / the better side), coloured by the usual bands (< 10 % fine, 10–15 %
+   watch, ≥ 15 % clear). */
+const DEV_LAT_IDS=['lcjR','lcjL','lcjD'];
+function DevLatChart({tests,col}){
+  const boxRef=useRef(null);
+  const W=useElW(boxRef,480);
+  const colL='#a78bfa';
+  const pts=tests.map(t=>{const a=t.lateralCmj||{};const r=cmpN(a.right),l=cmpN(a.left);
+    return(r==null&&l==null)?null:{t,r,l,p:asymPct(a.right,a.left,'hi')};}).filter(Boolean);
+  if(!pts.length)return null;
+  const n=pts.length,one=n<2,H=one?150:230,pl=62,pr=18,pt=24,pb=46;
+  const vs=pts.flatMap(p=>[p.r,p.l]).filter(v=>v!=null);
+  let lo=Math.min(...vs),hi=Math.max(...vs);if(lo===hi){lo-=1;hi+=1;}
+  const pad=(hi-lo)*.15;lo-=pad;hi+=pad;
+  const step=devNiceStep((hi-lo)/4);lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;
+  const ticks=[];for(let v=lo;v<=hi+step*1e-6;v+=step)ticks.push(+v.toFixed(6));
+  const X=k=>pl+(n>1?k/(n-1):.5)*(W-pl-pr);
+  const Y=v=>pt+(1-(v-lo)/(hi-lo))*(H-pt-pb);
+  const path=key=>pts.map((p,k)=>p[key]==null?null:[X(k),Y(p[key])]).filter(Boolean).map((q,k)=>(k?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  const last=pts[n-1],first=pts[0];
+  const lastP=[...pts].reverse().find(p=>p.p!=null);
+  const lbl=n<=Math.max(4,Math.floor((W-pl-pr)/60));
+  return(<div className="dr-fc" style={{'--gc':col}}>
+    <div className="dr-fc-h"><div><b>Lateral CMJ</b><span>{L('sağ ve sol bacak, asimetri ile','right and left leg, with asymmetry')}</span></div>
+      <div className="dr-lg"><span><i style={{background:col}}/>{L('Sağ','Right')}</span><span><i style={{background:colL}}/>{L('Sol','Left')}</span></div></div>
+    <div className="dr-fc-s">
+      <div><span>{L('Sağ','Right')}</span><b style={{color:col}}>{devFv(last.r)}<small>cm</small></b></div>
+      <div><span>{L('Sol','Left')}</span><b style={{color:colL}}>{devFv(last.l)}<small>cm</small></b></div>
+      <div><span>{L('Asimetri','Asymmetry')}</span><b style={{color:lastP?ASYM_COL[asymLevel(lastP.p)]:undefined}}>{lastP?L('%'+lastP.p,lastP.p+'%'):'—'}</b></div>
+      {!one&&<div><span>{L('İlk asimetri','First asymmetry')}</span><b>{first.p!=null?L('%'+first.p,first.p+'%'):'—'}</b></div>}
+    </div>
+    {one&&<div className="dr-fc-note">{L('Tek ölçüm — bir sonraki testle gelişim eğrisi burada oluşur.','One reading — the next test draws the development curve here.')}</div>}
+    <div ref={boxRef} className="dr-big-box"><svg className="dr-big" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img">
+      {ticks.map(v=><g key={v}><line x1={pl} x2={W-pr} y1={Y(v)} y2={Y(v)} className="dr-big-grid"/>
+        <text x={pl-7} y={Y(v)+3.5} textAnchor="end" className="dr-big-tick">{devFv(v)}</text></g>)}
+      <text x={pl-7} y={pt-12} textAnchor="end" className="dr-big-tick">cm</text>
+      {[['r',col],['l',colL]].map(([key,c])=>(<g key={key}>
+        {n>1&&<path d={path(key)} fill="none" stroke={c} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" pathLength="1" className="dr-big-line" style={{'--gc':c}}/>}
+        {pts.map((p,k)=>p[key]==null?null:(<g key={k}>
+          <title>{`${fdL(p.t.date)} · ${key==='r'?L('Sağ','Right'):L('Sol','Left')}: ${devFv(p[key])} cm`}</title>
+          <circle cx={X(k)} cy={Y(p[key])} r={k===n-1?5:3.8} fill={k===n-1?c:'var(--panel)'} stroke={k===n-1?'var(--panel)':c} strokeWidth={k===n-1?2.5:2}/>
+          {(lbl||k===n-1)&&<text x={X(k)+(key==='r'?-8:8)} y={Y(p[key])+(p.r!=null&&p.l!=null&&((key==='r')===(p.r>=p.l))?-8:14)} textAnchor={key==='r'?'end':'start'} className="dr-big-v">{devFv(p[key])}</text>}
+        </g>))}
+      </g>))}
+      {pts.map((p,k)=><text key={'x'+k} x={X(k)} y={H-28} textAnchor="middle" className="dr-big-x">{devShortD(p.t.date)}</text>)}
+      <text x={6} y={H-8} className="dr-big-tick">{L('Asimetri','Asym.')}</text>
+      {pts.map((p,k)=>p.p==null?null:<text key={'a'+k} x={X(k)} y={H-8} textAnchor="middle" className="dr-lat-a" fill={ASYM_COL[asymLevel(p.p)]}>{L('%'+p.p,p.p+'%')}</text>)}
+    </svg></div>
+    <div className="dr-fc-note">{L('Asimetri = |sağ − sol| / iyi taraf. %10 altı dengeli, %10–15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / better side. Under 10 % balanced, 10–15 % watch, 15 % and above clear.')}</div>
+  </div>);
+}
+
 /* Resting heart rate / sleep: four numbers and the big chart, daily or weekly. */
 function DevRecovery({S,id,title,sub,col,unit,fmtV,bars,target,targetLbl}){
   const dTxt=S.d==null?'—':`${S.d>0?'+':S.d<0?'−':''}${fmtV(Math.abs(S.d))} ${unit}`;
@@ -144,6 +197,7 @@ function DevReportPage({ath,setup,customTests,onBack}){
   const[psIdx,setPsIdx]=useState(0);
   const[baView,setBaView]=useState(null);
   const[tblOpen,setTblOpen]=useState({});
+  const[mSel,setMSel]=useState({});   // the measure whose chart a charted group shows
   useEffect(()=>{try{rootRef.current&&rootRef.current.scrollIntoView({block:'start'});}catch(e){}},[ath&&ath.id]);
   const back=<button className="dr-btn ghost" onClick={onBack}>← {L('Testlere dön','Back to tests')}</button>;
   if(!D)return(<div className="dr" ref={rootRef}><div className="dr-bar">{back}</div><div className="empty-st">{L('Bu sporcunun henüz tarihli test kaydı yok.','This athlete has no dated test records yet.')}</div></div>);
@@ -245,7 +299,18 @@ function DevReportPage({ath,setup,customTests,onBack}){
       const open=!charted.length||!!tblOpen[g.id];
       return(<section key={x.id} id={'dr-sec-'+x.id} className="dr-sec" style={{'--gc':x.col}}>
         {head(charted.length>0&&<button className="dr-btn ghost sm" onClick={()=>setTblOpen(o=>({...o,[g.id]:!open}))}>{open?L('Tabloyu gizle','Hide table'):L('Tabloyu göster','Show table')}</button>)}
-        {charted.length>0&&<div className="dr-fcs">{charted.map(r=><DevMetricChart key={r.m.id} r={r} tests={tests} col={x.col}/>)}</div>}
+        {charted.length>0&&(()=>{
+          /* One chart at a time: the chips pick the measure. Lateral CMJ's right, left and gap
+             are one chip and one chart. */
+          const items=[];charted.forEach(r=>{
+            if(DEV_LAT_IDS.includes(r.m.id)){if(!items.some(it=>it.id==='lcj'))items.push({id:'lcj',label:'Lateral CMJ'});}
+            else items.push({id:r.m.id,label:cmpLabel(r.m),r});});
+          const cur=items.find(it=>it.id===mSel[g.id])||items[0];
+          return(<>
+            <div className="dr-mtabs">{items.map(it=><button key={it.id} className={it===cur?'on':''} style={{'--gc':x.col}}
+              onClick={()=>setMSel(o=>({...o,[g.id]:it.id}))}>{it.label}{it.r&&it.r.d!=null&&it.r.tone!=='neu'&&<i className={it.r.tone}/>}</button>)}</div>
+            {cur.id==='lcj'?<DevLatChart key="lcj" tests={tests} col={x.col}/>:<DevMetricChart key={cur.id} r={cur.r} tests={tests} col={x.col}/>}
+          </>);})()}
         {open&&<div className="dr-tbl"><table>
           <thead><tr><th className="l">{L('Ölçüm','Measure')}</th>{cols.map(i=><th key={i}>{fd(tests[i].date)}<span>{devPer(tests[i])}</span></th>)}<th>{L('Değişim','Change')}</th></tr></thead>
           <tbody>{list.map(r=><tr key={r.m.id}><td className="l">{cmpLabel(r.m)}{r.m.u&&<small> {r.m.u}</small>}</td>
