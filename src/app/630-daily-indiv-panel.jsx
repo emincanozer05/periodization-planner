@@ -179,7 +179,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {open&&<div className={'di-face'+(flip?' '+flip:'')}>
     {side==='brief'&&<>
 
-    <DiSection n="1" title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
+    <DiSection title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
         :L(`${fd(date)} tablosu`,`${fd(date)} at a glance`)}
       meta={L('hesaplanan değerler — model bunları üretmez','computed — the model does not produce these')}>
       <div className="di-grid">
@@ -219,7 +219,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
       </DiSection>
 
-    <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
+    <DiSection title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
         <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
@@ -257,7 +257,14 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-  const rdCol=plan.band?plan.band.color:'var(--dim)';
+  const priTxt=String(a.devPriorities||'').trim();
+  const[priOpen,setPriOpen]=useState(false);
+  const priRef=useRef(null);
+  useEffect(()=>{if(!priOpen)return;
+    const off=e=>{if(priRef.current&&!priRef.current.contains(e.target))setPriOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setPriOpen(false);};
+    document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};},[priOpen]);
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
      runs the same way round as readiness: low is the one to look at. */
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
@@ -300,9 +307,18 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
           <i>{L('yorgunluk','fatigue')}</i><b style={{color:wCol(plan.well.fatigue)}}>{plan.well.fatigue!=null?`${plan.well.fatigue}/5`:'—'}</b>
         </span>
       </div>
-      <div className="iv-rd" style={{borderColor:rdCol,color:rdCol}}>
-        <b>{plan.rd.score!=null?plan.rd.score:'—'}</b><span>{L('hazır oluş','readiness')}</span>
-        {plan.rd.src==='srpe'&&<i title={L('Wellness kaydı yok — sRPE trendinden kestirildi','No wellness record — estimated from the sRPE trend')}>{L('tahmin','estimate')}</i>}
+      {/* The coach's note on this athlete's development priorities (Athlete Profile tab),
+          one click away while the day is being written. */}
+      <div className="iv-pri" ref={priRef} onClick={e=>e.stopPropagation()}>
+        <button type="button" className={'iv-pribtn'+(priOpen?' on':'')+(priTxt?'':' empty')} aria-expanded={priOpen}
+          onClick={()=>setPriOpen(o=>!o)} title={L('Atletik gelişim öncelikleri — Sporcu Profili\'nde yazılan not','Athletic development priorities — the note written on the Athlete Profile')}>
+          <b>{L('Öncelikler','Priorities')}</b><span>{L('gelişim','development')}</span>
+        </button>
+        {priOpen&&<div className="iv-pripop" role="dialog" aria-label={L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}>
+          <div className="h">{L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}</div>
+          {priTxt?<div className="t">{priTxt}</div>
+            :<div className="t iv-dim">{L('Henüz not yok — Sporcu Profili sekmesinden ekle.','No note yet — add it on the Athlete Profile tab.')}</div>}
+        </div>}
       </div>
       {plan.changed>0&&<div className="iv-adj sub">{L(`${plan.changed} değişti`,`${plan.changed} changed`)}</div>}
       <span className="iv-ch">{open?'▼':'▶'}</span>

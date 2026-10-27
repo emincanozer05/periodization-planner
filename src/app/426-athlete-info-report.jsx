@@ -3,8 +3,8 @@
 
    One A4 portrait document in five parts, in the order of the tabs it is drawn from:
    the Athlete Profile, the Head Coach's Observations, the Athletic Profile, the
-   anthropometric measurements over time and the Injuries. The technical-tactical
-   criteria close the first page; the mental, character and social skills open the second.
+   anthropometric measurements over time and the Injuries. The Athletic Profile always
+   starts on a page of its own, never at the foot of the one before.
    The Athletic Profile prints every Movement Screen, Jump & Reactivity and Speed & Agility
    test the athlete has taken beside its (grey-scale) picture and what it measures — the
    movement screen as its latest result, jump and speed as a date-by-date table like the
@@ -23,9 +23,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const pNow=scPos(scout.posNow),pPot=scPos(scout.posPot);
   const mind=scRead(SC_MIND,grp('mind'));
   const verdict=grp('verdict');
-  const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
   const notes=athNotesList(ath);
-  const tp=atpRead(ath);
   const injuries=(ath.injuries||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const num=(v,d=1)=>v==null?'—':String(+Number(v).toFixed(d));
@@ -43,12 +41,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const posCard=(lbl,p)=>`<div class="card pos"><div class="pk">${lbl}</div>${p?`<div class="pn"><b>${p.k}</b>${esc(L(p.tr,p.en))}</div><div class="pd">${esc(L(p.defTr,p.defEn))} <span class="pe">${L('Örnek oyuncular','Example players')}: ${esc(p.ex.join(', '))}</span></div>`:`<div class="pn none">—</div>`}</div>`;
   /* ── 1 · Athlete profile ── */
   const s1=`<section>
-    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler, hedefler ve atletik koç değerlendirmesi','Key measures, goals and the athletic coach’s assessment'))}
+    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler ve atletik koç değerlendirmesi','Key measures and the athletic coach’s assessment'))}
     <div class="kvs">${kv(L('Yaş','Age'),age!=null?age:'—',L('yıl','yrs'))}${kv(L('Boy','Height'),h?num(h.v):'—','cm')}${kv(L('Kilo','Weight'),wt?num(wt.v):'—','kg')}${kv(L('Kulaç','Wingspan'),ws?num(ws.v):'—','cm')}${kv(L('Yağ Oranı','Body Fat'),bf?num(bf.v):'—','%')}</div>
-    <div class="two">
-      <div class="card blk">${subH(L('Kısa Vadeli Performans Hedefleri','Short-Term Performance Goals'))}${txt(goals.short)}</div>
-      <div class="card blk">${subH(L('Uzun Vadeli Performans Hedefleri','Long-Term Performance Goals'))}${txt(goals.long)}</div>
-    </div>
     <div class="card blk">${subH(L('Atletik Koç Değerlendirmesi','Athletic Coach Assessment'))}
       ${notes.length?`<div class="notes">${notes.map(n=>`<div class="note"><span class="nd">${n.date?fd(n.date):'—'}</span><div class="txt">${esc(n.text)}</div></div>`).join('')}</div>`:'<div class="txt none">—</div>'}</div>
   </section>`;
@@ -181,9 +175,6 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
       <div class="tcs${x.g==='move'?'':' pair'}">${x.list.map(d=>tcCard(d,x.g==='move',x.g!=='move')).join('')}</div></div>`).join('')
     :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
-  const pri=ATP_PRIORITY.map(p=>{const its=ATP_QUALITIES.filter(it=>(tp.qualities[it.id]||{}).priority===p.id);
-    return`<div class="card lane"><div class="pk" style="color:${{high:'#dc2626',medium:'#a16207',low:'#2f5fd0'}[p.id]}">${esc(atpT(p.en))} <span class="cnt">${its.length}</span></div>
-      <div class="pd2">${esc(L(p.dTr,p.dEn))}</div>${its.length?`<ul class="ql">${its.map(it=>`<li>${esc(atpT(it.en))}<span>${esc(atpT(it.group))}</span></li>`).join('')}</ul>`:'<div class="none">—</div>'}</div>`;}).join('');
   /* The latest static posture across the full width: its three photos and the coach's words under them. */
   const newestT=f=>[...(ath.tests||[])].filter(t=>t&&t.date&&f(t)).sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
   const pT=newestT(t=>{const p=t.posture||{};return!!(p.frontPhoto||p.sidePhoto||p.backPhoto||String(p.observations||'').trim());});
@@ -192,11 +183,10 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const postureCard=`<div class="card pt wide">
       <div class="pk">${L('Statik Postür','Static Posture')}${pT?` <span class="ptd">${fd(pT.date)}</span>`:''}</div>
       ${pT?`${shots(pT.posture)}${txt(pT.posture.observations)}`:`<div class="none">${L('Statik postür testi yok.','No static posture test.')}</div>`}</div>`;
-  const s3=`<section>
-    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Hareket taraması, sıçrama ve sürat testleri, statik postür ve gelişim öncelikleri','Movement screen, jump and speed tests, static posture and development priorities'))}
+  const s3=`<section class="pg-new">
+    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Hareket taraması, sıçrama ve sürat testleri ve statik postür','Movement screen, jump and speed tests and static posture'))}
     <div class="tests">${testSec}</div>
     <div class="blk">${postureCard}</div>
-    <div class="blk">${subH(L('Atletik Gelişim Öncelikleri','Athletic Development Priorities'))}<div class="three">${pri}</div></div>
   </section>`;
   /* ── 4 · Anthropometric tracking ── one slim table per measure: its dates along the top,
      the values straight underneath, each with its change from the reading before. A measure
@@ -277,6 +267,8 @@ body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 a
 .hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
 .hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
 section{margin-top:12px}
+/* The Athletic Profile always starts a new page, however much room the page before has left. */
+section.pg-new{break-before:page;page-break-before:always;margin-top:0}
 .sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
 .sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
 .sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
@@ -286,7 +278,6 @@ section{margin-top:12px}
 .blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 .an-w{display:flex;flex-direction:column;gap:6px}
 .an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
@@ -392,11 +383,6 @@ td.r,th.r{text-align:right}
 .sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .pt .txt{font-size:9px;line-height:1.38}
 .pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.lane .cnt{color:var(--mu);font-weight:600}
-.pd2{font-size:8.8px;color:var(--mu);margin-bottom:5px}
-.ql{list-style:none;display:flex;flex-direction:column;gap:3px}
-.ql li{font-size:10px;font-weight:600;display:flex;justify-content:space-between;gap:6px}
-.ql li span{font-weight:400;font-size:8.5px;color:var(--dim)}
 .inj td{font-size:9.3px}
 .inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
 .pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
