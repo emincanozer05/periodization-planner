@@ -4894,7 +4894,7 @@ header{background:var(--bg2)!important}
 .iv-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;overflow:hidden}
 .iv-card.open{border-color:var(--dim)}
 .iv-card-hd{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;flex-wrap:nowrap}
-.iv-card-hd>.iv-av,.iv-card-hd>.iv-rd,.iv-card-hd>.iv-adj,.iv-card-hd>.iv-ch{flex:none}
+.iv-card-hd>.iv-av,.iv-card-hd>.iv-pri,.iv-card-hd>.iv-adj,.iv-card-hd>.iv-ch{flex:none}
 .iv-card-hd:hover{background:var(--elevated)}
 .iv-av{width:36px;height:36px;border-radius:10px;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--text2);overflow:hidden;flex:none}
 .iv-av img{width:100%;height:100%;object-fit:cover}
@@ -4922,10 +4922,15 @@ header{background:var(--bg2)!important}
 .iv-expg{display:inline-flex;gap:6px;align-items:center}
 .iv-expg .h{font-size:9.5px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em}
 .iv-warnchip{color:#fda4af;background:rgba(244,63,94,.14);border:1px solid rgba(244,63,94,.3);border-radius:6px;padding:1px 7px}
-.iv-rd{display:flex;flex-direction:column;align-items:center;border:1px solid var(--border);border-radius:10px;padding:4px 12px;min-width:74px}
-.iv-rd b{font-size:16px;font-weight:800;line-height:1.1}
-.iv-rd span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-family:'IBM Plex Mono',monospace}
-.iv-rd i{font-size:9px;font-style:normal;color:var(--dim)}
+.iv-pri{position:relative;flex:none}
+.iv-pribtn{display:flex;flex-direction:column;align-items:center;border:1px solid var(--accent);border-radius:10px;padding:4px 12px;min-width:74px;background:transparent;color:var(--accent);cursor:pointer;font:inherit}
+.iv-pribtn:hover,.iv-pribtn.on{background:var(--accent-bg)}
+.iv-pribtn.empty{border-color:var(--border);color:var(--dim)}
+.iv-pribtn b{font-size:13px;font-weight:800;line-height:1.2}
+.iv-pribtn span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-family:'IBM Plex Mono',monospace}
+.iv-pripop{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:min(380px,80vw);background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:auto}
+.iv-pripop .h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:6px}
+.iv-pripop .t{font-size:13px;line-height:1.55;color:var(--text);white-space:pre-wrap;max-height:50vh;overflow:auto}
 .iv-adj{border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap}
 .iv-adj.sub{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
 .iv-ch{color:var(--dim);font-size:12px}
@@ -7911,7 +7916,7 @@ main .panel,main .ap-head{animation:none}
 .pf2-goal-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
 .pf2-goal-h b{font-size:12.5px;font-weight:700;color:var(--text)}
 .pf2-goal-h span{font-size:11px;color:var(--dim)}
-.pf2-goal textarea{min-height:84px;font-size:13px;line-height:1.55;border-radius:9px}
+.pf2-goal textarea{min-height:200px;font-size:13px;line-height:1.55;border-radius:9px}
 
 /* Baş Antrenör Gözlemleri: tek bir açılır blok. */
 .hc-wrap{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}
@@ -31010,8 +31015,6 @@ function ProfileTab({ath,updAth,setup}){
   const setCrit=g=>(k,patch)=>setSc({[g]:{...grp(g),[k]:{...(grp(g)[k]||{}),...patch}}});
   const setField=(g,k)=>v=>setSc({[g]:{...grp(g),[k]:v}});
   const verdict=grp('verdict');
-  const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
-  const setGoal=(k,v)=>updAth(ath.id,{goals:{...goals,[k]:v}});
   const[hcOpen,setHcOpen]=useState(()=>{try{return localStorage.getItem(HC_OPEN_KEY)==='1';}catch(e){return false;}});
   const toggleHc=()=>setHcOpen(o=>{const n=!o;try{localStorage.setItem(HC_OPEN_KEY,n?'1':'0');}catch(e){}return n;});
   const tech=scRead(SC_TECH,grp('tech')),mind=scRead(SC_MIND,grp('mind'));
@@ -31033,17 +31036,13 @@ function ProfileTab({ath,updAth,setup}){
       </label>
     </div>
     <div className="pf2-cols">
+      {/* The coach's own note on what this athlete's development is about. The daily
+          individualization card opens it from its header (IndivAthleteCard). */}
       <div className="panel pf2-goals">
-        <h2>{L('Performans Hedefleri','Performance Goals')}</h2>
+        <h2>{L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}</h2>
         <div className="pf2-goal">
-          <div className="pf2-goal-h"><b>{L('Kısa Vadeli','Short Term')}</b><span>{L('bu dönem','this period')}</span></div>
-          <textarea rows={4} value={goals.short||''} onChange={e=>setGoal('short',e.target.value)}
-            placeholder={L('Örn: 6 hafta içinde CMJ +3 cm, 20 m sprint 3.10 sn altı…','e.g. CMJ +3 cm within 6 weeks, 20 m sprint under 3.10 s…')}/>
-        </div>
-        <div className="pf2-goal">
-          <div className="pf2-goal-h"><b>{L('Uzun Vadeli','Long Term')}</b><span>{L('sezon ve sonrası','season and beyond')}</span></div>
-          <textarea rows={4} value={goals.long||''} onChange={e=>setGoal('long',e.target.value)}
-            placeholder={L('Örn: üst yapıya hazır fiziksel profil, sakatlıksız bir sezon…','e.g. a physical profile ready for the senior level, an injury-free season…')}/>
+          <textarea rows={9} value={ath.devPriorities||''} onChange={e=>updAth(ath.id,{devPriorities:e.target.value})}
+            placeholder={L('Bu sporcunun gelişim öncelikleri: üzerinde durulacak nitelikler, dikkat edilecekler, hedefler…','This athlete\'s development priorities: the qualities to work on, what to watch, the targets…')}/>
         </div>
       </div>
       <NotesPanel ath={ath} updAth={updAth} title={L('Bireysel Gözlemler','Individual Observations')}
@@ -32991,8 +32990,8 @@ function AthWellness({ath,updAth}){
 
    One A4 portrait document in five parts, in the order of the tabs it is drawn from:
    the Athlete Profile, the Head Coach's Observations, the Athletic Profile, the
-   anthropometric measurements over time and the Injuries. The technical-tactical
-   criteria close the first page; the mental, character and social skills open the second.
+   anthropometric measurements over time and the Injuries. The Athletic Profile always
+   starts on a page of its own, never at the foot of the one before.
    The Athletic Profile prints every Movement Screen, Jump & Reactivity and Speed & Agility
    test the athlete has taken beside its (grey-scale) picture and what it measures — the
    movement screen as its latest result, jump and speed as a date-by-date table like the
@@ -33011,9 +33010,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const pNow=scPos(scout.posNow),pPot=scPos(scout.posPot);
   const mind=scRead(SC_MIND,grp('mind'));
   const verdict=grp('verdict');
-  const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
   const notes=athNotesList(ath);
-  const tp=atpRead(ath);
   const injuries=(ath.injuries||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const num=(v,d=1)=>v==null?'—':String(+Number(v).toFixed(d));
@@ -33031,12 +33028,8 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const posCard=(lbl,p)=>`<div class="card pos"><div class="pk">${lbl}</div>${p?`<div class="pn"><b>${p.k}</b>${esc(L(p.tr,p.en))}</div><div class="pd">${esc(L(p.defTr,p.defEn))} <span class="pe">${L('Örnek oyuncular','Example players')}: ${esc(p.ex.join(', '))}</span></div>`:`<div class="pn none">—</div>`}</div>`;
   /* ── 1 · Athlete profile ── */
   const s1=`<section>
-    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler, hedefler ve atletik koç değerlendirmesi','Key measures, goals and the athletic coach’s assessment'))}
+    ${secH(1,L('Sporcu Profili','Athlete Profile'),L('Temel ölçüler ve atletik koç değerlendirmesi','Key measures and the athletic coach’s assessment'))}
     <div class="kvs">${kv(L('Yaş','Age'),age!=null?age:'—',L('yıl','yrs'))}${kv(L('Boy','Height'),h?num(h.v):'—','cm')}${kv(L('Kilo','Weight'),wt?num(wt.v):'—','kg')}${kv(L('Kulaç','Wingspan'),ws?num(ws.v):'—','cm')}${kv(L('Yağ Oranı','Body Fat'),bf?num(bf.v):'—','%')}</div>
-    <div class="two">
-      <div class="card blk">${subH(L('Kısa Vadeli Performans Hedefleri','Short-Term Performance Goals'))}${txt(goals.short)}</div>
-      <div class="card blk">${subH(L('Uzun Vadeli Performans Hedefleri','Long-Term Performance Goals'))}${txt(goals.long)}</div>
-    </div>
     <div class="card blk">${subH(L('Atletik Koç Değerlendirmesi','Athletic Coach Assessment'))}
       ${notes.length?`<div class="notes">${notes.map(n=>`<div class="note"><span class="nd">${n.date?fd(n.date):'—'}</span><div class="txt">${esc(n.text)}</div></div>`).join('')}</div>`:'<div class="txt none">—</div>'}</div>
   </section>`;
@@ -33169,9 +33162,6 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
       <div class="tcs${x.g==='move'?'':' pair'}">${x.list.map(d=>tcCard(d,x.g==='move',x.g!=='move')).join('')}</div></div>`).join('')
     :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
-  const pri=ATP_PRIORITY.map(p=>{const its=ATP_QUALITIES.filter(it=>(tp.qualities[it.id]||{}).priority===p.id);
-    return`<div class="card lane"><div class="pk" style="color:${{high:'#dc2626',medium:'#a16207',low:'#2f5fd0'}[p.id]}">${esc(atpT(p.en))} <span class="cnt">${its.length}</span></div>
-      <div class="pd2">${esc(L(p.dTr,p.dEn))}</div>${its.length?`<ul class="ql">${its.map(it=>`<li>${esc(atpT(it.en))}<span>${esc(atpT(it.group))}</span></li>`).join('')}</ul>`:'<div class="none">—</div>'}</div>`;}).join('');
   /* The latest static posture across the full width: its three photos and the coach's words under them. */
   const newestT=f=>[...(ath.tests||[])].filter(t=>t&&t.date&&f(t)).sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
   const pT=newestT(t=>{const p=t.posture||{};return!!(p.frontPhoto||p.sidePhoto||p.backPhoto||String(p.observations||'').trim());});
@@ -33180,11 +33170,10 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
   const postureCard=`<div class="card pt wide">
       <div class="pk">${L('Statik Postür','Static Posture')}${pT?` <span class="ptd">${fd(pT.date)}</span>`:''}</div>
       ${pT?`${shots(pT.posture)}${txt(pT.posture.observations)}`:`<div class="none">${L('Statik postür testi yok.','No static posture test.')}</div>`}</div>`;
-  const s3=`<section>
-    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Hareket taraması, sıçrama ve sürat testleri, statik postür ve gelişim öncelikleri','Movement screen, jump and speed tests, static posture and development priorities'))}
+  const s3=`<section class="pg-new">
+    ${secH(3,L('Atletik Profil','Athletic Profile'),L('Hareket taraması, sıçrama ve sürat testleri ve statik postür','Movement screen, jump and speed tests and static posture'))}
     <div class="tests">${testSec}</div>
     <div class="blk">${postureCard}</div>
-    <div class="blk">${subH(L('Atletik Gelişim Öncelikleri','Athletic Development Priorities'))}<div class="three">${pri}</div></div>
   </section>`;
   /* ── 4 · Anthropometric tracking ── one slim table per measure: its dates along the top,
      the values straight underneath, each with its change from the reading before. A measure
@@ -33265,6 +33254,8 @@ body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 a
 .hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
 .hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
 section{margin-top:12px}
+/* The Athletic Profile always starts a new page, however much room the page before has left. */
+section.pg-new{break-before:page;page-break-before:always;margin-top:0}
 .sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
 .sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
 .sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
@@ -33274,7 +33265,6 @@ section{margin-top:12px}
 .blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 .an-w{display:flex;flex-direction:column;gap:6px}
 .an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
@@ -33380,11 +33370,6 @@ td.r,th.r{text-align:right}
 .sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .pt .txt{font-size:9px;line-height:1.38}
 .pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.lane .cnt{color:var(--mu);font-weight:600}
-.pd2{font-size:8.8px;color:var(--mu);margin-bottom:5px}
-.ql{list-style:none;display:flex;flex-direction:column;gap:3px}
-.ql li{font-size:10px;font-weight:600;display:flex;justify-content:space-between;gap:6px}
-.ql li span{font-weight:400;font-size:8.5px;color:var(--dim)}
 .inj td{font-size:9.3px}
 .inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
 .pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
@@ -44754,7 +44739,7 @@ function DiTile({label,value,unit,sub,tone,fill,title,text}){
 function DiSection({n,title,meta,children,className}){
   return(<section className={'di-sec'+(className?' '+className:'')}>
     <header className="di-sech">
-      <span className="di-secn">{n}</span>
+      {n!=null&&<span className="di-secn">{n}</span>}
       <h4>{title}</h4>
       {meta?<span className="di-secmeta">{meta}</span>:null}
     </header>
@@ -44943,7 +44928,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {open&&<div className={'di-face'+(flip?' '+flip:'')}>
     {side==='brief'&&<>
 
-    <DiSection n="1" title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
+    <DiSection title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
         :L(`${fd(date)} tablosu`,`${fd(date)} at a glance`)}
       meta={L('hesaplanan değerler — model bunları üretmez','computed — the model does not produce these')}>
       <div className="di-grid">
@@ -44983,7 +44968,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
       </DiSection>
 
-    <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
+    <DiSection title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
         <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
@@ -45021,7 +45006,14 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-  const rdCol=plan.band?plan.band.color:'var(--dim)';
+  const priTxt=String(a.devPriorities||'').trim();
+  const[priOpen,setPriOpen]=useState(false);
+  const priRef=useRef(null);
+  useEffect(()=>{if(!priOpen)return;
+    const off=e=>{if(priRef.current&&!priRef.current.contains(e.target))setPriOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setPriOpen(false);};
+    document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};},[priOpen]);
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
      runs the same way round as readiness: low is the one to look at. */
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
@@ -45064,9 +45056,18 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
           <i>{L('yorgunluk','fatigue')}</i><b style={{color:wCol(plan.well.fatigue)}}>{plan.well.fatigue!=null?`${plan.well.fatigue}/5`:'—'}</b>
         </span>
       </div>
-      <div className="iv-rd" style={{borderColor:rdCol,color:rdCol}}>
-        <b>{plan.rd.score!=null?plan.rd.score:'—'}</b><span>{L('hazır oluş','readiness')}</span>
-        {plan.rd.src==='srpe'&&<i title={L('Wellness kaydı yok — sRPE trendinden kestirildi','No wellness record — estimated from the sRPE trend')}>{L('tahmin','estimate')}</i>}
+      {/* The coach's note on this athlete's development priorities (Athlete Profile tab),
+          one click away while the day is being written. */}
+      <div className="iv-pri" ref={priRef} onClick={e=>e.stopPropagation()}>
+        <button type="button" className={'iv-pribtn'+(priOpen?' on':'')+(priTxt?'':' empty')} aria-expanded={priOpen}
+          onClick={()=>setPriOpen(o=>!o)} title={L('Atletik gelişim öncelikleri — Sporcu Profili\'nde yazılan not','Athletic development priorities — the note written on the Athlete Profile')}>
+          <b>{L('Öncelikler','Priorities')}</b><span>{L('gelişim','development')}</span>
+        </button>
+        {priOpen&&<div className="iv-pripop" role="dialog" aria-label={L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}>
+          <div className="h">{L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}</div>
+          {priTxt?<div className="t">{priTxt}</div>
+            :<div className="t iv-dim">{L('Henüz not yok — Sporcu Profili sekmesinden ekle.','No note yet — add it on the Athlete Profile tab.')}</div>}
+        </div>}
       </div>
       {plan.changed>0&&<div className="iv-adj sub">{L(`${plan.changed} değişti`,`${plan.changed} changed`)}</div>}
       <span className="iv-ch">{open?'▼':'▶'}</span>

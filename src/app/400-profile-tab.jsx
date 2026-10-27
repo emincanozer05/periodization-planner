@@ -31,8 +31,6 @@ function ProfileTab({ath,updAth,setup}){
   const setCrit=g=>(k,patch)=>setSc({[g]:{...grp(g),[k]:{...(grp(g)[k]||{}),...patch}}});
   const setField=(g,k)=>v=>setSc({[g]:{...grp(g),[k]:v}});
   const verdict=grp('verdict');
-  const goals=(ath.goals&&typeof ath.goals==='object')?ath.goals:{};
-  const setGoal=(k,v)=>updAth(ath.id,{goals:{...goals,[k]:v}});
   const[hcOpen,setHcOpen]=useState(()=>{try{return localStorage.getItem(HC_OPEN_KEY)==='1';}catch(e){return false;}});
   const toggleHc=()=>setHcOpen(o=>{const n=!o;try{localStorage.setItem(HC_OPEN_KEY,n?'1':'0');}catch(e){}return n;});
   const tech=scRead(SC_TECH,grp('tech')),mind=scRead(SC_MIND,grp('mind'));
@@ -54,17 +52,13 @@ function ProfileTab({ath,updAth,setup}){
       </label>
     </div>
     <div className="pf2-cols">
+      {/* The coach's own note on what this athlete's development is about. The daily
+          individualization card opens it from its header (IndivAthleteCard). */}
       <div className="panel pf2-goals">
-        <h2>{L('Performans Hedefleri','Performance Goals')}</h2>
+        <h2>{L('Atletik Gelişim Öncelikleri','Athletic Development Priorities')}</h2>
         <div className="pf2-goal">
-          <div className="pf2-goal-h"><b>{L('Kısa Vadeli','Short Term')}</b><span>{L('bu dönem','this period')}</span></div>
-          <textarea rows={4} value={goals.short||''} onChange={e=>setGoal('short',e.target.value)}
-            placeholder={L('Örn: 6 hafta içinde CMJ +3 cm, 20 m sprint 3.10 sn altı…','e.g. CMJ +3 cm within 6 weeks, 20 m sprint under 3.10 s…')}/>
-        </div>
-        <div className="pf2-goal">
-          <div className="pf2-goal-h"><b>{L('Uzun Vadeli','Long Term')}</b><span>{L('sezon ve sonrası','season and beyond')}</span></div>
-          <textarea rows={4} value={goals.long||''} onChange={e=>setGoal('long',e.target.value)}
-            placeholder={L('Örn: üst yapıya hazır fiziksel profil, sakatlıksız bir sezon…','e.g. a physical profile ready for the senior level, an injury-free season…')}/>
+          <textarea rows={9} value={ath.devPriorities||''} onChange={e=>updAth(ath.id,{devPriorities:e.target.value})}
+            placeholder={L('Bu sporcunun gelişim öncelikleri: üzerinde durulacak nitelikler, dikkat edilecekler, hedefler…','This athlete\'s development priorities: the qualities to work on, what to watch, the targets…')}/>
         </div>
       </div>
       <NotesPanel ath={ath} updAth={updAth} title={L('Bireysel Gözlemler','Individual Observations')}

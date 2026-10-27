@@ -629,7 +629,7 @@ function DiTile({label,value,unit,sub,tone,fill,title,text}){
 function DiSection({n,title,meta,children,className}){
   return(<section className={'di-sec'+(className?' '+className:'')}>
     <header className="di-sech">
-      <span className="di-secn">{n}</span>
+      {n!=null&&<span className="di-secn">{n}</span>}
       <h4>{title}</h4>
       {meta?<span className="di-secmeta">{meta}</span>:null}
     </header>
