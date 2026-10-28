@@ -782,6 +782,60 @@ async function scenarioNoNeedlessKick() {
   endScene(); h.unmount();
 }
 
+/* "Senkronize ediliyor… çok uzun sürüyor, veri kaybolur mu?" Ağ yavaşken sunucunun onayı
+   saniyeler sürer. Koç bu arada sekmeyi kapatırsa elde yalnızca cihazın kalıcı kuyruğu
+   (IndexedDB) kalır; yeniden açılışta Firestore oradakini gönderir. Yani düzenlemenin
+   kaybolmaması için onay değil, PARÇALARIN VE MANİFESTİN kuyruğa GİRMİŞ olması gerekir.
+   Eskiden manifest, parçaların onayı (en çok 15 sn) gelene kadar hiç kuyruğa girmiyordu;
+   o arada kapanan sekmede parçalar bulutta sahipsiz kalıyor, düzenleme kayboluyordu.
+   Onay beklenirken yapılan ikinci düzenleme de yalnızca "sıraya alınıyor", kuyruğa
+   girmiyordu. Sahte Firestore, onaysız commit'i de yerel kopyaya işler: burada okunan
+   hâl, kapanışta cihazda kalacak olanın ta kendisi. */
+async function scenarioSlowAckNoLoss() {
+  scene('onay yavaşken: düzenleme hemen cihazın kalıcı kuyruğuna giriyor (sekme kapansa da kaybolmaz)');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('başlangıçta senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  w.fake.ack = false;                       // onay gelmiyor (yavaş ağ)
+  out.setData(realState(2));
+  await sleep(1000);
+  check('onay gelmeden manifest de kuyrukta (n2)', cloudState(w).includes('"n2"'), 'kuyruktaki: ' + cloudState(w).slice(0, 160));
+  out.setData(realState(3));                // ilk yazım onay beklerken ikinci düzenleme
+  await sleep(1000);
+  check('onay beklenirken yapılan düzenleme de kuyrukta (n3)', cloudState(w).includes('"n3"'), 'kuyruktaki: ' + cloudState(w).slice(0, 160));
+  check('onay gelene kadar sarı', out.sync.status === 'syncing', 'status=' + out.sync.status);
+
+  w.fake.recover();
+  await sleep(3000);
+  check('ağ dönünce yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  check('son düzenleme bulutta', cloudState(w).includes('"n3"'), 'buluttaki: ' + cloudState(w).slice(0, 160));
+  endScene(); h.unmount();
+}
+
+/* Uzun bir aradan sonraki ilk yazım önce sunucuyu okur (en çok 4 sn). Ağ kötüyse o okuma
+   dönmez; koç tam o sırada sayfayı kapatırsa düzenleme kuyruğa hiç girmeden giderdi. */
+async function scenarioCloseDuringPreRead() {
+  scene('ön-okuma beklenirken sayfa kapanırsa: düzenleme yine de kuyruğa giriyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  (w.evts.offline || []).forEach(f => f());   // bağlantı koptu: sıradaki yazım önce sunucuya bakacak
+  w.fake.wedge(99);                           // ... ama sunucu okuması dönmüyor
+  out.setData(realState(2));
+  await sleep(600);
+  check('yazım ön-okumada bekliyor', !cloudState(w).includes('"n2"'), 'kuyruktaki: ' + cloudState(w).slice(0, 160));
+  (w.evts.beforeunload || []).forEach(f => f());   // koç sekmeyi kapattı
+  await sleep(300);
+  check('kapanışta düzenleme kuyrukta (n2)', cloudState(w).includes('"n2"'), 'kuyruktaki: ' + cloudState(w).slice(0, 160));
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -792,7 +846,7 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
     scenarioNeverReachesServer, scenarioStaleOverwrite, scenarioSingleDeleteSyncs,
     scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
     scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
-    scenarioNoNeedlessKick,
+    scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead,
   ];
   // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
   const only = process.env.SYNCTEST_ONLY;
