@@ -6441,6 +6441,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-prow{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 11px;align-items:start;
   border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:9px 12px}
 .di-pnum{font:700 11px/20px 'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-align:center}
+.di-pnum.ss{color:var(--accent)}   /* süperset satırı: A1, A2 */
 .di-prow-main{min-width:0;display:flex;flex-direction:column;gap:4px}
 .di-prow-nm{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;min-width:0}
 .di-prow-nm b{font-size:13.5px;color:var(--text);line-height:1.35}
@@ -14770,6 +14771,40 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
 .pc-tbl td.ds b{font-size:12px;color:#0a0b0d}
 .pc-tbl td.ds s{color:#8b9099}
 .pc-dd{font-size:9.5px;color:#5c626c;margin-top:2px}`;
+/* The # column's badges (a superset's A1 in green, a plain number in grey) and the amber
+   alternative row bound under its exercise — shared by the calendar's printout and the
+   athlete programme's (printDiProgram), so a superset reads the same on both sheets. */
+const RPT_BADGE_CSS=`/* Superset rows get the green badge; a plain sequence number otherwise gets the same
+   pill shape in neutral grey, so the column reads as one system either way. */
+.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
+  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+/* The alternative rides directly under the exercise it replaces, tinted amber and bound
+   to it, so the pair reads as one prescription with two ways of being done rather than
+   as two exercises in a row. The binding is the whole point: the row above gives up its
+   bottom rule and refuses to break away from this one, the number column repeats that
+   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
+.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
+/* No rule between an exercise and its alternative, and no page break either. */
+.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
+/* The hook and the parent's own badge, greyed back: read down the # column and the
+   alternative points straight at the row it belongs to. */
+.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
+.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
+.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.4)}
+/* The alternative's text hangs off an amber rule, indented from the exercise above it —
+   the shape of a sub-entry, read before a single word of it is. */
+.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
+/* Just the word: which exercise this replaces is already said by the badge in the number
+   column and by the rule the whole block hangs off, and spelling the name out a third
+   time cost two lines of paper per alternative. */
+.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
+  color:#b45309;line-height:1.35;margin-bottom:1px}
+.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
+.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
+.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#b45309;margin-right:6px}`;
 /* The masthead: the product line with the date, then the team's crest, what the sheet is,
    whose it is and — opposite — the volume and target RPE (rptHeadStats). `titleHTML` and
    `statsHTML` go in as markup. */
@@ -15117,11 +15152,7 @@ ${RPT_HEAD_CSS}
    badges, images, links and alternatives. */
 ${RPT_PHASE_CSS}
 .block .pc-card:last-child{margin-bottom:0}
-/* Superset rows get the green badge; a plain sequence number otherwise gets the same
-   pill shape in neutral grey, so the column reads as one system either way. */
-.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
-  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
-.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+${RPT_BADGE_CSS}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
 .ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -15130,32 +15161,6 @@ ${RPT_PHASE_CSS}
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
-/* The alternative rides directly under the exercise it replaces, tinted amber and bound
-   to it, so the pair reads as one prescription with two ways of being done rather than
-   as two exercises in a row. The binding is the whole point: the row above gives up its
-   bottom rule and refuses to break away from this one, the number column repeats that
-   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
-.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
-/* No rule between an exercise and its alternative, and no page break either. */
-.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
-/* The hook and the parent's own badge, greyed back: read down the # column and the
-   alternative points straight at the row it belongs to. */
-.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
-.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
-.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
-  border:1px solid rgba(245,158,11,.4)}
-/* The alternative's text hangs off an amber rule, indented from the exercise above it —
-   the shape of a sub-entry, read before a single word of it is. */
-.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
-/* Just the word: which exercise this replaces is already said by the badge in the number
-   column and by the rule the whole block hangs off, and spelling the name out a third
-   time cost two lines of paper per alternative. */
-.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
-  color:#b45309;line-height:1.35;margin-bottom:1px}
-.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
-.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
-.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
@@ -44589,7 +44594,7 @@ function diSessionRows(ses,program){
         why:exDesc(e),basis:(src&&src.basis)||[],
         /* The row's own picture; a session written before pictures rode along takes the plan's. */
         image:e.image||(src&&src.image)||'',
-        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
+        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',superset:e.superset||'',
         ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
     });
@@ -44617,6 +44622,14 @@ function diBlockLabel(b){
   const key=x=>diExName(x).replace(/\s+/g,'');
   return{title:b.name,tag:lbl&&key(lbl)!==key(b.name)?lbl:''};
 }
+/* A block's # column, the way the calendar numbers it: a superset row wears its letter and
+   its place in it (A1, A2), every other row its own running number. */
+function diRowLabels(rows){
+  const cnt={};
+  return(rows||[]).map(r=>{const ss=String(r.superset||'').toUpperCase().trim();
+    if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:ss+cnt[ss],ss:true};}
+    cnt._=(cnt._||0)+1;return{tag:String(cnt._),ss:false};});
+}
 const diDose=d=>{
   const reps=d.reps||d.duration||'';
   return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
@@ -44638,7 +44651,11 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
     return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(ex.name)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
+    const labs=diRowLabels(b.rows);
     const trs=b.rows.map((r,k)=>{
+      const lab=labs[k];
+      // A superset row wears its label on the green badge, the calendar's printout's.
+      const num=lab.ss?`<span class="ex-badge ss">${esc(lab.tag)}</span>`:lab.tag;
       const d=r.changed
         ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
         :`<b>${esc(diDose(r.adjusted))}</b>`;
@@ -44647,12 +44664,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
       const al=(r.alt&&typeof r.alt==='object')?r.alt:null;
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
-        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
+        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${lab.ss?' ss':''} ghost">${esc(lab.tag)}</span></span></td>
         <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
-      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
+      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${num}</td>
         <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
@@ -44668,6 +44685,7 @@ ${RPT_FONT}
 body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
 ${RPT_HEAD_CSS}
 ${RPT_PHASE_CSS}
+${RPT_BADGE_CSS}
 .bs{padding:10px 16px}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
@@ -44707,13 +44725,13 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary,diffs}){
   /* The D-ids an exercise cites, spelled out on hover — the card no longer lists them. */
   const diffText=id=>{const d=(diffs||[]).find(x=>x.id===id);return d?d.text:undefined;};
   return(<div className="di-prog">
-    {blocks.map((b,i)=>{const bl=diBlockLabel(b);return <div key={i} className="di-progblk">
+    {blocks.map((b,i)=>{const bl=diBlockLabel(b);const labs=diRowLabels(b.rows);return <div key={i} className="di-progblk">
       {bl.title&&<div className="di-blkh">
         <span>{bl.title}</span>
         {bl.tag?<i className={'di-phase '+b.phase}>{bl.tag}</i>:null}
       </div>}
       {b.rows.map((r,k)=><div key={r.key} className="di-prow">
-        <span className="di-pnum">{k+1}</span>
+        <span className={'di-pnum'+(labs[k].ss?' ss':'')}>{labs[k].tag}</span>
         <div className="di-prow-main">
           <div className="di-prow-nm">
             <b>{r.name}</b>

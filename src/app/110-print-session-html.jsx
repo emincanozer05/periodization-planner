@@ -106,6 +106,40 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
 .pc-tbl td.ds b{font-size:12px;color:#0a0b0d}
 .pc-tbl td.ds s{color:#8b9099}
 .pc-dd{font-size:9.5px;color:#5c626c;margin-top:2px}`;
+/* The # column's badges (a superset's A1 in green, a plain number in grey) and the amber
+   alternative row bound under its exercise — shared by the calendar's printout and the
+   athlete programme's (printDiProgram), so a superset reads the same on both sheets. */
+const RPT_BADGE_CSS=`/* Superset rows get the green badge; a plain sequence number otherwise gets the same
+   pill shape in neutral grey, so the column reads as one system either way. */
+.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
+  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+/* The alternative rides directly under the exercise it replaces, tinted amber and bound
+   to it, so the pair reads as one prescription with two ways of being done rather than
+   as two exercises in a row. The binding is the whole point: the row above gives up its
+   bottom rule and refuses to break away from this one, the number column repeats that
+   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
+.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
+/* No rule between an exercise and its alternative, and no page break either. */
+.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
+/* The hook and the parent's own badge, greyed back: read down the # column and the
+   alternative points straight at the row it belongs to. */
+.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
+.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
+.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.4)}
+/* The alternative's text hangs off an amber rule, indented from the exercise above it —
+   the shape of a sub-entry, read before a single word of it is. */
+.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
+/* Just the word: which exercise this replaces is already said by the badge in the number
+   column and by the rule the whole block hangs off, and spelling the name out a third
+   time cost two lines of paper per alternative. */
+.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
+  color:#b45309;line-height:1.35;margin-bottom:1px}
+.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
+.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
+.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#b45309;margin-right:6px}`;
 /* The masthead: the product line with the date, then the team's crest, what the sheet is,
    whose it is and — opposite — the volume and target RPE (rptHeadStats). `titleHTML` and
    `statsHTML` go in as markup. */
@@ -453,11 +487,7 @@ ${RPT_HEAD_CSS}
    badges, images, links and alternatives. */
 ${RPT_PHASE_CSS}
 .block .pc-card:last-child{margin-bottom:0}
-/* Superset rows get the green badge; a plain sequence number otherwise gets the same
-   pill shape in neutral grey, so the column reads as one system either way. */
-.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
-  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
-.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+${RPT_BADGE_CSS}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
 .ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -466,32 +496,6 @@ ${RPT_PHASE_CSS}
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
-/* The alternative rides directly under the exercise it replaces, tinted amber and bound
-   to it, so the pair reads as one prescription with two ways of being done rather than
-   as two exercises in a row. The binding is the whole point: the row above gives up its
-   bottom rule and refuses to break away from this one, the number column repeats that
-   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
-.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
-/* No rule between an exercise and its alternative, and no page break either. */
-.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
-/* The hook and the parent's own badge, greyed back: read down the # column and the
-   alternative points straight at the row it belongs to. */
-.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
-.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
-.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
-  border:1px solid rgba(245,158,11,.4)}
-/* The alternative's text hangs off an amber rule, indented from the exercise above it —
-   the shape of a sub-entry, read before a single word of it is. */
-.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
-/* Just the word: which exercise this replaces is already said by the badge in the number
-   column and by the rule the whole block hangs off, and spelling the name out a third
-   time cost two lines of paper per alternative. */
-.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
-  color:#b45309;line-height:1.35;margin-bottom:1px}
-.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
-.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
-.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
