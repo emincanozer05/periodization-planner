@@ -362,6 +362,18 @@ function useCloudSync(data,setData){
       });
       if(cur.length)groups.push(cur);
       slog('write: yeni parça gönderiliyor','adet='+news.length+' grup='+groups.length);
+      /* Bu hâl birazdan cihazın kalıcı kuyruğunda: sıradaki yazım onun ÜSTÜNE kurulur
+         (base=rev). Onay gelmezse gösterge sarı kalır (writeAcked); reddedilirse aşağıda geri
+         alınır. Commit'lerden ÖNCE yazılır: commit sırasında dinleyiciye başka bir cihazın
+         hâli düşerse onun birleştirmesi (applyRemote) bu kayıtları SONRA günceller ve ezilmez. */
+      lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
+      curRev.current=rev;histPut(rev,json);
+      writeAcked.current=false;
+      /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
+         nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
+         yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
+      chunkIds.current=ids.map(h=>({id:chunkDocId(u.uid,h),rev}))
+        .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
       /* HEPSİ ART ARDA KUYRUĞA, ONAY ARKADAN. Eskiden her parça grubunun SUNUCU ONAYI
          (en çok COMMIT_MS) beklenmeden manifest kuyruğa hiç girmiyordu. Yavaş bir ağda bu,
          "Senkronize ediliyor…" yazısının saniyelerce sürmesi demekti — ve asıl tehlike o
@@ -380,16 +392,6 @@ function useCloudSync(data,setData){
       pend.push(commitOps(fb,col,[{id:u.uid,data:mdata}]));   // sonuncusu manifest: durumu çeviren tek atomik adım
       pend.forEach(p=>p.catch(()=>{}));   // sonuçlar aşağıda toplu okunur; yakalanmamış söz uyarısı olmasın
       slog('write: parçalar ve manifest kuyrukta','grup='+groups.length);
-      /* Bu hâl artık cihazın kalıcı kuyruğunda: sıradaki yazım onun ÜSTÜNE kurulur (base=rev).
-         Onay gelmezse gösterge sarı kalır (writeAcked); reddedilirse aşağıda geri alınır. */
-      lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
-      curRev.current=rev;histPut(rev,json);
-      writeAcked.current=false;
-      /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
-         nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
-         yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
-      chunkIds.current=ids.map(h=>({id:chunkDocId(u.uid,h),rev}))
-        .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
       /* KİLİT ONAYI BEKLEMEZ. Onay beklenirken yapılan düzenleme eskiden yalnızca "sıraya
          alınıyordu": kuyruğa girmiyor, sekme o arada kapanırsa kayboluyordu. Kuyruk sıralı
          olduğu için yeni tur hemen arkasından yazabilir; bu tur da (stale) onun işine
