@@ -6441,6 +6441,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-prow{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 11px;align-items:start;
   border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:9px 12px}
 .di-pnum{font:700 11px/20px 'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-align:center}
+.di-pnum.ss{color:var(--accent)}   /* süperset satırı: A1, A2 */
 .di-prow-main{min-width:0;display:flex;flex-direction:column;gap:4px}
 .di-prow-nm{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;min-width:0}
 .di-prow-nm b{font-size:13.5px;color:var(--text);line-height:1.35}
@@ -14770,6 +14771,40 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
 .pc-tbl td.ds b{font-size:12px;color:#0a0b0d}
 .pc-tbl td.ds s{color:#8b9099}
 .pc-dd{font-size:9.5px;color:#5c626c;margin-top:2px}`;
+/* The # column's badges (a superset's A1 in green, a plain number in grey) and the amber
+   alternative row bound under its exercise — shared by the calendar's printout and the
+   athlete programme's (printDiProgram), so a superset reads the same on both sheets. */
+const RPT_BADGE_CSS=`/* Superset rows get the green badge; a plain sequence number otherwise gets the same
+   pill shape in neutral grey, so the column reads as one system either way. */
+.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
+  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+/* The alternative rides directly under the exercise it replaces, tinted amber and bound
+   to it, so the pair reads as one prescription with two ways of being done rather than
+   as two exercises in a row. The binding is the whole point: the row above gives up its
+   bottom rule and refuses to break away from this one, the number column repeats that
+   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
+.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
+/* No rule between an exercise and its alternative, and no page break either. */
+.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
+/* The hook and the parent's own badge, greyed back: read down the # column and the
+   alternative points straight at the row it belongs to. */
+.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
+.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
+.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.4)}
+/* The alternative's text hangs off an amber rule, indented from the exercise above it —
+   the shape of a sub-entry, read before a single word of it is. */
+.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
+/* Just the word: which exercise this replaces is already said by the badge in the number
+   column and by the rule the whole block hangs off, and spelling the name out a third
+   time cost two lines of paper per alternative. */
+.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
+  color:#b45309;line-height:1.35;margin-bottom:1px}
+.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
+.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
+.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#b45309;margin-right:6px}`;
 /* The masthead: the product line with the date, then the team's crest, what the sheet is,
    whose it is and — opposite — the volume and target RPE (rptHeadStats). `titleHTML` and
    `statsHTML` go in as markup. */
@@ -15117,11 +15152,7 @@ ${RPT_HEAD_CSS}
    badges, images, links and alternatives. */
 ${RPT_PHASE_CSS}
 .block .pc-card:last-child{margin-bottom:0}
-/* Superset rows get the green badge; a plain sequence number otherwise gets the same
-   pill shape in neutral grey, so the column reads as one system either way. */
-.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
-  font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
-.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+${RPT_BADGE_CSS}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
 .ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -15130,32 +15161,6 @@ ${RPT_PHASE_CSS}
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
-/* The alternative rides directly under the exercise it replaces, tinted amber and bound
-   to it, so the pair reads as one prescription with two ways of being done rather than
-   as two exercises in a row. The binding is the whole point: the row above gives up its
-   bottom rule and refuses to break away from this one, the number column repeats that
-   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
-.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
-/* No rule between an exercise and its alternative, and no page break either. */
-.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
-/* The hook and the parent's own badge, greyed back: read down the # column and the
-   alternative points straight at the row it belongs to. */
-.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
-.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
-.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
-  border:1px solid rgba(245,158,11,.4)}
-/* The alternative's text hangs off an amber rule, indented from the exercise above it —
-   the shape of a sub-entry, read before a single word of it is. */
-.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
-/* Just the word: which exercise this replaces is already said by the badge in the number
-   column and by the rule the whole block hangs off, and spelling the name out a third
-   time cost two lines of paper per alternative. */
-.alt-for{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:.09em;
-  color:#b45309;line-height:1.35;margin-bottom:1px}
-.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
-.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
-.alt-why-k{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
@@ -34971,6 +34976,7 @@ function useCloudSync(data,setData){
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
   const writeStarted=useRef(0);         // uçuştaki yazım ne zaman başladı (takılanı bırakabilmek için)
   const writeGen=useRef(0);             // yazım turu sıra no: bırakılan bir tur geri dönerse hiçbir şeye dokunamaz
+  const preRead=useRef(false);          // yazım öncesi sunucu okuması sürüyor (kapanışta bırakılabilir)
   const sawServer=useRef(false);        // bu oturumda SUNUCUDAN hiç anlık görüntü geldi mi (teşhisin ana ayracı)
   const snapCount=useRef(0);            // dinleyici kaç kez uyandı (bir kez = kilitlenmiş demektir)
   const lastDocs=useRef(0);             // son görüntüdeki doküman sayısı
@@ -35201,13 +35207,14 @@ function useCloudSync(data,setData){
   };
 
   // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
-  const writeNow=async()=>{
+  const writeNow=async(urgent)=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current){slog('write: atlandı','ready='+(ready.current?1:0)+' user='+(u?1:0));return;}
     if(writing.current){queued.current=true;slog('write: kilitli, sıraya alındı');return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
     const gen=++writeGen.current;      // bu turun kimliği: bırakılmış bir tur dönerse artık hiçbir şeye dokunmaz
     const stale=()=>gen!==writeGen.current;
+    preRead.current=false;             // bırakılmış bir turdan kalan bayrak bu turu kapanışta bıraktırmasın
     const hb=healBase.current;healBase.current=null;   // onarım turu mu (bozuk manifestin üstüne bilerek yazılır)
     /* Bağlantısız geçen bir aradan sonraki ilk yazım: önce sunucudaki hâli oku. Arada başka
        bir cihaz yazdıysa körlemesine üzerine yazmak yerine birleştir — böylece "tablet
@@ -35215,9 +35222,12 @@ function useCloudSync(data,setData){
        Sekme GİZLİYKEN bu okuma atlanır. Telefon cebe girerken yapılan son yazım tam da
        burada takılıyordu: bağlantı kopmak üzereyken açılan okuma hiç sonuçlanmıyor, kilit
        hiç açılmıyor ve o cihaz bir daha yazamıyordu. Kaçırılan bir şey de olmuyor —
-       dinleyici geri dönüşte uzak hâli zaten getirip birleştiriyor. */
-    if(!fromServer.current&&ready.current&&!isHidden()){
-      writing.current=true;writeStarted.current=Date.now();
+       dinleyici geri dönüşte uzak hâli zaten getirip birleştiriyor.
+       Sayfa KAPANIRKEN (urgent) de atlanır: okumanın dönmesini beklemek, düzenlemenin
+       kuyruğa hiç giremeden sekmeyle birlikte gitmesi demekti. Arada başka bir cihaz
+       yazdıysa manifest kuralı (base) bu yazımı reddeder; açılışta birleştirilir. */
+    if(!urgent&&!fromServer.current&&ready.current&&!isHidden()){
+      writing.current=true;writeStarted.current=Date.now();preRead.current=hb==null;
       try{
         // Önce yalnızca manifest okunur (tek doküman): ekrandaki hâlin dayandığı rev'se arada
         // kimse yazmamış demektir, parçaları çekmeye hiç gerek kalmaz.
@@ -35234,7 +35244,7 @@ function useCloudSync(data,setData){
       // Sıra önemli: bu tur bırakıldıysa kilit ARTIK BİZİM DEĞİL — yerine geçen tur onu
       // tutuyor olabilir, dokunmadan çekiliyoruz.
       if(stale())return;
-      writing.current=false;
+      writing.current=false;preRead.current=false;
     }
     const json=ser(dataRef.current);
     const base=hb!=null?hb:(curRev.current||0);   // bu hâl buluttaki hangi rev'in üstüne kuruldu
@@ -35292,35 +35302,63 @@ function useCloudSync(data,setData){
       });
       if(cur.length)groups.push(cur);
       slog('write: yeni parça gönderiliyor','adet='+news.length+' grup='+groups.length);
-      /* "Takıldı" = İLERLEMİYOR, "uzun sürüyor" değil. Büyük bir ilk kayıt onlarca commit
-         eder; her biri ilerleme olduğu için gözcünün sayacı burada sıfırlanır, yoksa gözcü
-         çalışan bir yazımı ortasından bırakıp baştan başlatır ve iş hiç bitmezdi. */
-      let acked=true;
-      for(const g of groups){
-        if(!await commitOps(fb,col,g))acked=false;
-        if(stale())return;
-        writeStarted.current=Date.now();
-      }
-      // Parçaların HEPSİ yerinde → manifest TEK BAŞINA yazılır: durumu çeviren tek atomik adım.
-      slog('write: parçalar yazıldı, manifest gidiyor',acked?'':'(onay bekleniyor)');
+      /* Bu hâl birazdan cihazın kalıcı kuyruğunda: sıradaki yazım onun ÜSTÜNE kurulur
+         (base=rev). Onay gelmezse gösterge sarı kalır (writeAcked); reddedilirse aşağıda geri
+         alınır. Commit'lerden ÖNCE yazılır: commit sırasında dinleyiciye başka bir cihazın
+         hâli düşerse onun birleştirmesi (applyRemote) bu kayıtları SONRA günceller ve ezilmez. */
+      lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
+      curRev.current=rev;histPut(rev,json);
+      writeAcked.current=false;
+      /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
+         nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
+         yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
+      chunkIds.current=ids.map(h=>({id:chunkDocId(u.uid,h),rev}))
+        .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
+      /* HEPSİ ART ARDA KUYRUĞA, ONAY ARKADAN. Eskiden her parça grubunun SUNUCU ONAYI
+         (en çok COMMIT_MS) beklenmeden manifest kuyruğa hiç girmiyordu. Yavaş bir ağda bu,
+         "Senkronize ediliyor…" yazısının saniyelerce sürmesi demekti — ve asıl tehlike o
+         arada: sekme kapanır ya da sayfa yenilenirse parçalar cihazın kuyruğunda, manifest
+         HİÇBİR YERDE olurdu; düzenleme kaybolurdu. Oysa Firestore commit'leri kalıcı kuyruğa
+         (IndexedDB) çağrı sırasıyla işler ve sunucuya da o sırayla gönderir: "önce parçalar,
+         sonra manifest" güvencesi için onayı beklemek gerekmiyor. commitOps ilk commit'i
+         ilk `await`'ten önce başlattığı için aşağıdaki çağrılar kuyruğa tam bu sırayla girer.
+         Sonuç: düzenleme bölünür bölünmez diske işlenir (kapanışta da kaybolmaz) ve bulut
+         tek bir gidiş-dönüşte oturur. */
+      const pend=groups.map(g=>commitOps(fb,col,g));
       /* Manifeste SUNUCU SAATİ de yazılır. Kimin düzenlemesinin daha yeni olduğu ancak ortak
          bir saatle söylenebilir; cihaz saatleri birbirini tutmaz. Bkz. applyRemote. */
       const mdata={userId:u.uid,v:2,n,rev,ids,base,st:srvStamp()};
       if(hb!=null)mdata.heal=1;
-      let mOk;
-      try{mOk=await commitOps(fb,col,[{id:u.uid,data:mdata}]);}
-      catch(e){
+      pend.push(commitOps(fb,col,[{id:u.uid,data:mdata}]));   // sonuncusu manifest: durumu çeviren tek atomik adım
+      pend.forEach(p=>p.catch(()=>{}));   // sonuçlar aşağıda toplu okunur; yakalanmamış söz uyarısı olmasın
+      slog('write: parçalar ve manifest kuyrukta','grup='+groups.length);
+      /* KİLİT ONAYI BEKLEMEZ. Onay beklenirken yapılan düzenleme eskiden yalnızca "sıraya
+         alınıyordu": kuyruğa girmiyor, sekme o arada kapanırsa kayboluyordu. Kuyruk sıralı
+         olduğu için yeni tur hemen arkasından yazabilir; bu tur da (stale) onun işine
+         karışmadan çekilir. */
+      writing.current=false;
+      if(queued.current||ser(dataRef.current)!==json){queued.current=false;writeNow();}
+      else dirty.current=false;   // yazılacak başka bir şey yok: bu hâl kuyrukta, yolda
+
+      const rs=await Promise.allSettled(pend);
+      /* Bu tur bırakılmışsa (yerine yenisi başladı) sonucu yeni tur belirler: onun manifesti
+         bu turunkinin üstüne kurulu, bu tur reddedildiyse o da reddedilir ve birleştirmeyi
+         o yapar. */
+      if(stale())return;
+      const mr=rs[rs.length-1];
+      if(mr.status==='rejected'&&mr.reason&&mr.reason.code==='permission-denied'){
         /* REDDEDİLDİ: Firestore kuralı, `base`'i buluttaki rev'i tutmayan manifesti kabul
            etmiyor — biz yazmaya hazırlanırken başka bir cihaz yazmış. Eskiden bu yazım o
            cihazın hâlini sessizce eziyordu. Şimdi buluttakini okuyup birleştiriyor ve
            birleşmiş hâli yeniden yazıyoruz. Art arda birkaç kez olursa (birleştirme okuması
            gelmiyor) hata gösterilir; dakikada bir yeniden denenir. */
-        if(!(e&&e.code==='permission-denied'))throw e;
-        if(stale())return;
         const c=conflicts.current;
         if(Date.now()-c.at>60000)c.n=0;
-        if(c.n>=3)throw e;
+        if(c.n>=3)throw mr.reason;
         c.n++;c.at=Date.now();
+        // Bu hâl bulutta DEĞİL: "bulutla eşitim" sanılıp yeniden yazımı atlanmasın.
+        lastSynced.current=null;
+        writing.current=true;writeStarted.current=Date.now();   // birleştirme bitene kadar yeni tur beklesin
         slog('write: bulutta bu cihazın görmediği bir hâl var → önce birleştiriliyor','tur='+c.n);
         try{await pullMerge(fb,u.uid);}
         catch(e2){slog('write: birleştirme okuması başarısız',(e2&&e2.code)||(e2&&e2.message)||'?');}
@@ -35329,37 +35367,30 @@ function useCloudSync(data,setData){
         dirty.current=true;writeNow();
         return;
       }
-      if(!mOk)acked=false;
-      /* Bu tur bırakılmışsa (ağ takıldı sanıldı, yerine yenisi başladı) ve şimdi geç de olsa
-         döndüyse: yazdığı hâl buluta gitti, ama ekrandaki hâl artık o değil. "Senkron" demek
-         ya da lastSynced'i geriye çekmek, yeni turun yazacağını bastırıp cihazı yanlışlıkla
-         yeşile boyardı. Bulutu bozmadan çekiliyor; sonucu yeni tur belirler. */
-      if(stale())return;
-      lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
-      curRev.current=rev;histPut(rev,json);conflicts.current.n=0;
-      writeAcked.current=acked;
+      const bad=rs.find(r=>r.status==='rejected');
+      if(bad)throw bad.reason;
+      const acked=rs.every(r=>r.value);
+      conflicts.current.n=0;writeAcked.current=acked;
       /* The cloud has this state now, so any device file it no longer points at is safe to
          let go — checked against the state on screen too, since the coach may have edited
          while the write was in flight. This is the ONLY place device media is deleted. */
       if(_lmCache.size)lmSweep(json,ser(dataRef.current));
-      /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
-         nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
-         yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
-      chunkIds.current=ids.map(h=>({id:chunkDocId(u.uid,h),rev}))
-        .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
       gcOldChunks(fb,u.uid,rev,keep,known);   // artık gösterilmeyenleri arkada temizle (başarısız olsa da veri sağlam)
     }catch(e){
       if(stale())return;   // bırakılmış turun hatası yeni turun durumunu bozmasın
       console.warn('write',e);slog('write: HATA',(e&&e.code)||(e&&e.message)||'?');
       setStatus('error');setSyncErr(e.code||e.message||'unknown');
+      if(lastSynced.current===json)lastSynced.current=null;   // bulutta değil: gözcü yeniden denesin
       writing.current=false;
       const rerun=queued.current;queued.current=false;if(rerun)writeNow();   // yeni değişiklik beklemesin
       return;
     }
-    writing.current=false;
-    // Yazım sürerken yeni değişiklik geldiyse: yeşil YAKMADAN hemen onu da yaz.
-    if(queued.current||ser(dataRef.current)!==json){queued.current=false;writeNow();return;}
-    dirty.current=false;   // yazılacak başka bir şey yok: bu hâl ya bulutta ya da yola çıkmış kuyrukta
+    // Onay beklenirken yeni değişiklik geldiyse yeşil YAKMA: onu yazacak tur (zamanlayıcı) yolda.
+    if(queued.current||ser(dataRef.current)!==json){
+      queued.current=false;
+      if(!timer.current&&!writing.current){dirty.current=true;writeNow();}
+      return;
+    }
     if(!writeAcked.current){
       /* Onay zamanında gelmedi. Düzenleme kaybolmadı — diske işlendi ve Firestore onu
          kendisi gönderecek — ama daha BULUTTA DEĞİL, o yüzden yeşil yakmıyoruz. Yeşili,
@@ -35382,6 +35413,16 @@ function useCloudSync(data,setData){
   const applyRemote=(json,parsed,remoteAt,meta)=>{
     const m=meta||{};
     let base=ancestor.current;
+    /* AYNI UZAK HÂL İKİNCİ KEZ. Bu rev'i zaten aldık, birleştirdik ve ortak ata yaptık; üstüne
+       yapılan yerel düzenleme kuyrukta ya da yolda. Dinleyici aynı manifesti yeniden teslim
+       edebilir (bekleyen yazımımızın her commit'inde görüntü yeniden gelir). Getirdiği yeni
+       bir şey yok — ama aşağıdaki yol "uzak = ata" görünce ekrandakini onunla DEĞİŞTİRİR ve
+       yerel düzenleme silinirdi. Hiçbir şeye dokunmadan geçilir; yeşil de yakılmaz. */
+    if(json===base&&typeof m.rev==='number'&&hist.current.get(m.rev)===json
+       &&(dirty.current||writing.current||queued.current||(lastSynced.current!=null&&lastSynced.current!==base))){
+      slog('snap: aynı uzak hâl yeniden geldi, zaten birleştirilmiş → yerel düzenleme korunuyor','rev='+m.rev);
+      return true;
+    }
     /* KÖR YAZIM. Gelen manifestin `base`'i bu cihazın bildiği hâlden ESKİYSE, onu yazan cihaz
        bu cihazdaki son değişiklikleri hiç görmemiştir: çevrimdışıyken kuyruğa giren yazım ağ
        dönünce gitti, ya da iki cihaz aynı anda yazdı ve geç kalan önce yazanı ezdi. (rev'ler
@@ -36123,7 +36164,15 @@ function useCloudSync(data,setData){
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
-    const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();lsFlush();};
+    const flush=()=>{
+      if(timer.current){clearTimeout(timer.current);timer.current=null;}
+      /* Sayfa kapanıyor/gizleniyor ve yazım hâlâ sunucu okumasını bekliyor: düzenleme henüz
+         kuyrukta değil. O okuma bırakılır (geç dönerse stale) ve hâl doğrudan kuyruğa yazılır. */
+      if(preRead.current&&writing.current){
+        preRead.current=false;writeGen.current++;writing.current=false;queued.current=false;
+        slog('write: sayfa kapanıyor → ön-okuma bırakıldı, doğrudan kuyruğa');
+      }
+      writeNow(true);lsFlush();};
     /* Sekme gizliyken (telefon cebe girdiğinde) dinleyici uykuya alınabilir; ağ da kopmuş
        olabilir. İkisinde de "sunucuyla temasım var" güvencesi düşer: dönüşteki ilk yazım,
        arada başka cihaz yazmış mı diye önce sunucuya bakar.
@@ -44545,7 +44594,7 @@ function diSessionRows(ses,program){
         why:exDesc(e),basis:(src&&src.basis)||[],
         /* The row's own picture; a session written before pictures rode along takes the plan's. */
         image:e.image||(src&&src.image)||'',
-        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
+        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',superset:e.superset||'',
         ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
     });
@@ -44573,6 +44622,14 @@ function diBlockLabel(b){
   const key=x=>diExName(x).replace(/\s+/g,'');
   return{title:b.name,tag:lbl&&key(lbl)!==key(b.name)?lbl:''};
 }
+/* A block's # column, the way the calendar numbers it: a superset row wears its letter and
+   its place in it (A1, A2), every other row its own running number. */
+function diRowLabels(rows){
+  const cnt={};
+  return(rows||[]).map(r=>{const ss=String(r.superset||'').toUpperCase().trim();
+    if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:ss+cnt[ss],ss:true};}
+    cnt._=(cnt._||0)+1;return{tag:String(cnt._),ss:false};});
+}
 const diDose=d=>{
   const reps=d.reps||d.duration||'';
   return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
@@ -44594,7 +44651,11 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
     return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(ex.name)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
+    const labs=diRowLabels(b.rows);
     const trs=b.rows.map((r,k)=>{
+      const lab=labs[k];
+      // A superset row wears its label on the green badge, the calendar's printout's.
+      const num=lab.ss?`<span class="ex-badge ss">${esc(lab.tag)}</span>`:lab.tag;
       const d=r.changed
         ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
         :`<b>${esc(diDose(r.adjusted))}</b>`;
@@ -44603,12 +44664,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
       const al=(r.alt&&typeof r.alt==='object')?r.alt:null;
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
-        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
+        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${lab.ss?' ss':''} ghost">${esc(lab.tag)}</span></span></td>
         <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
-      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
+      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${num}</td>
         <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
@@ -44624,6 +44685,7 @@ ${RPT_FONT}
 body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
 ${RPT_HEAD_CSS}
 ${RPT_PHASE_CSS}
+${RPT_BADGE_CSS}
 .bs{padding:10px 16px}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
@@ -44663,13 +44725,13 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary,diffs}){
   /* The D-ids an exercise cites, spelled out on hover — the card no longer lists them. */
   const diffText=id=>{const d=(diffs||[]).find(x=>x.id===id);return d?d.text:undefined;};
   return(<div className="di-prog">
-    {blocks.map((b,i)=>{const bl=diBlockLabel(b);return <div key={i} className="di-progblk">
+    {blocks.map((b,i)=>{const bl=diBlockLabel(b);const labs=diRowLabels(b.rows);return <div key={i} className="di-progblk">
       {bl.title&&<div className="di-blkh">
         <span>{bl.title}</span>
         {bl.tag?<i className={'di-phase '+b.phase}>{bl.tag}</i>:null}
       </div>}
       {b.rows.map((r,k)=><div key={r.key} className="di-prow">
-        <span className="di-pnum">{k+1}</span>
+        <span className={'di-pnum'+(labs[k].ss?' ss':'')}>{labs[k].tag}</span>
         <div className="di-prow-main">
           <div className="di-prow-nm">
             <b>{r.name}</b>

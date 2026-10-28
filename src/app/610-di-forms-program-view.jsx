@@ -435,7 +435,7 @@ function diSessionRows(ses,program){
         why:exDesc(e),basis:(src&&src.basis)||[],
         /* The row's own picture; a session written before pictures rode along takes the plan's. */
         image:e.image||(src&&src.image)||'',
-        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
+        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',superset:e.superset||'',
         ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
     });
@@ -463,6 +463,14 @@ function diBlockLabel(b){
   const key=x=>diExName(x).replace(/\s+/g,'');
   return{title:b.name,tag:lbl&&key(lbl)!==key(b.name)?lbl:''};
 }
+/* A block's # column, the way the calendar numbers it: a superset row wears its letter and
+   its place in it (A1, A2), every other row its own running number. */
+function diRowLabels(rows){
+  const cnt={};
+  return(rows||[]).map(r=>{const ss=String(r.superset||'').toUpperCase().trim();
+    if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:ss+cnt[ss],ss:true};}
+    cnt._=(cnt._||0)+1;return{tag:String(cnt._),ss:false};});
+}
 const diDose=d=>{
   const reps=d.reps||d.duration||'';
   return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
@@ -484,7 +492,11 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
     return src?`<div class="ex-imgwrap"><img class="ex-img" src="${esc(mediaSrc(src))}" alt="${esc(ex.name)}"></div>`:'';};
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
+    const labs=diRowLabels(b.rows);
     const trs=b.rows.map((r,k)=>{
+      const lab=labs[k];
+      // A superset row wears its label on the green badge, the calendar's printout's.
+      const num=lab.ss?`<span class="ex-badge ss">${esc(lab.tag)}</span>`:lab.tag;
       const d=r.changed
         ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
         :`<b>${esc(diDose(r.adjusted))}</b>`;
@@ -493,12 +505,12 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
       const al=(r.alt&&typeof r.alt==='object')?r.alt:null;
       const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
       const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
-        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
+        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${lab.ss?' ss':''} ghost">${esc(lab.tag)}</span></span></td>
         <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
         <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
-      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
+      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${num}</td>
         <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
@@ -514,6 +526,7 @@ ${RPT_FONT}
 body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
 ${RPT_HEAD_CSS}
 ${RPT_PHASE_CSS}
+${RPT_BADGE_CSS}
 .bs{padding:10px 16px}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
@@ -553,13 +566,13 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary,diffs}){
   /* The D-ids an exercise cites, spelled out on hover — the card no longer lists them. */
   const diffText=id=>{const d=(diffs||[]).find(x=>x.id===id);return d?d.text:undefined;};
   return(<div className="di-prog">
-    {blocks.map((b,i)=>{const bl=diBlockLabel(b);return <div key={i} className="di-progblk">
+    {blocks.map((b,i)=>{const bl=diBlockLabel(b);const labs=diRowLabels(b.rows);return <div key={i} className="di-progblk">
       {bl.title&&<div className="di-blkh">
         <span>{bl.title}</span>
         {bl.tag?<i className={'di-phase '+b.phase}>{bl.tag}</i>:null}
       </div>}
       {b.rows.map((r,k)=><div key={r.key} className="di-prow">
-        <span className="di-pnum">{k+1}</span>
+        <span className={'di-pnum'+(labs[k].ss?' ss':'')}>{labs[k].tag}</span>
         <div className="di-prow-main">
           <div className="di-prow-nm">
             <b>{r.name}</b>
