@@ -35408,6 +35408,16 @@ function useCloudSync(data,setData){
   const applyRemote=(json,parsed,remoteAt,meta)=>{
     const m=meta||{};
     let base=ancestor.current;
+    /* AYNI UZAK HÂL İKİNCİ KEZ. Bu rev'i zaten aldık, birleştirdik ve ortak ata yaptık; üstüne
+       yapılan yerel düzenleme kuyrukta ya da yolda. Dinleyici aynı manifesti yeniden teslim
+       edebilir (bekleyen yazımımızın her commit'inde görüntü yeniden gelir). Getirdiği yeni
+       bir şey yok — ama aşağıdaki yol "uzak = ata" görünce ekrandakini onunla DEĞİŞTİRİR ve
+       yerel düzenleme silinirdi. Hiçbir şeye dokunmadan geçilir; yeşil de yakılmaz. */
+    if(json===base&&typeof m.rev==='number'&&hist.current.get(m.rev)===json
+       &&(dirty.current||writing.current||queued.current||(lastSynced.current!=null&&lastSynced.current!==base))){
+      slog('snap: aynı uzak hâl yeniden geldi, zaten birleştirilmiş → yerel düzenleme korunuyor','rev='+m.rev);
+      return true;
+    }
     /* KÖR YAZIM. Gelen manifestin `base`'i bu cihazın bildiği hâlden ESKİYSE, onu yazan cihaz
        bu cihazdaki son değişiklikleri hiç görmemiştir: çevrimdışıyken kuyruğa giren yazım ağ
        dönünce gitti, ya da iki cihaz aynı anda yazdı ve geç kalan önce yazanı ezdi. (rev'ler
