@@ -106,10 +106,10 @@ function fvSprint(mass,splits){
   return{ok:true,tau:+tau.toFixed(3),Vmax:+vmax.toFixed(2),V0:+vmax.toFixed(2),a0:+a0.toFixed(2),F0:Math.round(F0),F0rel:+a0.toFixed(2),
     Pmax:Math.round(Pmax),Pmaxrel:+(Pmax/m).toFixed(1),rmse:+Math.sqrt(best.sse/pts.length).toFixed(3),n:pts.length};
 }
-/* Testin sprint noktaları: 20 m süresi (mevcut alan) + isteğe bağlı 5/10/30 m ara zamanları. */
+/* Testin sprint noktaları: 20 m süresi (mevcut alan) + isteğe bağlı 5/10 m ara zamanları. */
 function fvSprintPoints(test){
   const sp=test.sprintSplits||{};
-  return[{d:5,t:sp.t5},{d:10,t:sp.t10},{d:20,t:test.sprint20m&&test.sprint20m.time},{d:30,t:sp.t30}];
+  return[{d:5,t:sp.t5},{d:10,t:sp.t10},{d:20,t:test.sprint20m&&test.sprint20m.time}];
 }
 /* Dikey noktalar: BW = squatJump kutusu, ardından yüklü satırlar. */
 function fvVerticalPoints(test){
@@ -141,7 +141,7 @@ const fvWhyText=(why)=>({
   mass:L('Vücut ağırlığı yok — Antropometri testine ya da Ölçüm kayıtlarına kilo gir.','No body mass — enter weight in the Anthropometry test or Measurements.'),
   hpo:L('İtiş mesafesi (hpo) gir (cm; çömelme pozisyonunda ayak bileği-kalça-diz tam uzadığında gövdenin yükselmesi).','Enter push-off distance (hpo, cm: how far the body rises from the squat start position to full extension).'),
   points:L('En az iki farklı yükle sıçrama gerekli (BW + bir ek yük).','At least two different loads are needed (bodyweight + one added load).'),
-  spoints:L('Profil için 20 m süresinin yanında en az bir ara zaman daha gir (5, 10 ya da 30 m; kapı/foto-hücre ile).','Enter at least one more split besides the 20 m time (5, 10 or 30 m; timing gates / photocells).'),
+  spoints:L('Profil için 20 m süresinin yanında en az bir ara zaman daha gir (5 ya da 10 m; kapı/foto-hücre ile).','Enter at least one more split besides the 20 m time (5 or 10 m; timing gates / photocells).'),
   flat:L('Yükler farklı sonuç vermedi: noktalar aynı hızda.','The loads did not change velocity.'),
   slope:L('Yük arttıkça hız düşmedi (eğim fizyolojik değil): veriyi kontrol et.','Velocity did not fall as load rose (non-physiological slope): check the data.'),
   order:L('Ara zamanlar mesafe arttıkça artmalı.','Split times must increase with distance.'),
@@ -170,7 +170,7 @@ function FvVerticalResult({res}){
   </div>);
 }
 /* ---- Sprint kartı içi: F-V sonucu. Ara zamanlar kartın kendi kapı şeridinden girilir
-   (5 / 10 m, 5-10m Acceleration testiyle ortaktır; 20 m ana süre; 30 m). ---- */
+   (5 / 10 m, 5-10m Acceleration testiyle ortaktır; 20 m ana süre). ---- */
 function FvSprintResult({test,ath}){
   const mass=fvBodyMass(test,ath);
   const res=useMemo(()=>fvSprint(mass,fvSprintPoints(test)),[mass,test.sprint20m,test.sprintSplits]);

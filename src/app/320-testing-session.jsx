@@ -3,7 +3,7 @@
    dynamic visual (stopwatch, jump bars, course maps, body-angle
    models …) instead of a generic form.
    ========================================================= */
-const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
+const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',laneAgility:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
 
 function TField({label,unit,value,onChange,step,placeholder,hint,text}){
   return(<div><label className="tf-l">{label}</label>
@@ -266,11 +266,11 @@ function CustomStage({theme}){
 }
 
 /* ---- Mockup-style test card helpers ---- */
-const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
+const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
   accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Seated)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
   benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
-const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',shuttleRun:'vo2max'};
-const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',shuttleRun:'SHUTTLE',
+const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',laneAgility:'sec',shuttleRun:'vo2max'};
+const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',laneAgility:'LANE',shuttleRun:'SHUTTLE',
   accel:'5-10M',hipRot:'HIP IR/ER',thomas:'THOMAS',tSpine:'T-SPINE',benchPress:'BP',trapBarDL:'TBDL',pullUp:'PULL-UP',copenhagen:'CPH',sidePlank:'SIDE PLANK',backSquat:'SQUAT',ift3015:'30-15 IFT'};
 const BADGE_COLS=['#0094ff','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#0094ff','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#0094ff','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
@@ -681,38 +681,27 @@ function FmsPartCard({item,test,ath,onUpdate}){
   </div>);
 }
 
-/* ---- 20 m sprint: the timing gates in a row, the speed of each stretch under its gate, then
-   the F-V profile and the step / foot photos side by side. ---- */
+/* ---- 20 m sprint: the three timing gates (0–5, 0–10, 0–20 m) in a row, the average speed
+   over each under its gate, then the F-V profile and the coach's comment side by side. ---- */
 function SprintCard({hd,test,onUpdate,ath,obsVal,setObs}){
   const sp=test.sprintSplits||{};
-  const gates=[{k:'t5',d:5,v:sp.t5},{k:'t10',d:10,v:sp.t10},{k:'time',d:20,v:test.sprint20m&&test.sprint20m.time,main:true},{k:'t30',d:30,v:sp.t30}];
+  const raw={t5:sp.t5,t10:sp.t10,time:test.sprint20m&&test.sprint20m.time};
+  const gates=sprintGates(test);
   const set=(g,v)=>onUpdate(t=>g.main?{sprint20m:{...(t.sprint20m||{}),time:v}}:{sprintSplits:{...(t.sprintSplits||{}),[g.k]:v}});
-  let prev={d:0,t:0};
-  const seg=gates.map(g=>{const t=tN(g.v);if(!(t>0))return null;
-    const out=t>prev.t?{from:prev.d,v:+((g.d-prev.d)/(t-prev.t)).toFixed(2)}:{bad:true};prev={d:g.d,t};return out;});
-  const s20=test.sprint20m||{};
-  const P=(k,lbl)=><MkUpload photo={s20[k]} onChange={v=>onUpdate(t=>({sprint20m:{...(t.sprint20m||{}),[k]:v}}))} label={lbl}/>;
   return(<div className="tcard tcard-wide tcard-sprint">
     {hd}
     <div className="tcard-body-wide">
       <div className="spr-track">
-        {gates.map((g,i)=>(<div key={g.k} className={'spr-gate'+(g.main?' main':'')}>
-          <div className="spr-gate-d"><b>{g.d} m</b>{g.main?<span>{L('ana süre','main time')}</span>:<span>{L('ara zaman','split')}</span>}</div>
-          <MkInput value={g.v} onChange={v=>set(g,v)} unit="s" step="0.01"/>
-          <div className={'spr-gate-v'+(seg[i]&&seg[i].bad?' bad':'')}>{seg[i]?(seg[i].bad?L('önceki kapıdan kısa olamaz','cannot be under the previous gate'):`${seg[i].from}–${g.d} m · ${seg[i].v} m/s`):'—'}</div>
+        {gates.map(g=>(<div key={g.k} className={'spr-gate'+(g.main?' main':'')}>
+          <div className="spr-gate-d"><b>0–{g.d} m</b>{g.main?<span>{L('ana süre','main time')}</span>:<span>{L('ara zaman','split')}</span>}</div>
+          <MkInput value={raw[g.k]} onChange={v=>set(g,v)} unit="s" step="0.01"/>
+          <div className="spr-gate-v">{g.v!=null?`${L('ort. hız','avg speed')} ${g.v} m/s`:'—'}</div>
         </div>))}
       </div>
       <div className="spr-body">
         <FvSprintResult test={test} ath={ath}/>
-        <div className="spr-photos">
-          <div className="mk-flbl">{L('Adım / ayak fotoğrafları','Step / foot photos')}</div>
-          <div className="mk-uploads sm">
-            {P('sideStep1',L('Adım 1','Step 1'))}{P('sideStep2',L('Adım 2','Step 2'))}{P('sideStep3',L('Adım 3','Step 3'))}
-            {P('frontRightFoot',L('Sağ ayak','R foot'))}{P('frontLeftFoot',L('Sol ayak','L foot'))}
-          </div>
-        </div>
+        <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, çıkış, reaksiyon notları…','Sprint mechanics, start, reaction notes…')}/>
       </div>
-      <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, çıkış, reaksiyon notları…','Sprint mechanics, start, reaction notes…')}/>
     </div>
   </div>);
 }
@@ -1046,7 +1035,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   }
 
   if(MK_SOLO_UNIT[id]){
-    const step=(id==='dropJump'||id==='tTest'||id==='shuttleRun')?'0.01':'0.1';
+    const step=(id==='dropJump'||id==='tTest'||id==='laneAgility'||id==='shuttleRun')?'0.01':'0.1';
     return(<div className="tcard tcard-score" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-col">

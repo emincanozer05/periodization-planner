@@ -90,10 +90,14 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     {g:'jump',id:'horizontalJump',tr:'Yatay Sıçrama',en:'Horizontal Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.horizontalJump))},
     {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',rows:[...lr('lateralCmj'),
       [L('Asimetri','Asymmetry'),t=>asymPct(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left,'hi'),{u:'%',dir:'lo'}]]},
-    {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:one(t=>cmpN(t.sprint20m&&t.sprint20m.time))},
+    /* The three gate times and the average speed over each (distance / time). */
+    {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:[
+      ...[0,1,2].map(i=>[`0–${[5,10,20][i]} m`,t=>sprintGates(t)[i].t]),
+      ...[0,1,2].map(i=>[`${L('Hız','Spd')} ${[5,10,20][i]}`,t=>sprintGates(t)[i].v,{u:'m/s',dir:'hi'}])]},
     {g:'speed',id:'accel',tr:'5-10 m İvmelenme',en:'5-10 m Acceleration',u:'s',dir:'lo',rows:[['5 m',t=>accelCalc(t).t5],['10 m',t=>accelCalc(t).t10]]},
     {g:'speed',id:'tTest',tr:'T-Çeviklik Testi',en:'T-Agility Test',u:'s',dir:'lo',rows:one(t=>cmpN(t.tTest))},
     {g:'speed',id:'fiveZeroFive',tr:'505 Yön Değiştirme',en:'505 Change of Direction',u:'s',dir:'lo',rows:[[RS[0],t=>cod505Calc(t).r],[RS[1],t=>cod505Calc(t).l]]},
+    {g:'speed',id:'laneAgility',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',rows:one(t=>cmpN(t.laneAgility))},
   ];
   const safe=(f,t)=>{try{const v=f(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}};
   /* A test's readings: the dates any of its rows was taken, and each row's value per date. */
@@ -140,20 +144,13 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
         const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
         const o=r[2]||{},u=o.u||d.u||'',du=o.u||'';
         return`<td><b>${fv(v)}${u?`<small${/^[°%]$/.test(u)?' class="g"':''}>${esc(u)}</small>`:''}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${du}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
-  /* The FMS scale, worded for the reader of the sheet: what each score means and what was seen. */
-  const FMS_SCALE=[
-    {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
-    {tr:'Disfonksiyonel hareket',en:'Dysfunctional movement',dTr:'Sporcu hareketi testin minimum tamamlama kriterlerine uygun şekilde gerçekleştiremez.',dEn:'The athlete cannot perform the movement to the test’s minimum completion criteria.'},
-    {tr:'Fonksiyonel ancak kompansasyonlu hareket',en:'Functional movement with compensation',dTr:'Sporcu hareketi tamamlar ancak bazı hareket kısıtlılıkları veya kompansasyonlar gözlenir.',dEn:'The athlete completes the movement, but some restrictions or compensations are seen.'},
-    {tr:'Fonksiyonel hareket',en:'Functional movement',dTr:'Sporcu hareketi belirlenen kriterlere uygun, kompansasyon olmadan tamamlar.',dEn:'The athlete completes the movement to the set criteria, without compensation.'},
-  ];
   const fmsTone=v=>v<=1?'#dc2626':v===2?'#b88400':'#16a34a';
   /* Every FMS movement as one wide card: its picture (for the Deep Squat the athlete's own front
      and side photos, when taken), beside it the movement's name, date and what it tests (the full
      FMS description), and under that the latest score with its meaning on the FMS scale. A
      two-sided movement shows each side; the lower side is its score. */
   const fmsCard=d=>{const id=d.id.slice(4),last=d.pts[d.pts.length-1];const c=fmsIt(last.t,id);
-    const v=c.score!=null?c.score:null;const m=v!=null&&FMS_SCALE[v];
+    const v=c.score!=null?c.score:null;const m=v!=null&&FMS_SCORE_SCALE[v];
     const info=FMS_INFO.find(x=>x.id===id);const ds=id==='deepSquat'&&dsPh;
     const sides=c.bi?`<div class="ds-lr"><span>${RS[0]} <b>${c.right!=null?c.right:'—'}</b></span><span>${RS[1]} <b>${c.left!=null?c.left:'—'}</b></span></div>`:'';
     return`<div class="tc ds${ds?' ph':''}">${tcImg(d)}<div class="ds-r">
@@ -246,148 +243,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
 <style>
 @page{size:A4 portrait;margin:12mm 12mm 13mm}
 ${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-:root{--ink:#0f1720;--t2:#3a4350;--mu:#5e6774;--dim:#8b939e;--ln:#e2e5ea;--ln2:#cfd4db;--soft:#f6f7f9;--acc:#0a6cdc}
-html,body{background:#fff}
-body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 auto}
-.pbar{position:sticky;top:0;z-index:9;background:#0f1720;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;margin-bottom:14px}
-.pbar button{background:#0a6cdc;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:600;cursor:pointer;font-size:12px}
-.pbar button.sec{background:transparent;border:1px solid rgba(255,255,255,.3)}
-@media print{.pbar{display:none}}
-.hd{display:flex;align-items:center;gap:16px;padding:0 0 10px;border-bottom:2px solid var(--ink);margin-bottom:8px}
-.hd .av{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;border:1px solid var(--ln)}
-.hd .avp{width:64px;height:64px;border-radius:12px;display:grid;place-items:center;background:var(--soft);border:1px solid var(--ln);font-size:20px;font-weight:700;color:var(--t2);flex:none}
-.hd h1{font-size:23px;line-height:1.1;letter-spacing:-.01em}
-.hd h1 span{font-size:14px;color:var(--dim);font-weight:600;margin-left:6px}
-.hd .meta{color:var(--mu);font-size:11px;margin-top:4px}
-.hd .r{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
-.hd .r .tm{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.hd .r .tm img{height:22px;width:auto;max-width:40px;object-fit:contain}
-.hd .r .tm span{font-size:10px;font-weight:700;color:var(--ink)}
-.hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
-.hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
-section{margin-top:12px}
-/* The Athletic Profile always starts a new page, however much room the page before has left. */
-section.pg-new{break-before:page;page-break-before:always;margin-top:0}
-.sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
-.sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
-.sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.sec-h .d{font-size:9.5px;color:var(--mu)}
-.sub-h{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);margin:0 0 6px;break-after:avoid}
-.sub-h .hv{font-weight:600;color:var(--acc);text-transform:none;letter-spacing:0;margin-left:6px}
-.blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
-.card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.an-w{display:flex;flex-direction:column;gap:6px}
-.an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-.an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
-.an-t .an-d th{font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);padding-top:3px;white-space:nowrap}
-.an-t .an-v td{font-size:10px;padding-bottom:4px}
-.an-t .an-v b{font-size:11.5px;font-weight:700}
-.an-t .an-v i{font-style:normal;font-size:7.5px;font-weight:600;color:var(--mu);margin-left:3px}
-.an-t th.an-l{width:25mm;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff;border-right:1px solid var(--ln);padding:4px 7px;vertical-align:middle}
-.an-t th.an-l em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
-.txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
-.none,.txt.none{color:var(--dim);font-size:10px}
-.kvs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
-.kvs.sm{grid-template-columns:repeat(6,1fr)}
-.kvs.sm .kv .k{font-size:7.6px;letter-spacing:.06em;line-height:1.25}
-.kv{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--soft)}
-.kv .k{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:600}
-.kv .v{font-size:18px;font-weight:700;margin-top:2px;line-height:1.1}
-.kv .v small{font-size:9.5px;font-weight:500;color:var(--mu);margin-left:3px}
-.notes{display:flex;flex-direction:column;gap:6px}
-.note{display:grid;grid-template-columns:62px 1fr;gap:8px;padding-top:6px;border-top:1px solid var(--ln)}
-.note:first-child{border-top:0;padding-top:0}
-.nd{font-size:9.5px;color:var(--mu);font-weight:600}
-.pk{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:700;margin-bottom:5px}
-.pk.acc{color:var(--acc)}
-.pos .pn{font-size:12.5px;font-weight:700;display:flex;gap:7px;align-items:center}
-.pos .pn b{font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--ink);color:#fff;letter-spacing:.05em}
-.card.pos{padding:7px 10px}
-.pos .pk{margin-bottom:3px}
-.pos .pn{font-size:11.5px}
-.pos .pd{font-size:8.6px;line-height:1.35;color:var(--t2);margin-top:3px}
-.pos .pe{color:var(--mu);font-style:italic}
-table{width:100%;border-collapse:collapse}
-th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);text-align:left;font-weight:700;padding:5px 6px;border-bottom:1px solid var(--ln2);background:var(--soft)}
-td{font-size:9.8px;padding:5px 6px;border-bottom:1px solid var(--ln);vertical-align:top}
-tr{break-inside:avoid;page-break-inside:avoid}
-td.b{font-weight:600}
-td.r,th.r{text-align:right}
-.sw{color:var(--mu);font-size:9px}
-.cells{display:inline-flex;gap:2px;vertical-align:middle;margin-right:5px}
-.cells i{width:11px;height:8px;border-radius:2px;border:1px solid var(--ln2)}
-.sv{font-size:10.5px;margin-right:3px}
-.crit{margin-bottom:4px}
-.crit td{padding:4px 6px}
-.key{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:9px;color:var(--mu);margin-top:6px}
-.key span{display:inline-flex;align-items:center;gap:5px}
-.key i{width:8px;height:8px;border-radius:2px}
-.sign{display:flex;gap:24px;margin-top:9px;padding-top:7px;border-top:1px dashed var(--ln2);font-size:10px;color:var(--mu)}
-.sign b{color:var(--ink)}
-.tgs{margin-bottom:8px}
-.tcs{display:flex;flex-direction:column;gap:5px}
-.tcs.pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.tc.ds.half{grid-template-columns:50mm minmax(0,1fr);row-gap:6px;column-gap:8px}
-.tc.ds.half .ds-r{gap:4px}
-.tc.ds.half .tc-d{grid-column:1/-1}
-.tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
-.tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
-.tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
-.tc-im.none{background:none}
-.tc-im.ph img{object-fit:contain;background:var(--soft)}
-.tc.ds{grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
-.tc.ds.ph{grid-template-columns:62mm minmax(0,1fr)}
-.tc.ds:not(.ph) .tc-im{height:auto;aspect-ratio:16/9;align-self:center}
-.ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
-.ds-r>.tc-d{margin-top:auto}
-.ds-h .tc-n{display:flex;align-items:center;gap:5px;font-size:10px}
-.fms-lg{height:16px;width:16px;border-radius:2px;flex:none;display:block}
-.ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
-.ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
-.ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
-.ds-v{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
-.ds-v small{font-size:10px;font-weight:500;color:var(--mu)}
-.ds-lr{display:flex;gap:7px;font-size:8px;font-weight:600;color:var(--mu);margin-top:4px}
-.ds-lr b{color:var(--ink);font-size:9px}
-.ds-m{font-size:10px;font-weight:700}
-.ds-x{font-size:8.6px;line-height:1.4;color:var(--t2);margin-top:2px}
-.tc.ds.ph .tc-im{height:auto;gap:4px;background:none;overflow:visible}
-.tc.ds figure{flex:1;min-width:0;text-align:center}
-.tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
-.tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
-.tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
-.tc-t{width:auto;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
-.tc-t th,.tc-t td{padding:2px 6px;text-align:center;border-bottom:0;background:#fff}
-.tc-t .an-d th{width:18mm;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
-.tc-t .an-v td{font-size:9px;white-space:nowrap;padding-bottom:3px}
-.tc-t .an-v b{font-size:11.5px;font-weight:700}
-.tc-t .an-v b small{font-size:8px;font-weight:600;color:var(--mu);margin-left:2px}
-.tc-t .an-v b small.g{margin-left:0}
-.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:3px}
-.tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
-.tc-t .rl{width:11mm;text-align:left;font-size:7.5px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
-.tc-t th.rl{width:11mm;background:var(--soft)}
-.card.pt{padding:7px 9px}
-.pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
-.pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
-.pt .pts{font-weight:700;letter-spacing:0;color:var(--acc)}
-.shs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
-.sh{text-align:center}
-.sh img,.shx{width:100%;height:40mm;object-fit:contain;background:var(--soft);border:1px solid var(--ln);border-radius:6px;display:block}
-.shx{display:grid;place-items:center;color:var(--dim);font-size:12px}
-.pt.wide .sh img,.pt.wide .shx{height:88mm}
-.pt.wide .txt{font-size:9.6px;line-height:1.45}
-.sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
-.pt .txt{font-size:9px;line-height:1.38}
-.pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.inj td{font-size:9.3px}
-.inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
-.pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
-.pill.act{color:#b91c1c;background:#fdecec}.pill.ok{color:#047857;background:#e6f6ef}
-.ft{margin-top:16px;padding-top:7px;border-top:1px solid var(--ln);font-size:8.5px;color:var(--dim);display:flex;justify-content:space-between}
+${ATH_SHEET_CSS}
 </style></head><body>
 <div class="pbar">${L('Sporcu bilgileri hazır','Athlete information is ready')} · <button onclick="window.print()">${L('Yazdır / PDF olarak kaydet','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="hd">

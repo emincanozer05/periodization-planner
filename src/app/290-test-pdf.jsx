@@ -220,8 +220,164 @@ tbody tr.grp:first-child td{border-top:none}
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
 }
 
+/* =========================================================
+   THE ATHLETE SHEET LOOK — one design for the two A4 portrait sheets a coach hands out: the
+   Profile Printout (426, printAthleteInfo) and a single test record's report (generateTestPDF
+   below). The header, the numbered section headings, the test cards (grey-scale picture beside
+   the test's name and what it measures, the readings under them) and the tables are this CSS.
+   ========================================================= */
+const ATH_SHEET_CSS=`*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--ink:#0f1720;--t2:#3a4350;--mu:#5e6774;--dim:#8b939e;--ln:#e2e5ea;--ln2:#cfd4db;--soft:#f6f7f9;--acc:#0a6cdc}
+html,body{background:#fff}
+body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 auto}
+.pbar{position:sticky;top:0;z-index:9;background:#0f1720;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;margin-bottom:14px}
+.pbar button{background:#0a6cdc;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:600;cursor:pointer;font-size:12px}
+.pbar button.sec{background:transparent;border:1px solid rgba(255,255,255,.3)}
+@media print{.pbar{display:none}}
+.hd{display:flex;align-items:center;gap:16px;padding:0 0 10px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+.hd .av{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;border:1px solid var(--ln)}
+.hd .avp{width:64px;height:64px;border-radius:12px;display:grid;place-items:center;background:var(--soft);border:1px solid var(--ln);font-size:20px;font-weight:700;color:var(--t2);flex:none}
+.hd h1{font-size:23px;line-height:1.1;letter-spacing:-.01em}
+.hd h1 span{font-size:14px;color:var(--dim);font-weight:600;margin-left:6px}
+.hd .meta{color:var(--mu);font-size:11px;margin-top:4px}
+.hd .r{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.hd .r .tm{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.hd .r .tm img{height:22px;width:auto;max-width:40px;object-fit:contain}
+.hd .r .tm span{font-size:10px;font-weight:700;color:var(--ink)}
+.hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
+.hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
+section{margin-top:12px}
+/* The Athletic Profile always starts a new page, however much room the page before has left. */
+section.pg-new{break-before:page;page-break-before:always;margin-top:0}
+.sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
+.sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.sec-h .d{font-size:9.5px;color:var(--mu)}
+.sub-h{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);margin:0 0 6px;break-after:avoid}
+.sub-h .hv{font-weight:600;color:var(--acc);text-transform:none;letter-spacing:0;margin-left:6px}
+.blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
+.card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.an-w{display:flex;flex-direction:column;gap:6px}
+.an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
+.an-t .an-d th{font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);padding-top:3px;white-space:nowrap}
+.an-t .an-v td{font-size:10px;padding-bottom:4px}
+.an-t .an-v b{font-size:11.5px;font-weight:700}
+.an-t .an-v i{font-style:normal;font-size:7.5px;font-weight:600;color:var(--mu);margin-left:3px}
+.an-t th.an-l{width:25mm;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff;border-right:1px solid var(--ln);padding:4px 7px;vertical-align:middle}
+.an-t th.an-l em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
+.an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
+.txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
+.none,.txt.none{color:var(--dim);font-size:10px}
+.kvs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
+.kvs.sm{grid-template-columns:repeat(6,1fr)}
+.kvs.sm .kv .k{font-size:7.6px;letter-spacing:.06em;line-height:1.25}
+.kv{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--soft)}
+.kv .k{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:600}
+.kv .v{font-size:18px;font-weight:700;margin-top:2px;line-height:1.1}
+.kv .v small{font-size:9.5px;font-weight:500;color:var(--mu);margin-left:3px}
+.notes{display:flex;flex-direction:column;gap:6px}
+.note{display:grid;grid-template-columns:62px 1fr;gap:8px;padding-top:6px;border-top:1px solid var(--ln)}
+.note:first-child{border-top:0;padding-top:0}
+.nd{font-size:9.5px;color:var(--mu);font-weight:600}
+.pk{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:700;margin-bottom:5px}
+.pk.acc{color:var(--acc)}
+.pos .pn{font-size:12.5px;font-weight:700;display:flex;gap:7px;align-items:center}
+.pos .pn b{font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--ink);color:#fff;letter-spacing:.05em}
+.card.pos{padding:7px 10px}
+.pos .pk{margin-bottom:3px}
+.pos .pn{font-size:11.5px}
+.pos .pd{font-size:8.6px;line-height:1.35;color:var(--t2);margin-top:3px}
+.pos .pe{color:var(--mu);font-style:italic}
+table{width:100%;border-collapse:collapse}
+th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);text-align:left;font-weight:700;padding:5px 6px;border-bottom:1px solid var(--ln2);background:var(--soft)}
+td{font-size:9.8px;padding:5px 6px;border-bottom:1px solid var(--ln);vertical-align:top}
+tr{break-inside:avoid;page-break-inside:avoid}
+td.b{font-weight:600}
+td.r,th.r{text-align:right}
+.sw{color:var(--mu);font-size:9px}
+.cells{display:inline-flex;gap:2px;vertical-align:middle;margin-right:5px}
+.cells i{width:11px;height:8px;border-radius:2px;border:1px solid var(--ln2)}
+.sv{font-size:10.5px;margin-right:3px}
+.crit{margin-bottom:4px}
+.crit td{padding:4px 6px}
+.key{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:9px;color:var(--mu);margin-top:6px}
+.key span{display:inline-flex;align-items:center;gap:5px}
+.key i{width:8px;height:8px;border-radius:2px}
+.sign{display:flex;gap:24px;margin-top:9px;padding-top:7px;border-top:1px dashed var(--ln2);font-size:10px;color:var(--mu)}
+.sign b{color:var(--ink)}
+.tgs{margin-bottom:8px}
+.tcs{display:flex;flex-direction:column;gap:5px}
+.tcs.pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tc.ds.half{grid-template-columns:50mm minmax(0,1fr);row-gap:6px;column-gap:8px}
+.tc.ds.half .ds-r{gap:4px}
+.tc.ds.half .tc-d{grid-column:1/-1}
+.tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
+.tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
+.tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
+.tc-im.none{background:none}
+.tc-im.ph img{object-fit:contain;background:var(--soft)}
+.tc.ds{grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
+.tc.ds.ph{grid-template-columns:62mm minmax(0,1fr)}
+.tc.ds:not(.ph) .tc-im{height:auto;aspect-ratio:16/9;align-self:center}
+.ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
+.ds-r>.tc-d{margin-top:auto}
+.ds-h .tc-n{display:flex;align-items:center;gap:5px;font-size:10px}
+.fms-lg{height:16px;width:16px;border-radius:2px;flex:none;display:block}
+.ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
+.ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
+.ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
+.ds-v{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
+.ds-v small{font-size:10px;font-weight:500;color:var(--mu)}
+.ds-lr{display:flex;gap:7px;font-size:8px;font-weight:600;color:var(--mu);margin-top:4px}
+.ds-lr b{color:var(--ink);font-size:9px}
+.ds-m{font-size:10px;font-weight:700}
+.ds-x{font-size:8.6px;line-height:1.4;color:var(--t2);margin-top:2px}
+.tc.ds.ph .tc-im{height:auto;gap:4px;background:none;overflow:visible}
+.tc.ds figure{flex:1;min-width:0;text-align:center}
+.tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
+.tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
+.tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
+.tc-t{width:auto;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.tc-t th,.tc-t td{padding:2px 6px;text-align:center;border-bottom:0;background:#fff}
+.tc-t .an-d th{width:18mm;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
+.tc-t .an-v td{font-size:9px;white-space:nowrap;padding-bottom:3px}
+.tc-t .an-v b{font-size:11.5px;font-weight:700}
+.tc-t .an-v b small{font-size:8px;font-weight:600;color:var(--mu);margin-left:2px}
+.tc-t .an-v b small.g{margin-left:0}
+.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:3px}
+.tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
+.tc-t .rl{width:11mm;text-align:left;font-size:7.5px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
+.tc-t th.rl{width:11mm;background:var(--soft)}
+.card.pt{padding:7px 9px}
+.pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+.pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
+.pt .pts{font-weight:700;letter-spacing:0;color:var(--acc)}
+.shs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
+.sh{text-align:center}
+.sh img,.shx{width:100%;height:40mm;object-fit:contain;background:var(--soft);border:1px solid var(--ln);border-radius:6px;display:block}
+.shx{display:grid;place-items:center;color:var(--dim);font-size:12px}
+.pt.wide .sh img,.pt.wide .shx{height:88mm}
+.pt.wide .txt{font-size:9.6px;line-height:1.45}
+.sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
+.pt .txt{font-size:9px;line-height:1.38}
+.pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
+.inj td{font-size:9.3px}
+.inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
+.pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
+.pill.act{color:#b91c1c;background:#fdecec}.pill.ok{color:#047857;background:#e6f6ef}
+.ft{margin-top:16px;padding-top:7px;border-top:1px solid var(--ln);font-size:8.5px;color:var(--dim);display:flex;justify-content:space-between}`;
+/* The FMS scale, worded for the reader of a sheet: what each score means and what was seen. */
+const FMS_SCORE_SCALE=[
+  {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
+  {tr:'Disfonksiyonel hareket',en:'Dysfunctional movement',dTr:'Sporcu hareketi testin minimum tamamlama kriterlerine uygun şekilde gerçekleştiremez.',dEn:'The athlete cannot perform the movement to the test’s minimum completion criteria.'},
+  {tr:'Fonksiyonel ancak kompansasyonlu hareket',en:'Functional movement with compensation',dTr:'Sporcu hareketi tamamlar ancak bazı hareket kısıtlılıkları veya kompansasyonlar gözlenir.',dEn:'The athlete completes the movement, but some restrictions or compensations are seen.'},
+  {tr:'Fonksiyonel hareket',en:'Functional movement',dTr:'Sporcu hareketi belirlenen kriterlere uygun, kompansasyon olmadan tamamlar.',dEn:'The athlete completes the movement to the set criteria, without compensation.'},
+];
+
 function generateTestPDF(test,ath,setup,customTests,athletes){
-  const w=window.open('','_blank','width=900,height=1200');
+  const w=window.open('','_blank','width=980,height=1200');
   if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period;
   /* The report prints ONLY the tests this record took (its battery). An older record without a
@@ -231,27 +387,25 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const ids=TEST_CATALOG.map(c=>c.id).filter(taken);
   const cList=Array.isArray(customTests)?customTests:[];
   const customSel=cList.filter(c=>Array.isArray(bat)?bat.includes(c.id):((test.custom||{})[c.id]||'')!=='');
-  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const dash=v=>v==null||v===''?'—':esc(v);
-  const abs=p=>{try{return new URL(p,location.href).href;}catch(e){return p;}};
   const bw=fvBodyMass(test,ath);
   // Photos are stored either as a plain URL / data-URI or tagged `drive:<fileId>`.
-  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p)).replace(/&/g,'&amp;');
-  const phFail=(w,h)=>`onerror="this.outerHTML='&lt;div class=&quot;phx&quot; style=&quot;width:${w}px;height:${h}px&quot;&gt;—&lt;/div&gt;'"`;
-  const ph=(photo,label,w=150,maxH=200)=>photo
-    ?`<div class="ph"><img src="${psrc(photo)}" ${phFail(w,Math.round(w*1.2))} style="width:${w}px;height:auto;max-height:${maxH}px;object-fit:contain;background:#f8fafc"/><div class="phl">${label}</div></div>`
-    :`<div class="ph"><div class="phx" style="width:${w}px;height:${Math.round(w*0.9)}px">—</div><div class="phl" style="color:#aaa">${label}</div></div>`;
-  /* The squad's current average under the score it belongs to, read from the same records the
+  const psrc=p=>esc((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p));
+  /* An athlete's own photo in a portrait frame; an empty slot keeps the frame. */
+  const shot=(photo,lbl)=>`<figure class="sh">${photo?`<img src="${psrc(photo)}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${lbl}</figcaption></figure>`;
+  const shots=list=>`<div class="shs" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([p,l])=>shot(p,l)).join('')}</div>`;
+  /* The squad's current average beside a one-number score, read from the same records the
      on-screen card reads, this athlete left out of it on both. */
   const tavg=id=>{
     const m=TEAM_AVG_TESTS[id];if(!m)return'';
     const ta=teamAvgOf(athletes,id,ath&&ath.id);if(!ta)return'';
     const d=teamAvgDelta(cmpN(test[id]),ta.avg,m.dir);
-    const head=`${teamAvgFmt(ta.avg,id)}${m.u?' '+m.u:''}`;
+    const head=`${teamAvgFmt(ta.avg,id)}${m.u?` <small>${m.u}</small>`:''}`;
     if(!d)return head;
-    const col=d.level==='good'?'#16a34a':d.level==='poor'?'#b45309':'#5c626c';
+    const col=d.level==='good'?'#16a34a':d.level==='poor'?'#b45309':'#5e6774';
     const txt=d.level==='same'?L('ortalamada','on the average'):`${L('%'+Math.abs(d.pct).toFixed(1),Math.abs(d.pct).toFixed(1)+'%')} ${d.pct>0?L('üstünde','above'):L('altında','below')}`;
-    return`${head}<br><span style="color:${col};font-weight:600">${txt}</span>`;
+    return`${head}<span class="avd" style="color:${col}">${txt}</span>`;
   };
   const colAsym=p=>p==null?'':` style="color:${ASYM_COL[asymLevel(p)]}"`;
   const pct=p=>p==null?'—':L('%'+p,p+'%');
@@ -260,36 +414,32 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const kv=cells=>`<table class="rt"><tr>${cells.map(c=>`<th>${c[0]}</th>`).join('')}</tr><tr>${cells.map(c=>`<td${c[2]||''}>${c[1]}</td>`).join('')}</tr></table>`;
   /* A table with a label column: rows of [label, ...cells]. */
   const grid=(head,rows)=>`<table class="rt lab"><tr>${head.map((h,i)=>`<th${i?'':' class="l"'}>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td${c&&c.a?c.a:''}>${c&&c.v!=null?c.v:c}</td>`:`<td class="l">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const foot=s=>`<div class="tb-avg">${s}</div>`;
   const obsOf=id=>id==='posture'?(test.posture||{}).observations:id==='ohs'?(test.ohs||{}).observations:(test.obs||{})[id];
   const tName=id=>{const info=TEST_INFO[id];return(info&&info.n)||MK_TITLE[id]||TEST_CAT_LABEL(id);};
-  /* One test in the body: its name, its numbers and the coach's note — only the athlete's own
-     readings and photos. What the test is, with its picture, is explained once at the end. */
-  const shown=[];
-  /* Every test is the same box: a grey title bar with the test's name, the results as a table of
-     equal, centred columns, then the note. A test on the battery with no reading at all gets no
-     box; its name joins one line at the foot of its section. */
-  const box=(title,right,body)=>`<div class="tb">${title!=null?`<div class="tb-h"><span>${title}</span>${right?`<span class="k">${right}</span>`:''}</div>`:''}<div class="tb-bd">${body}</div></div>`;
   const noteHtml=n=>n&&String(n).trim()?`<div class="tb-note"><b>${L('Gözlem','Observation')}:</b> ${esc(n)}</div>`:'';
-  const blk=(id,res,extra)=>{
-    shown.push(id);
+  /* The stock pictures print from their small grey-scale copies carried in the page (TEST_THUMB),
+     like the Profile Printout's: no fetch, so no broken boxes on a weak connection. */
+  const absSm=p=>{const q=String(p).replace(/^(tests|fms)\//,'$1/sm/');try{return new URL(q,location.href).href;}catch(e){return q;}};
+  const stockImg=id=>{const p=TEST_IMG[id];return p?`<div class="tc-im"><img src="${esc(TEST_THUMB[p]||absSm(p))}" alt=""/></div>`:'';};
+  /* What the test measures: its "used to assess" line. */
+  const tcWhat=id=>{const i=TEST_INFO[id];return i?L(i.tr,i.en).p:'';};
+  const tcInfo=(id,right)=>{const n=tName(id),w_=tcWhat(id);
+    return`<div class="ds-h"><div class="tc-n" lang="en">${esc(n)}${right?`<span class="ds-dt">${right}</span>`:''}</div>${w_?`<div class="ds-w">${esc(w_)}</div>`:''}</div>`;};
+  /* Every test is one card, as on the Profile Printout: its picture (when it has one), its name
+     and what it measures, and under them its readings and the coach's note. `half` cards stand
+     two side by side (jump and speed), their readings across the card under the picture. A test
+     on the battery with no reading at all gets no card: its name joins one line at the foot of
+     its section. */
+  const card=(id,res,o={})=>{
     const note=obsOf(id);
     let empty=false;try{empty=!!(TI_HAS[id]&&!TI_HAS[id](test))&&!(note&&String(note).trim());}catch(e){}
     if(empty)return{empty:true,name:tName(id)};
-    return box(esc(tName(id)),'',(res||'')+noteHtml(note))+(extra||'');
-  };
-  /* The closing section: every test on the record, its picture, what it is and why it is taken —
-     for the athlete, a parent or a physio reading the sheet away from the court. The FMS movements
-     have their own page after the score sheet. */
-  const infoSec=()=>{
-    const list=shown.filter((id,i)=>shown.indexOf(id)===i&&TEST_INFO[id]);
-    if(!list.length)return'';
-    const card=id=>{const o=L(TEST_INFO[id].tr,TEST_INFO[id].en);const img=TEST_IMG[id];
-      return`<div class="ti">${img?`<div class="ti-img"><img src="${esc(abs(img))}" alt=""/></div>`:''}<div class="ti-n">${esc(tName(id))}</div><div class="ti-w">${esc(o.w)}</div><div class="ti-p">${esc(o.p)}</div></div>`;};
-    // Pictured tests in an even grid; the ones without a picture as a text list under it.
-    const pic=list.filter(id=>TEST_IMG[id]),txt=list.filter(id=>!TEST_IMG[id]);
-    return`<div class="ti-sec">${gh(L('Testler Hakkında','About the Tests'))}
-      ${pic.length?`<div class="ti-grid">${pic.map(card).join('')}</div>`:''}
-      ${txt.length?`<div class="ti-list">${txt.map(card).join('')}</div>`:''}</div>`;
+    const img=o.img!=null?o.img:stockImg(id);
+    const body=`<div class="tc-d">${res||''}${noteHtml(note)}</div>`;
+    const cls=`tc ds${o.half?' half':''}${img?'':' noimg'}${o.cls?' '+o.cls:''}`;
+    return o.half?`<div class="${cls}">${img}<div class="ds-r">${tcInfo(id,o.right)}</div>${body}</div>`
+      :`<div class="${cls}">${img}<div class="ds-r">${tcInfo(id,o.right)}${body}</div></div>`;
   };
   const fmsR=fmsCalc(test.fms);
   const fmsOn=Array.isArray(bat)?fmsInBattery(bat):fmsR.any;
@@ -297,107 +447,106 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const fmsPdf=test.fms&&test.fms.pdf;
   const fmsPages=(fmsPdf&&Array.isArray(fmsPdf.pages))?fmsPdf.pages:[];
   const fmsPageH=fmsPages.length>1?120:185;
-  const fmsTone=v=>v==null?'':Number(v)<=1?'#dc2626':Number(v)===2?'#b88400':'#16a34a';
+  const fmsTone=v=>v==null||v===''?'':Number(v)<=1?'#dc2626':Number(v)===2?'#b88400':'#16a34a';
   const yb=ybCalc(test.yBalance);
   const t=test;
   const B={
-    anthro:()=>blk('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
+    anthro:()=>card('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
       [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Tahmini bacak uz.','Est. leg length'),dash(estLegLen(t))+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
-    circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return blk('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
+    circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return card('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
       [L('Uyluk R','Thigh R'),cm(c.thighRight||c.thigh)],[L('Uyluk L','Thigh L'),cm(c.thighLeft||c.thigh)],[L('Baldır R','Calf R'),cm(c.calfRight||c.calf)],[L('Baldır L','Calf L'),cm(c.calfLeft||c.calf)]]));},
+    /* The posture across the full width: its photos, each the same frame, and the note under them. */
     posture:()=>{const p=t.posture||{};if(!(p.frontPhoto||p.sidePhoto||p.backPhoto||p.sideLPhoto||p.observations))return{empty:true,name:tName('posture')};
-      /* The photos share the full width of the box, each column the same. */
-      const shots=[ph(p.frontPhoto,L('Önden','Front'),132,190),ph(p.sidePhoto,L('Yandan (R)','Side (R)'),132,190),p.sideLPhoto?ph(p.sideLPhoto,L('Yandan (L)','Side (L)'),132,190):'',ph(p.backPhoto,L('Arkadan','Back'),132,190)].filter(Boolean);
-      return blk('posture',`<div class="photos fill" style="grid-template-columns:repeat(${shots.length},1fr)">${shots.join('')}</div>`);},
-    ohs:()=>{const o=t.ohs||{};return blk('ohs',kv([[L('Skor','Score'),`${dash(o.score)} <small>/ 3</small>`,o.score!==''&&o.score!=null?` style="color:${fmsTone(o.score)}"`:'']])
-      +((o.frontPhoto||o.sidePhoto)?`<div class="photos">${ph(o.frontPhoto,L('Önden','Front'),150,200)}${ph(o.sidePhoto,L('Yandan','Side'),150,200)}</div>`:''));},
+      const list=[[p.frontPhoto,L('Önden','Front')],[p.sidePhoto,L('Yandan (R)','Side (R)')],...(p.sideLPhoto?[[p.sideLPhoto,L('Yandan (L)','Side (L)')]]:[]),[p.backPhoto,L('Arkadan','Back')]];
+      return card('posture',list.some(x=>x[0])?shots(list):'',{img:'',cls:'pt-c'});},
+    ohs:()=>{const o=t.ohs||{};return card('ohs',kv([[L('Skor','Score'),`${dash(o.score)} <small>/ 3</small>`,o.score!==''&&o.score!=null?` style="color:${fmsTone(o.score)}"`:'']])
+      +((o.frontPhoto||o.sidePhoto)?shots([[o.frontPhoto,L('Önden','Front')],[o.sidePhoto,L('Yandan','Side')]]):''));},
     ankleDF:()=>{const a=t.ankleDF||{};const r=tN(a.right),l=tN(a.left);const d=r!=null&&l!=null?+Math.abs(r-l).toFixed(1):null;
-      return blk('ankleDF',kv([[R,r!=null?r+'°':'—'],[Lf,l!=null?l+'°':'—'],[L('Fark','Gap'),d!=null?d+'°':'—',d!=null?` style="color:${d<5?'#16a34a':d<10?'#b88400':'#dc2626'}"`:'']]));},
-    aslr:()=>{const a=t.aslr||{};return blk('aslr',kv([[R,`${dash(a.right)} <small>/ 3</small>`,a.right?` style="color:${fmsTone(a.right)}"`:''],[Lf,`${dash(a.left)} <small>/ 3</small>`,a.left?` style="color:${fmsTone(a.left)}"`:'']]));},
+      return card('ankleDF',kv([[R,r!=null?r+'°':'—'],[Lf,l!=null?l+'°':'—'],[L('Fark','Gap'),d!=null?d+'°':'—',d!=null?` style="color:${d<5?'#16a34a':d<10?'#b88400':'#dc2626'}"`:'']]));},
+    aslr:()=>{const a=t.aslr||{};return card('aslr',kv([[R,`${dash(a.right)} <small>/ 3</small>`,a.right?` style="color:${fmsTone(a.right)}"`:''],[Lf,`${dash(a.left)} <small>/ 3</small>`,a.left?` style="color:${fmsTone(a.left)}"`:'']]));},
     hipRot:()=>{const h=hipRotCalc(t);const g=v=>v!=null?v+'°':'—';
-      return blk('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
+      return card('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
         [`<b>${L('Toplam ark','Total arc')}</b>`,{v:`<b>${g(h.totR)}</b>`},{v:`<b>${g(h.totL)}</b>`},{v:h.dTot!=null?`${h.dTot}° (${pct(h.pTot)})`:'—',a:colAsym(h.pTot)}]]));},
     thomas:()=>{const th=thomasCalc(t);const g=v=>v!=null?v+'°':'—';
       const call=v=>v==='pos'?{v:L('Pozitif','Positive'),a:' style="color:#dc2626"'}:v==='neg'?{v:L('Negatif','Negative'),a:' style="color:#16a34a"'}:'—';
-      return blk('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
+      return card('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
         ...THOMAS_FIND.map(([k,nm])=>[nm,call(th.right.res[k]),call(th.left.res[k])])]));},
-    tSpine:()=>{const x=tSpineCalc(t);return blk('tSpine',kv([[R,x.r!=null?x.r+'°':'—'],[Lf,x.l!=null?x.l+'°':'—'],[L('Fark','Gap'),x.diff!=null?x.diff+'°':'—'],[L('Asimetri','Asymmetry'),pct(x.pct),colAsym(x.pct)]]));},
+    tSpine:()=>{const x=tSpineCalc(t);return card('tSpine',kv([[R,x.r!=null?x.r+'°':'—'],[Lf,x.l!=null?x.l+'°':'—'],[L('Fark','Gap'),x.diff!=null?x.diff+'°':'—'],[L('Asimetri','Asymmetry'),pct(x.pct),colAsym(x.pct)]]));},
     yBalance:()=>{const d=v=>v==null?{v:'—'}:{v:v.toFixed(1)+' cm',a:` style="color:${v<4?'#16a34a':'#dc2626'}"`};const n=v=>v!=null?v:'—';
-      return blk('yBalance',`<div class="tb-sub">${L('Bacak uzunluğu (SİAS – medial malleol)','Leg length (ASIS – medial malleolus)')}: <b>${yb.limb!=null?yb.limb+' cm':'—'}</b></div>`
+      return card('yBalance',`<div class="tb-sub">${L('Bacak uzunluğu (SİAS – medial malleol)','Leg length (ASIS – medial malleolus)')}: <b>${yb.limb!=null?yb.limb+' cm':'—'}</b></div>`
         +grid([L('Uzanma (cm)','Reach (cm)'),R,Lf,L('Fark (< 4 cm)','Gap (< 4 cm)')],[['Anterior',n(yb.right.ant),n(yb.left.ant),d(yb.dAnt)],['Posteromedial',n(yb.right.pm),n(yb.left.pm),d(yb.dPm)],['Posterolateral',n(yb.right.pl),n(yb.left.pl),d(yb.dPl)],
           [`<b>${L('Bileşik skor','Composite score')}</b>`,{v:`<b>${yb.compR!=null?yb.compR+'%':'—'}</b>`},{v:`<b>${yb.compL!=null?yb.compL+'%':'—'}</b>`},{v:yb.compR!=null&&yb.compL!=null?Math.abs(yb.compR-yb.compL).toFixed(1)+'%':'—'}]])
-        +`<div class="tb-avg">${L('Bileşik = (ANT + PM + PL) / (3 × bacak uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × leg length) × 100')}</div>`);},
+        +foot(L('Bileşik = (ANT + PM + PL) / (3 × bacak uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × leg length) × 100')));},
     lateralCmj:()=>{const a=t.lateralCmj||{};const p=asymPct(a.right,a.left,'hi');
-      return blk('lateralCmj',kv([[R,dash(a.right)+' <small>cm</small>'],[Lf,dash(a.left)+' <small>cm</small>'],[L('Asimetri','Asymmetry'),pct(p),colAsym(p)]])
-        +`<div class="tb-avg">${L('Sağ-sol farkı %10’un altında olmalı; %15 ve üzeri belirgin asimetri.','The right–left gap should stay under 10%; 15% and above is a clear asymmetry.')}</div>`);},
-    sprint:()=>{const sp=t.sprintSplits||{},s20=t.sprint20m||{};
-      const gates=[[5,sp.t5],[10,sp.t10],[20,s20.time],[30,sp.t30]].map(([d,v])=>({d,t:tN(v)}));
-      let prev={d:0,t:0};const segs=gates.map(g=>{if(!(g.t>0))return'—';const o=g.t>prev.t?`${+((g.d-prev.d)/(g.t-prev.t)).toFixed(2)} m/s`:'—';prev={d:g.d,t:g.t};return o;});
-      const fv=fvSprint(bw,fvSprintPoints(t));
-      const photos=s20.sideStep1||s20.sideStep2||s20.sideStep3||s20.frontRightFoot||s20.frontLeftFoot;
-      return blk('sprint',grid(['',...gates.map(g=>g.d+' m'+(g.d===20?' *':''))],[[L('Süre','Time'),...gates.map(g=>g.t!=null?(g.d===20?`<b>${g.t} s</b>`:g.t+' s'):'—')],[L('Bölüm hızı','Segment speed'),...segs]])
-        /* the F-V profile under the gates, in the same four columns */
-        +(fv.ok?grid(['','F0','V0 (Vmax)','Pmax','τ'],[[L('Kuvvet-hız profili','Force-velocity profile'),fv.F0rel.toFixed(2)+' <small>N/kg</small>',fv.V0.toFixed(2)+' <small>m/s</small>',fv.Pmaxrel.toFixed(1)+' <small>W/kg</small>',fv.tau.toFixed(2)+' <small>s</small>']]):'')
-        +`<div class="tb-avg">* ${L('ana süre','main time')}${fv.ok?' · '+L('Sprint kuvvet-hız profili (Samozino), hava direnci dahil değil.','Sprint force-velocity profile (Samozino), air drag not included.'):''}</div>`
-        +(photos?`<div class="photos">${ph(s20.sideStep1,L('1. adım','Step 1'),92,130)}${ph(s20.sideStep2,L('2. adım','Step 2'),92,130)}${ph(s20.sideStep3,L('3. adım','Step 3'),92,130)}${ph(s20.frontRightFoot,L('Sağ ayak','Right foot'),92,130)}${ph(s20.frontLeftFoot,L('Sol ayak','Left foot'),92,130)}</div>`:''));},
+      return card('lateralCmj',kv([[R,dash(a.right)+' <small>cm</small>'],[Lf,dash(a.left)+' <small>cm</small>'],[L('Asimetri','Asymmetry'),pct(p),colAsym(p)]])
+        +foot(L('Sağ-sol farkı %10’un altında olmalı; %15 ve üzeri belirgin asimetri.','The right–left gap should stay under 10%; 15% and above is a clear asymmetry.')),{half:true});},
+    /* The three gates and the average speed over each (distance / time), then the F-V profile. */
+    sprint:()=>{const gs=sprintGates(t);const fv=fvSprint(bw,fvSprintPoints(t));
+      return card('sprint',grid(['',...gs.map(g=>`0–${g.d} m`)],[[L('Süre','Time'),...gs.map(g=>g.t!=null?(g.main?`<b>${g.t}</b>`:g.t)+' <small>s</small>':'—')],
+          [L('Ort. hız','Avg speed'),...gs.map(g=>g.v!=null?`${g.v} <small>m/s</small>`:'—')]])
+        +(fv.ok?grid(['','F0','V0','Pmax','τ'],[[L('F-V profili','F-V profile'),fv.F0rel.toFixed(2)+' <small>N/kg</small>',fv.V0.toFixed(2)+' <small>m/s</small>',fv.Pmaxrel.toFixed(1)+' <small>W/kg</small>',fv.tau.toFixed(2)+' <small>s</small>']]):'')
+        +foot(L('Ortalama hız = mesafe / süre.','Average speed = distance / time.')+(fv.ok?' '+L('Sprint kuvvet-hız profili (Samozino), hava direnci dahil değil.','Sprint force-velocity profile (Samozino), air drag not included.'):'')),{half:true});},
     accel:()=>{const a=accelCalc(t);const s=v=>v!=null?v+' <small>s</small>':'—';const ms=v=>v!=null?v+' <small>m/s</small>':'—';
-      return blk('accel',kv([['0–5 m',s(a.t5)],['0–10 m',s(a.t10)],[L('5–10 m ara','5–10 m split'),s(a.split)],[L('0–5 m hız','0–5 m speed'),ms(a.v5)],[L('5–10 m hız','5–10 m speed'),ms(a.v510)]]));},
+      return card('accel',grid(['','0–5 m','0–10 m',L('5–10 m ara','5–10 m split')],[[L('Süre','Time'),s(a.t5),s(a.t10),s(a.split)],[L('Hız','Speed'),ms(a.v5),ms(a.v10),ms(a.v510)]]),{half:true});},
     fiveZeroFive:()=>{const c=cod505Calc(t);const s=v=>v!=null?v+' <small>s</small>':'—';
-      return blk('fiveZeroFive',kv([[L('Sağ ayak dönüş','Right-foot turn'),s(c.r)],[L('Sol ayak dönüş','Left-foot turn'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Asimetri','Asymmetry'),pct(c.pct),colAsym(c.pct)]])
-        +`<div class="tb-avg">${L('Asimetri = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')}</div>`);},
+      return card('fiveZeroFive',kv([[L('Sağ dönüş','Right turn'),s(c.r)],[L('Sol dönüş','Left turn'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Asimetri','Asymmetry'),pct(c.pct),colAsym(c.pct)]])
+        +foot(L('Asimetri = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')),{half:true});},
     ift3015:()=>{const c=iftCalc(t,ath,bw);
-      return blk('ift3015',kv([['VIFT',c.vift!=null?`<b>${c.vift}</b> <small>km/h</small>`:'—'],['VIFT (m/s)',c.ms!=null?c.ms:'—'],[L('Tahmini VO2max','Est. VO2max'),c.vo2!=null?c.vo2+` <small>${L('ml/kg/dk','ml/kg/min')}</small>`:'—']])
-        +`<div class="tb-avg">${L('VO2max tahmini Buchheit (2008): yaş, cinsiyet, kilo ve VIFT’ten.','VO2max estimate after Buchheit (2008): from age, sex, body mass and VIFT.')}</div>`);},
-    pullUp:()=>{const p=t.pullUp||{};return blk('pullUp',kv([[L('Tam tekrar','Full reps'),`<b>${dash(p.reps)}</b>`],[L('Ek yük','Added load'),tN(p.load)!=null?p.load+' <small>kg</small>':'—']]));},
+      return card('ift3015',kv([['VIFT',c.vift!=null?`<b>${c.vift}</b> <small>km/h</small>`:'—'],['VIFT (m/s)',c.ms!=null?c.ms:'—'],[L('Tahmini VO2max','Est. VO2max'),c.vo2!=null?c.vo2+` <small>${L('ml/kg/dk','ml/kg/min')}</small>`:'—']])
+        +foot(L('VO2max tahmini Buchheit (2008): yaş, cinsiyet, kilo ve VIFT’ten.','VO2max estimate after Buchheit (2008): from age, sex, body mass and VIFT.')));},
+    pullUp:()=>{const p=t.pullUp||{};return card('pullUp',kv([[L('Tam tekrar','Full reps'),`<b>${dash(p.reps)}</b>`],[L('Ek yük','Added load'),tN(p.load)!=null?p.load+' <small>kg</small>':'—']]));},
   };
-  ['verticalJump','cmj','squatJump','horizontalJump','dropJump','tTest','shuttleRun'].forEach(id=>{
-    const u={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'s',shuttleRun:'s'}[id];
-    /* One number: a column in its section's shared table of one-number tests (see `groups`). */
-    B[id]=()=>{shown.push(id);const note=obsOf(id);
-      return{mini:true,name:esc(tName(id)),val:tN(t[id])!=null?`${esc(t[id])} <small>${u}</small>`:'—',avg:tavg(id),note:note&&String(note).trim()?note:''};};
-  });
+  /* One-number tests: the result, and beside it the squad's current average where there is one. */
+  const SOLO={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'s',laneAgility:'s',shuttleRun:'s'};
+  Object.keys(SOLO).forEach(id=>{B[id]=()=>{const a=tavg(id);
+    return card(id,kv([[L('Sonuç','Result'),tN(t[id])!=null?`<b>${esc(t[id])}</b> <small>${SOLO[id]}</small>`:'—'],...(a?[[L('Takım ort.','Team avg'),`<span class="avgv">${a}</span>`]]:[])]),
+      {half:(TEST_META[id]||{}).g==='jump'||(TEST_META[id]||{}).g==='speed'});};});
   STR_LIFTS.forEach(id=>{B[id]=()=>{const c=strCalc(t,id,bw);
-    return blk(id,kv([[L('Yük','Load'),c.load!=null?c.load+' <small>kg</small>':'—'],[L('Tekrar','Reps'),dash(c.reps)],['e1RM',c.e1!=null?`<b>${c.e1}</b> <small>kg</small>`:'—'],[L('Göreli','Relative'),c.rel!=null?c.rel+' <small>× BW</small>':'—']])
-      +`<div class="tb-avg">${L('e1RM: Epley tahmini (tek tekrarda yükün kendisi, en fazla 12 tekrar).','e1RM: Epley estimate (a single is the load itself, at most 12 reps).')}</div>`);};});
+    return card(id,kv([[L('Yük','Load'),c.load!=null?c.load+' <small>kg</small>':'—'],[L('Tekrar','Reps'),dash(c.reps)],['e1RM',c.e1!=null?`<b>${c.e1}</b> <small>kg</small>`:'—'],[L('Göreli','Relative'),c.rel!=null?c.rel+' <small>× BW</small>':'—']])
+      +foot(L('e1RM: Epley tahmini (tek tekrarda yükün kendisi, en fazla 12 tekrar).','e1RM: Epley estimate (a single is the load itself, at most 12 reps).')));};});
   ['copenhagen','sidePlank'].forEach(id=>{B[id]=()=>{const h=holdCalc(t,id);
-    return blk(id,kv([[R,h.r!=null?h.r+' <small>s</small>':'—'],[Lf,h.l!=null?h.l+' <small>s</small>':'—'],[L('Asimetri','Asymmetry'),pct(h.pct),colAsym(h.pct)]]));};});
-  /* The FMS: each movement screened is its own box, like any other test: the raw score per side,
-     its clearing test, the final score, the findings ticked against it and its front / side photos.
-     An uploaded score sheet (PDF) still prints as its pages. */
+    return card(id,kv([[R,h.r!=null?h.r+' <small>s</small>':'—'],[Lf,h.l!=null?h.l+' <small>s</small>':'—'],[L('Asimetri','Asymmetry'),pct(h.pct),colAsym(h.pct)]]));};});
+  /* An FMS movement as the Profile Printout draws it: its picture (for a movement photographed,
+     the athlete's own front and side photos), the FMS badge, its name and what it screens, the
+     score with its meaning on the FMS scale, then the problems ticked against it. An uploaded
+     score sheet (PDF) still prints as its pages. */
   const fmsF=test.fms||{};
   const fmsMove=mid=>{
     const it=fmsR.items.find(i=>i.id===mid);if(!it)return'';
-    const id='fms_'+mid;shown.push(id);
+    const id='fms_'+mid;
     let has=false;try{has=TI_HAS[id](test);}catch(e){}
     if(!has)return{empty:true,name:it.en};
     const pp=(fmsF.photos||{})[mid]||{};
     const cms=fmsCommentsOf(mid);
     const probs=cms.flatMap(k=>fmsProblemLabels(fmsF,k));
     const notes=cms.map(k=>String((fmsF.comments||{})[k]||'').trim()).filter(Boolean);
-    /* Two columns: the front and side photos on the left; on the right the score alone, and
-       under it the problems ticked against the movement (a painful clearing test and the coach's
-       free-text comment are listed with them). */
     if(it.clear&&it.cleared==='pos')probs.push(`${it.clearEn}: ${L('Pozitif (ağrı)','Positive (pain)')}`);
     if(mid==='inlineLunge'){const m=fmsF.ankleMob||{};const g=x=>({r:L('Kırmızı','Red'),y:L('Sarı','Yellow'),g:L('Yeşil','Green')})[x];
       if(m.right||m.left)probs.push(`${L('Ayak bileği mobilitesi','Ankle mobility')}: ${L('Sağ','Right')} ${g(m.right)||'—'} / ${L('Sol','Left')} ${g(m.left)||'—'}`);}
     notes.forEach(n=>probs.push(n));
-    const score=`<div class="fm-sc"><div class="fm-k">${L('Skor','Score')}</div>
-      <div class="fm-v"${it.score!=null?` style="color:${fmsTone(it.score)}"`:''}>${it.score!=null?it.score:'—'}<small> / 3</small></div></div>`;
-    const list=`<div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
-      ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>`;
-    // Only the movements that take photos get the photo column; the rest are score | problems.
-    if(!FMS_PHOTO_MOVES.includes(mid))return box(esc(it.en),'FMS',`<div class="fm nop">${score}<div class="fm-r">${list}</div></div>`);
-    return box(esc(it.en),'FMS',`<div class="fm">
-      <div class="photos fill" style="grid-template-columns:1fr 1fr;margin:0">${ph(pp.front,L('Önden','Front'),132,176)}${ph(pp.side,L('Yandan','Side'),132,176)}</div>
-      <div class="fm-r">${score}${list}</div></div>`);
+    const own=FMS_PHOTO_MOVES.includes(mid)&&(hasMedia(pp.front)||hasMedia(pp.side));
+    const img=own?`<div class="tc-im ph">${[['front',L('Önden','Front')],['side',L('Yandan','Side')]].map(([k,l])=>
+      `<figure>${hasMedia(pp[k])?`<img src="${psrc(pp[k])}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${l}</figcaption></figure>`).join('')}</div>`:stockImg(id);
+    const v=it.score!=null?it.score:null;const m=v!=null&&FMS_SCORE_SCALE[v];
+    const info=FMS_INFO.find(x=>x.id===mid);
+    const sides=it.bi?`<div class="ds-lr"><span>${L('Sağ','R')} <b>${it.right!=null?it.right:'—'}</b></span><span>${L('Sol','L')} <b>${it.left!=null?it.left:'—'}</b></span></div>`:'';
+    return`<div class="tc ds${own?' ph':''}${img?'':' noimg'}">${img}<div class="ds-r">
+      <div class="ds-h"><div class="tc-n" lang="en"><img class="fms-lg" src="${FMS_LOGO_SQ}" alt="FMS"/>${esc(it.en)}</div>
+        <div class="ds-w">${esc(info?L(info.tr,info.en):'')}</div></div>
+      <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small>${sides}</div>
+        ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}${it.bi&&it.right!=null&&it.left!=null&&it.right!==it.left?` ${L('Düşük taraf skoru geçerlidir.','The lower side is the score.')}`:''}</div></div>`:''}</div>
+      <div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
+        ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>
+    </div></div>`;
   };
-  const fmsPdfBlk=()=>`<div class="tb fms-sheet">
-      <div class="tb-h"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div><div class="tb-bd">
-      <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
+  const fmsPdfBlk=()=>`<div class="tc ds noimg"><div class="ds-r">
+      <div class="ds-h"><div class="tc-n">${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}${fmsR.total!=null?`<span class="ds-dt">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div></div>
+      <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${esc(mediaSrc(src))}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
       <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div></div></div>`;
-  /* Section headings are numbered in the order they print: 01 Temel Ölçümler, 02 … */
+  /* One numbered section per test group, in catalog order, as the Profile Printout numbers its parts.
+     Jump and speed cards stand two to a row. */
   let secN=0;
-  const gh=(title,cls)=>`<div class="grp-h${cls?' '+cls:''}"><span class="grp-n">${String(++secN).padStart(2,'0')}</span>${title}</div>`;
+  const secH=(title,d)=>`<div class="sec-h"><span class="n">${++secN}</span><div><div class="t">${title}</div>${d?`<div class="d">${d}</div>`:''}</div></div>`;
   const groups=TEST_GROUPS.filter(g=>g.id!=='all'&&g.id!=='custom').map(g=>{
     const mine=ids.filter(id=>(TEST_META[id]||{}).g===g.id&&!FMS_PART_IDS.includes(id)&&id!=='fms');
     const parts=[];
@@ -406,164 +555,73 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       else fmsMoves.forEach(m=>parts.push(fmsMove(m)));
     }
     mine.forEach(id=>{const f=B[id];if(f)parts.push(f());});
-    /* The group's one-number tests share one box, where the first of them stands: one table, a
-       column per test, four to a row; a short last row is padded so the columns stay the same width.
-       Tests with no reading are named once, on a line under the section. */
-    const body=[],empties=[];let minis=null;
-    parts.filter(Boolean).forEach(p=>{
-      if(p.empty){empties.push(p.name);return;}
-      if(p.mini){if(!minis){minis=[];body.push({minis});}minis.push(p);}
-      else body.push(p);
-    });
-    for(let i=0;i<body.length;i++)if(body[i].minis){
-      const ms=body[i].minis,per=Math.min(4,ms.length),anyAvg=ms.some(m=>m.avg);
-      const rows=[];for(let k=0;k<ms.length;k+=per)rows.push(ms.slice(k,k+per));
-      const pad=r=>r.concat(Array(per-r.length).fill(null));
-      const tbl=rows.map(r=>`<table class="rt">
-        <tr>${pad(r).map(m=>`<th>${m?m.name:''}</th>`).join('')}</tr>
-        <tr>${pad(r).map(m=>`<td>${m?m.val:''}</td>`).join('')}</tr>
-        ${anyAvg?`<tr class="avg">${pad(r).map(m=>`<td>${m&&m.avg?`<span class="al">${L('Takım ort.','Team avg')}</span> ${m.avg}`:''}</td>`).join('')}</tr>`:''}</table>`).join('');
-      const notes=ms.filter(m=>m.note).map(m=>`<div class="tb-note"><b>${m.name}:</b> ${esc(m.note)}</div>`).join('');
-      // A lone one-number test is an ordinary box: its name on the bar, the result beside the squad's.
-      body[i]=ms.length===1
-        ?box(ms[0].name,'',kv([[L('Sonuç','Result'),ms[0].val],...(ms[0].avg?[[L('Takım ort.','Team avg'),`<span class="avgv">${ms[0].avg}</span>`]]:[])])+(ms[0].note?noteHtml(ms[0].note):''))
-        :box(L('Tek değerli testler','Single-value tests'),'',tbl+notes);
-    }
+    const body=[],empties=[];
+    parts.filter(Boolean).forEach(p=>{if(p.empty)empties.push(p.name);else body.push(p);});
     if(!body.length&&!empties.length)return'';
-    return`${gh(L(g.tr,g.en))}${body.join('')}${empties.length?`<div class="tb-miss">${L('Değer girilmeyen testler','Tests with no values')}: ${empties.map(esc).join(' · ')}</div>`:''}`;
+    const pair=g.id==='jump'||g.id==='speed';
+    const full=body.filter(h=>!/^<div class="tc ds half/.test(h)),half=body.filter(h=>/^<div class="tc ds half/.test(h));
+    const fmsHead=g.id==='move'&&fmsOn&&fmsR.total!=null&&fmsR.n===FMS_ITEMS.length?`FMS ${L('toplam','total')} ${fmsR.total} / 21`:'';
+    return`<section>${secH(esc(L(g.tr,g.en)),[L(`${body.length} test`,`${body.length} test${body.length===1?'':'s'}`),fmsHead].filter(Boolean).join(' · '))}
+      ${full.length?`<div class="tcs">${full.join('')}</div>`:''}
+      ${half.length?`<div class="tcs${pair?' pair':''}"${full.length?' style="margin-top:5px"':''}>${half.join('')}</div>`:''}
+      ${empties.length?`<div class="tb-miss">${L('Değer girilmeyen testler','Tests with no values')}: ${empties.map(esc).join(' · ')}</div>`:''}</section>`;
   }).join('');
-  const custom=customSel.length?`${gh(L('Özel Testler','Custom Tests'))}
-    ${box(null,'',grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}])))}`:'';
-  const notesH=test.notes?gh(L('Gözlemler ve Yorumlar','Observations &amp; Comments'),'notes-h'):'';
-  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
-  const gen=L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)));
-
-  const html=`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${esc(ath.name)}</title>
+  const custom=customSel.length?`<section>${secH(L('Özel Testler','Custom Tests'))}
+    <div class="card">${grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}]))}</div></section>`:'';
+  const notes=String(test.notes||'').trim()?`<section>${secH(L('Gözlemler ve Yorumlar','Observations &amp; Comments'))}<div class="card"><div class="txt">${esc(test.notes)}</div></div></section>`:'';
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const today_=fdL(fmt(today));
+  const html=`<!DOCTYPE html><html lang="${REPORT_LANG==='tr'?'tr':'en'}"><head><meta charset="utf-8"><title>${esc(ath.name||'')} — ${L('Test Raporu','Test Report')}</title>
 <style>
-@page{size:A4 portrait;margin:12mm}
+@page{size:A4 portrait;margin:12mm 12mm 13mm}
 ${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.45;background:#fff}
-/* Athlete header: white, the name large, closed by a heavy rule. Ink goes on the numbers. */
-.athlete-header{display:flex;gap:16px;align-items:flex-end;padding:0 0 12px;margin-bottom:0;border-bottom:2.5px solid var(--text);break-inside:avoid}
-.athlete-photo,.athlete-photo-x{width:60px;height:74px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
-.athlete-photo-x{display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);font-size:20px;font-weight:700}
-.athlete-info{flex:1;min-width:0}
-.athlete-info h1{font-size:25px;font-weight:700;letter-spacing:-.015em;line-height:1.05;margin-bottom:5px;text-transform:uppercase}
-.athlete-info .meta{font-size:9.5px;color:var(--muted);line-height:1.55}
-.athlete-info .date{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;color:var(--text);letter-spacing:.04em;padding-left:8px;border-left:3px solid var(--accent)}
-.right-block{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
-.right-block .ttl{font-size:10px;font-weight:700;color:var(--text);letter-spacing:.16em;line-height:1.45;text-transform:uppercase}
-.right-block .coach-line{margin-top:10px;font-size:8.5px;color:var(--muted)}
-/* Numbered section heading, then one box per test, all the same width and the same shape */
-.grp-h{display:flex;align-items:baseline;gap:9px;margin-top:16px;margin-bottom:8px;padding:0 0 5px;border-bottom:1.5px solid var(--text);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
-.grp-n{font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.04em;font-variant-numeric:tabular-nums}
-.tb{border:1px solid var(--border2);border-radius:5px;margin-bottom:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-.tb-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 10px;background:var(--bg2);border-bottom:1px solid var(--border2);font-size:10.5px;font-weight:700;line-height:1.3}
-.tb-h .k{font-size:9.5px;font-weight:700;color:var(--text2)}
-.tb-bd{display:flex;flex-direction:column;gap:6px;padding:7px 10px 8px}
-.tb-sub{font-size:9px;color:var(--text2);text-align:center}
-.tb-avg{font-size:8px;color:var(--muted);line-height:1.35;text-align:center}
-.tb-note{font-size:9px;color:var(--text2);line-height:1.45;padding-top:6px;border-top:1px solid var(--border)}
-.tb-note b{color:var(--text);font-weight:600}
-.tb-miss{font-size:8.5px;color:var(--dim);margin:-2px 0 6px;text-align:center}
-/* Results: every column the same width, every value centred */
-table.rt{width:100%;border-collapse:collapse;table-layout:fixed}
-table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
-.rt th{color:var(--muted);font-weight:600;font-size:7.4px;letter-spacing:.08em;text-transform:uppercase;padding:0 4px 4px;text-align:center;border-bottom:1px solid var(--border);line-height:1.25;vertical-align:bottom}
-.rt td{padding:5px 4px 3px;text-align:center;font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;vertical-align:top}
-.rt td small{font-size:8px;font-weight:500;color:var(--muted)}
-.rt td .avgv{font-size:9px;font-weight:600;color:var(--text2);line-height:1.35}
-.rt tr.avg td{padding-top:2px;font-size:8px;font-weight:500;color:var(--muted);line-height:1.35}
-.rt tr.avg .al{display:block;font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-.rt.lab tr+tr td{border-top:1px solid var(--border)}
-.rt.lab tr:nth-child(2) td{border-top:none}
-.rt.lab th.l,.rt.lab td.l{text-align:left;width:34%}
-.rt.lab td{font-size:10.5px;padding:4px 4px 3px}
-.rt.lab td.l{font-size:9.5px;font-weight:500;color:var(--text2)}
-/* FMS movement: photos left, score and problems right */
-.fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
-.fm.nop .fm-sc{display:flex;flex-direction:column}
-/* Photos that fill their box: equal columns, every picture in the same portrait 3:4 frame — one
-   width and one height for all of them, whatever shape each photo was taken in (a photo of
-   another shape is trimmed evenly at its edges to fit); an empty slot keeps the same frame. */
-.photos.fill{display:grid;gap:10px;align-items:end}
-.photos.fill .ph{display:block;min-width:0}
-.photos.fill .ph img{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:3/4;object-fit:cover!important;object-position:center}
-.photos.fill .phx{width:100%!important;height:auto!important;aspect-ratio:3/4;display:flex}
-.fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
-.fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.fm-sc{text-align:center}
-.fm-sc .fm-k{text-align:center}
-.fm-v{margin-top:5px;font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-.fm-v small{font-size:9px;font-weight:500;color:var(--muted)}
-.fm-pr{flex:1}
-.fm-pr ul{margin:5px 0 0;padding-left:13px;font-size:9.5px;line-height:1.55;color:var(--text)}
-.fm-none{margin-top:5px;font-size:9px;color:var(--dim)}
-.photos{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:4px 0 2px}
-.ph{text-align:center;display:inline-block}
-.ph img{border-radius:6px;border:1px solid var(--border);display:block}
-.phx{background:var(--bg2);border:1px dashed var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:18px}
-.phl{font-size:8.5px;font-weight:500;margin-top:4px;color:var(--muted);letter-spacing:.04em}
-.notes-h{margin-top:14px}
-/* Testler hakkında: kendi sayfasında başlar, üç sütun; görsel üstte, ad ve açıklama altında */
-.ti-sec{break-before:page;page-break-before:always}
-.ti-sec .grp-h{margin-top:0}
-.ti-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px;margin-top:10px}
-.ti{break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;gap:3px}
-.ti-img{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);margin-bottom:3px}
-.ti-img img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1)}
-.ti-n{font-size:10px;font-weight:700;line-height:1.25}
-.ti-w,.ti-p{font-size:8px;line-height:1.4;color:var(--text2)}
-.ti-p{color:var(--muted)}
-.ti-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
-.obs-box{padding:8px 10px;font-size:10px;border:1px solid var(--border2);border-radius:5px;color:var(--text);line-height:1.6;break-inside:avoid}
-/* A scanned FMS sheet is kept whole on one page; the live sheet is its own page, after everything else. */
+${ATH_SHEET_CSS}
+.hd .r .c{font-size:8.5px;color:var(--mu);margin-top:3px}
+.tcs+.tcs{margin-top:5px}
+.tc.ds.noimg{grid-template-columns:minmax(0,1fr)}
+.tc.ds.half.noimg .tc-d{grid-column:1}
+.tc-d{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ds-r>.tc-d{margin-top:auto}
+table.rt{width:100%;table-layout:fixed;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.rt th{padding:3px 4px;text-align:center;font-size:7.3px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mu);background:var(--soft);border-bottom:0;line-height:1.25;vertical-align:bottom}
+.rt td{padding:3px 4px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--ink);border-bottom:0;border-top:1px solid var(--ln);font-variant-numeric:tabular-nums;vertical-align:top;white-space:nowrap}
+.rt td small{font-size:7.5px;font-weight:600;color:var(--mu)}
+.rt td .avgv{font-size:11px}
+.rt td .avd{display:block;font-size:7.5px;font-weight:600;margin-top:1px}
+.rt.lab th.l,.rt.lab td.l{text-align:left;width:26%}
+.rt.lab td.l{font-size:8px;font-weight:600;color:var(--mu);white-space:normal}
+.tb-sub{font-size:8.6px;color:var(--t2)}
+.tb-avg{font-size:7.6px;color:var(--mu);line-height:1.35}
+.tb-note{font-size:8.6px;color:var(--t2);line-height:1.45;padding-top:4px;border-top:1px dashed var(--ln2)}
+.tb-note b{color:var(--ink);font-weight:600}
+.tb-miss{font-size:8.5px;color:var(--dim);margin:6px 0 0}
+.tc.pt-c .shs{margin-bottom:0}
+.tc.pt-c .sh img,.tc.pt-c .shx{height:80mm}
+.tc .shs .sh img,.tc .shs .shx{object-fit:contain}
+.fm-k{font-size:7.4px;font-weight:600;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;padding-bottom:3px;border-bottom:1px solid var(--ln)}
+.fm-pr ul{margin:4px 0 0;padding-left:13px;font-size:8.8px;line-height:1.5;color:var(--ink)}
+.fm-none{margin-top:4px;font-size:8.6px;color:var(--dim)}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:4px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
-.fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,195mm);max-width:100%;border:1px solid var(--border);border-radius:4px;background:#fff}
-.fms-pgn{font-size:9px;color:var(--muted);margin-top:3px}
-.fms-src{font-size:9px;color:var(--muted);text-align:right}
-.footer{text-align:center;font-size:8.5px;color:var(--dim);margin-top:18px;padding-top:8px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:inherit;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
-.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
-.scr-sp{height:96px}
-/* On screen the sheet reads as a page: the printed width, centred. */
-@media screen{body{max-width:186mm;margin:0 auto;padding:0 12px 28px}}
-@media print{.print-bar,.scr-sp{display:none}}
-</style>
-</head><body>
-<div class="print-bar">${L('Test raporu hazır','Test report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button>
-  <div style="font-size:11px;font-weight:400;margin-top:6px;opacity:.9">${L('Yazdırma penceresinde tam renk için "Arka plan grafikleri" seçeneğini (Diğer ayarlar) açın.','In the print dialog, enable "Background graphics" (More settings) for full colours.')}</div>
-</div>
-<div class="scr-sp"></div>
-<div class="athlete-header">
-  ${ath.photo?`<img class="athlete-photo" src="${psrc(ath.photo)}"/>`:`<div class="athlete-photo-x">${esc(initials)}</div>`}
-  <div class="athlete-info">
-    <h1>${esc(ath.name)}</h1>
-    <div class="meta">${ath.number?'#'+esc(ath.number)+' · ':''}${esc(posOf(ath.position))}</div>
-    <div class="meta">${esc(setup.teamName)} · ${esc(setup.sport)}</div>
-    <div class="date">${fdL(test.date)} · ${esc(periodLabel)} ${esc(test.year)}</div>
-  </div>
-  <div class="right-block">
-    <div class="ttl">${L('Ölçüm &amp;<br>Değerlendirme','Test &amp;<br>Assessment')}</div>
-    <div class="coach-line">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div>
-  </div>
+.fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,185mm);max-width:100%;border:1px solid var(--ln);border-radius:4px;background:#fff}
+.fms-pgn{font-size:8.5px;color:var(--mu);margin-top:3px}
+.fms-src{font-size:8.5px;color:var(--mu);text-align:right}
+</style></head><body>
+<div class="pbar">${L('Test raporu hazır','Test report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF olarak kaydet','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
+<div class="hd">
+  ${ath.photo?`<img class="av" src="${psrc(ath.photo)}" alt=""/>`:`<div class="avp">${esc(initials)}</div>`}
+  <div><h1>${esc(ath.name||L('Adsız Sporcu','Unnamed Athlete'))}${ath.number?`<span>#${esc(ath.number)}</span>`:''}</h1>
+    <div class="meta">${[ath.position?esc(POS_FULL[ath.position]||ath.position):'',esc(periodLabel||''),test.year?esc(test.year):''].filter(Boolean).join(' · ')}</div></div>
+  <div class="r">${hasMedia(setup.logo)||setup.teamName?`<div class="tm">${hasMedia(setup.logo)?`<img src="${esc(mediaSrc(setup.logo))}" alt=""/>`:''}${setup.teamName?`<span>${esc(setup.teamName)}</span>`:''}</div>`:''}<div class="t">${L('Test ve Değerlendirme','Test &amp; Assessment')}</div><div class="d">${fdL(test.date)}</div>
+    <div class="c">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div></div>
 </div>
 ${groups}
 ${custom}
-${test.notes?`${notesH}<div class="obs-box">${esc(test.notes).replace(/\n/g,'<br>')}</div>`:''}
-<div class="footer">${gen} · ${esc(setup.teamName)}</div>
-${infoSec()}
+${notes}
+<div class="ft"><span>${esc(setup.teamName||'')} · CoachOS</span><span>${L(`${today_} tarihinde oluşturuldu`,`Generated ${today_}`)}</span></div>
 </body></html>`;
-
-  w.document.write(html);
-  w.document.close();
-  // Posture / OHS / sprint photos are full-size and remote, so give them a longer
-  // cap than the session sheets before the dialog opens regardless.
+  w.document.open();w.document.write(html);w.document.close();
+  // The athlete's own photos (posture, OHS, FMS) are full-size and remote, so give them a longer
+  // cap before the dialog opens regardless.
   printWhenImagesReady(w,{safety:15000});
 }
-

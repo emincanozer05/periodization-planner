@@ -465,6 +465,7 @@ const ATH_TEST_BOXES=[
   {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
   {g:'speed',id:'tTest',tr:'T-Test',en:'T-Test',u:'s',dir:'lo',get:t=>cmpN(t.tTest)},
   {g:'speed',id:'fiveZeroFive',tr:'5-0-5',en:'5-0-5',u:'s',dir:'lo',get:t=>cmpN(t.fiveZeroFive)},
+  {g:'speed',id:'laneAgility',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',get:t=>cmpN(t.laneAgility)},
   {g:'speed',id:'shuttleRun',tr:'Shuttle Run',en:'Shuttle Run',u:'VO2max',get:t=>cmpN(t.shuttleRun)},
 ];
 const ATH_TEST_GROUPS=['move','jump','speed'];

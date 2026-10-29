@@ -103,7 +103,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       {/* The athlete on paper, for the people the coach reports to: profile, the head
           coach's observations, the athletic profile and the injury record, A4 portrait. */}
       <button className="ap-info" onClick={()=>printAthleteInfo(ath,setup,exercises,teamDays)}
-        title={L('Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil ve Sakatlıklar — A4 dikey PDF','Athlete Profile, Head Coach Observations, Athletic Profile and Injuries — A4 portrait PDF')}>{L('Bilgileri Al','Get Info')}</button>
+        title={L('Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil ve Sakatlıklar — A4 dikey PDF','Athlete Profile, Head Coach Observations, Athletic Profile and Injuries — A4 portrait PDF')}>{L('Profil Çıktısı','Profile Printout')}</button>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>

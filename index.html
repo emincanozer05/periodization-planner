@@ -7866,7 +7866,7 @@ main .panel,main .ap-head{animation:none}
 :is(:root,:root[data-theme]) .ap-stat{background:var(--elevated);border:1px solid var(--border);border-radius:10px;min-width:96px;padding:10px 14px}
 .ap-stat .k{font-family:inherit;font-size:10px;font-weight:600;letter-spacing:.07em}
 .ap-stat .v{font-family:inherit}
-/* "Bilgileri Al": ikincil düğme, stat kutularıyla aynı yükseklikte. */
+/* "Profil Çıktısı": ikincil düğme, stat kutularıyla aynı yükseklikte. */
 .ap-info{flex:none;align-self:stretch;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--border2);
   background:var(--panel);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
   transition:border-color var(--dur-2,.15s),color var(--dur-2,.15s),background var(--dur-2,.15s)}
@@ -9295,7 +9295,7 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .fmsc-tot span{margin-left:auto}
 
 /* 20 m sprint: kapı şeridi, altında F-V ve fotoğraflar */
-.spr-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.spr-track{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .spr-gate{display:flex;flex-direction:column;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;position:relative}
 .spr-gate.main{border-color:var(--accent)}
 .spr-gate .mk-input{background:var(--panel)}
@@ -9305,15 +9305,14 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .spr-gate.main .spr-gate-d span{color:var(--accent2,var(--accent))}
 .spr-gate-v{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .spr-gate-v.bad{color:var(--high-t)}
-.spr-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.spr-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
 .spr-body .fv-box{margin-top:0;padding-top:0;border-top:none}
-.spr-photos{min-width:0}
 .mk-uploads.sm{gap:8px}
 .mk-uploads.sm .mk-up-box{width:58px;height:58px}
 .mk-uploads.sm .mk-up-box svg{width:20px;height:20px}
 .mk-uploads.sm .mk-up-cap{font-size:9px}
-.tcard-sprint .tc-obs{flex:none}
-@media(max-width:900px){.spr-track{grid-template-columns:1fr 1fr}.spr-body{grid-template-columns:1fr}}
+.tcard-sprint .tc-obs{flex:none;min-width:0}
+@media(max-width:900px){.spr-body{grid-template-columns:1fr}}
 
 /* seçici: yeni grup renkleri, FMS hareketlerinde logo */
 .ev2-tile.g-str{--gc:#ef4444}.ev2-tile.g-endur{--gc:#14b8a6}
@@ -10598,11 +10597,13 @@ const makeTest=(period='pre')=>({
   // Power
   verticalJump:'',cmj:'',squatJump:'',dropJump:'',horizontalJump:'',
   // F-V profili (335): yüklü squat jump satırları [{load kg,h cm}], itiş mesafesi hpo (cm); sprint ara zamanları
-  sjLoaded:[],sjHpo:'',sprintSplits:{t5:'',t10:'',t30:''},
+  sjLoaded:[],sjHpo:'',sprintSplits:{t5:'',t10:''},
   // Lateral CMJ — sideways counter-movement jump distance per side (cm)
   lateralCmj:{right:'',left:''},
   // Agility / Conditioning
   tTest:'',fiveZeroFive:'',shuttleRun:'',
+  // Lane Agility: konili parkurun tamamlanma süresi (s)
+  laneAgility:'',
   /* 505 per turning side (s). `fiveZeroFive` keeps the better of the two, so every report
      that reads the single number goes on reading it. */
   cod505:{right:'',left:''},
@@ -10661,6 +10662,7 @@ const TEST_CATALOG=[
   {id:'accel',         name:'5-10m Acceleration',         short:'5-10m'},
   {id:'tTest',         name:'T-Agility',                  short:'T-Test'},
   {id:'fiveZeroFive',  name:'505 COD',                    short:'505'},
+  {id:'laneAgility',   name:'Lane Agility',               short:'Lane'},
   {id:'benchPress',    name:'Bench Press',                short:'BP'},
   {id:'trapBarDL',     name:'Trap Bar Deadlift',          short:'TBDL'},
   {id:'pullUp',        name:'Pull-Up',                    short:'Pull-Up'},
@@ -10746,6 +10748,7 @@ const TEST_META={
   accel:         {g:'speed',   ic:'watch',   tr:'İlk adım ivmelenmesi',          en:'First-step acceleration'},
   tTest:         {g:'speed',   ic:'cone',    tr:'Çeviklik',                      en:'Agility'},
   fiveZeroFive:  {g:'speed',   ic:'uturn',   tr:'Yön değiştirme, sağ-sol asimetri',en:'Change of direction, R/L asymmetry'},
+  laneAgility:   {g:'speed',   ic:'cone',    tr:'Çok yönlü çeviklik',            en:'Multi-directional agility'},
   benchPress:    {g:'str',     ic:'up',      tr:'Üst vücut itiş kuvveti (e1RM)', en:'Upper-body push strength (e1RM)'},
   trapBarDL:     {g:'str',     ic:'up',      tr:'Alt vücut maksimal kuvvet (e1RM)',en:'Lower-body maximal strength (e1RM)'},
   pullUp:        {g:'str',     ic:'up',      tr:'Üst vücut çekiş kuvveti',       en:'Upper-body pull strength'},
@@ -10771,7 +10774,7 @@ const testGroupOf=c=>c.custom?'custom':((TEST_META[c.id]||{}).g||'custom');
 const BATTERY_ALIAS={
   mobility:['ankleDF','aslr'],
   power:['verticalJump','cmj','lateralCmj','squatJump','horizontalJump','dropJump'],
-  agility:['tTest','fiveZeroFive'],
+  agility:['tTest','fiveZeroFive','laneAgility'],
   endurance:['shuttleRun'],
 };
 function expandBattery(b){
@@ -11228,6 +11231,13 @@ function accelCalc(t){
   const split=t5!=null&&t10!=null&&t10>t5?+(t10-t5).toFixed(2):null;
   return{t5,t10,split,v5:t5>0?+(5/t5).toFixed(2):null,v510:split>0?+(5/split).toFixed(2):null,v10:t10>0?+(10/t10).toFixed(2):null};
 }
+/* 20 m sprint: the 0–5 m, 0–10 m and 0–20 m times (the first two shared with the 5-10 m
+   acceleration) and the average speed over each, distance / time in m/s. */
+function sprintGates(t){
+  const sp=(t&&t.sprintSplits)||{};
+  return[{k:'t5',d:5,t:tN(sp.t5)},{k:'t10',d:10,t:tN(sp.t10)},{k:'time',d:20,t:tN(t&&t.sprint20m&&t.sprint20m.time),main:true}]
+    .map(g=>({...g,v:g.t>0?+(g.d/g.t).toFixed(2):null}));
+}
 /* Active hip IR / ER, seated (°): each side's two rotations and their total arc. */
 function hipRotCalc(t){
   const o=(t&&t.hipRot)||{};const irR=tN(o.irR),irL=tN(o.irL),erR=tN(o.erR),erL=tN(o.erL);
@@ -11297,6 +11307,7 @@ const TEST_IMG={
   ohs:'tests/deep-squat.jpg',ankleDF:'tests/ankle-df.jpg',aslr:'tests/aslr.jpg',hipRot:'tests/hip-rotation.jpg',thomas:'tests/thomas.jpg',tSpine:'tests/t-spine-rotation.jpg',
   cmj:'tests/cmj.jpg',lateralCmj:'tests/lateral-cmj.jpg',squatJump:'tests/squat-jump.jpg',horizontalJump:'tests/broad-jump.jpg',dropJump:'tests/drop-jump.jpg',
   accel:'tests/accel-5-10.jpg',tTest:'tests/t-test.jpg',fiveZeroFive:'tests/cod-505.jpg',
+  laneAgility:'tests/lane-agility.jpg',
 };
 
 /* =========================================================
@@ -11364,6 +11375,9 @@ const TEST_INFO={
   fiveZeroFive:{n:'505 COD',
     tr:{w:'Sporcu 10 metre hızlanarak gelir, kapıdan 5 metre sonra çizgide 180° döner ve 5 metre geri sprint eder. Dönüş her iki ayakla ayrı ayrı yapılır.',p:'Yön değiştirme hızını, yavaşlama ve yeniden hızlanma becerisini ve sağ-sol dönüş farkını (asimetri %) değerlendirmek için kullanılır.'},
     en:{w:'The athlete runs in over 10 metres, turns 180° on the line 5 metres past the gate and sprints 5 metres back, turning off each foot in turn.',p:'Used to assess change-of-direction speed, the ability to decelerate and re-accelerate, and the right–left turning difference (asymmetry %).'}},
+  laneAgility:{n:'Lane Agility',
+    tr:{w:'Sporcu, köşelerine koni konan dikdörtgen parkurda başlangıç konisinden ileri sprint eder, yana kayar (defansif adım), geri koşar ve yine yana kayarak başladığı yere döner; ardından aynı parkuru ters yönde tamamlar. Toplam süre kaydedilir.',p:'İleri, geri ve yanal hareketler arasında hızlı geçişi, yavaşlama-yeniden hızlanmayı ve çok yönlü çeviklik kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'On a rectangle marked with cones at its corners, the athlete sprints forward from the start cone, shuffles sideways (defensive slide), backpedals and shuffles back to the start, then runs the same course in the opposite direction. The total time is recorded.',p:'Used to assess fast transitions between forward, backward and lateral movement, deceleration and re-acceleration, and multi-directional agility.'}},
   accel:{n:'5-10m Acceleration',
     tr:{w:'Sporcu duruştan çıkış yapar; 5 m ve 10 m kapılarından geçiş süreleri alınır.',p:'İlk adım ivmelenmesini ve 5-10 m arasındaki hız kazanımını değerlendirmek için kullanılır.'},
     en:{w:'From a standing start, the athlete sprints through gates at 5 m and 10 m.',p:'Used to assess first-step acceleration and the speed gained between 5 and 10 m.'}},
@@ -11433,6 +11447,7 @@ const TI_HAS={
   sprint:t=>!!(t.sprint20m&&(tiNum(t.sprint20m.time)||t.sprint20m.sideStep1||t.sprint20m.sideStep2||t.sprint20m.sideStep3||t.sprint20m.frontRightFoot||t.sprint20m.frontLeftFoot)),
   tTest:t=>tiNum(t.tTest),
   fiveZeroFive:t=>cod505Calc(t).best!=null,
+  laneAgility:t=>tiNum(t.laneAgility),
   shuttleRun:t=>tiNum(t.shuttleRun),
   ...Object.fromEntries(STR_LIFTS.map(id=>[id,t=>!!(t[id]&&(tiNum(t[id].load)||tiNum(t[id].reps)))])),
   pullUp:t=>!!(t.pullUp&&(tiNum(t.pullUp.reps)||tiNum(t.pullUp.load))),
@@ -11453,7 +11468,7 @@ const CMP_METRIC_TEST={height:'anthro',weight:'anthro',bodyFat:'anthro',wingspan
   adfR:'ankleDF',adfL:'ankleDF',adfD:'ankleDF',aslrR:'aslr',aslrL:'aslr',ohs:'ohs',ybR:'yBalance',ybL:'yBalance',ybD:'yBalance',
   vj:'verticalJump',cmj:'cmj',sj:'squatJump',dj:'dropJump',hj:'horizontalJump',
   lcjR:'lateralCmj',lcjL:'lateralCmj',lcjD:'lateralCmj',
-  sp20:'sprint',tTest:'tTest',f505:'fiveZeroFive',shut:'shuttleRun',
+  sp20:'sprint',spv5:'sprint',spv10:'sprint',spv20:'sprint',tTest:'tTest',f505:'fiveZeroFive',lane:'laneAgility',shut:'shuttleRun',
   hirR:'hipRot',hirL:'hipRot',herR:'hipRot',herL:'hipRot',htD:'hipRot',tspR:'tSpine',tspL:'tSpine',tspD:'tSpine',
   acc5:'accel',acc10:'accel',f505R:'fiveZeroFive',f505L:'fiveZeroFive',f505D:'fiveZeroFive',
   bp:'benchPress',tbdl:'trapBarDL',sq:'backSquat',bpRel:'benchPress',tbdlRel:'trapBarDL',sqRel:'backSquat',pu:'pullUp',
@@ -11551,6 +11566,9 @@ const CMP_METRICS=[
   {id:'lcjL', g:'pow',tr:'Lateral CMJ L',  en:'Lateral CMJ L',  u:'cm',dir:'hi',st:'LCMJ L',se:'LCMJ L',get:t=>cmpN(t.lateralCmj&&t.lateralCmj.left)},
   {id:'lcjD', g:'pow',tr:'Lateral CMJ Fark',en:'Lateral CMJ Gap',u:'cm',dir:'lo',st:'LCMJ Δ',se:'LCMJ Δ',get:t=>cmpGap(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left)},
   {id:'sp20', g:'spd',tr:'20m Sprint',en:'20m Sprint',u:'s',dir:'lo',st:'20m',se:'20m',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
+  {id:'spv5', g:'spd',tr:'0-5m Ort. Hız',en:'0-5m Avg Speed',u:'m/s',dir:'hi',st:'0-5m hız',se:'0-5m spd',get:t=>sprintGates(t)[0].v},
+  {id:'spv10',g:'spd',tr:'0-10m Ort. Hız',en:'0-10m Avg Speed',u:'m/s',dir:'hi',st:'0-10m hız',se:'0-10m spd',get:t=>sprintGates(t)[1].v},
+  {id:'spv20',g:'spd',tr:'0-20m Ort. Hız',en:'0-20m Avg Speed',u:'m/s',dir:'hi',st:'0-20m hız',se:'0-20m spd',get:t=>sprintGates(t)[2].v},
   {id:'tTest',g:'spd',tr:'T-Test',    en:'T-Test',    u:'s',dir:'lo',st:'T-Test',se:'T-Test',get:t=>cmpN(t.tTest)},
   {id:'acc5', g:'spd',tr:'5m İvmelenme',en:'5m Acceleration',u:'s',dir:'lo',st:'5m',se:'5m',get:t=>accelCalc(t).t5},
   {id:'acc10',g:'spd',tr:'10m İvmelenme',en:'10m Acceleration',u:'s',dir:'lo',st:'10m',se:'10m',get:t=>accelCalc(t).t10},
@@ -11558,6 +11576,7 @@ const CMP_METRICS=[
   {id:'f505R',g:'spd',tr:'505 Sağ',   en:'505 R',     u:'s',dir:'lo',st:'505 R',se:'505 R',get:t=>cod505Calc(t).r},
   {id:'f505L',g:'spd',tr:'505 Sol',   en:'505 L',     u:'s',dir:'lo',st:'505 L',se:'505 L',get:t=>cod505Calc(t).l},
   {id:'f505D',g:'spd',tr:'505 Asimetri',en:'505 Asymmetry',u:'%',dir:'lo',st:'505 Δ',se:'505 Δ',get:t=>cod505Calc(t).pct},
+  {id:'lane', g:'spd',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',st:'Lane',se:'Lane',get:t=>cmpN(t.laneAgility)},
   {id:'bp',   g:'str',tr:'Bench Press e1RM',en:'Bench Press e1RM',u:'kg',dir:'hi',st:'BP',se:'BP',get:t=>strCalc(t,'benchPress').e1},
   {id:'tbdl', g:'str',tr:'Trap Bar DL e1RM',en:'Trap Bar DL e1RM',u:'kg',dir:'hi',st:'TBDL',se:'TBDL',get:t=>strCalc(t,'trapBarDL').e1},
   {id:'sq',   g:'str',tr:'Squat e1RM',en:'Squat e1RM',u:'kg',dir:'hi',st:'Squat',se:'Squat',get:t=>strCalc(t,'backSquat').e1},
@@ -11630,6 +11649,7 @@ const TEAM_AVG_TESTS={
   dropJump:       {u:'',  dir:'hi',dec:2},
   horizontalJump: {u:'cm',dir:'hi',dec:1},
   tTest:          {u:'s', dir:'lo',dec:2},
+  laneAgility:    {u:'s', dir:'lo',dec:2},
 };
 function teamAvgOf(athletes,id,excludeId){
   if(!TEAM_AVG_TESTS[id])return null;
@@ -11670,6 +11690,7 @@ const TEST_THUMB={
   'tests/drop-jump.jpg':'data:image/jpeg;base64,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',
   'tests/hip-rotation.jpg':'data:image/jpeg;base64,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',
   'tests/hurdle-step.jpg':'data:image/jpeg;base64,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',
+  'tests/lane-agility.jpg':'data:image/jpeg;base64,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',
   'tests/lateral-cmj.jpg':'data:image/jpeg;base64,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',
   'tests/shoulder-mobility.jpg':'data:image/jpeg;base64,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',
   'tests/squat-jump.jpg':'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/wAALCACHAPABAREA/8QAGwAAAQUBAQAAAAAAAAAAAAAABAABAgMFBgf/xABMEAABAwIDAwcHBwkHAwUAAAABAAIDBBEFEiEGMUETIjJRYXGRFEJSgbHB0SMkYnKCkqEHFRYzNENEU7IlNVSDk+HwJmNzZHSiwvH/2gAIAQEAAD8A8tbLGNM7b96pBkfOAHMFm3bdXBtTbQxeCWWq64vBM7yprXHPHoL6BTpXySRBzyD2q1rhchpaSN6lzr6WT8NbJwLhMQQdbKIyucWhzcw4IAvmmkcIsrSCRbu4qQjrQOmPvD4Lb2IZVjbPAs7wW/nCC+o9MdiEx17BjeIgub+1y8fplBPlBb8k5pPeq6cSuiDmOiN+y6uIqdNY/BPaq9KK3cqpJKhkkbXOZZ3oiyKvkBL8oHandIGgaXvuAG9HUWFV1bRvq4KfNGw2cARm8EEO2ymW3GigQBcuI0VNQ8MpzIzK4HTRDBtU7Vj2lvCxTllXcc8eI+Cl5JE43JdfrzKqEfO4su7Id5utJt7cE4vbeFCX9W/UdE+xCUsLXwB7XPY69rtcp0gc2WYPkDzfqRljwIS77JX6intfqQWTNXyASOYQ0dFU0zCZpByjwddR3ooQOt+0SeI+C2dioXDbHAyZnutiEOht6Y7Fm45TsdjeI6u1q5vO+mVnupoosrhm32tmUsOB8n4dIow5tE/fZCVtjJC0gEEkexNVQmOF3JyuA6nG4WtgVEcQxClp3NeYnFoe5g3DjfvsV6lHTQ0cbIKdgY1g6IN15jjcccOL1jIrBgmdYDghGntVc4+Rf9UoDJ8wa4SvsbacN6ugjLomkSyN7AQpmFw/fyfh8FJo7kNDrUxdHoncO9aLRccErW32UJv1T93RKpw8fNBu3lPAB5RPa28IndvISHeLJW0uLJXIOpCFj/vCYgi+Ue5V0dzLIdN59qM1t5q19jCf0vwMaft8P9YWbjX994ju/a5v6ygpL2Zaw5wUMPHyB0HSKMINtLJrdyCrf19Pu6XvCIqx8i+4C6jAtnsUkoIamlm5Bs7QQWkhxaNxWptBX4vhNDDHOAKgv+TrWgDlGAatLd17kari3lz3Fzzmc43JO8lMAeFlXOfkZNRo0+xBk2w9hFiNOHaiae/JN3KZ9StZQzkXyMt/5WfFA0cQlqXkGOzGgNu8DW+u8o0tyac0nscD7EtCNQFCYN5J+7oniqcPAMFmkWzHebI17abJGICzl2g+Uc4byebx10VZGmpae4pDTqT8OCYtzHez1myhGyMSPN4+Wc70xfLYdvWhaTSZzMw5wcSL9qNs3ddvitbY1o/TDBLZf2+Hj9MITGKSV2M4gWtbbyqXz2jzz2rPrIH08QfJkaL83ntOvcClSU9qaMgx3Iu60jd/irBe4BskQ2/C/eg63KJYTcXvp4hdNsvgzMVq3vqWB9LDq5oPTdwb3cSvRY56fCMOnq6uZsUEdgA7r4Adq4XHdrG7S1NNTupzFBE1zQDxJIufwC52RnJyPYSCWuIv3JgTwIUJY7xPsYxdp3vAVNZHE2DLAWckHAAhwKlSkPgY7M0jUb1YQDrzfFQa0ejdA0zWiqjsNcp4dpWkBp0U4v6IUJ78jJzfNPsVFBfyXd5xTU7vnVQQN5CNN7dEJjf0U2nUldvaEHER+cZ3cbAexRorcu824H2o4203rW2NIO2GCf8Av4f6ws/Gh/bWIafxUv8AWVn1IGRl26Zwo4aB5ObN84os/VSt9FBV/wCvp9Nb+8L0bYWpDcNkYGC7Jzm7iBYrE/KHUTOxWKnMr+QZG1zY/NDiNTZYuED5002uQUqgfOJdPPPtUNOpVVTgKeXf0SgxYYcxtrWRdIByDfWrSQ3ghYquF7wxsmp3AgqqBpFXEL3GU7vWtADjqntccVXOByMnO80+xUYfY0t725xTUw+cz6jeEYbW6RTgi2hKZxA1c8AdZTBwIuHgjrCDht+cZ9RuGvVuUaQhsr3ONgAblX+X0xF+V/8AiVt7ESsl2twR0b7gYhCN1vPCzsfmjhxqv5R1r1cttL+eUC6Rk7GmJ9w14vcFNhw+b7z0ijAALdJKwB3kIKv/AF9Prx94XQbPYqMMriJXHyecBj7C+U30d+P4rV21wStq6uCto4X1AkiAfk1ILRb8RZYNA3yckStLJBclrhYi3Wh3a6knXVRGm8lV1WtNLzvMKCbfyFlvCyJhqI4aePlHWve2l0jW0+4S8PRKx4ZOUqYjY3zC1zoNUfA4Nq2GzWix4960RI0jps+8E4kZbV7PvBVVDmcjJZzeiePYqcOc0UgDiBzjxTQFoqp+c21xxRRkZ6bPvBIyxhv6xn3gi6LCqjE6h8McQ+TAc4u0AaRe+q7Si2UooMPfT1ELTUPuHSDew8AD1BeaR2ZidS1xHN038QqP3NQbjoG2vas8yWjye/tXV/k5lz7X4RqAPzhBa5+mFn7VzBm0FbbX5zLqD/3Cs/D3WY+wHSbvPHXVH4c5racguaOcd5RZkZ6bPvBM58dumy/eEDWlpqKexbYHWx7Qur2UoqasfWyTMbJycYa0X3Fx3/guoopKmhpm08MjJoGaMjmGrR1ZhvHeFibeXbLRzSsZHJNCWucCOeGm/vsuV5RltXs+8Es8Z3vb94KmpezkJQHN6J4oRrm+QR6i/f3qitcGinO+wPHtQon55dr0QN6Z0bonCwvpqQ06KyXR7QG2BaN6YJwnO4pzcaBt+9M0OcbZNdwtrdb2HbNVVTCJnxSkE6RsZqe88Fvt2RrI6YyQU1OXBtzG03eANfH1rQ2VxJ1DS10dY9reTDXNdKbZRrob9RCm7bnDBhkk3Kl1Y0ENiDDzncDfqXlrnOJJLNSbl196tnGRjdLXsRftCodCGi4LHXIFx3rf2Ei5LbfZ8Xaf7Sg3fXCBx6EyY7iR3fPZh0b+eUDTA5ucwgW5ulrqLDcai3YpJ9Era3sdy6f8n1RKzHvJwLR1ELmv9QzD2fiu8c4ZiAuY/KbLmiwdjjzhHK63YS34LhVEqJ3HS6nAC+UNEdjY6X7E0jOUkLbgbtSFWIMzy27OaBrY63TNZIDd2YDjY70Q+ImRpyPItqQNyXJN4Nk+6VIRfQl+4U/IOcDljlJ+oURhuGVOJVkdJSQvknkNg21vEr0jCdmMJwDJ5S/yyuPTfa7WfRYP/sd60qnaLDqEnMGgM9Nw9iupNrMLkhZUGandfeL2A7F5ptxi0OMY9UTQWjhaQ1rQN9ha654hvpKprXOdqS0eKu3wNJeQ7MQL30shyZHA8ALcd639gSXbbYBnNiMSgIH2wgNo2uOP4kI7n55NcfbKFpmOzWeXk20GtgnihsznMkGvBqmIQdzJfuFLkT/Ll+4UnQPBB5OUDdq0hdR+TmJkm0ha5zmHyd+UkcdPddejTYM5jc7aiM9jgQV5nt7VsqdoHwtfdtJG2DQaXGrvxNvUucsz0j4KJa30lF7dObrdMwObZ13X3HTcp1V2SvDHE2Ni3d60PaUHNvuPS3LoDXuO6mAH1lYcSJcCaVu7cHlOMSP+Gb98pPxGQtsyCNp67kqiNtbiFRFTCZ7nyvDGNvYXJsF6Hg2Gz7OsrqaN7Xua1oa8C+e98x676AW7Vy+0mIYwyoOYOhh3B7BuPUT1rmXNLpM0hLnOOrjqSrsklIS17HMkIu3MLWvxQ+T/AIUuSPUEhG5puCQj6StMYy1MLZmnzgLO8eKvNXRndBMPulbOxdRTHazBg1kmY10IBLR6YWZjdflxnEGspGgCqlGjt/PKDjxF7XX8madNxcpsxJw30zT9sqf5zdwpmffKpmxCpk6BEQ+iNfEoKRsj3ZpJJHHrJJXVfk5oXyY4avMeSpozmvxLhYD2n1Ls8br/ACSnnrHG4iYSwE6ZuGnevI5s8sr5ZXZnvcXOJ4k6lQydyXJdyYxlTi5WJwcx1uw6grSjradzLT0tndcVgPApzUUh3RzD1NTckOFh6kxjF+HgoFnUo5CicMqPIcRpaoi4hla8jrAOq9Hq5I6qYTwvzNdzmPYd4PG4UMok0lJcLW52t/FDQbN0dVOXU9IxkgF+VjFsvbbcjq7BaWoo2UuIR54mtsyTc5p6weC4HaXZ1+CSxPZM2elmvycg0II3gjrWMGJZEsluCQatzYkf9YYHf/Hw/wBYUMbgaMYrz/6qX+soAxsHEeCjkHD2KOXsTFnYFEs7AvS9iaWCDZ2J4b8pO50jyOOth4AfisPb6VjOQpo3X5Rxlfr1aD3rjSzuSydqfJ2hLkz1Jsh6ksqkAu3Zso1xs6qee5gCu/RGmB1lmd6wPcl+jNE06te76zz7lIbP0Lf4YHvcSmfs9QEa0wHc4/FX0WHx0TS2DMGegXkj1A7kQXfRd4IjDsfZQsdE2JxJddxynX8FqMxGDEYi9jRY8RqCuR2nweXEKiNlJKxtPECWseDo52/2LBk2Zr2cYXd0lvahZMHrI75omadUrfihZKeSM2cxoP1gVHkn26I9RWvsbGW7X4Idf2+H+sLoMU2bEuJ1jjU2zTyOsI913HtVMeyURF5J5bdllP8ARajYOcZXd77e5SGz1A390T3uJTjAaI6GkYfWVB2z2H3sadrftu+K6Ogpo6TCYaeFtm7mC995WDjOD0uI1jpp3TZgAwZTpYepZj9l6a/NqJh3tBVbtlSR8nVX+tF8CqX7LVbejLA7vJHuQsmA1zL3bE7ulahJaCpiHPjaP8xp96o5N9+iPFLk3cRZeinaChj/AH5JHosJ9yHm2noQ4ZeWd9gBUSbUxeZBIe8gIZ+1Enm0rPtOQ0u0lU/dDAB3E+9CPxvEXdGZrfqsCo/OeJ3PzuQX6rBdBsxT1FfHLV4hWVBijdlYwP0ebXN+wC3ij8XxCDD6N4ga1hA5rW6ariZaqeeR0kkryXG55xsqy8niSe9K3UB4JAHsVgC19kAf0rwbT+Oh/qC6vEsWoYq+qDqpmYTPBABPnHqQTto8PYLGR7vqxn3od+09IOhFK77ICHftR6NN4uVEm09QRzKaEdpJKbyvGKvC6rEoW04p6V7GSlrLubmvY26tLXRzNuKKHD4Hup5X1jGAOhAs0Hicx8VzIxbEJBmFZKQdbg2UDiFa7pVEx+2VE1U56U0p+2VEvc7pPce8pt/am16gp5TopW03L0t7GnQ2PeEO6mp3HnRxn7AVZw+id0qeE/5QTfmrDjvpIT9mygcCw938HH6rj3qs7OYYf4Yjukd8VVNs1hrI3PInaGi5yyX/AAsjKkUmA4SIA/LGwlxzuFy47yf+cEBU7PDEMss1Y+5F7MaC0d3Whn7Gi3MrPvRf7ql2x9QOhWQ+uMql2yWIjoVFO7vJHuVLtmMWbuFO/ult7VWdnsYb/CZvqyNPvWlsthOJwbU4Q+aimaxtbEXOyggDMNV1uIRNNbUXF/lX77ekUG+mhdoY4z3sCqdhtE7pU8B/ywoHCKA/wsXgQo/mPDnCxpWjuc4e9F4TQU+Fzvlp4s0crDHPA992SsO9rh/yy4bbDAGYVXXpszqCoJdSyu4fQcfSb+IseK0MBwOkxXDmTCeZkzebKxoaQ1yNOyEfCsl9cY+Krdsd6NaPtR/7ql2yFSOhVQHva4Kl+ymJjoS0zvtEe5Vv2Zxdo0jgf3ShVOwHGW76In6sjT71U7CcUaOdh9R6mXXobwb6geKgWjix3qS5g3tf4JxyX0h6ly+L7UGmrHQUTI3sZo5zydT2WQX6ZVrd0VP4O+Ksp9squKq5SqpWSxPZoxpylhG4i++6yMTxCTHqvLPNFRR3vmkDnh3flBI8Fu4dWYlh0Ijfi2D1MLRZued2Zo+7f1KP6ZVWYgUsBANgQ5wupDbKfzqKL1SFdZSytqaeOdmbK9ocNVZbqt6ypAH0mo3BnD87UQvf5dnDtQdeb1lRdpHyrt/eUMcp1IPgmAZ1kepV1tXT0VM6eeQhjRw3nsWJ+mFEBpHUeto+Kk3bOg4w1HqA+KlLtThdTBJBUU88kMnSjka0tP47+3elS7R4TSQtigp5mMaA0WaCbDtvcqw7XYaN7Kj7g+KQ2vww7m1P+n/upt2sws7zUDvi/wB1utc18Ycx4IcLghNY8CPBSAdb/ZOBbeQFA/VHioEG+53qSs7qcFlbQyVENA4UlPPLM85QYxfL26LhThlfxw+q9cLkxw3EB/A1Q/yXfBdRDjck9DDS43s1TYiImCNsrqV8UoaBYDO3qCzpaLBJruZRY3Rk72hgmaO4kNPigK2jp2MDaKOueb6vnjy6dQAv7UMIZG74Zf8ATd8Esh4xP9bHfBd5sg/lsIY17S0xOLBmba44b+9bgaeBA9SexHnIvB8xxWj5xty7PaEJXXNZUafvXcO0ofdoLjwUHB9rklcDtLiUldVGNhf5PEbNvpc8SsaxI4esqTWtG9zb96sAj/mN8UiWfzG+KjmZwLfFOHM9JvipZ2cXt8QvR9nKg1WEUzw7UNym1t409y1ACOJ8Enf80TEgDcE4ZuskRr0inAZ609hwt4JW4qJVzJHEBtyE5BHE+KiXHiSlftKWlutMSCNAo2vwT5NEXhDf7Uoz/wB5ntQ9axvlk/8A5Xe0qiwCkAOKYhv/AOpixp1sPBJsTHea0+pXNp47axs+6FB9PD/Jj9bAqzS0/wDIi/0x8EvJKb/Dw/6bfgkaKj40lP64m/BWNijjaGxxta0bg0WCfLfcnyGyYMPEr//Z',
@@ -24722,8 +24743,164 @@ tbody tr.grp:first-child td{border-top:none}
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
 }
 
+/* =========================================================
+   THE ATHLETE SHEET LOOK — one design for the two A4 portrait sheets a coach hands out: the
+   Profile Printout (426, printAthleteInfo) and a single test record's report (generateTestPDF
+   below). The header, the numbered section headings, the test cards (grey-scale picture beside
+   the test's name and what it measures, the readings under them) and the tables are this CSS.
+   ========================================================= */
+const ATH_SHEET_CSS=`*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--ink:#0f1720;--t2:#3a4350;--mu:#5e6774;--dim:#8b939e;--ln:#e2e5ea;--ln2:#cfd4db;--soft:#f6f7f9;--acc:#0a6cdc}
+html,body{background:#fff}
+body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 auto}
+.pbar{position:sticky;top:0;z-index:9;background:#0f1720;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;margin-bottom:14px}
+.pbar button{background:#0a6cdc;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:600;cursor:pointer;font-size:12px}
+.pbar button.sec{background:transparent;border:1px solid rgba(255,255,255,.3)}
+@media print{.pbar{display:none}}
+.hd{display:flex;align-items:center;gap:16px;padding:0 0 10px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+.hd .av{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;border:1px solid var(--ln)}
+.hd .avp{width:64px;height:64px;border-radius:12px;display:grid;place-items:center;background:var(--soft);border:1px solid var(--ln);font-size:20px;font-weight:700;color:var(--t2);flex:none}
+.hd h1{font-size:23px;line-height:1.1;letter-spacing:-.01em}
+.hd h1 span{font-size:14px;color:var(--dim);font-weight:600;margin-left:6px}
+.hd .meta{color:var(--mu);font-size:11px;margin-top:4px}
+.hd .r{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.hd .r .tm{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.hd .r .tm img{height:22px;width:auto;max-width:40px;object-fit:contain}
+.hd .r .tm span{font-size:10px;font-weight:700;color:var(--ink)}
+.hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
+.hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
+section{margin-top:12px}
+/* The Athletic Profile always starts a new page, however much room the page before has left. */
+section.pg-new{break-before:page;page-break-before:always;margin-top:0}
+.sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
+.sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.sec-h .d{font-size:9.5px;color:var(--mu)}
+.sub-h{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);margin:0 0 6px;break-after:avoid}
+.sub-h .hv{font-weight:600;color:var(--acc);text-transform:none;letter-spacing:0;margin-left:6px}
+.blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
+.card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.an-w{display:flex;flex-direction:column;gap:6px}
+.an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
+.an-t .an-d th{font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);padding-top:3px;white-space:nowrap}
+.an-t .an-v td{font-size:10px;padding-bottom:4px}
+.an-t .an-v b{font-size:11.5px;font-weight:700}
+.an-t .an-v i{font-style:normal;font-size:7.5px;font-weight:600;color:var(--mu);margin-left:3px}
+.an-t th.an-l{width:25mm;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff;border-right:1px solid var(--ln);padding:4px 7px;vertical-align:middle}
+.an-t th.an-l em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
+.an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
+.txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
+.none,.txt.none{color:var(--dim);font-size:10px}
+.kvs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
+.kvs.sm{grid-template-columns:repeat(6,1fr)}
+.kvs.sm .kv .k{font-size:7.6px;letter-spacing:.06em;line-height:1.25}
+.kv{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--soft)}
+.kv .k{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:600}
+.kv .v{font-size:18px;font-weight:700;margin-top:2px;line-height:1.1}
+.kv .v small{font-size:9.5px;font-weight:500;color:var(--mu);margin-left:3px}
+.notes{display:flex;flex-direction:column;gap:6px}
+.note{display:grid;grid-template-columns:62px 1fr;gap:8px;padding-top:6px;border-top:1px solid var(--ln)}
+.note:first-child{border-top:0;padding-top:0}
+.nd{font-size:9.5px;color:var(--mu);font-weight:600}
+.pk{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:700;margin-bottom:5px}
+.pk.acc{color:var(--acc)}
+.pos .pn{font-size:12.5px;font-weight:700;display:flex;gap:7px;align-items:center}
+.pos .pn b{font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--ink);color:#fff;letter-spacing:.05em}
+.card.pos{padding:7px 10px}
+.pos .pk{margin-bottom:3px}
+.pos .pn{font-size:11.5px}
+.pos .pd{font-size:8.6px;line-height:1.35;color:var(--t2);margin-top:3px}
+.pos .pe{color:var(--mu);font-style:italic}
+table{width:100%;border-collapse:collapse}
+th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);text-align:left;font-weight:700;padding:5px 6px;border-bottom:1px solid var(--ln2);background:var(--soft)}
+td{font-size:9.8px;padding:5px 6px;border-bottom:1px solid var(--ln);vertical-align:top}
+tr{break-inside:avoid;page-break-inside:avoid}
+td.b{font-weight:600}
+td.r,th.r{text-align:right}
+.sw{color:var(--mu);font-size:9px}
+.cells{display:inline-flex;gap:2px;vertical-align:middle;margin-right:5px}
+.cells i{width:11px;height:8px;border-radius:2px;border:1px solid var(--ln2)}
+.sv{font-size:10.5px;margin-right:3px}
+.crit{margin-bottom:4px}
+.crit td{padding:4px 6px}
+.key{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:9px;color:var(--mu);margin-top:6px}
+.key span{display:inline-flex;align-items:center;gap:5px}
+.key i{width:8px;height:8px;border-radius:2px}
+.sign{display:flex;gap:24px;margin-top:9px;padding-top:7px;border-top:1px dashed var(--ln2);font-size:10px;color:var(--mu)}
+.sign b{color:var(--ink)}
+.tgs{margin-bottom:8px}
+.tcs{display:flex;flex-direction:column;gap:5px}
+.tcs.pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tc.ds.half{grid-template-columns:50mm minmax(0,1fr);row-gap:6px;column-gap:8px}
+.tc.ds.half .ds-r{gap:4px}
+.tc.ds.half .tc-d{grid-column:1/-1}
+.tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
+.tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
+.tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
+.tc-im.none{background:none}
+.tc-im.ph img{object-fit:contain;background:var(--soft)}
+.tc.ds{grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
+.tc.ds.ph{grid-template-columns:62mm minmax(0,1fr)}
+.tc.ds:not(.ph) .tc-im{height:auto;aspect-ratio:16/9;align-self:center}
+.ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
+.ds-r>.tc-d{margin-top:auto}
+.ds-h .tc-n{display:flex;align-items:center;gap:5px;font-size:10px}
+.fms-lg{height:16px;width:16px;border-radius:2px;flex:none;display:block}
+.ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
+.ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
+.ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
+.ds-v{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
+.ds-v small{font-size:10px;font-weight:500;color:var(--mu)}
+.ds-lr{display:flex;gap:7px;font-size:8px;font-weight:600;color:var(--mu);margin-top:4px}
+.ds-lr b{color:var(--ink);font-size:9px}
+.ds-m{font-size:10px;font-weight:700}
+.ds-x{font-size:8.6px;line-height:1.4;color:var(--t2);margin-top:2px}
+.tc.ds.ph .tc-im{height:auto;gap:4px;background:none;overflow:visible}
+.tc.ds figure{flex:1;min-width:0;text-align:center}
+.tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
+.tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
+.tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
+.tc-t{width:auto;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.tc-t th,.tc-t td{padding:2px 6px;text-align:center;border-bottom:0;background:#fff}
+.tc-t .an-d th{width:18mm;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
+.tc-t .an-v td{font-size:9px;white-space:nowrap;padding-bottom:3px}
+.tc-t .an-v b{font-size:11.5px;font-weight:700}
+.tc-t .an-v b small{font-size:8px;font-weight:600;color:var(--mu);margin-left:2px}
+.tc-t .an-v b small.g{margin-left:0}
+.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:3px}
+.tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
+.tc-t .rl{width:11mm;text-align:left;font-size:7.5px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
+.tc-t th.rl{width:11mm;background:var(--soft)}
+.card.pt{padding:7px 9px}
+.pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+.pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
+.pt .pts{font-weight:700;letter-spacing:0;color:var(--acc)}
+.shs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
+.sh{text-align:center}
+.sh img,.shx{width:100%;height:40mm;object-fit:contain;background:var(--soft);border:1px solid var(--ln);border-radius:6px;display:block}
+.shx{display:grid;place-items:center;color:var(--dim);font-size:12px}
+.pt.wide .sh img,.pt.wide .shx{height:88mm}
+.pt.wide .txt{font-size:9.6px;line-height:1.45}
+.sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
+.pt .txt{font-size:9px;line-height:1.38}
+.pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
+.inj td{font-size:9.3px}
+.inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
+.pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
+.pill.act{color:#b91c1c;background:#fdecec}.pill.ok{color:#047857;background:#e6f6ef}
+.ft{margin-top:16px;padding-top:7px;border-top:1px solid var(--ln);font-size:8.5px;color:var(--dim);display:flex;justify-content:space-between}`;
+/* The FMS scale, worded for the reader of a sheet: what each score means and what was seen. */
+const FMS_SCORE_SCALE=[
+  {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
+  {tr:'Disfonksiyonel hareket',en:'Dysfunctional movement',dTr:'Sporcu hareketi testin minimum tamamlama kriterlerine uygun şekilde gerçekleştiremez.',dEn:'The athlete cannot perform the movement to the test’s minimum completion criteria.'},
+  {tr:'Fonksiyonel ancak kompansasyonlu hareket',en:'Functional movement with compensation',dTr:'Sporcu hareketi tamamlar ancak bazı hareket kısıtlılıkları veya kompansasyonlar gözlenir.',dEn:'The athlete completes the movement, but some restrictions or compensations are seen.'},
+  {tr:'Fonksiyonel hareket',en:'Functional movement',dTr:'Sporcu hareketi belirlenen kriterlere uygun, kompansasyon olmadan tamamlar.',dEn:'The athlete completes the movement to the set criteria, without compensation.'},
+];
+
 function generateTestPDF(test,ath,setup,customTests,athletes){
-  const w=window.open('','_blank','width=900,height=1200');
+  const w=window.open('','_blank','width=980,height=1200');
   if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site in the browser.'));return;}
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period;
   /* The report prints ONLY the tests this record took (its battery). An older record without a
@@ -24733,27 +24910,25 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const ids=TEST_CATALOG.map(c=>c.id).filter(taken);
   const cList=Array.isArray(customTests)?customTests:[];
   const customSel=cList.filter(c=>Array.isArray(bat)?bat.includes(c.id):((test.custom||{})[c.id]||'')!=='');
-  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const dash=v=>v==null||v===''?'—':esc(v);
-  const abs=p=>{try{return new URL(p,location.href).href;}catch(e){return p;}};
   const bw=fvBodyMass(test,ath);
   // Photos are stored either as a plain URL / data-URI or tagged `drive:<fileId>`.
-  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p)).replace(/&/g,'&amp;');
-  const phFail=(w,h)=>`onerror="this.outerHTML='&lt;div class=&quot;phx&quot; style=&quot;width:${w}px;height:${h}px&quot;&gt;—&lt;/div&gt;'"`;
-  const ph=(photo,label,w=150,maxH=200)=>photo
-    ?`<div class="ph"><img src="${psrc(photo)}" ${phFail(w,Math.round(w*1.2))} style="width:${w}px;height:auto;max-height:${maxH}px;object-fit:contain;background:#f8fafc"/><div class="phl">${label}</div></div>`
-    :`<div class="ph"><div class="phx" style="width:${w}px;height:${Math.round(w*0.9)}px">—</div><div class="phl" style="color:#aaa">${label}</div></div>`;
-  /* The squad's current average under the score it belongs to, read from the same records the
+  const psrc=p=>esc((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p));
+  /* An athlete's own photo in a portrait frame; an empty slot keeps the frame. */
+  const shot=(photo,lbl)=>`<figure class="sh">${photo?`<img src="${psrc(photo)}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${lbl}</figcaption></figure>`;
+  const shots=list=>`<div class="shs" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([p,l])=>shot(p,l)).join('')}</div>`;
+  /* The squad's current average beside a one-number score, read from the same records the
      on-screen card reads, this athlete left out of it on both. */
   const tavg=id=>{
     const m=TEAM_AVG_TESTS[id];if(!m)return'';
     const ta=teamAvgOf(athletes,id,ath&&ath.id);if(!ta)return'';
     const d=teamAvgDelta(cmpN(test[id]),ta.avg,m.dir);
-    const head=`${teamAvgFmt(ta.avg,id)}${m.u?' '+m.u:''}`;
+    const head=`${teamAvgFmt(ta.avg,id)}${m.u?` <small>${m.u}</small>`:''}`;
     if(!d)return head;
-    const col=d.level==='good'?'#16a34a':d.level==='poor'?'#b45309':'#5c626c';
+    const col=d.level==='good'?'#16a34a':d.level==='poor'?'#b45309':'#5e6774';
     const txt=d.level==='same'?L('ortalamada','on the average'):`${L('%'+Math.abs(d.pct).toFixed(1),Math.abs(d.pct).toFixed(1)+'%')} ${d.pct>0?L('üstünde','above'):L('altında','below')}`;
-    return`${head}<br><span style="color:${col};font-weight:600">${txt}</span>`;
+    return`${head}<span class="avd" style="color:${col}">${txt}</span>`;
   };
   const colAsym=p=>p==null?'':` style="color:${ASYM_COL[asymLevel(p)]}"`;
   const pct=p=>p==null?'—':L('%'+p,p+'%');
@@ -24762,36 +24937,32 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const kv=cells=>`<table class="rt"><tr>${cells.map(c=>`<th>${c[0]}</th>`).join('')}</tr><tr>${cells.map(c=>`<td${c[2]||''}>${c[1]}</td>`).join('')}</tr></table>`;
   /* A table with a label column: rows of [label, ...cells]. */
   const grid=(head,rows)=>`<table class="rt lab"><tr>${head.map((h,i)=>`<th${i?'':' class="l"'}>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td${c&&c.a?c.a:''}>${c&&c.v!=null?c.v:c}</td>`:`<td class="l">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const foot=s=>`<div class="tb-avg">${s}</div>`;
   const obsOf=id=>id==='posture'?(test.posture||{}).observations:id==='ohs'?(test.ohs||{}).observations:(test.obs||{})[id];
   const tName=id=>{const info=TEST_INFO[id];return(info&&info.n)||MK_TITLE[id]||TEST_CAT_LABEL(id);};
-  /* One test in the body: its name, its numbers and the coach's note — only the athlete's own
-     readings and photos. What the test is, with its picture, is explained once at the end. */
-  const shown=[];
-  /* Every test is the same box: a grey title bar with the test's name, the results as a table of
-     equal, centred columns, then the note. A test on the battery with no reading at all gets no
-     box; its name joins one line at the foot of its section. */
-  const box=(title,right,body)=>`<div class="tb">${title!=null?`<div class="tb-h"><span>${title}</span>${right?`<span class="k">${right}</span>`:''}</div>`:''}<div class="tb-bd">${body}</div></div>`;
   const noteHtml=n=>n&&String(n).trim()?`<div class="tb-note"><b>${L('Gözlem','Observation')}:</b> ${esc(n)}</div>`:'';
-  const blk=(id,res,extra)=>{
-    shown.push(id);
+  /* The stock pictures print from their small grey-scale copies carried in the page (TEST_THUMB),
+     like the Profile Printout's: no fetch, so no broken boxes on a weak connection. */
+  const absSm=p=>{const q=String(p).replace(/^(tests|fms)\//,'$1/sm/');try{return new URL(q,location.href).href;}catch(e){return q;}};
+  const stockImg=id=>{const p=TEST_IMG[id];return p?`<div class="tc-im"><img src="${esc(TEST_THUMB[p]||absSm(p))}" alt=""/></div>`:'';};
+  /* What the test measures: its "used to assess" line. */
+  const tcWhat=id=>{const i=TEST_INFO[id];return i?L(i.tr,i.en).p:'';};
+  const tcInfo=(id,right)=>{const n=tName(id),w_=tcWhat(id);
+    return`<div class="ds-h"><div class="tc-n" lang="en">${esc(n)}${right?`<span class="ds-dt">${right}</span>`:''}</div>${w_?`<div class="ds-w">${esc(w_)}</div>`:''}</div>`;};
+  /* Every test is one card, as on the Profile Printout: its picture (when it has one), its name
+     and what it measures, and under them its readings and the coach's note. `half` cards stand
+     two side by side (jump and speed), their readings across the card under the picture. A test
+     on the battery with no reading at all gets no card: its name joins one line at the foot of
+     its section. */
+  const card=(id,res,o={})=>{
     const note=obsOf(id);
     let empty=false;try{empty=!!(TI_HAS[id]&&!TI_HAS[id](test))&&!(note&&String(note).trim());}catch(e){}
     if(empty)return{empty:true,name:tName(id)};
-    return box(esc(tName(id)),'',(res||'')+noteHtml(note))+(extra||'');
-  };
-  /* The closing section: every test on the record, its picture, what it is and why it is taken —
-     for the athlete, a parent or a physio reading the sheet away from the court. The FMS movements
-     have their own page after the score sheet. */
-  const infoSec=()=>{
-    const list=shown.filter((id,i)=>shown.indexOf(id)===i&&TEST_INFO[id]);
-    if(!list.length)return'';
-    const card=id=>{const o=L(TEST_INFO[id].tr,TEST_INFO[id].en);const img=TEST_IMG[id];
-      return`<div class="ti">${img?`<div class="ti-img"><img src="${esc(abs(img))}" alt=""/></div>`:''}<div class="ti-n">${esc(tName(id))}</div><div class="ti-w">${esc(o.w)}</div><div class="ti-p">${esc(o.p)}</div></div>`;};
-    // Pictured tests in an even grid; the ones without a picture as a text list under it.
-    const pic=list.filter(id=>TEST_IMG[id]),txt=list.filter(id=>!TEST_IMG[id]);
-    return`<div class="ti-sec">${gh(L('Testler Hakkında','About the Tests'))}
-      ${pic.length?`<div class="ti-grid">${pic.map(card).join('')}</div>`:''}
-      ${txt.length?`<div class="ti-list">${txt.map(card).join('')}</div>`:''}</div>`;
+    const img=o.img!=null?o.img:stockImg(id);
+    const body=`<div class="tc-d">${res||''}${noteHtml(note)}</div>`;
+    const cls=`tc ds${o.half?' half':''}${img?'':' noimg'}${o.cls?' '+o.cls:''}`;
+    return o.half?`<div class="${cls}">${img}<div class="ds-r">${tcInfo(id,o.right)}</div>${body}</div>`
+      :`<div class="${cls}">${img}<div class="ds-r">${tcInfo(id,o.right)}${body}</div></div>`;
   };
   const fmsR=fmsCalc(test.fms);
   const fmsOn=Array.isArray(bat)?fmsInBattery(bat):fmsR.any;
@@ -24799,107 +24970,106 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   const fmsPdf=test.fms&&test.fms.pdf;
   const fmsPages=(fmsPdf&&Array.isArray(fmsPdf.pages))?fmsPdf.pages:[];
   const fmsPageH=fmsPages.length>1?120:185;
-  const fmsTone=v=>v==null?'':Number(v)<=1?'#dc2626':Number(v)===2?'#b88400':'#16a34a';
+  const fmsTone=v=>v==null||v===''?'':Number(v)<=1?'#dc2626':Number(v)===2?'#b88400':'#16a34a';
   const yb=ybCalc(test.yBalance);
   const t=test;
   const B={
-    anthro:()=>blk('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
+    anthro:()=>card('anthro',kv([[L('Boy','Height'),dash(t.height)+' <small>cm</small>'],[L('Kilo','Weight'),dash(t.weight)+' <small>kg</small>'],[L('Kulaç','Wingspan'),dash(t.wingspan)+' <small>cm</small>'],
       [L('Yağ','Body fat'),dash(t.bodyFat)+' <small>%</small>'],[L('Tahmini bacak uz.','Est. leg length'),dash(estLegLen(t))+' <small>cm</small>'],[L('Oturma yük.','Sitting ht.'),dash(t.sittingHeight)+' <small>cm</small>']])),
-    circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return blk('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
+    circ:()=>{const c=t.circ||{};const cm=v=>dash(v)+(v?' <small>cm</small>':'');return card('circ',kv([[L('Omuz','Shoulder'),cm(c.shoulder)],[L('Bel','Waist'),cm(c.waist)],[L('Kalça','Hip'),cm(c.hip)],
       [L('Uyluk R','Thigh R'),cm(c.thighRight||c.thigh)],[L('Uyluk L','Thigh L'),cm(c.thighLeft||c.thigh)],[L('Baldır R','Calf R'),cm(c.calfRight||c.calf)],[L('Baldır L','Calf L'),cm(c.calfLeft||c.calf)]]));},
+    /* The posture across the full width: its photos, each the same frame, and the note under them. */
     posture:()=>{const p=t.posture||{};if(!(p.frontPhoto||p.sidePhoto||p.backPhoto||p.sideLPhoto||p.observations))return{empty:true,name:tName('posture')};
-      /* The photos share the full width of the box, each column the same. */
-      const shots=[ph(p.frontPhoto,L('Önden','Front'),132,190),ph(p.sidePhoto,L('Yandan (R)','Side (R)'),132,190),p.sideLPhoto?ph(p.sideLPhoto,L('Yandan (L)','Side (L)'),132,190):'',ph(p.backPhoto,L('Arkadan','Back'),132,190)].filter(Boolean);
-      return blk('posture',`<div class="photos fill" style="grid-template-columns:repeat(${shots.length},1fr)">${shots.join('')}</div>`);},
-    ohs:()=>{const o=t.ohs||{};return blk('ohs',kv([[L('Skor','Score'),`${dash(o.score)} <small>/ 3</small>`,o.score!==''&&o.score!=null?` style="color:${fmsTone(o.score)}"`:'']])
-      +((o.frontPhoto||o.sidePhoto)?`<div class="photos">${ph(o.frontPhoto,L('Önden','Front'),150,200)}${ph(o.sidePhoto,L('Yandan','Side'),150,200)}</div>`:''));},
+      const list=[[p.frontPhoto,L('Önden','Front')],[p.sidePhoto,L('Yandan (R)','Side (R)')],...(p.sideLPhoto?[[p.sideLPhoto,L('Yandan (L)','Side (L)')]]:[]),[p.backPhoto,L('Arkadan','Back')]];
+      return card('posture',list.some(x=>x[0])?shots(list):'',{img:'',cls:'pt-c'});},
+    ohs:()=>{const o=t.ohs||{};return card('ohs',kv([[L('Skor','Score'),`${dash(o.score)} <small>/ 3</small>`,o.score!==''&&o.score!=null?` style="color:${fmsTone(o.score)}"`:'']])
+      +((o.frontPhoto||o.sidePhoto)?shots([[o.frontPhoto,L('Önden','Front')],[o.sidePhoto,L('Yandan','Side')]]):''));},
     ankleDF:()=>{const a=t.ankleDF||{};const r=tN(a.right),l=tN(a.left);const d=r!=null&&l!=null?+Math.abs(r-l).toFixed(1):null;
-      return blk('ankleDF',kv([[R,r!=null?r+'°':'—'],[Lf,l!=null?l+'°':'—'],[L('Fark','Gap'),d!=null?d+'°':'—',d!=null?` style="color:${d<5?'#16a34a':d<10?'#b88400':'#dc2626'}"`:'']]));},
-    aslr:()=>{const a=t.aslr||{};return blk('aslr',kv([[R,`${dash(a.right)} <small>/ 3</small>`,a.right?` style="color:${fmsTone(a.right)}"`:''],[Lf,`${dash(a.left)} <small>/ 3</small>`,a.left?` style="color:${fmsTone(a.left)}"`:'']]));},
+      return card('ankleDF',kv([[R,r!=null?r+'°':'—'],[Lf,l!=null?l+'°':'—'],[L('Fark','Gap'),d!=null?d+'°':'—',d!=null?` style="color:${d<5?'#16a34a':d<10?'#b88400':'#dc2626'}"`:'']]));},
+    aslr:()=>{const a=t.aslr||{};return card('aslr',kv([[R,`${dash(a.right)} <small>/ 3</small>`,a.right?` style="color:${fmsTone(a.right)}"`:''],[Lf,`${dash(a.left)} <small>/ 3</small>`,a.left?` style="color:${fmsTone(a.left)}"`:'']]));},
     hipRot:()=>{const h=hipRotCalc(t);const g=v=>v!=null?v+'°':'—';
-      return blk('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
+      return card('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
         [`<b>${L('Toplam ark','Total arc')}</b>`,{v:`<b>${g(h.totR)}</b>`},{v:`<b>${g(h.totL)}</b>`},{v:h.dTot!=null?`${h.dTot}° (${pct(h.pTot)})`:'—',a:colAsym(h.pTot)}]]));},
     thomas:()=>{const th=thomasCalc(t);const g=v=>v!=null?v+'°':'—';
       const call=v=>v==='pos'?{v:L('Pozitif','Positive'),a:' style="color:#dc2626"'}:v==='neg'?{v:L('Negatif','Negative'),a:' style="color:#16a34a"'}:'—';
-      return blk('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
+      return card('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
         ...THOMAS_FIND.map(([k,nm])=>[nm,call(th.right.res[k]),call(th.left.res[k])])]));},
-    tSpine:()=>{const x=tSpineCalc(t);return blk('tSpine',kv([[R,x.r!=null?x.r+'°':'—'],[Lf,x.l!=null?x.l+'°':'—'],[L('Fark','Gap'),x.diff!=null?x.diff+'°':'—'],[L('Asimetri','Asymmetry'),pct(x.pct),colAsym(x.pct)]]));},
+    tSpine:()=>{const x=tSpineCalc(t);return card('tSpine',kv([[R,x.r!=null?x.r+'°':'—'],[Lf,x.l!=null?x.l+'°':'—'],[L('Fark','Gap'),x.diff!=null?x.diff+'°':'—'],[L('Asimetri','Asymmetry'),pct(x.pct),colAsym(x.pct)]]));},
     yBalance:()=>{const d=v=>v==null?{v:'—'}:{v:v.toFixed(1)+' cm',a:` style="color:${v<4?'#16a34a':'#dc2626'}"`};const n=v=>v!=null?v:'—';
-      return blk('yBalance',`<div class="tb-sub">${L('Bacak uzunluğu (SİAS – medial malleol)','Leg length (ASIS – medial malleolus)')}: <b>${yb.limb!=null?yb.limb+' cm':'—'}</b></div>`
+      return card('yBalance',`<div class="tb-sub">${L('Bacak uzunluğu (SİAS – medial malleol)','Leg length (ASIS – medial malleolus)')}: <b>${yb.limb!=null?yb.limb+' cm':'—'}</b></div>`
         +grid([L('Uzanma (cm)','Reach (cm)'),R,Lf,L('Fark (< 4 cm)','Gap (< 4 cm)')],[['Anterior',n(yb.right.ant),n(yb.left.ant),d(yb.dAnt)],['Posteromedial',n(yb.right.pm),n(yb.left.pm),d(yb.dPm)],['Posterolateral',n(yb.right.pl),n(yb.left.pl),d(yb.dPl)],
           [`<b>${L('Bileşik skor','Composite score')}</b>`,{v:`<b>${yb.compR!=null?yb.compR+'%':'—'}</b>`},{v:`<b>${yb.compL!=null?yb.compL+'%':'—'}</b>`},{v:yb.compR!=null&&yb.compL!=null?Math.abs(yb.compR-yb.compL).toFixed(1)+'%':'—'}]])
-        +`<div class="tb-avg">${L('Bileşik = (ANT + PM + PL) / (3 × bacak uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × leg length) × 100')}</div>`);},
+        +foot(L('Bileşik = (ANT + PM + PL) / (3 × bacak uzunluğu) × 100','Composite = (ANT + PM + PL) / (3 × leg length) × 100')));},
     lateralCmj:()=>{const a=t.lateralCmj||{};const p=asymPct(a.right,a.left,'hi');
-      return blk('lateralCmj',kv([[R,dash(a.right)+' <small>cm</small>'],[Lf,dash(a.left)+' <small>cm</small>'],[L('Asimetri','Asymmetry'),pct(p),colAsym(p)]])
-        +`<div class="tb-avg">${L('Sağ-sol farkı %10’un altında olmalı; %15 ve üzeri belirgin asimetri.','The right–left gap should stay under 10%; 15% and above is a clear asymmetry.')}</div>`);},
-    sprint:()=>{const sp=t.sprintSplits||{},s20=t.sprint20m||{};
-      const gates=[[5,sp.t5],[10,sp.t10],[20,s20.time],[30,sp.t30]].map(([d,v])=>({d,t:tN(v)}));
-      let prev={d:0,t:0};const segs=gates.map(g=>{if(!(g.t>0))return'—';const o=g.t>prev.t?`${+((g.d-prev.d)/(g.t-prev.t)).toFixed(2)} m/s`:'—';prev={d:g.d,t:g.t};return o;});
-      const fv=fvSprint(bw,fvSprintPoints(t));
-      const photos=s20.sideStep1||s20.sideStep2||s20.sideStep3||s20.frontRightFoot||s20.frontLeftFoot;
-      return blk('sprint',grid(['',...gates.map(g=>g.d+' m'+(g.d===20?' *':''))],[[L('Süre','Time'),...gates.map(g=>g.t!=null?(g.d===20?`<b>${g.t} s</b>`:g.t+' s'):'—')],[L('Bölüm hızı','Segment speed'),...segs]])
-        /* the F-V profile under the gates, in the same four columns */
-        +(fv.ok?grid(['','F0','V0 (Vmax)','Pmax','τ'],[[L('Kuvvet-hız profili','Force-velocity profile'),fv.F0rel.toFixed(2)+' <small>N/kg</small>',fv.V0.toFixed(2)+' <small>m/s</small>',fv.Pmaxrel.toFixed(1)+' <small>W/kg</small>',fv.tau.toFixed(2)+' <small>s</small>']]):'')
-        +`<div class="tb-avg">* ${L('ana süre','main time')}${fv.ok?' · '+L('Sprint kuvvet-hız profili (Samozino), hava direnci dahil değil.','Sprint force-velocity profile (Samozino), air drag not included.'):''}</div>`
-        +(photos?`<div class="photos">${ph(s20.sideStep1,L('1. adım','Step 1'),92,130)}${ph(s20.sideStep2,L('2. adım','Step 2'),92,130)}${ph(s20.sideStep3,L('3. adım','Step 3'),92,130)}${ph(s20.frontRightFoot,L('Sağ ayak','Right foot'),92,130)}${ph(s20.frontLeftFoot,L('Sol ayak','Left foot'),92,130)}</div>`:''));},
+      return card('lateralCmj',kv([[R,dash(a.right)+' <small>cm</small>'],[Lf,dash(a.left)+' <small>cm</small>'],[L('Asimetri','Asymmetry'),pct(p),colAsym(p)]])
+        +foot(L('Sağ-sol farkı %10’un altında olmalı; %15 ve üzeri belirgin asimetri.','The right–left gap should stay under 10%; 15% and above is a clear asymmetry.')),{half:true});},
+    /* The three gates and the average speed over each (distance / time), then the F-V profile. */
+    sprint:()=>{const gs=sprintGates(t);const fv=fvSprint(bw,fvSprintPoints(t));
+      return card('sprint',grid(['',...gs.map(g=>`0–${g.d} m`)],[[L('Süre','Time'),...gs.map(g=>g.t!=null?(g.main?`<b>${g.t}</b>`:g.t)+' <small>s</small>':'—')],
+          [L('Ort. hız','Avg speed'),...gs.map(g=>g.v!=null?`${g.v} <small>m/s</small>`:'—')]])
+        +(fv.ok?grid(['','F0','V0','Pmax','τ'],[[L('F-V profili','F-V profile'),fv.F0rel.toFixed(2)+' <small>N/kg</small>',fv.V0.toFixed(2)+' <small>m/s</small>',fv.Pmaxrel.toFixed(1)+' <small>W/kg</small>',fv.tau.toFixed(2)+' <small>s</small>']]):'')
+        +foot(L('Ortalama hız = mesafe / süre.','Average speed = distance / time.')+(fv.ok?' '+L('Sprint kuvvet-hız profili (Samozino), hava direnci dahil değil.','Sprint force-velocity profile (Samozino), air drag not included.'):'')),{half:true});},
     accel:()=>{const a=accelCalc(t);const s=v=>v!=null?v+' <small>s</small>':'—';const ms=v=>v!=null?v+' <small>m/s</small>':'—';
-      return blk('accel',kv([['0–5 m',s(a.t5)],['0–10 m',s(a.t10)],[L('5–10 m ara','5–10 m split'),s(a.split)],[L('0–5 m hız','0–5 m speed'),ms(a.v5)],[L('5–10 m hız','5–10 m speed'),ms(a.v510)]]));},
+      return card('accel',grid(['','0–5 m','0–10 m',L('5–10 m ara','5–10 m split')],[[L('Süre','Time'),s(a.t5),s(a.t10),s(a.split)],[L('Hız','Speed'),ms(a.v5),ms(a.v10),ms(a.v510)]]),{half:true});},
     fiveZeroFive:()=>{const c=cod505Calc(t);const s=v=>v!=null?v+' <small>s</small>':'—';
-      return blk('fiveZeroFive',kv([[L('Sağ ayak dönüş','Right-foot turn'),s(c.r)],[L('Sol ayak dönüş','Left-foot turn'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Asimetri','Asymmetry'),pct(c.pct),colAsym(c.pct)]])
-        +`<div class="tb-avg">${L('Asimetri = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')}</div>`);},
+      return card('fiveZeroFive',kv([[L('Sağ dönüş','Right turn'),s(c.r)],[L('Sol dönüş','Left turn'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Asimetri','Asymmetry'),pct(c.pct),colAsym(c.pct)]])
+        +foot(L('Asimetri = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')),{half:true});},
     ift3015:()=>{const c=iftCalc(t,ath,bw);
-      return blk('ift3015',kv([['VIFT',c.vift!=null?`<b>${c.vift}</b> <small>km/h</small>`:'—'],['VIFT (m/s)',c.ms!=null?c.ms:'—'],[L('Tahmini VO2max','Est. VO2max'),c.vo2!=null?c.vo2+` <small>${L('ml/kg/dk','ml/kg/min')}</small>`:'—']])
-        +`<div class="tb-avg">${L('VO2max tahmini Buchheit (2008): yaş, cinsiyet, kilo ve VIFT’ten.','VO2max estimate after Buchheit (2008): from age, sex, body mass and VIFT.')}</div>`);},
-    pullUp:()=>{const p=t.pullUp||{};return blk('pullUp',kv([[L('Tam tekrar','Full reps'),`<b>${dash(p.reps)}</b>`],[L('Ek yük','Added load'),tN(p.load)!=null?p.load+' <small>kg</small>':'—']]));},
+      return card('ift3015',kv([['VIFT',c.vift!=null?`<b>${c.vift}</b> <small>km/h</small>`:'—'],['VIFT (m/s)',c.ms!=null?c.ms:'—'],[L('Tahmini VO2max','Est. VO2max'),c.vo2!=null?c.vo2+` <small>${L('ml/kg/dk','ml/kg/min')}</small>`:'—']])
+        +foot(L('VO2max tahmini Buchheit (2008): yaş, cinsiyet, kilo ve VIFT’ten.','VO2max estimate after Buchheit (2008): from age, sex, body mass and VIFT.')));},
+    pullUp:()=>{const p=t.pullUp||{};return card('pullUp',kv([[L('Tam tekrar','Full reps'),`<b>${dash(p.reps)}</b>`],[L('Ek yük','Added load'),tN(p.load)!=null?p.load+' <small>kg</small>':'—']]));},
   };
-  ['verticalJump','cmj','squatJump','horizontalJump','dropJump','tTest','shuttleRun'].forEach(id=>{
-    const u={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'s',shuttleRun:'s'}[id];
-    /* One number: a column in its section's shared table of one-number tests (see `groups`). */
-    B[id]=()=>{shown.push(id);const note=obsOf(id);
-      return{mini:true,name:esc(tName(id)),val:tN(t[id])!=null?`${esc(t[id])} <small>${u}</small>`:'—',avg:tavg(id),note:note&&String(note).trim()?note:''};};
-  });
+  /* One-number tests: the result, and beside it the squad's current average where there is one. */
+  const SOLO={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'s',laneAgility:'s',shuttleRun:'s'};
+  Object.keys(SOLO).forEach(id=>{B[id]=()=>{const a=tavg(id);
+    return card(id,kv([[L('Sonuç','Result'),tN(t[id])!=null?`<b>${esc(t[id])}</b> <small>${SOLO[id]}</small>`:'—'],...(a?[[L('Takım ort.','Team avg'),`<span class="avgv">${a}</span>`]]:[])]),
+      {half:(TEST_META[id]||{}).g==='jump'||(TEST_META[id]||{}).g==='speed'});};});
   STR_LIFTS.forEach(id=>{B[id]=()=>{const c=strCalc(t,id,bw);
-    return blk(id,kv([[L('Yük','Load'),c.load!=null?c.load+' <small>kg</small>':'—'],[L('Tekrar','Reps'),dash(c.reps)],['e1RM',c.e1!=null?`<b>${c.e1}</b> <small>kg</small>`:'—'],[L('Göreli','Relative'),c.rel!=null?c.rel+' <small>× BW</small>':'—']])
-      +`<div class="tb-avg">${L('e1RM: Epley tahmini (tek tekrarda yükün kendisi, en fazla 12 tekrar).','e1RM: Epley estimate (a single is the load itself, at most 12 reps).')}</div>`);};});
+    return card(id,kv([[L('Yük','Load'),c.load!=null?c.load+' <small>kg</small>':'—'],[L('Tekrar','Reps'),dash(c.reps)],['e1RM',c.e1!=null?`<b>${c.e1}</b> <small>kg</small>`:'—'],[L('Göreli','Relative'),c.rel!=null?c.rel+' <small>× BW</small>':'—']])
+      +foot(L('e1RM: Epley tahmini (tek tekrarda yükün kendisi, en fazla 12 tekrar).','e1RM: Epley estimate (a single is the load itself, at most 12 reps).')));};});
   ['copenhagen','sidePlank'].forEach(id=>{B[id]=()=>{const h=holdCalc(t,id);
-    return blk(id,kv([[R,h.r!=null?h.r+' <small>s</small>':'—'],[Lf,h.l!=null?h.l+' <small>s</small>':'—'],[L('Asimetri','Asymmetry'),pct(h.pct),colAsym(h.pct)]]));};});
-  /* The FMS: each movement screened is its own box, like any other test: the raw score per side,
-     its clearing test, the final score, the findings ticked against it and its front / side photos.
-     An uploaded score sheet (PDF) still prints as its pages. */
+    return card(id,kv([[R,h.r!=null?h.r+' <small>s</small>':'—'],[Lf,h.l!=null?h.l+' <small>s</small>':'—'],[L('Asimetri','Asymmetry'),pct(h.pct),colAsym(h.pct)]]));};});
+  /* An FMS movement as the Profile Printout draws it: its picture (for a movement photographed,
+     the athlete's own front and side photos), the FMS badge, its name and what it screens, the
+     score with its meaning on the FMS scale, then the problems ticked against it. An uploaded
+     score sheet (PDF) still prints as its pages. */
   const fmsF=test.fms||{};
   const fmsMove=mid=>{
     const it=fmsR.items.find(i=>i.id===mid);if(!it)return'';
-    const id='fms_'+mid;shown.push(id);
+    const id='fms_'+mid;
     let has=false;try{has=TI_HAS[id](test);}catch(e){}
     if(!has)return{empty:true,name:it.en};
     const pp=(fmsF.photos||{})[mid]||{};
     const cms=fmsCommentsOf(mid);
     const probs=cms.flatMap(k=>fmsProblemLabels(fmsF,k));
     const notes=cms.map(k=>String((fmsF.comments||{})[k]||'').trim()).filter(Boolean);
-    /* Two columns: the front and side photos on the left; on the right the score alone, and
-       under it the problems ticked against the movement (a painful clearing test and the coach's
-       free-text comment are listed with them). */
     if(it.clear&&it.cleared==='pos')probs.push(`${it.clearEn}: ${L('Pozitif (ağrı)','Positive (pain)')}`);
     if(mid==='inlineLunge'){const m=fmsF.ankleMob||{};const g=x=>({r:L('Kırmızı','Red'),y:L('Sarı','Yellow'),g:L('Yeşil','Green')})[x];
       if(m.right||m.left)probs.push(`${L('Ayak bileği mobilitesi','Ankle mobility')}: ${L('Sağ','Right')} ${g(m.right)||'—'} / ${L('Sol','Left')} ${g(m.left)||'—'}`);}
     notes.forEach(n=>probs.push(n));
-    const score=`<div class="fm-sc"><div class="fm-k">${L('Skor','Score')}</div>
-      <div class="fm-v"${it.score!=null?` style="color:${fmsTone(it.score)}"`:''}>${it.score!=null?it.score:'—'}<small> / 3</small></div></div>`;
-    const list=`<div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
-      ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>`;
-    // Only the movements that take photos get the photo column; the rest are score | problems.
-    if(!FMS_PHOTO_MOVES.includes(mid))return box(esc(it.en),'FMS',`<div class="fm nop">${score}<div class="fm-r">${list}</div></div>`);
-    return box(esc(it.en),'FMS',`<div class="fm">
-      <div class="photos fill" style="grid-template-columns:1fr 1fr;margin:0">${ph(pp.front,L('Önden','Front'),132,176)}${ph(pp.side,L('Yandan','Side'),132,176)}</div>
-      <div class="fm-r">${score}${list}</div></div>`);
+    const own=FMS_PHOTO_MOVES.includes(mid)&&(hasMedia(pp.front)||hasMedia(pp.side));
+    const img=own?`<div class="tc-im ph">${[['front',L('Önden','Front')],['side',L('Yandan','Side')]].map(([k,l])=>
+      `<figure>${hasMedia(pp[k])?`<img src="${psrc(pp[k])}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${l}</figcaption></figure>`).join('')}</div>`:stockImg(id);
+    const v=it.score!=null?it.score:null;const m=v!=null&&FMS_SCORE_SCALE[v];
+    const info=FMS_INFO.find(x=>x.id===mid);
+    const sides=it.bi?`<div class="ds-lr"><span>${L('Sağ','R')} <b>${it.right!=null?it.right:'—'}</b></span><span>${L('Sol','L')} <b>${it.left!=null?it.left:'—'}</b></span></div>`:'';
+    return`<div class="tc ds${own?' ph':''}${img?'':' noimg'}">${img}<div class="ds-r">
+      <div class="ds-h"><div class="tc-n" lang="en"><img class="fms-lg" src="${FMS_LOGO_SQ}" alt="FMS"/>${esc(it.en)}</div>
+        <div class="ds-w">${esc(info?L(info.tr,info.en):'')}</div></div>
+      <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small>${sides}</div>
+        ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}${it.bi&&it.right!=null&&it.left!=null&&it.right!==it.left?` ${L('Düşük taraf skoru geçerlidir.','The lower side is the score.')}`:''}</div></div>`:''}</div>
+      <div class="fm-pr"><div class="fm-k">${L('Tespit edilen problemler','Identified problems')}</div>
+        ${probs.length?`<ul>${probs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<div class="fm-none">${L('Problem seçilmedi.','No problems selected.')}</div>`}</div>
+    </div></div>`;
   };
-  const fmsPdfBlk=()=>`<div class="tb fms-sheet">
-      <div class="tb-h"><span>${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}</span>${fmsR.total!=null?`<span class="k">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div><div class="tb-bd">
-      <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
+  const fmsPdfBlk=()=>`<div class="tc ds noimg"><div class="ds-r">
+      <div class="ds-h"><div class="tc-n">${L('FMS — Fonksiyonel Hareket Taraması','FMS — Functional Movement Screen')}${fmsR.total!=null?`<span class="ds-dt">${L('Toplam','Total')} ${fmsR.total} / 21</span>`:''}</div></div>
+      <div class="fms-pages" style="--fms-ph:${fmsPageH}mm">${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${esc(mediaSrc(src))}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}</div>
       <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div></div></div>`;
-  /* Section headings are numbered in the order they print: 01 Temel Ölçümler, 02 … */
+  /* One numbered section per test group, in catalog order, as the Profile Printout numbers its parts.
+     Jump and speed cards stand two to a row. */
   let secN=0;
-  const gh=(title,cls)=>`<div class="grp-h${cls?' '+cls:''}"><span class="grp-n">${String(++secN).padStart(2,'0')}</span>${title}</div>`;
+  const secH=(title,d)=>`<div class="sec-h"><span class="n">${++secN}</span><div><div class="t">${title}</div>${d?`<div class="d">${d}</div>`:''}</div></div>`;
   const groups=TEST_GROUPS.filter(g=>g.id!=='all'&&g.id!=='custom').map(g=>{
     const mine=ids.filter(id=>(TEST_META[id]||{}).g===g.id&&!FMS_PART_IDS.includes(id)&&id!=='fms');
     const parts=[];
@@ -24908,167 +25078,76 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       else fmsMoves.forEach(m=>parts.push(fmsMove(m)));
     }
     mine.forEach(id=>{const f=B[id];if(f)parts.push(f());});
-    /* The group's one-number tests share one box, where the first of them stands: one table, a
-       column per test, four to a row; a short last row is padded so the columns stay the same width.
-       Tests with no reading are named once, on a line under the section. */
-    const body=[],empties=[];let minis=null;
-    parts.filter(Boolean).forEach(p=>{
-      if(p.empty){empties.push(p.name);return;}
-      if(p.mini){if(!minis){minis=[];body.push({minis});}minis.push(p);}
-      else body.push(p);
-    });
-    for(let i=0;i<body.length;i++)if(body[i].minis){
-      const ms=body[i].minis,per=Math.min(4,ms.length),anyAvg=ms.some(m=>m.avg);
-      const rows=[];for(let k=0;k<ms.length;k+=per)rows.push(ms.slice(k,k+per));
-      const pad=r=>r.concat(Array(per-r.length).fill(null));
-      const tbl=rows.map(r=>`<table class="rt">
-        <tr>${pad(r).map(m=>`<th>${m?m.name:''}</th>`).join('')}</tr>
-        <tr>${pad(r).map(m=>`<td>${m?m.val:''}</td>`).join('')}</tr>
-        ${anyAvg?`<tr class="avg">${pad(r).map(m=>`<td>${m&&m.avg?`<span class="al">${L('Takım ort.','Team avg')}</span> ${m.avg}`:''}</td>`).join('')}</tr>`:''}</table>`).join('');
-      const notes=ms.filter(m=>m.note).map(m=>`<div class="tb-note"><b>${m.name}:</b> ${esc(m.note)}</div>`).join('');
-      // A lone one-number test is an ordinary box: its name on the bar, the result beside the squad's.
-      body[i]=ms.length===1
-        ?box(ms[0].name,'',kv([[L('Sonuç','Result'),ms[0].val],...(ms[0].avg?[[L('Takım ort.','Team avg'),`<span class="avgv">${ms[0].avg}</span>`]]:[])])+(ms[0].note?noteHtml(ms[0].note):''))
-        :box(L('Tek değerli testler','Single-value tests'),'',tbl+notes);
-    }
+    const body=[],empties=[];
+    parts.filter(Boolean).forEach(p=>{if(p.empty)empties.push(p.name);else body.push(p);});
     if(!body.length&&!empties.length)return'';
-    return`${gh(L(g.tr,g.en))}${body.join('')}${empties.length?`<div class="tb-miss">${L('Değer girilmeyen testler','Tests with no values')}: ${empties.map(esc).join(' · ')}</div>`:''}`;
+    const pair=g.id==='jump'||g.id==='speed';
+    const full=body.filter(h=>!/^<div class="tc ds half/.test(h)),half=body.filter(h=>/^<div class="tc ds half/.test(h));
+    const fmsHead=g.id==='move'&&fmsOn&&fmsR.total!=null&&fmsR.n===FMS_ITEMS.length?`FMS ${L('toplam','total')} ${fmsR.total} / 21`:'';
+    return`<section>${secH(esc(L(g.tr,g.en)),[L(`${body.length} test`,`${body.length} test${body.length===1?'':'s'}`),fmsHead].filter(Boolean).join(' · '))}
+      ${full.length?`<div class="tcs">${full.join('')}</div>`:''}
+      ${half.length?`<div class="tcs${pair?' pair':''}"${full.length?' style="margin-top:5px"':''}>${half.join('')}</div>`:''}
+      ${empties.length?`<div class="tb-miss">${L('Değer girilmeyen testler','Tests with no values')}: ${empties.map(esc).join(' · ')}</div>`:''}</section>`;
   }).join('');
-  const custom=customSel.length?`${gh(L('Özel Testler','Custom Tests'))}
-    ${box(null,'',grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}])))}`:'';
-  const notesH=test.notes?gh(L('Gözlemler ve Yorumlar','Observations &amp; Comments'),'notes-h'):'';
-  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'—';
-  const gen=L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)));
-
-  const html=`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${esc(ath.name)}</title>
+  const custom=customSel.length?`<section>${secH(L('Özel Testler','Custom Tests'))}
+    <div class="card">${grid(['Test',L('Sonuç','Result')],customSel.map(c=>[esc(c.name),{v:`<b>${dash((test.custom||{})[c.id])}</b>`}]))}</div></section>`:'';
+  const notes=String(test.notes||'').trim()?`<section>${secH(L('Gözlemler ve Yorumlar','Observations &amp; Comments'))}<div class="card"><div class="txt">${esc(test.notes)}</div></div></section>`:'';
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const today_=fdL(fmt(today));
+  const html=`<!DOCTYPE html><html lang="${REPORT_LANG==='tr'?'tr':'en'}"><head><meta charset="utf-8"><title>${esc(ath.name||'')} — ${L('Test Raporu','Test Report')}</title>
 <style>
-@page{size:A4 portrait;margin:12mm}
+@page{size:A4 portrait;margin:12mm 12mm 13mm}
 ${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--accent:#9aab3a;--bg2:#f4f5f7;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.45;background:#fff}
-/* Athlete header: white, the name large, closed by a heavy rule. Ink goes on the numbers. */
-.athlete-header{display:flex;gap:16px;align-items:flex-end;padding:0 0 12px;margin-bottom:0;border-bottom:2.5px solid var(--text);break-inside:avoid}
-.athlete-photo,.athlete-photo-x{width:60px;height:74px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
-.athlete-photo-x{display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);font-size:20px;font-weight:700}
-.athlete-info{flex:1;min-width:0}
-.athlete-info h1{font-size:25px;font-weight:700;letter-spacing:-.015em;line-height:1.05;margin-bottom:5px;text-transform:uppercase}
-.athlete-info .meta{font-size:9.5px;color:var(--muted);line-height:1.55}
-.athlete-info .date{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;color:var(--text);letter-spacing:.04em;padding-left:8px;border-left:3px solid var(--accent)}
-.right-block{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
-.right-block .ttl{font-size:10px;font-weight:700;color:var(--text);letter-spacing:.16em;line-height:1.45;text-transform:uppercase}
-.right-block .coach-line{margin-top:10px;font-size:8.5px;color:var(--muted)}
-/* Numbered section heading, then one box per test, all the same width and the same shape */
-.grp-h{display:flex;align-items:baseline;gap:9px;margin-top:16px;margin-bottom:8px;padding:0 0 5px;border-bottom:1.5px solid var(--text);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;break-after:avoid;page-break-after:avoid}
-.grp-n{font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.04em;font-variant-numeric:tabular-nums}
-.tb{border:1px solid var(--border2);border-radius:5px;margin-bottom:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-.tb-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 10px;background:var(--bg2);border-bottom:1px solid var(--border2);font-size:10.5px;font-weight:700;line-height:1.3}
-.tb-h .k{font-size:9.5px;font-weight:700;color:var(--text2)}
-.tb-bd{display:flex;flex-direction:column;gap:6px;padding:7px 10px 8px}
-.tb-sub{font-size:9px;color:var(--text2);text-align:center}
-.tb-avg{font-size:8px;color:var(--muted);line-height:1.35;text-align:center}
-.tb-note{font-size:9px;color:var(--text2);line-height:1.45;padding-top:6px;border-top:1px solid var(--border)}
-.tb-note b{color:var(--text);font-weight:600}
-.tb-miss{font-size:8.5px;color:var(--dim);margin:-2px 0 6px;text-align:center}
-/* Results: every column the same width, every value centred */
-table.rt{width:100%;border-collapse:collapse;table-layout:fixed}
-table.rt+table.rt{margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
-.rt th{color:var(--muted);font-weight:600;font-size:7.4px;letter-spacing:.08em;text-transform:uppercase;padding:0 4px 4px;text-align:center;border-bottom:1px solid var(--border);line-height:1.25;vertical-align:bottom}
-.rt td{padding:5px 4px 3px;text-align:center;font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;vertical-align:top}
-.rt td small{font-size:8px;font-weight:500;color:var(--muted)}
-.rt td .avgv{font-size:9px;font-weight:600;color:var(--text2);line-height:1.35}
-.rt tr.avg td{padding-top:2px;font-size:8px;font-weight:500;color:var(--muted);line-height:1.35}
-.rt tr.avg .al{display:block;font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-.rt.lab tr+tr td{border-top:1px solid var(--border)}
-.rt.lab tr:nth-child(2) td{border-top:none}
-.rt.lab th.l,.rt.lab td.l{text-align:left;width:34%}
-.rt.lab td{font-size:10.5px;padding:4px 4px 3px}
-.rt.lab td.l{font-size:9.5px;font-weight:500;color:var(--text2)}
-/* FMS movement: photos left, score and problems right */
-.fm{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
-.fm.nop .fm-sc{display:flex;flex-direction:column}
-/* Photos that fill their box: equal columns, every picture in the same portrait 3:4 frame — one
-   width and one height for all of them, whatever shape each photo was taken in (a photo of
-   another shape is trimmed evenly at its edges to fit); an empty slot keeps the same frame. */
-.photos.fill{display:grid;gap:10px;align-items:end}
-.photos.fill .ph{display:block;min-width:0}
-.photos.fill .ph img{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:3/4;object-fit:cover!important;object-position:center}
-.photos.fill .phx{width:100%!important;height:auto!important;aspect-ratio:3/4;display:flex}
-.fm-r{display:flex;flex-direction:column;gap:8px;min-width:0;padding-left:14px;border-left:1px solid var(--border)}
-.fm-k{font-size:7.4px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.fm-sc{text-align:center}
-.fm-sc .fm-k{text-align:center}
-.fm-v{margin-top:5px;font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-.fm-v small{font-size:9px;font-weight:500;color:var(--muted)}
-.fm-pr{flex:1}
-.fm-pr ul{margin:5px 0 0;padding-left:13px;font-size:9.5px;line-height:1.55;color:var(--text)}
-.fm-none{margin-top:5px;font-size:9px;color:var(--dim)}
-.photos{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:4px 0 2px}
-.ph{text-align:center;display:inline-block}
-.ph img{border-radius:6px;border:1px solid var(--border);display:block}
-.phx{background:var(--bg2);border:1px dashed var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:18px}
-.phl{font-size:8.5px;font-weight:500;margin-top:4px;color:var(--muted);letter-spacing:.04em}
-.notes-h{margin-top:14px}
-/* Testler hakkında: kendi sayfasında başlar, üç sütun; görsel üstte, ad ve açıklama altında */
-.ti-sec{break-before:page;page-break-before:always}
-.ti-sec .grp-h{margin-top:0}
-.ti-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px;margin-top:10px}
-.ti{break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;gap:3px}
-.ti-img{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;background:var(--bg2);border:1px solid var(--border);margin-bottom:3px}
-.ti-img img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1)}
-.ti-n{font-size:10px;font-weight:700;line-height:1.25}
-.ti-w,.ti-p{font-size:8px;line-height:1.4;color:var(--text2)}
-.ti-p{color:var(--muted)}
-.ti-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
-.obs-box{padding:8px 10px;font-size:10px;border:1px solid var(--border2);border-radius:5px;color:var(--text);line-height:1.6;break-inside:avoid}
-/* A scanned FMS sheet is kept whole on one page; the live sheet is its own page, after everything else. */
+${ATH_SHEET_CSS}
+.hd .r .c{font-size:8.5px;color:var(--mu);margin-top:3px}
+.tcs+.tcs{margin-top:5px}
+.tc.ds.noimg{grid-template-columns:minmax(0,1fr)}
+.tc.ds.half.noimg .tc-d{grid-column:1}
+.tc-d{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ds-r>.tc-d{margin-top:auto}
+table.rt{width:100%;table-layout:fixed;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.rt th{padding:3px 4px;text-align:center;font-size:7.3px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mu);background:var(--soft);border-bottom:0;line-height:1.25;vertical-align:bottom}
+.rt td{padding:3px 4px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--ink);border-bottom:0;border-top:1px solid var(--ln);font-variant-numeric:tabular-nums;vertical-align:top;white-space:nowrap}
+.rt td small{font-size:7.5px;font-weight:600;color:var(--mu)}
+.rt td .avgv{font-size:11px}
+.rt td .avd{display:block;font-size:7.5px;font-weight:600;margin-top:1px}
+.rt.lab th.l,.rt.lab td.l{text-align:left;width:26%}
+.rt.lab td.l{font-size:8px;font-weight:600;color:var(--mu);white-space:normal}
+.tb-sub{font-size:8.6px;color:var(--t2)}
+.tb-avg{font-size:7.6px;color:var(--mu);line-height:1.35}
+.tb-note{font-size:8.6px;color:var(--t2);line-height:1.45;padding-top:4px;border-top:1px dashed var(--ln2)}
+.tb-note b{color:var(--ink);font-weight:600}
+.tb-miss{font-size:8.5px;color:var(--dim);margin:6px 0 0}
+.tc.pt-c .shs{margin-bottom:0}
+.tc.pt-c .sh img,.tc.pt-c .shx{height:80mm}
+.tc .shs .sh img,.tc .shs .shx{object-fit:contain}
+.fm-k{font-size:7.4px;font-weight:600;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;padding-bottom:3px;border-bottom:1px solid var(--ln)}
+.fm-pr ul{margin:4px 0 0;padding-left:13px;font-size:8.8px;line-height:1.5;color:var(--ink)}
+.fm-none{margin-top:4px;font-size:8.6px;color:var(--dim)}
 .fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:4px}
 .fms-pg{flex:1 1 0;min-width:0;text-align:center}
-.fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,195mm);max-width:100%;border:1px solid var(--border);border-radius:4px;background:#fff}
-.fms-pgn{font-size:9px;color:var(--muted);margin-top:3px}
-.fms-src{font-size:9px;color:var(--muted);text-align:right}
-.footer{text-align:center;font-size:8.5px;color:var(--dim);margin-top:18px;padding-top:8px;border-top:1px solid var(--border);letter-spacing:.06em}
-.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:inherit;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
-.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
-.scr-sp{height:96px}
-/* On screen the sheet reads as a page: the printed width, centred. */
-@media screen{body{max-width:186mm;margin:0 auto;padding:0 12px 28px}}
-@media print{.print-bar,.scr-sp{display:none}}
-</style>
-</head><body>
-<div class="print-bar">${L('Test raporu hazır','Test report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button>
-  <div style="font-size:11px;font-weight:400;margin-top:6px;opacity:.9">${L('Yazdırma penceresinde tam renk için "Arka plan grafikleri" seçeneğini (Diğer ayarlar) açın.','In the print dialog, enable "Background graphics" (More settings) for full colours.')}</div>
-</div>
-<div class="scr-sp"></div>
-<div class="athlete-header">
-  ${ath.photo?`<img class="athlete-photo" src="${psrc(ath.photo)}"/>`:`<div class="athlete-photo-x">${esc(initials)}</div>`}
-  <div class="athlete-info">
-    <h1>${esc(ath.name)}</h1>
-    <div class="meta">${ath.number?'#'+esc(ath.number)+' · ':''}${esc(posOf(ath.position))}</div>
-    <div class="meta">${esc(setup.teamName)} · ${esc(setup.sport)}</div>
-    <div class="date">${fdL(test.date)} · ${esc(periodLabel)} ${esc(test.year)}</div>
-  </div>
-  <div class="right-block">
-    <div class="ttl">${L('Ölçüm &amp;<br>Değerlendirme','Test &amp;<br>Assessment')}</div>
-    <div class="coach-line">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div>
-  </div>
+.fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,185mm);max-width:100%;border:1px solid var(--ln);border-radius:4px;background:#fff}
+.fms-pgn{font-size:8.5px;color:var(--mu);margin-top:3px}
+.fms-src{font-size:8.5px;color:var(--mu);text-align:right}
+</style></head><body>
+<div class="pbar">${L('Test raporu hazır','Test report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF olarak kaydet','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
+<div class="hd">
+  ${ath.photo?`<img class="av" src="${psrc(ath.photo)}" alt=""/>`:`<div class="avp">${esc(initials)}</div>`}
+  <div><h1>${esc(ath.name||L('Adsız Sporcu','Unnamed Athlete'))}${ath.number?`<span>#${esc(ath.number)}</span>`:''}</h1>
+    <div class="meta">${[ath.position?esc(POS_FULL[ath.position]||ath.position):'',esc(periodLabel||''),test.year?esc(test.year):''].filter(Boolean).join(' · ')}</div></div>
+  <div class="r">${hasMedia(setup.logo)||setup.teamName?`<div class="tm">${hasMedia(setup.logo)?`<img src="${esc(mediaSrc(setup.logo))}" alt=""/>`:''}${setup.teamName?`<span>${esc(setup.teamName)}</span>`:''}</div>`:''}<div class="t">${L('Test ve Değerlendirme','Test &amp; Assessment')}</div><div class="d">${fdL(test.date)}</div>
+    <div class="c">${L('Testi Alan Antrenör: Emincan Özer','Test Administered by: Emincan Özer')}</div></div>
 </div>
 ${groups}
 ${custom}
-${test.notes?`${notesH}<div class="obs-box">${esc(test.notes).replace(/\n/g,'<br>')}</div>`:''}
-<div class="footer">${gen} · ${esc(setup.teamName)}</div>
-${infoSec()}
+${notes}
+<div class="ft"><span>${esc(setup.teamName||'')} · CoachOS</span><span>${L(`${today_} tarihinde oluşturuldu`,`Generated ${today_}`)}</span></div>
 </body></html>`;
-
-  w.document.write(html);
-  w.document.close();
-  // Posture / OHS / sprint photos are full-size and remote, so give them a longer
-  // cap than the session sheets before the dialog opens regardless.
+  w.document.open();w.document.write(html);w.document.close();
+  // The athlete's own photos (posture, OHS, FMS) are full-size and remote, so give them a longer
+  // cap before the dialog opens regardless.
   printWhenImagesReady(w,{safety:15000});
 }
-
 /* =========================================================
    ATLETİK GELİŞİM RAPORU — sporcunun ilk testinden bugüne bütün kayıtları tek sayfada:
    özet, test takvimi, kategori kategori grafikler ve karşılaştırma tabloları, fotoğrafı
@@ -26264,7 +26343,7 @@ function BodyCircumferenceModel({test,onUpdate,lang}){
    dynamic visual (stopwatch, jump bars, course maps, body-angle
    models …) instead of a generic form.
    ========================================================= */
-const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
+const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',laneAgility:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
 
 function TField({label,unit,value,onChange,step,placeholder,hint,text}){
   return(<div><label className="tf-l">{label}</label>
@@ -26527,11 +26606,11 @@ function CustomStage({theme}){
 }
 
 /* ---- Mockup-style test card helpers ---- */
-const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
+const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
   accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Seated)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
   benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
-const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',shuttleRun:'vo2max'};
-const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',shuttleRun:'SHUTTLE',
+const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',laneAgility:'sec',shuttleRun:'vo2max'};
+const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',laneAgility:'LANE',shuttleRun:'SHUTTLE',
   accel:'5-10M',hipRot:'HIP IR/ER',thomas:'THOMAS',tSpine:'T-SPINE',benchPress:'BP',trapBarDL:'TBDL',pullUp:'PULL-UP',copenhagen:'CPH',sidePlank:'SIDE PLANK',backSquat:'SQUAT',ift3015:'30-15 IFT'};
 const BADGE_COLS=['#0094ff','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#0094ff','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#0094ff','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
@@ -26942,38 +27021,27 @@ function FmsPartCard({item,test,ath,onUpdate}){
   </div>);
 }
 
-/* ---- 20 m sprint: the timing gates in a row, the speed of each stretch under its gate, then
-   the F-V profile and the step / foot photos side by side. ---- */
+/* ---- 20 m sprint: the three timing gates (0–5, 0–10, 0–20 m) in a row, the average speed
+   over each under its gate, then the F-V profile and the coach's comment side by side. ---- */
 function SprintCard({hd,test,onUpdate,ath,obsVal,setObs}){
   const sp=test.sprintSplits||{};
-  const gates=[{k:'t5',d:5,v:sp.t5},{k:'t10',d:10,v:sp.t10},{k:'time',d:20,v:test.sprint20m&&test.sprint20m.time,main:true},{k:'t30',d:30,v:sp.t30}];
+  const raw={t5:sp.t5,t10:sp.t10,time:test.sprint20m&&test.sprint20m.time};
+  const gates=sprintGates(test);
   const set=(g,v)=>onUpdate(t=>g.main?{sprint20m:{...(t.sprint20m||{}),time:v}}:{sprintSplits:{...(t.sprintSplits||{}),[g.k]:v}});
-  let prev={d:0,t:0};
-  const seg=gates.map(g=>{const t=tN(g.v);if(!(t>0))return null;
-    const out=t>prev.t?{from:prev.d,v:+((g.d-prev.d)/(t-prev.t)).toFixed(2)}:{bad:true};prev={d:g.d,t};return out;});
-  const s20=test.sprint20m||{};
-  const P=(k,lbl)=><MkUpload photo={s20[k]} onChange={v=>onUpdate(t=>({sprint20m:{...(t.sprint20m||{}),[k]:v}}))} label={lbl}/>;
   return(<div className="tcard tcard-wide tcard-sprint">
     {hd}
     <div className="tcard-body-wide">
       <div className="spr-track">
-        {gates.map((g,i)=>(<div key={g.k} className={'spr-gate'+(g.main?' main':'')}>
-          <div className="spr-gate-d"><b>{g.d} m</b>{g.main?<span>{L('ana süre','main time')}</span>:<span>{L('ara zaman','split')}</span>}</div>
-          <MkInput value={g.v} onChange={v=>set(g,v)} unit="s" step="0.01"/>
-          <div className={'spr-gate-v'+(seg[i]&&seg[i].bad?' bad':'')}>{seg[i]?(seg[i].bad?L('önceki kapıdan kısa olamaz','cannot be under the previous gate'):`${seg[i].from}–${g.d} m · ${seg[i].v} m/s`):'—'}</div>
+        {gates.map(g=>(<div key={g.k} className={'spr-gate'+(g.main?' main':'')}>
+          <div className="spr-gate-d"><b>0–{g.d} m</b>{g.main?<span>{L('ana süre','main time')}</span>:<span>{L('ara zaman','split')}</span>}</div>
+          <MkInput value={raw[g.k]} onChange={v=>set(g,v)} unit="s" step="0.01"/>
+          <div className="spr-gate-v">{g.v!=null?`${L('ort. hız','avg speed')} ${g.v} m/s`:'—'}</div>
         </div>))}
       </div>
       <div className="spr-body">
         <FvSprintResult test={test} ath={ath}/>
-        <div className="spr-photos">
-          <div className="mk-flbl">{L('Adım / ayak fotoğrafları','Step / foot photos')}</div>
-          <div className="mk-uploads sm">
-            {P('sideStep1',L('Adım 1','Step 1'))}{P('sideStep2',L('Adım 2','Step 2'))}{P('sideStep3',L('Adım 3','Step 3'))}
-            {P('frontRightFoot',L('Sağ ayak','R foot'))}{P('frontLeftFoot',L('Sol ayak','L foot'))}
-          </div>
-        </div>
+        <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, çıkış, reaksiyon notları…','Sprint mechanics, start, reaction notes…')}/>
       </div>
-      <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, çıkış, reaksiyon notları…','Sprint mechanics, start, reaction notes…')}/>
     </div>
   </div>);
 }
@@ -27307,7 +27375,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   }
 
   if(MK_SOLO_UNIT[id]){
-    const step=(id==='dropJump'||id==='tTest'||id==='shuttleRun')?'0.01':'0.1';
+    const step=(id==='dropJump'||id==='tTest'||id==='laneAgility'||id==='shuttleRun')?'0.01':'0.1';
     return(<div className="tcard tcard-score" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-col">
@@ -28260,10 +28328,10 @@ function fvSprint(mass,splits){
   return{ok:true,tau:+tau.toFixed(3),Vmax:+vmax.toFixed(2),V0:+vmax.toFixed(2),a0:+a0.toFixed(2),F0:Math.round(F0),F0rel:+a0.toFixed(2),
     Pmax:Math.round(Pmax),Pmaxrel:+(Pmax/m).toFixed(1),rmse:+Math.sqrt(best.sse/pts.length).toFixed(3),n:pts.length};
 }
-/* Testin sprint noktaları: 20 m süresi (mevcut alan) + isteğe bağlı 5/10/30 m ara zamanları. */
+/* Testin sprint noktaları: 20 m süresi (mevcut alan) + isteğe bağlı 5/10 m ara zamanları. */
 function fvSprintPoints(test){
   const sp=test.sprintSplits||{};
-  return[{d:5,t:sp.t5},{d:10,t:sp.t10},{d:20,t:test.sprint20m&&test.sprint20m.time},{d:30,t:sp.t30}];
+  return[{d:5,t:sp.t5},{d:10,t:sp.t10},{d:20,t:test.sprint20m&&test.sprint20m.time}];
 }
 /* Dikey noktalar: BW = squatJump kutusu, ardından yüklü satırlar. */
 function fvVerticalPoints(test){
@@ -28295,7 +28363,7 @@ const fvWhyText=(why)=>({
   mass:L('Vücut ağırlığı yok — Antropometri testine ya da Ölçüm kayıtlarına kilo gir.','No body mass — enter weight in the Anthropometry test or Measurements.'),
   hpo:L('İtiş mesafesi (hpo) gir (cm; çömelme pozisyonunda ayak bileği-kalça-diz tam uzadığında gövdenin yükselmesi).','Enter push-off distance (hpo, cm: how far the body rises from the squat start position to full extension).'),
   points:L('En az iki farklı yükle sıçrama gerekli (BW + bir ek yük).','At least two different loads are needed (bodyweight + one added load).'),
-  spoints:L('Profil için 20 m süresinin yanında en az bir ara zaman daha gir (5, 10 ya da 30 m; kapı/foto-hücre ile).','Enter at least one more split besides the 20 m time (5, 10 or 30 m; timing gates / photocells).'),
+  spoints:L('Profil için 20 m süresinin yanında en az bir ara zaman daha gir (5 ya da 10 m; kapı/foto-hücre ile).','Enter at least one more split besides the 20 m time (5 or 10 m; timing gates / photocells).'),
   flat:L('Yükler farklı sonuç vermedi: noktalar aynı hızda.','The loads did not change velocity.'),
   slope:L('Yük arttıkça hız düşmedi (eğim fizyolojik değil): veriyi kontrol et.','Velocity did not fall as load rose (non-physiological slope): check the data.'),
   order:L('Ara zamanlar mesafe arttıkça artmalı.','Split times must increase with distance.'),
@@ -28324,7 +28392,7 @@ function FvVerticalResult({res}){
   </div>);
 }
 /* ---- Sprint kartı içi: F-V sonucu. Ara zamanlar kartın kendi kapı şeridinden girilir
-   (5 / 10 m, 5-10m Acceleration testiyle ortaktır; 20 m ana süre; 30 m). ---- */
+   (5 / 10 m, 5-10m Acceleration testiyle ortaktır; 20 m ana süre). ---- */
 function FvSprintResult({test,ath}){
   const mass=fvBodyMass(test,ath);
   const res=useMemo(()=>fvSprint(mass,fvSprintPoints(test)),[mass,test.sprint20m,test.sprintSplits]);
@@ -28589,7 +28657,7 @@ const TRYOUT_FAMILY=[
    score. */
 const TRYOUT_UNITS={anthro:'cm',circ:'cm',ankleDF:'°',aslr:'/3',ohs:'/3',fms:'/21',yBalance:'%',
   verticalJump:'cm',cmj:'cm',lateralCmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'',
-  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',shuttleRun:'sec',
+  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',laneAgility:'sec',shuttleRun:'sec',
   fms_deepSquat:'/3',fms_hurdleStep:'/3',fms_inlineLunge:'/3',fms_shoulderMobility:'/3',fms_aslr:'/3',fms_trunkPushup:'/3',fms_rotary:'/3',
   hipRot:'°',tSpine:'°',accel:'sec',benchPress:'kg',trapBarDL:'kg',backSquat:'kg',pullUp:'',copenhagen:'sec',sidePlank:'sec',ift3015:'km/h'};
 /* Turkish names for the built-in battery. The catalog itself is written in English (it is
@@ -28598,7 +28666,7 @@ const TRYOUT_TR={anthro:'Antropometri',circ:'Çevre Ölçümü',posture:'Statik 
   ankleDF:'Ayak Bileği DF',aslr:'ASLR',ohs:'Overhead Squat',fms:'FMS',yBalance:'Y Balance',
   verticalJump:'Dikey Sıçrama',cmj:'CMJ',lateralCmj:'Lateral CMJ',squatJump:'Skuat Sıçrama',
   horizontalJump:'Yatay Sıçrama',dropJump:'Drop Jump (RSI)',sprint:'20m Sprint',tTest:'T-Test',
-  fiveZeroFive:'505 COD',shuttleRun:'Shuttle Run',
+  fiveZeroFive:'505 COD',laneAgility:'Lane Agility',shuttleRun:'Shuttle Run',
   hipRot:'Kalça IR/ER',thomas:'Thomas Testi',tSpine:'T-Spine Rotasyon',accel:'5-10m İvmelenme',
   pullUp:'Barfiks (Pull-Up)',copenhagen:'Copenhagen Plank',sidePlank:'Yan Plank',backSquat:'Barbell Squat'};
 /* Tests the trial sheet carried before it shared the club's catalog. They are not offered
@@ -30273,6 +30341,7 @@ function DevelopmentCharts({tests}){
     {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
     {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
     {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
+    {t:'Lane Agility',u:'s',f:t=>Number(t.laneAgility),up:false,col:'#d946ef',dot:'#e879f9'},
   ];
   const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
   if(!haveAny)return null;
@@ -30456,7 +30525,7 @@ function TestReportsTab({ath,setup,ai,exercises}){
   const power=[['Vertical Jump',t.verticalJump,'cm'],['CMJ',t.cmj,'cm'],
     ['Lateral CMJ — R',t.lateralCmj&&t.lateralCmj.right,'cm'],['Lateral CMJ — L',t.lateralCmj&&t.lateralCmj.left,'cm'],
     ['Squat Jump',t.squatJump,'cm'],['Drop Jump',t.dropJump,'RSI'],['Horizontal Jump',t.horizontalJump,'cm']];
-  const speed=[['20m Sprint',t.sprint20m&&t.sprint20m.time,'s'],['T-Test',t.tTest,'s'],['5-0-5',t.fiveZeroFive,'s'],['Shuttle Run',t.shuttleRun,'']];
+  const speed=[['20m Sprint',t.sprint20m&&t.sprint20m.time,'s'],['T-Test',t.tTest,'s'],['5-0-5',t.fiveZeroFive,'s'],['Lane Agility',t.laneAgility,'s'],['Shuttle Run',t.shuttleRun,'']];
   const circ=t.circ||{};
   const circList=[['Shoulder',circ.shoulder],['Waist',circ.waist],['Hip',circ.hip],['Thigh R',circ.thighRight],['Thigh L',circ.thighLeft],['Calf R',circ.calfRight],['Calf L',circ.calfLeft]];
   const adfR=num(t.ankleDF&&t.ankleDF.right),adfL=num(t.ankleDF&&t.ankleDF.left);
@@ -31601,6 +31670,7 @@ const ATH_TEST_BOXES=[
   {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
   {g:'speed',id:'tTest',tr:'T-Test',en:'T-Test',u:'s',dir:'lo',get:t=>cmpN(t.tTest)},
   {g:'speed',id:'fiveZeroFive',tr:'5-0-5',en:'5-0-5',u:'s',dir:'lo',get:t=>cmpN(t.fiveZeroFive)},
+  {g:'speed',id:'laneAgility',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',get:t=>cmpN(t.laneAgility)},
   {g:'speed',id:'shuttleRun',tr:'Shuttle Run',en:'Shuttle Run',u:'VO2max',get:t=>cmpN(t.shuttleRun)},
 ];
 const ATH_TEST_GROUPS=['move','jump','speed'];
@@ -31801,7 +31871,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       {/* The athlete on paper, for the people the coach reports to: profile, the head
           coach's observations, the athletic profile and the injury record, A4 portrait. */}
       <button className="ap-info" onClick={()=>printAthleteInfo(ath,setup,exercises,teamDays)}
-        title={L('Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil ve Sakatlıklar — A4 dikey PDF','Athlete Profile, Head Coach Observations, Athletic Profile and Injuries — A4 portrait PDF')}>{L('Bilgileri Al','Get Info')}</button>
+        title={L('Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil ve Sakatlıklar — A4 dikey PDF','Athlete Profile, Head Coach Observations, Athletic Profile and Injuries — A4 portrait PDF')}>{L('Profil Çıktısı','Profile Printout')}</button>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
@@ -33082,10 +33152,14 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
     {g:'jump',id:'horizontalJump',tr:'Yatay Sıçrama',en:'Horizontal Jump',u:'cm',dir:'hi',rows:one(t=>cmpN(t.horizontalJump))},
     {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',rows:[...lr('lateralCmj'),
       [L('Asimetri','Asymmetry'),t=>asymPct(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left,'hi'),{u:'%',dir:'lo'}]]},
-    {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:one(t=>cmpN(t.sprint20m&&t.sprint20m.time))},
+    /* The three gate times and the average speed over each (distance / time). */
+    {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',rows:[
+      ...[0,1,2].map(i=>[`0–${[5,10,20][i]} m`,t=>sprintGates(t)[i].t]),
+      ...[0,1,2].map(i=>[`${L('Hız','Spd')} ${[5,10,20][i]}`,t=>sprintGates(t)[i].v,{u:'m/s',dir:'hi'}])]},
     {g:'speed',id:'accel',tr:'5-10 m İvmelenme',en:'5-10 m Acceleration',u:'s',dir:'lo',rows:[['5 m',t=>accelCalc(t).t5],['10 m',t=>accelCalc(t).t10]]},
     {g:'speed',id:'tTest',tr:'T-Çeviklik Testi',en:'T-Agility Test',u:'s',dir:'lo',rows:one(t=>cmpN(t.tTest))},
     {g:'speed',id:'fiveZeroFive',tr:'505 Yön Değiştirme',en:'505 Change of Direction',u:'s',dir:'lo',rows:[[RS[0],t=>cod505Calc(t).r],[RS[1],t=>cod505Calc(t).l]]},
+    {g:'speed',id:'laneAgility',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',rows:one(t=>cmpN(t.laneAgility))},
   ];
   const safe=(f,t)=>{try{const v=f(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}};
   /* A test's readings: the dates any of its rows was taken, and each row's value per date. */
@@ -33132,20 +33206,13 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
         const pv=prevOf(ri,p.i);const dv=pv!=null?+(v-pv).toFixed(2):0;
         const o=r[2]||{},u=o.u||d.u||'',du=o.u||'';
         return`<td><b>${fv(v)}${u?`<small${/^[°%]$/.test(u)?' class="g"':''}>${esc(u)}</small>`:''}</b>${dv?`<i class="${tone(dv,o.dir||d.dir)}">${dv>0?'+':''}${fv(dv)}${du}</i>`:''}</td>`;}).join('')}${pad(c,'td')}</tr>`).join('')}`).join('')}</table>`;};
-  /* The FMS scale, worded for the reader of the sheet: what each score means and what was seen. */
-  const FMS_SCALE=[
-    {tr:'Ağrılı hareket',en:'Painful movement',dTr:'Sporcu test sırasında veya ilgili ağrı kontrolünde ağrı bildirir.',dEn:'The athlete reports pain during the test or in the related clearing test.'},
-    {tr:'Disfonksiyonel hareket',en:'Dysfunctional movement',dTr:'Sporcu hareketi testin minimum tamamlama kriterlerine uygun şekilde gerçekleştiremez.',dEn:'The athlete cannot perform the movement to the test’s minimum completion criteria.'},
-    {tr:'Fonksiyonel ancak kompansasyonlu hareket',en:'Functional movement with compensation',dTr:'Sporcu hareketi tamamlar ancak bazı hareket kısıtlılıkları veya kompansasyonlar gözlenir.',dEn:'The athlete completes the movement, but some restrictions or compensations are seen.'},
-    {tr:'Fonksiyonel hareket',en:'Functional movement',dTr:'Sporcu hareketi belirlenen kriterlere uygun, kompansasyon olmadan tamamlar.',dEn:'The athlete completes the movement to the set criteria, without compensation.'},
-  ];
   const fmsTone=v=>v<=1?'#dc2626':v===2?'#b88400':'#16a34a';
   /* Every FMS movement as one wide card: its picture (for the Deep Squat the athlete's own front
      and side photos, when taken), beside it the movement's name, date and what it tests (the full
      FMS description), and under that the latest score with its meaning on the FMS scale. A
      two-sided movement shows each side; the lower side is its score. */
   const fmsCard=d=>{const id=d.id.slice(4),last=d.pts[d.pts.length-1];const c=fmsIt(last.t,id);
-    const v=c.score!=null?c.score:null;const m=v!=null&&FMS_SCALE[v];
+    const v=c.score!=null?c.score:null;const m=v!=null&&FMS_SCORE_SCALE[v];
     const info=FMS_INFO.find(x=>x.id===id);const ds=id==='deepSquat'&&dsPh;
     const sides=c.bi?`<div class="ds-lr"><span>${RS[0]} <b>${c.right!=null?c.right:'—'}</b></span><span>${RS[1]} <b>${c.left!=null?c.left:'—'}</b></span></div>`:'';
     return`<div class="tc ds${ds?' ph':''}">${tcImg(d)}<div class="ds-r">
@@ -33238,148 +33305,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
 <style>
 @page{size:A4 portrait;margin:12mm 12mm 13mm}
 ${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-:root{--ink:#0f1720;--t2:#3a4350;--mu:#5e6774;--dim:#8b939e;--ln:#e2e5ea;--ln2:#cfd4db;--soft:#f6f7f9;--acc:#0a6cdc}
-html,body{background:#fff}
-body{color:var(--ink);font-size:10px;line-height:1.45;max-width:186mm;margin:0 auto}
-.pbar{position:sticky;top:0;z-index:9;background:#0f1720;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;margin-bottom:14px}
-.pbar button{background:#0a6cdc;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:600;cursor:pointer;font-size:12px}
-.pbar button.sec{background:transparent;border:1px solid rgba(255,255,255,.3)}
-@media print{.pbar{display:none}}
-.hd{display:flex;align-items:center;gap:16px;padding:0 0 10px;border-bottom:2px solid var(--ink);margin-bottom:8px}
-.hd .av{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:none;border:1px solid var(--ln)}
-.hd .avp{width:64px;height:64px;border-radius:12px;display:grid;place-items:center;background:var(--soft);border:1px solid var(--ln);font-size:20px;font-weight:700;color:var(--t2);flex:none}
-.hd h1{font-size:23px;line-height:1.1;letter-spacing:-.01em}
-.hd h1 span{font-size:14px;color:var(--dim);font-weight:600;margin-left:6px}
-.hd .meta{color:var(--mu);font-size:11px;margin-top:4px}
-.hd .r{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
-.hd .r .tm{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.hd .r .tm img{height:22px;width:auto;max-width:40px;object-fit:contain}
-.hd .r .tm span{font-size:10px;font-weight:700;color:var(--ink)}
-.hd .r .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:600}
-.hd .r .d{font-size:11px;font-weight:600;margin-top:3px}
-section{margin-top:12px}
-/* The Athletic Profile always starts a new page, however much room the page before has left. */
-section.pg-new{break-before:page;page-break-before:always;margin-top:0}
-.sec-h{display:flex;gap:10px;align-items:center;padding-bottom:7px;border-bottom:1px solid var(--ln);margin-bottom:10px;break-after:avoid;page-break-after:avoid}
-.sec-h .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
-.sec-h .t{font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.sec-h .d{font-size:9.5px;color:var(--mu)}
-.sub-h{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);margin:0 0 6px;break-after:avoid}
-.sub-h .hv{font-weight:600;color:var(--acc);text-transform:none;letter-spacing:0;margin-left:6px}
-.blk{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
-.card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.an-w{display:flex;flex-direction:column;gap:6px}
-.an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-.an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
-.an-t .an-d th{font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);padding-top:3px;white-space:nowrap}
-.an-t .an-v td{font-size:10px;padding-bottom:4px}
-.an-t .an-v b{font-size:11.5px;font-weight:700}
-.an-t .an-v i{font-style:normal;font-size:7.5px;font-weight:600;color:var(--mu);margin-left:3px}
-.an-t th.an-l{width:25mm;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff;border-right:1px solid var(--ln);padding:4px 7px;vertical-align:middle}
-.an-t th.an-l em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
-.txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
-.none,.txt.none{color:var(--dim);font-size:10px}
-.kvs{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
-.kvs.sm{grid-template-columns:repeat(6,1fr)}
-.kvs.sm .kv .k{font-size:7.6px;letter-spacing:.06em;line-height:1.25}
-.kv{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--soft)}
-.kv .k{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:600}
-.kv .v{font-size:18px;font-weight:700;margin-top:2px;line-height:1.1}
-.kv .v small{font-size:9.5px;font-weight:500;color:var(--mu);margin-left:3px}
-.notes{display:flex;flex-direction:column;gap:6px}
-.note{display:grid;grid-template-columns:62px 1fr;gap:8px;padding-top:6px;border-top:1px solid var(--ln)}
-.note:first-child{border-top:0;padding-top:0}
-.nd{font-size:9.5px;color:var(--mu);font-weight:600}
-.pk{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:700;margin-bottom:5px}
-.pk.acc{color:var(--acc)}
-.pos .pn{font-size:12.5px;font-weight:700;display:flex;gap:7px;align-items:center}
-.pos .pn b{font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--ink);color:#fff;letter-spacing:.05em}
-.card.pos{padding:7px 10px}
-.pos .pk{margin-bottom:3px}
-.pos .pn{font-size:11.5px}
-.pos .pd{font-size:8.6px;line-height:1.35;color:var(--t2);margin-top:3px}
-.pos .pe{color:var(--mu);font-style:italic}
-table{width:100%;border-collapse:collapse}
-th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);text-align:left;font-weight:700;padding:5px 6px;border-bottom:1px solid var(--ln2);background:var(--soft)}
-td{font-size:9.8px;padding:5px 6px;border-bottom:1px solid var(--ln);vertical-align:top}
-tr{break-inside:avoid;page-break-inside:avoid}
-td.b{font-weight:600}
-td.r,th.r{text-align:right}
-.sw{color:var(--mu);font-size:9px}
-.cells{display:inline-flex;gap:2px;vertical-align:middle;margin-right:5px}
-.cells i{width:11px;height:8px;border-radius:2px;border:1px solid var(--ln2)}
-.sv{font-size:10.5px;margin-right:3px}
-.crit{margin-bottom:4px}
-.crit td{padding:4px 6px}
-.key{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:9px;color:var(--mu);margin-top:6px}
-.key span{display:inline-flex;align-items:center;gap:5px}
-.key i{width:8px;height:8px;border-radius:2px}
-.sign{display:flex;gap:24px;margin-top:9px;padding-top:7px;border-top:1px dashed var(--ln2);font-size:10px;color:var(--mu)}
-.sign b{color:var(--ink)}
-.tgs{margin-bottom:8px}
-.tcs{display:flex;flex-direction:column;gap:5px}
-.tcs.pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.tc.ds.half{grid-template-columns:50mm minmax(0,1fr);row-gap:6px;column-gap:8px}
-.tc.ds.half .ds-r{gap:4px}
-.tc.ds.half .tc-d{grid-column:1/-1}
-.tc{display:grid;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;break-inside:avoid;page-break-inside:avoid}
-.tc-im{display:flex;gap:2px;border-radius:5px;overflow:hidden;background:var(--soft)}
-.tc-im img{flex:1;min-width:0;width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1)}
-.tc-im.none{background:none}
-.tc-im.ph img{object-fit:contain;background:var(--soft)}
-.tc.ds{grid-template-columns:50mm minmax(0,1fr);align-items:stretch;gap:10px}
-.tc.ds.ph{grid-template-columns:62mm minmax(0,1fr)}
-.tc.ds:not(.ph) .tc-im{height:auto;aspect-ratio:16/9;align-self:center}
-.ds-r{display:flex;flex-direction:column;gap:7px;min-width:0;padding:2px 0}
-.ds-r>.tc-d{margin-top:auto}
-.ds-h .tc-n{display:flex;align-items:center;gap:5px;font-size:10px}
-.fms-lg{height:16px;width:16px;border-radius:2px;flex:none;display:block}
-.ds-dt{margin-left:auto;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
-.ds-w{font-size:8.6px;line-height:1.45;color:var(--t2);margin-top:4px}
-.ds-s{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:8px;background:var(--soft);padding:8px 11px;margin-top:auto}
-.ds-v{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
-.ds-v small{font-size:10px;font-weight:500;color:var(--mu)}
-.ds-lr{display:flex;gap:7px;font-size:8px;font-weight:600;color:var(--mu);margin-top:4px}
-.ds-lr b{color:var(--ink);font-size:9px}
-.ds-m{font-size:10px;font-weight:700}
-.ds-x{font-size:8.6px;line-height:1.4;color:var(--t2);margin-top:2px}
-.tc.ds.ph .tc-im{height:auto;gap:4px;background:none;overflow:visible}
-.tc.ds figure{flex:1;min-width:0;text-align:center}
-.tc.ds figure img,.tc.ds figure .shx{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;filter:none;border-radius:5px;border:1px solid var(--ln);display:block}
-.tc.ds figcaption{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
-.tc-n{font-size:8.8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);line-height:1.25}
-.tc-t{width:auto;border:1px solid var(--ln);border-radius:6px;border-collapse:separate;border-spacing:0;overflow:hidden}
-.tc-t th,.tc-t td{padding:2px 6px;text-align:center;border-bottom:0;background:#fff}
-.tc-t .an-d th{width:18mm;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);white-space:nowrap}
-.tc-t .an-v td{font-size:9px;white-space:nowrap;padding-bottom:3px}
-.tc-t .an-v b{font-size:11.5px;font-weight:700}
-.tc-t .an-v b small{font-size:8px;font-weight:600;color:var(--mu);margin-left:2px}
-.tc-t .an-v b small.g{margin-left:0}
-.tc-t .an-v i{font-style:normal;font-size:7px;font-weight:600;color:var(--mu);margin-left:3px}
-.tc-t .an-v i.up{color:#16a34a}.tc-t .an-v i.dn{color:#dc2626}
-.tc-t .rl{width:11mm;text-align:left;font-size:7.5px;font-weight:700;color:var(--mu);border-right:1px solid var(--ln)}
-.tc-t th.rl{width:11mm;background:var(--soft)}
-.card.pt{padding:7px 9px}
-.pt .pk{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
-.pt .ptd{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim)}
-.pt .pts{font-weight:700;letter-spacing:0;color:var(--acc)}
-.shs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
-.sh{text-align:center}
-.sh img,.shx{width:100%;height:40mm;object-fit:contain;background:var(--soft);border:1px solid var(--ln);border-radius:6px;display:block}
-.shx{display:grid;place-items:center;color:var(--dim);font-size:12px}
-.pt.wide .sh img,.pt.wide .shx{height:88mm}
-.pt.wide .txt{font-size:9.6px;line-height:1.45}
-.sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
-.pt .txt{font-size:9px;line-height:1.38}
-.pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.inj td{font-size:9.3px}
-.inj tr.nr td{border-top:0;color:var(--mu);font-size:9px;padding-top:0}
-.pill{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
-.pill.act{color:#b91c1c;background:#fdecec}.pill.ok{color:#047857;background:#e6f6ef}
-.ft{margin-top:16px;padding-top:7px;border-top:1px solid var(--ln);font-size:8.5px;color:var(--dim);display:flex;justify-content:space-between}
+${ATH_SHEET_CSS}
 </style></head><body>
 <div class="pbar">${L('Sporcu bilgileri hazır','Athlete information is ready')} · <button onclick="window.print()">${L('Yazdır / PDF olarak kaydet','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="hd">
@@ -40285,6 +40211,7 @@ const DI_TEST_METRICS=[
   {id:'sprint20',label:['20 m sprint','20 m sprint'],read:t=>recNum(t.sprint20m&&t.sprint20m.time),dir:'lo',unit:' sn'},
   {id:'ttest',  label:['T-Test','T-Test'],           read:t=>recNum(t.tTest),               dir:'lo',unit:' sn'},
   {id:'cod505', label:['5-0-5','5-0-5'],             read:t=>recNum(t.fiveZeroFive),        dir:'lo',unit:' sn'},
+  {id:'lane',   label:['Lane Agility','Lane Agility'], read:t=>recNum(t.laneAgility),         dir:'lo',unit:' sn'},
 ];
 /* A test baseline is the mean of the readings BEFORE the latest one (up to four of
    them), and the deviation is where the latest sits against it. One test is a
