@@ -85,6 +85,7 @@ const DI_TEST_METRICS=[
   {id:'sprint20',label:['20 m sprint','20 m sprint'],read:t=>recNum(t.sprint20m&&t.sprint20m.time),dir:'lo',unit:' sn'},
   {id:'ttest',  label:['T-Test','T-Test'],           read:t=>recNum(t.tTest),               dir:'lo',unit:' sn'},
   {id:'cod505', label:['5-0-5','5-0-5'],             read:t=>recNum(t.fiveZeroFive),        dir:'lo',unit:' sn'},
+  {id:'lane',   label:['Lane Agility','Lane Agility'], read:t=>recNum(t.laneAgility),         dir:'lo',unit:' sn'},
 ];
 /* A test baseline is the mean of the readings BEFORE the latest one (up to four of
    them), and the deviation is where the latest sits against it. One test is a

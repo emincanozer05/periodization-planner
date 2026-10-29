@@ -321,11 +321,13 @@ const makeTest=(period='pre')=>({
   // Power
   verticalJump:'',cmj:'',squatJump:'',dropJump:'',horizontalJump:'',
   // F-V profili (335): yüklü squat jump satırları [{load kg,h cm}], itiş mesafesi hpo (cm); sprint ara zamanları
-  sjLoaded:[],sjHpo:'',sprintSplits:{t5:'',t10:'',t30:''},
+  sjLoaded:[],sjHpo:'',sprintSplits:{t5:'',t10:''},
   // Lateral CMJ — sideways counter-movement jump distance per side (cm)
   lateralCmj:{right:'',left:''},
   // Agility / Conditioning
   tTest:'',fiveZeroFive:'',shuttleRun:'',
+  // Lane Agility: konili parkurun tamamlanma süresi (s)
+  laneAgility:'',
   /* 505 per turning side (s). `fiveZeroFive` keeps the better of the two, so every report
      that reads the single number goes on reading it. */
   cod505:{right:'',left:''},
@@ -384,6 +386,7 @@ const TEST_CATALOG=[
   {id:'accel',         name:'5-10m Acceleration',         short:'5-10m'},
   {id:'tTest',         name:'T-Agility',                  short:'T-Test'},
   {id:'fiveZeroFive',  name:'505 COD',                    short:'505'},
+  {id:'laneAgility',   name:'Lane Agility',               short:'Lane'},
   {id:'benchPress',    name:'Bench Press',                short:'BP'},
   {id:'trapBarDL',     name:'Trap Bar Deadlift',          short:'TBDL'},
   {id:'pullUp',        name:'Pull-Up',                    short:'Pull-Up'},

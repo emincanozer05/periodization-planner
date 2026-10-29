@@ -72,6 +72,7 @@ const TEST_META={
   accel:         {g:'speed',   ic:'watch',   tr:'İlk adım ivmelenmesi',          en:'First-step acceleration'},
   tTest:         {g:'speed',   ic:'cone',    tr:'Çeviklik',                      en:'Agility'},
   fiveZeroFive:  {g:'speed',   ic:'uturn',   tr:'Yön değiştirme, sağ-sol asimetri',en:'Change of direction, R/L asymmetry'},
+  laneAgility:   {g:'speed',   ic:'cone',    tr:'Çok yönlü çeviklik',            en:'Multi-directional agility'},
   benchPress:    {g:'str',     ic:'up',      tr:'Üst vücut itiş kuvveti (e1RM)', en:'Upper-body push strength (e1RM)'},
   trapBarDL:     {g:'str',     ic:'up',      tr:'Alt vücut maksimal kuvvet (e1RM)',en:'Lower-body maximal strength (e1RM)'},
   pullUp:        {g:'str',     ic:'up',      tr:'Üst vücut çekiş kuvveti',       en:'Upper-body pull strength'},
@@ -97,7 +98,7 @@ const testGroupOf=c=>c.custom?'custom':((TEST_META[c.id]||{}).g||'custom');
 const BATTERY_ALIAS={
   mobility:['ankleDF','aslr'],
   power:['verticalJump','cmj','lateralCmj','squatJump','horizontalJump','dropJump'],
-  agility:['tTest','fiveZeroFive'],
+  agility:['tTest','fiveZeroFive','laneAgility'],
   endurance:['shuttleRun'],
 };
 function expandBattery(b){
@@ -554,6 +555,13 @@ function accelCalc(t){
   const split=t5!=null&&t10!=null&&t10>t5?+(t10-t5).toFixed(2):null;
   return{t5,t10,split,v5:t5>0?+(5/t5).toFixed(2):null,v510:split>0?+(5/split).toFixed(2):null,v10:t10>0?+(10/t10).toFixed(2):null};
 }
+/* 20 m sprint: the 0–5 m, 0–10 m and 0–20 m times (the first two shared with the 5-10 m
+   acceleration) and the average speed over each, distance / time in m/s. */
+function sprintGates(t){
+  const sp=(t&&t.sprintSplits)||{};
+  return[{k:'t5',d:5,t:tN(sp.t5)},{k:'t10',d:10,t:tN(sp.t10)},{k:'time',d:20,t:tN(t&&t.sprint20m&&t.sprint20m.time),main:true}]
+    .map(g=>({...g,v:g.t>0?+(g.d/g.t).toFixed(2):null}));
+}
 /* Active hip IR / ER, seated (°): each side's two rotations and their total arc. */
 function hipRotCalc(t){
   const o=(t&&t.hipRot)||{};const irR=tN(o.irR),irL=tN(o.irL),erR=tN(o.erR),erL=tN(o.erL);
@@ -623,6 +631,7 @@ const TEST_IMG={
   ohs:'tests/deep-squat.jpg',ankleDF:'tests/ankle-df.jpg',aslr:'tests/aslr.jpg',hipRot:'tests/hip-rotation.jpg',thomas:'tests/thomas.jpg',tSpine:'tests/t-spine-rotation.jpg',
   cmj:'tests/cmj.jpg',lateralCmj:'tests/lateral-cmj.jpg',squatJump:'tests/squat-jump.jpg',horizontalJump:'tests/broad-jump.jpg',dropJump:'tests/drop-jump.jpg',
   accel:'tests/accel-5-10.jpg',tTest:'tests/t-test.jpg',fiveZeroFive:'tests/cod-505.jpg',
+  laneAgility:'tests/lane-agility.jpg',
 };
 
 /* =========================================================
@@ -690,6 +699,9 @@ const TEST_INFO={
   fiveZeroFive:{n:'505 COD',
     tr:{w:'Sporcu 10 metre hızlanarak gelir, kapıdan 5 metre sonra çizgide 180° döner ve 5 metre geri sprint eder. Dönüş her iki ayakla ayrı ayrı yapılır.',p:'Yön değiştirme hızını, yavaşlama ve yeniden hızlanma becerisini ve sağ-sol dönüş farkını (asimetri %) değerlendirmek için kullanılır.'},
     en:{w:'The athlete runs in over 10 metres, turns 180° on the line 5 metres past the gate and sprints 5 metres back, turning off each foot in turn.',p:'Used to assess change-of-direction speed, the ability to decelerate and re-accelerate, and the right–left turning difference (asymmetry %).'}},
+  laneAgility:{n:'Lane Agility',
+    tr:{w:'Sporcu, köşelerine koni konan dikdörtgen parkurda başlangıç konisinden ileri sprint eder, yana kayar (defansif adım), geri koşar ve yine yana kayarak başladığı yere döner; ardından aynı parkuru ters yönde tamamlar. Toplam süre kaydedilir.',p:'İleri, geri ve yanal hareketler arasında hızlı geçişi, yavaşlama-yeniden hızlanmayı ve çok yönlü çeviklik kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'On a rectangle marked with cones at its corners, the athlete sprints forward from the start cone, shuffles sideways (defensive slide), backpedals and shuffles back to the start, then runs the same course in the opposite direction. The total time is recorded.',p:'Used to assess fast transitions between forward, backward and lateral movement, deceleration and re-acceleration, and multi-directional agility.'}},
   accel:{n:'5-10m Acceleration',
     tr:{w:'Sporcu duruştan çıkış yapar; 5 m ve 10 m kapılarından geçiş süreleri alınır.',p:'İlk adım ivmelenmesini ve 5-10 m arasındaki hız kazanımını değerlendirmek için kullanılır.'},
     en:{w:'From a standing start, the athlete sprints through gates at 5 m and 10 m.',p:'Used to assess first-step acceleration and the speed gained between 5 and 10 m.'}},
@@ -759,6 +771,7 @@ const TI_HAS={
   sprint:t=>!!(t.sprint20m&&(tiNum(t.sprint20m.time)||t.sprint20m.sideStep1||t.sprint20m.sideStep2||t.sprint20m.sideStep3||t.sprint20m.frontRightFoot||t.sprint20m.frontLeftFoot)),
   tTest:t=>tiNum(t.tTest),
   fiveZeroFive:t=>cod505Calc(t).best!=null,
+  laneAgility:t=>tiNum(t.laneAgility),
   shuttleRun:t=>tiNum(t.shuttleRun),
   ...Object.fromEntries(STR_LIFTS.map(id=>[id,t=>!!(t[id]&&(tiNum(t[id].load)||tiNum(t[id].reps)))])),
   pullUp:t=>!!(t.pullUp&&(tiNum(t.pullUp.reps)||tiNum(t.pullUp.load))),
@@ -779,7 +792,7 @@ const CMP_METRIC_TEST={height:'anthro',weight:'anthro',bodyFat:'anthro',wingspan
   adfR:'ankleDF',adfL:'ankleDF',adfD:'ankleDF',aslrR:'aslr',aslrL:'aslr',ohs:'ohs',ybR:'yBalance',ybL:'yBalance',ybD:'yBalance',
   vj:'verticalJump',cmj:'cmj',sj:'squatJump',dj:'dropJump',hj:'horizontalJump',
   lcjR:'lateralCmj',lcjL:'lateralCmj',lcjD:'lateralCmj',
-  sp20:'sprint',tTest:'tTest',f505:'fiveZeroFive',shut:'shuttleRun',
+  sp20:'sprint',spv5:'sprint',spv10:'sprint',spv20:'sprint',tTest:'tTest',f505:'fiveZeroFive',lane:'laneAgility',shut:'shuttleRun',
   hirR:'hipRot',hirL:'hipRot',herR:'hipRot',herL:'hipRot',htD:'hipRot',tspR:'tSpine',tspL:'tSpine',tspD:'tSpine',
   acc5:'accel',acc10:'accel',f505R:'fiveZeroFive',f505L:'fiveZeroFive',f505D:'fiveZeroFive',
   bp:'benchPress',tbdl:'trapBarDL',sq:'backSquat',bpRel:'benchPress',tbdlRel:'trapBarDL',sqRel:'backSquat',pu:'pullUp',
@@ -877,6 +890,9 @@ const CMP_METRICS=[
   {id:'lcjL', g:'pow',tr:'Lateral CMJ L',  en:'Lateral CMJ L',  u:'cm',dir:'hi',st:'LCMJ L',se:'LCMJ L',get:t=>cmpN(t.lateralCmj&&t.lateralCmj.left)},
   {id:'lcjD', g:'pow',tr:'Lateral CMJ Fark',en:'Lateral CMJ Gap',u:'cm',dir:'lo',st:'LCMJ Δ',se:'LCMJ Δ',get:t=>cmpGap(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left)},
   {id:'sp20', g:'spd',tr:'20m Sprint',en:'20m Sprint',u:'s',dir:'lo',st:'20m',se:'20m',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
+  {id:'spv5', g:'spd',tr:'0-5m Ort. Hız',en:'0-5m Avg Speed',u:'m/s',dir:'hi',st:'0-5m hız',se:'0-5m spd',get:t=>sprintGates(t)[0].v},
+  {id:'spv10',g:'spd',tr:'0-10m Ort. Hız',en:'0-10m Avg Speed',u:'m/s',dir:'hi',st:'0-10m hız',se:'0-10m spd',get:t=>sprintGates(t)[1].v},
+  {id:'spv20',g:'spd',tr:'0-20m Ort. Hız',en:'0-20m Avg Speed',u:'m/s',dir:'hi',st:'0-20m hız',se:'0-20m spd',get:t=>sprintGates(t)[2].v},
   {id:'tTest',g:'spd',tr:'T-Test',    en:'T-Test',    u:'s',dir:'lo',st:'T-Test',se:'T-Test',get:t=>cmpN(t.tTest)},
   {id:'acc5', g:'spd',tr:'5m İvmelenme',en:'5m Acceleration',u:'s',dir:'lo',st:'5m',se:'5m',get:t=>accelCalc(t).t5},
   {id:'acc10',g:'spd',tr:'10m İvmelenme',en:'10m Acceleration',u:'s',dir:'lo',st:'10m',se:'10m',get:t=>accelCalc(t).t10},
@@ -884,6 +900,7 @@ const CMP_METRICS=[
   {id:'f505R',g:'spd',tr:'505 Sağ',   en:'505 R',     u:'s',dir:'lo',st:'505 R',se:'505 R',get:t=>cod505Calc(t).r},
   {id:'f505L',g:'spd',tr:'505 Sol',   en:'505 L',     u:'s',dir:'lo',st:'505 L',se:'505 L',get:t=>cod505Calc(t).l},
   {id:'f505D',g:'spd',tr:'505 Asimetri',en:'505 Asymmetry',u:'%',dir:'lo',st:'505 Δ',se:'505 Δ',get:t=>cod505Calc(t).pct},
+  {id:'lane', g:'spd',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',st:'Lane',se:'Lane',get:t=>cmpN(t.laneAgility)},
   {id:'bp',   g:'str',tr:'Bench Press e1RM',en:'Bench Press e1RM',u:'kg',dir:'hi',st:'BP',se:'BP',get:t=>strCalc(t,'benchPress').e1},
   {id:'tbdl', g:'str',tr:'Trap Bar DL e1RM',en:'Trap Bar DL e1RM',u:'kg',dir:'hi',st:'TBDL',se:'TBDL',get:t=>strCalc(t,'trapBarDL').e1},
   {id:'sq',   g:'str',tr:'Squat e1RM',en:'Squat e1RM',u:'kg',dir:'hi',st:'Squat',se:'Squat',get:t=>strCalc(t,'backSquat').e1},
@@ -956,6 +973,7 @@ const TEAM_AVG_TESTS={
   dropJump:       {u:'',  dir:'hi',dec:2},
   horizontalJump: {u:'cm',dir:'hi',dec:1},
   tTest:          {u:'s', dir:'lo',dec:2},
+  laneAgility:    {u:'s', dir:'lo',dec:2},
 };
 function teamAvgOf(athletes,id,excludeId){
   if(!TEAM_AVG_TESTS[id])return null;

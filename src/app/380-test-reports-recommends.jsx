@@ -13,6 +13,7 @@ function DevelopmentCharts({tests}){
     {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
     {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
     {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
+    {t:'Lane Agility',u:'s',f:t=>Number(t.laneAgility),up:false,col:'#d946ef',dot:'#e879f9'},
   ];
   const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
   if(!haveAny)return null;
@@ -196,7 +197,7 @@ function TestReportsTab({ath,setup,ai,exercises}){
   const power=[['Vertical Jump',t.verticalJump,'cm'],['CMJ',t.cmj,'cm'],
     ['Lateral CMJ — R',t.lateralCmj&&t.lateralCmj.right,'cm'],['Lateral CMJ — L',t.lateralCmj&&t.lateralCmj.left,'cm'],
     ['Squat Jump',t.squatJump,'cm'],['Drop Jump',t.dropJump,'RSI'],['Horizontal Jump',t.horizontalJump,'cm']];
-  const speed=[['20m Sprint',t.sprint20m&&t.sprint20m.time,'s'],['T-Test',t.tTest,'s'],['5-0-5',t.fiveZeroFive,'s'],['Shuttle Run',t.shuttleRun,'']];
+  const speed=[['20m Sprint',t.sprint20m&&t.sprint20m.time,'s'],['T-Test',t.tTest,'s'],['5-0-5',t.fiveZeroFive,'s'],['Lane Agility',t.laneAgility,'s'],['Shuttle Run',t.shuttleRun,'']];
   const circ=t.circ||{};
   const circList=[['Shoulder',circ.shoulder],['Waist',circ.waist],['Hip',circ.hip],['Thigh R',circ.thighRight],['Thigh L',circ.thighLeft],['Calf R',circ.calfRight],['Calf L',circ.calfLeft]];
   const adfR=num(t.ankleDF&&t.ankleDF.right),adfL=num(t.ankleDF&&t.ankleDF.left);
