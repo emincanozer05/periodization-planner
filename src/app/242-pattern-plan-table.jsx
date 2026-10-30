@@ -201,7 +201,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></span>;
   const style={'--pat-c':grp.color||'var(--border2)'};
   const showCat=first||grp.pick,showType=!!(slot.typeOpts&&slot.typeOpts.length),showCnt=first&&!grp.pick;
-  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+  return(<div className={'pt-item'+(first?' first':'')+(cb.hasMove?' mv':'')} style={style}>
     <PtImg name={slot.name} image={slot.image} onImage={url=>{
       f('image',url);
       /* A picture pasted on the row goes into the library with the exercise at once — its name
@@ -245,12 +245,6 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           </div>
           {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
             onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
-          {cb.hasMove&&<span className="pt-mv">
-            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
-              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
-            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
-              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
-          </span>}
           <button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
         </div>
@@ -287,6 +281,13 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
       </div>
     </div>}
     </div>
+    {/* The running order: a slim column at the card's right edge, ↑ at its top and ↓ at its foot. */}
+    {cb.hasMove&&<div className="pt-mvcol">
+      <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+        aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+      <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+        aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+    </div>}
   </div>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count

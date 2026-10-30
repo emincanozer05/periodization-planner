@@ -8472,16 +8472,18 @@ main .panel,main .ap-head{animation:none}
 .pt-more{flex:none;width:28px;border:1px solid var(--border);border-radius:8px;background:var(--elevated);color:var(--dim);
   font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s}
 .pt-more:hover,.pt-more.on{border-color:var(--accent);color:var(--text)}
-.pt-mv{flex:none;display:flex;flex-direction:column;align-self:center;border:1px solid var(--border);border-radius:8px;
-  overflow:hidden;background:var(--elevated)}
-.pt-mv button{position:relative;width:22px;height:16px;border:0;background:none;cursor:pointer;padding:0}
-.pt-mv button+button{border-top:1px solid var(--border)}
-.pt-mv button::before{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2px 0 0 -3px;
-  border-left:1.5px solid var(--text2);border-top:1.5px solid var(--text2);transform:rotate(45deg)}
-.pt-mv button.dn::before{margin-top:-4px;transform:rotate(-135deg)}
-.pt-mv button:hover:not(:disabled){background:var(--hover)}
-.pt-mv button:focus-visible{outline:none;background:var(--hover)}
-.pt-mv button:disabled{cursor:default;opacity:.3}
+.pt-item.mv{grid-template-columns:var(--pt-iw) minmax(0,1fr) auto}
+/* The running order's ↑ / ↓: a slim column at the card's right edge, ↑ at the top, ↓ at the foot. */
+.pt-mvcol{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;gap:6px;margin-left:-6px}
+.pt-mvcol button{position:relative;width:22px;height:22px;border:1px solid transparent;border-radius:6px;background:none;cursor:pointer;
+  padding:0;opacity:.6;transition:opacity .12s,background .12s,border-color .12s}
+.pt-mvcol button::before{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-2px 0 0 -4px;
+  border-left:1.6px solid var(--text2);border-top:1.6px solid var(--text2);transform:rotate(45deg)}
+.pt-mvcol button.dn::before{margin-top:-5px;transform:rotate(-135deg)}
+.pt-item:hover .pt-mvcol button:not(:disabled),.pt-mvcol button:focus-visible{opacity:1}
+.pt-mvcol button:hover:not(:disabled){background:var(--hover);border-color:var(--border)}
+.pt-mvcol button:focus-visible{outline:none;border-color:var(--accent)}
+.pt-mvcol button:disabled{cursor:default;opacity:.2}
 .pt-x{flex:none;align-self:center;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
   opacity:.55;transition:opacity .12s,background .12s,color .12s}
 .pt-item:hover .pt-x,.pt-x:focus-visible{opacity:1}
@@ -8551,13 +8553,15 @@ main .panel,main .ap-head{animation:none}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
 @container (max-width:1000px){
   .pt-item{--pt-iw:160px;grid-template-columns:var(--pt-iw) minmax(0,1fr);gap:12px}
+  .pt-item.mv{grid-template-columns:var(--pt-iw) minmax(0,1fr) auto}
   .pt-dose{grid-template-columns:repeat(4,minmax(0,1fr))}
   .pt-foot{grid-template-columns:minmax(0,1fr) auto}
   .pt-foot .pt-note{grid-column:1/-1}
 }
 @container (max-width:560px){
-  .pt-item{grid-template-columns:1fr}
+  .pt-item,.pt-item.mv{grid-template-columns:1fr}
   .pt-img{width:100%;max-width:320px}
+  .pt-mvcol{flex-direction:row;justify-content:flex-end;margin-left:0}
   .pt-cnt{margin-left:0}
 }
 
@@ -21711,7 +21715,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
     placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></span>;
   const style={'--pat-c':grp.color||'var(--border2)'};
   const showCat=first||grp.pick,showType=!!(slot.typeOpts&&slot.typeOpts.length),showCnt=first&&!grp.pick;
-  return(<div className={'pt-item'+(first?' first':'')} style={style}>
+  return(<div className={'pt-item'+(first?' first':'')+(cb.hasMove?' mv':'')} style={style}>
     <PtImg name={slot.name} image={slot.image} onImage={url=>{
       f('image',url);
       /* A picture pasted on the row goes into the library with the exercise at once — its name
@@ -21755,12 +21759,6 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           </div>
           {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
             onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
-          {cb.hasMove&&<span className="pt-mv">
-            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
-              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
-            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
-              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
-          </span>}
           <button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
         </div>
@@ -21797,6 +21795,13 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
       </div>
     </div>}
     </div>
+    {/* The running order: a slim column at the card's right edge, ↑ at its top and ↓ at its foot. */}
+    {cb.hasMove&&<div className="pt-mvcol">
+      <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+        aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+      <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+        aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+    </div>}
   </div>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
