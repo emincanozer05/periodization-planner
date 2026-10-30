@@ -120,7 +120,15 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
   const bankView=DI_PHASE_PRESETS.map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1]),
     items:phbList(bank,pr.id).map(e=>{const rows=e.rows.filter(phbNamed);
       const names=rows.map(p=>String(p.exercise||'').trim()).filter(Boolean);
-      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,
+      /* What the hover preview lists: each exercise with its tag (A1, A2 … or 1, 2), category,
+         dose and alternative — the way the table and the printout number them. */
+      const cnt={};let plain=0;
+      const detail=rows.map(p=>{const row=diMoveRow(p.id);const ss=String(p.superset||'').toUpperCase();
+        const a=p.alt||{};
+        return{tag:ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain),name:String(p.exercise||'').trim()||'—',
+          cat:row?L(row.label[0],row.label[1]):'',color:row?(ML_PIE_COLS[row.k]||''):'',dose:diAltDose(p),
+          note:String(p.note||'').trim(),alt:String(a.name||'').trim(),altDose:String(a.name||'').trim()?diAltDose(a):''};});
+      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,detail,
         names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
   /* Typing the ready-made name back leaves the name unset, so it keeps following the language. */
   const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>{

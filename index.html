@@ -8604,6 +8604,23 @@ main .panel,main .ap-head{animation:none}
 .pp-bank-ex{font-size:11.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pp-bank-x{flex:none;width:28px;border:0;background:none;color:var(--dim);border-radius:6px;cursor:pointer;font-size:11px}
 .pp-bank-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
+.pp-bank-row.on .pp-bank-pick{border-color:var(--accent);background:var(--hover)}
+/* The hover preview: beside the list, or under it where the screen is too narrow. */
+.pp-peek{position:absolute;z-index:61;top:0;left:calc(100% + 8px);width:min(380px,calc(100vw - 32px));max-height:420px;overflow:auto;
+  box-sizing:border-box;background:var(--bg2,var(--panel));border:1px solid var(--border2);border-radius:12px;
+  box-shadow:0 14px 40px rgba(0,0,0,.35);padding:10px 12px;pointer-events:none}
+@media (max-width:900px){.pp-peek{top:calc(100% + 6px);left:0}}
+.pp-peek-hd{display:flex;align-items:baseline;gap:8px;padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.pp-peek-hd b{font-size:12px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.pp-peek-hd em{font-style:normal;font-size:11px;color:var(--dim);margin-left:auto}
+.pp-peek-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.pp-peek-list li{display:flex;gap:8px;align-items:flex-start;padding-left:8px;border-left:3px solid var(--pat-c)}
+.pp-peek-tag{flex:none;min-width:22px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;color:var(--dim);padding-top:1px}
+.pp-peek-b{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pp-peek-b b{font-size:12.5px;font-weight:700;color:var(--text)}
+.pp-peek-meta{font-size:11.5px;color:var(--text2);font-variant-numeric:tabular-nums}
+.pp-peek-cat{font-style:normal;color:var(--dim);margin-right:8px}
+.pp-peek-alt,.pp-peek-note{font-size:11px;color:var(--dim)}
 .pp-add:focus-visible,.pp-load:focus-visible,.pp-ch:focus-visible,.pp-x:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pp-load{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
   background:var(--elevated);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:12px;font-weight:700;
@@ -21869,8 +21886,25 @@ function LoadDistButton(){
 /* The phases saved for this athlete, one ready-made phase at a time: a small list under the
    phase's chip. Picking one adds its exercises to that phase (opening it if it is not open);
    ✕ forgets a saved one. `solo` is the chip of a phase already open — the list alone, with its name. */
+/* A saved phase in full, beside the list while the pointer (or focus) is on it: every exercise
+   with its tag, category, dose, note and alternative. */
+function PhaseBankPeek({it}){
+  return(<div className="pp-peek" role="tooltip">
+    <div className="pp-peek-hd"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></div>
+    <ol className="pp-peek-list">{(it.detail||[]).map((r,i)=><li key={i} style={{'--pat-c':r.color||'var(--border2)'}}>
+      <span className="pp-peek-tag">{r.tag}</span>
+      <div className="pp-peek-b">
+        <b>{r.name}</b>
+        {(r.cat||r.dose)&&<span className="pp-peek-meta">{r.cat&&<i className="pp-peek-cat">{r.cat}</i>}{r.dose}</span>}
+        {r.alt&&<span className="pp-peek-alt">⇄ {r.alt}{r.altDose?` · ${r.altDose}`:''}</span>}
+        {r.note&&<span className="pp-peek-note">{r.note}</span>}
+      </div>
+    </li>)}</ol>
+  </div>);
+}
 function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
   const[open,setOpen]=useState(false);
+  const[peek,setPeek]=useState(null);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -21879,6 +21913,8 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
     document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
     return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
   },[open]);
+  useEffect(()=>{if(!open)setPeek(null);},[open]);
+  const shown=peek&&items.find(x=>x.id===peek);
   return(<span className="pp-bank" ref={ref}>
     <button type="button" className={'pp-bank-btn'+(solo?' solo':'')+(open?' on':'')} aria-haspopup="menu" aria-expanded={open}
       onClick={()=>setOpen(o=>!o)}
@@ -21888,7 +21924,8 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
     {open&&<div className="pp-bank-pop" role="menu" aria-label={L(`Kayıtlı ${label}`,`Saved ${label}`)}>
       <div className="pp-bank-hd"><b>{L(`Kayıtlı ${label}`,`Saved ${label}`)}</b>
         <span>{L('Seçtiğin faz tabloya eklenir','The one you pick is added to the table')}</span></div>
-      <div className="pp-bank-list">{items.map(it=><div key={it.id} className="pp-bank-row">
+      <div className="pp-bank-list" onMouseLeave={()=>setPeek(null)}>{items.map(it=><div key={it.id} className={'pp-bank-row'+(peek===it.id?' on':'')}
+        onMouseEnter={()=>setPeek(it.id)} onFocus={()=>setPeek(it.id)}>
         <button type="button" role="menuitem" className="pp-bank-pick" onClick={()=>{setOpen(false);onPick(kind,it.id);}}>
           <span className="pp-bank-top"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></span>
           <span className="pp-bank-ex">{it.names}</span>
@@ -21896,6 +21933,7 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
         {onForget&&<button type="button" className="pp-bank-x" onClick={()=>{if(confirm(L('Bu kayıtlı faz silinsin mi?','Delete this saved phase?')))onForget(kind,it.id);}}
           aria-label={L('Kayıtlı fazı sil','Delete the saved phase')} title={L('Kayıtlı fazı sil','Delete the saved phase')}>✕</button>}
       </div>)}</div>
+      {shown&&<PhaseBankPeek it={shown}/>}
     </div>}
   </span>);
 }
@@ -44329,7 +44367,15 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
   const bankView=DI_PHASE_PRESETS.map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1]),
     items:phbList(bank,pr.id).map(e=>{const rows=e.rows.filter(phbNamed);
       const names=rows.map(p=>String(p.exercise||'').trim()).filter(Boolean);
-      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,
+      /* What the hover preview lists: each exercise with its tag (A1, A2 … or 1, 2), category,
+         dose and alternative — the way the table and the printout number them. */
+      const cnt={};let plain=0;
+      const detail=rows.map(p=>{const row=diMoveRow(p.id);const ss=String(p.superset||'').toUpperCase();
+        const a=p.alt||{};
+        return{tag:ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain),name:String(p.exercise||'').trim()||'—',
+          cat:row?L(row.label[0],row.label[1]):'',color:row?(ML_PIE_COLS[row.k]||''):'',dose:diAltDose(p),
+          note:String(p.note||'').trim(),alt:String(a.name||'').trim(),altDose:String(a.name||'').trim()?diAltDose(a):''};});
+      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,detail,
         names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
   /* Typing the ready-made name back leaves the name unset, so it keeps following the language. */
   const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>{
