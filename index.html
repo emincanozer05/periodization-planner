@@ -47637,9 +47637,19 @@ function App(){
   return()=>registerBallSave(null);},[setData]);
   /* The program bank reads every team's athletes (a programme written for one can be pasted for
      another) and writes through the latest state, like updateTeam does. */
-  useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>({...prev,teams:prev.teams.map(t=>
-    (t.athletes||[]).some(a=>a.id===athId)?{...t,athletes:t.athletes.map(a=>a.id===athId?{...a,...fn(a)}:a)}:t)})));
-  },[data.teams,setData]);
+  /* A write that changes nothing (an empty patch) hands the state back as it was: a new state
+     object would set the cloud sync writing — serialising the whole state — for nothing. */
+  useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>{
+    let hit=false;
+    const teams=prev.teams.map(t=>{
+      if(!(t.athletes||[]).some(a=>a.id===athId))return t;
+      let own=false;
+      const athletes=t.athletes.map(a=>{if(a.id!==athId)return a;
+        const p=fn(a);if(!p||!Object.keys(p).length)return a;own=hit=true;return{...a,...p};});
+      return own?{...t,athletes}:t;
+    });
+    return hit?{...prev,teams}:prev;
+  }));},[data.teams,setData]);
   // Brand every printout / shared PDF with the active team's logo.
   useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');
     registerClubName((team&&team.setup&&(team.setup.clubName||team.setup.teamName))||'');},[team]);
