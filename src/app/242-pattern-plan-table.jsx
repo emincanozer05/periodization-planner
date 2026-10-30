@@ -377,8 +377,25 @@ function LoadDistButton(){
 /* The phases saved for this athlete, one ready-made phase at a time: a small list under the
    phase's chip. Picking one adds its exercises to that phase (opening it if it is not open);
    ✕ forgets a saved one. `solo` is the chip of a phase already open — the list alone, with its name. */
+/* A saved phase in full, beside the list while the pointer (or focus) is on it: every exercise
+   with its tag, category, dose, note and alternative. */
+function PhaseBankPeek({it}){
+  return(<div className="pp-peek" role="tooltip">
+    <div className="pp-peek-hd"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></div>
+    <ol className="pp-peek-list">{(it.detail||[]).map((r,i)=><li key={i} style={{'--pat-c':r.color||'var(--border2)'}}>
+      <span className="pp-peek-tag">{r.tag}</span>
+      <div className="pp-peek-b">
+        <b>{r.name}</b>
+        {(r.cat||r.dose)&&<span className="pp-peek-meta">{r.cat&&<i className="pp-peek-cat">{r.cat}</i>}{r.dose}</span>}
+        {r.alt&&<span className="pp-peek-alt">⇄ {r.alt}{r.altDose?` · ${r.altDose}`:''}</span>}
+        {r.note&&<span className="pp-peek-note">{r.note}</span>}
+      </div>
+    </li>)}</ol>
+  </div>);
+}
 function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
   const[open,setOpen]=useState(false);
+  const[peek,setPeek]=useState(null);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -387,6 +404,8 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
     document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
     return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
   },[open]);
+  useEffect(()=>{if(!open)setPeek(null);},[open]);
+  const shown=peek&&items.find(x=>x.id===peek);
   return(<span className="pp-bank" ref={ref}>
     <button type="button" className={'pp-bank-btn'+(solo?' solo':'')+(open?' on':'')} aria-haspopup="menu" aria-expanded={open}
       onClick={()=>setOpen(o=>!o)}
@@ -396,7 +415,8 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
     {open&&<div className="pp-bank-pop" role="menu" aria-label={L(`Kayıtlı ${label}`,`Saved ${label}`)}>
       <div className="pp-bank-hd"><b>{L(`Kayıtlı ${label}`,`Saved ${label}`)}</b>
         <span>{L('Seçtiğin faz tabloya eklenir','The one you pick is added to the table')}</span></div>
-      <div className="pp-bank-list">{items.map(it=><div key={it.id} className="pp-bank-row">
+      <div className="pp-bank-list" onMouseLeave={()=>setPeek(null)}>{items.map(it=><div key={it.id} className={'pp-bank-row'+(peek===it.id?' on':'')}
+        onMouseEnter={()=>setPeek(it.id)} onFocus={()=>setPeek(it.id)}>
         <button type="button" role="menuitem" className="pp-bank-pick" onClick={()=>{setOpen(false);onPick(kind,it.id);}}>
           <span className="pp-bank-top"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></span>
           <span className="pp-bank-ex">{it.names}</span>
@@ -404,6 +424,7 @@ function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
         {onForget&&<button type="button" className="pp-bank-x" onClick={()=>{if(confirm(L('Bu kayıtlı faz silinsin mi?','Delete this saved phase?')))onForget(kind,it.id);}}
           aria-label={L('Kayıtlı fazı sil','Delete the saved phase')} title={L('Kayıtlı fazı sil','Delete the saved phase')}>✕</button>}
       </div>)}</div>
+      {shown&&<PhaseBankPeek it={shown}/>}
     </div>}
   </span>);
 }
