@@ -35488,9 +35488,9 @@ function useCloudSync(data,setData){
         dataRef.current=state;setData(state);
         dirty.current=true;
         if(blind&&!g.n)setSyncNote('Başka bir cihaz bu cihazdaki son değişiklikleri görmeden kaydetmişti (çevrimdışıyken ya da aynı anda). İki cihazın değişiklikleri birleştirildi, hiçbiri silinmedi.');
-        else if(stats.conflicts&&!g.n)setSyncNote(preferRemote
-          ?'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (diğer cihazdaki) değişiklik geçerli oldu.'
-          :'Aynı alan iki cihazda birden değiştirilmişti; daha sonra yapılan (bu cihazdaki) değişiklik geçerli oldu.');
+        /* Aynı alanın iki cihazda değişmesi olağan bir birleştirmedir (daha sonra yapılan
+           geçerli olur); koçu uyarmaya gerek yok, yalnızca günlüğe düşülür. */
+        else if(stats.conflicts&&!g.n)slog('çakışma: '+stats.conflicts+' alan iki cihazda değişmişti → '+(preferRemote?'diğer cihazdaki':'bu cihazdaki')+' geçerli');
         return true;
       }
       // Birleşme buluttakiyle aynı çıktı → yerel düzenleme zaten uzakta var.
