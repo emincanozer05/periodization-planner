@@ -374,14 +374,58 @@ function LoadDistButton(){
     </aside>,document.body)}
   </>);
 }
+/* The phases saved for this athlete, one ready-made phase at a time: a small list under the
+   phase's chip. Picking one adds its exercises to that phase (opening it if it is not open);
+   ✕ forgets a saved one. `solo` is the chip of a phase already open — the list alone, with its name. */
+function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open)return;
+    const out=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
+  },[open]);
+  return(<span className="pp-bank" ref={ref}>
+    <button type="button" className={'pp-bank-btn'+(solo?' solo':'')+(open?' on':'')} aria-haspopup="menu" aria-expanded={open}
+      onClick={()=>setOpen(o=>!o)}
+      title={L(`Bu sporcu için kaydedilmiş ${label} (${items.length}) — seçtiğin tek tuşla eklenir`,
+        `${label} saved for this athlete (${items.length}) — the one you pick is added in one click`)}>
+      {solo?<>{label} · </>:null}<i aria-hidden="true">↺</i> {items.length}<u aria-hidden="true">▾</u></button>
+    {open&&<div className="pp-bank-pop" role="menu" aria-label={L(`Kayıtlı ${label}`,`Saved ${label}`)}>
+      <div className="pp-bank-hd"><b>{L(`Kayıtlı ${label}`,`Saved ${label}`)}</b>
+        <span>{L('Seçtiğin faz tabloya eklenir','The one you pick is added to the table')}</span></div>
+      <div className="pp-bank-list">{items.map(it=><div key={it.id} className="pp-bank-row">
+        <button type="button" role="menuitem" className="pp-bank-pick" onClick={()=>{setOpen(false);onPick(kind,it.id);}}>
+          <span className="pp-bank-top"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></span>
+          <span className="pp-bank-ex">{it.names}</span>
+        </button>
+        {onForget&&<button type="button" className="pp-bank-x" onClick={()=>{if(confirm(L('Bu kayıtlı faz silinsin mi?','Delete this saved phase?')))onForget(kind,it.id);}}
+          aria-label={L('Kayıtlı fazı sil','Delete the saved phase')} title={L('Kayıtlı fazı sil','Delete the saved phase')}>✕</button>}
+      </div>)}</div>
+    </div>}
+  </span>);
+}
 /* `presets` are the ready-made phases not open yet ({id,label}); `onAdd(id)` opens one, '' a
-   phase named by hand. */
-function PlanPhaseBar({presets,onAdd}){
+   phase named by hand. `bank` (optional) holds the phases saved for the athlete, per ready-made
+   phase: [{id,label,items:[{id,title,count,names}]}]; `onPickSaved(kind,id)` adds one,
+   `onForgetSaved(kind,id)` forgets one. */
+function PlanPhaseBar({presets,onAdd,bank,onPickSaved,onForgetSaved}){
+  const saved=id=>{const b=(bank||[]).find(x=>x.id===id);return b&&b.items.length?b:null;};
+  /* The ready-made phases in their own order, whether open or not. */
+  const ids=[...new Set([...(bank||[]).map(b=>b.id),...presets.map(p=>p.id)])];
   return(<div className="pp-bar">
     <span className="pp-bar-l">{L('Fazlar','Phases')}</span>
     <div className="pp-bar-add">
-      {presets.map(p=><button key={p.id} type="button" className="pp-add" onClick={()=>onAdd(p.id)}
-        title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>)}
+      {ids.map(id=>{const p=presets.find(x=>x.id===id),b=saved(id);
+        /* A phase already open still offers what was saved for it. */
+        if(!p)return b?<PhaseBankMenu key={id} solo kind={id} label={b.label} items={b.items} onPick={onPickSaved} onForget={onForgetSaved}/>:null;
+        const add=<button type="button" className="pp-add" onClick={()=>onAdd(id)}
+          title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>;
+        return b?<span key={id} className="pp-split">{add}
+          <PhaseBankMenu kind={id} label={p.label} items={b.items} onPick={onPickSaved} onForget={onForgetSaved}/></span>
+          :<React.Fragment key={id}>{add}</React.Fragment>;})}
       <button type="button" className="pp-add custom" onClick={()=>onAdd('')}
         title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>+ {L('Özel Faz','Custom Phase')}</button>
     </div>

@@ -8575,6 +8575,35 @@ main .panel,main .ap-head{animation:none}
   transition:border-color .14s,color .14s,background .14s}
 .pp-add:hover{border-color:var(--accent);border-style:solid;color:var(--text);background:var(--hover)}
 .pp-add.custom{color:var(--dim)}
+/* Phases saved for the athlete: a caret joined to the phase's chip (or a chip of its own once the
+   phase is open) that opens the saved list under it. */
+.pp-split{display:inline-flex;align-items:stretch}
+.pp-split>.pp-add{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0}
+.pp-bank{position:relative;display:inline-flex}
+.pp-bank-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:var(--elevated);
+  border:1px solid var(--border2);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  font-variant-numeric:tabular-nums;transition:border-color .14s,color .14s,background .14s}
+.pp-split .pp-bank-btn{border-top-left-radius:0;border-bottom-left-radius:0}
+.pp-bank-btn i{font-style:normal;color:var(--accent)}
+.pp-bank-btn u{text-decoration:none;font-size:9px;color:var(--dim);margin-left:1px}
+.pp-bank-btn:hover,.pp-bank-btn.on{border-color:var(--accent);color:var(--text);background:var(--hover)}
+.pp-bank-btn:focus-visible,.pp-bank-pick:focus-visible,.pp-bank-x:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.pp-bank-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;width:min(340px,calc(100vw - 32px));box-sizing:border-box;
+  background:var(--bg2,var(--panel));border:1px solid var(--border2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:10px}
+.pp-bank-hd{display:flex;flex-direction:column;gap:2px;padding:0 4px 8px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.pp-bank-hd b{font-size:12px;font-weight:700;color:var(--text)}
+.pp-bank-hd span{font-size:11px;color:var(--dim)}
+.pp-bank-list{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow:auto}
+.pp-bank-row{display:flex;align-items:stretch;gap:4px}
+.pp-bank-pick{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left;padding:7px 9px;border-radius:8px;
+  border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;cursor:pointer}
+.pp-bank-pick:hover{border-color:var(--accent);background:var(--hover)}
+.pp-bank-top{display:flex;align-items:baseline;gap:8px}
+.pp-bank-top b{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.pp-bank-top em{font-style:normal;font-size:11px;color:var(--dim);margin-left:auto}
+.pp-bank-ex{font-size:11.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-bank-x{flex:none;width:28px;border:0;background:none;color:var(--dim);border-radius:6px;cursor:pointer;font-size:11px}
+.pp-bank-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
 .pp-add:focus-visible,.pp-load:focus-visible,.pp-ch:focus-visible,.pp-x:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
 .pp-load{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
   background:var(--elevated);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:12px;font-weight:700;
@@ -21837,14 +21866,58 @@ function LoadDistButton(){
     </aside>,document.body)}
   </>);
 }
+/* The phases saved for this athlete, one ready-made phase at a time: a small list under the
+   phase's chip. Picking one adds its exercises to that phase (opening it if it is not open);
+   ✕ forgets a saved one. `solo` is the chip of a phase already open — the list alone, with its name. */
+function PhaseBankMenu({kind,label,items,onPick,onForget,solo}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open)return;
+    const out=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',out);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',out);document.removeEventListener('keydown',esc);};
+  },[open]);
+  return(<span className="pp-bank" ref={ref}>
+    <button type="button" className={'pp-bank-btn'+(solo?' solo':'')+(open?' on':'')} aria-haspopup="menu" aria-expanded={open}
+      onClick={()=>setOpen(o=>!o)}
+      title={L(`Bu sporcu için kaydedilmiş ${label} (${items.length}) — seçtiğin tek tuşla eklenir`,
+        `${label} saved for this athlete (${items.length}) — the one you pick is added in one click`)}>
+      {solo?<>{label} · </>:null}<i aria-hidden="true">↺</i> {items.length}<u aria-hidden="true">▾</u></button>
+    {open&&<div className="pp-bank-pop" role="menu" aria-label={L(`Kayıtlı ${label}`,`Saved ${label}`)}>
+      <div className="pp-bank-hd"><b>{L(`Kayıtlı ${label}`,`Saved ${label}`)}</b>
+        <span>{L('Seçtiğin faz tabloya eklenir','The one you pick is added to the table')}</span></div>
+      <div className="pp-bank-list">{items.map(it=><div key={it.id} className="pp-bank-row">
+        <button type="button" role="menuitem" className="pp-bank-pick" onClick={()=>{setOpen(false);onPick(kind,it.id);}}>
+          <span className="pp-bank-top"><b>{it.title}</b><em>{L(`${it.count} egzersiz`,`${it.count} exercise${it.count!==1?'s':''}`)}</em></span>
+          <span className="pp-bank-ex">{it.names}</span>
+        </button>
+        {onForget&&<button type="button" className="pp-bank-x" onClick={()=>{if(confirm(L('Bu kayıtlı faz silinsin mi?','Delete this saved phase?')))onForget(kind,it.id);}}
+          aria-label={L('Kayıtlı fazı sil','Delete the saved phase')} title={L('Kayıtlı fazı sil','Delete the saved phase')}>✕</button>}
+      </div>)}</div>
+    </div>}
+  </span>);
+}
 /* `presets` are the ready-made phases not open yet ({id,label}); `onAdd(id)` opens one, '' a
-   phase named by hand. */
-function PlanPhaseBar({presets,onAdd}){
+   phase named by hand. `bank` (optional) holds the phases saved for the athlete, per ready-made
+   phase: [{id,label,items:[{id,title,count,names}]}]; `onPickSaved(kind,id)` adds one,
+   `onForgetSaved(kind,id)` forgets one. */
+function PlanPhaseBar({presets,onAdd,bank,onPickSaved,onForgetSaved}){
+  const saved=id=>{const b=(bank||[]).find(x=>x.id===id);return b&&b.items.length?b:null;};
+  /* The ready-made phases in their own order, whether open or not. */
+  const ids=[...new Set([...(bank||[]).map(b=>b.id),...presets.map(p=>p.id)])];
   return(<div className="pp-bar">
     <span className="pp-bar-l">{L('Fazlar','Phases')}</span>
     <div className="pp-bar-add">
-      {presets.map(p=><button key={p.id} type="button" className="pp-add" onClick={()=>onAdd(p.id)}
-        title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>)}
+      {ids.map(id=>{const p=presets.find(x=>x.id===id),b=saved(id);
+        /* A phase already open still offers what was saved for it. */
+        if(!p)return b?<PhaseBankMenu key={id} solo kind={id} label={b.label} items={b.items} onPick={onPickSaved} onForget={onForgetSaved}/>:null;
+        const add=<button type="button" className="pp-add" onClick={()=>onAdd(id)}
+          title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>;
+        return b?<span key={id} className="pp-split">{add}
+          <PhaseBankMenu kind={id} label={p.label} items={b.items} onPick={onPickSaved} onForget={onForgetSaved}/></span>
+          :<React.Fragment key={id}>{add}</React.Fragment>;})}
       <button type="button" className="pp-add custom" onClick={()=>onAdd('')}
         title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>+ {L('Özel Faz','Custom Phase')}</button>
     </div>
@@ -39236,6 +39309,56 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
     {open&&<ProgramPicker athId={athId} onClose={()=>setOpen(false)} onPick={onPick}/>}
   </>);
 }
+
+/* ---- FAZ BANKASI -------------------------------------------------------------------
+   Bireyselleştirme'nin Antrenman tablosunda bir sporcu için yazılan hazır fazlar (Hazırlık Bölümü,
+   Ana Bölüm, Soğuma) sporcunun kaydında faz faz ayrı durur: `ath.phaseBank = {prep:[…],main:[…],cool:[…]}`,
+   her kayıt {id, date, at, rows:[tablo satırı…]}. Kayıt kendiliğinden olur (`phbAutoSave`): gün ve faz başına
+   tek kayıt, faz değiştikçe aynı kayıt güncellenir; içeriği başka bir kayıtla birebir aynıysa ikincisi
+   tutulmaz (kayıtlı bir fazı tabloya eklemek yeni kayıt açmaz). Fazdaki satırlar sonradan silinse de kayıt
+   kalır; koç faz çubuğundaki listeden ✕ ile siler. Yazma program bankasının yolundan (`_pbWrite`). */
+const PHB_KINDS=['prep','main','cool'];
+const PHB_MAX=30;
+const phbNamed=p=>!!(String(p&&p.exercise||'').trim()||String(p&&p.sets||'').trim()||String(p&&p.reps||'').trim());
+/* Kaydedilen satırlar: yazılmış olanlar, fazsız; çevrimdışı tutulan görsel (data URL) kayda girmez. */
+const phbRows=rows=>diMovePatterns(rows).filter(phbNamed).map(p=>({...p,phase:'',image:/^data:/.test(p.image||'')?'':p.image}));
+const phbSig=rows=>JSON.stringify(phbRows(rows).map(p=>[p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]));
+/* Bir fazın kayıtları, en yenisi başta; bozuk kayıt okunmaz. */
+const phbList=(bank,kind)=>((bank&&Array.isArray(bank[kind]))?bank[kind]:[]).filter(e=>e&&e.id&&Array.isArray(e.rows)&&e.rows.some(phbNamed));
+function phbAutoSave(athId,date,instr){
+  if(!_pbWrite||!athId||!date)return;
+  const list=diMovePatterns(instr&&instr.patterns);
+  const upd={};
+  diMovePhases(instr&&instr.phases).forEach(ph=>{
+    if(!PHB_KINDS.includes(ph.preset))return;
+    const rows=phbRows(list.filter(p=>p.phase===ph.id));
+    if(rows.length)upd[ph.preset]=rows;
+  });
+  if(!Object.keys(upd).length)return;
+  _pbWrite(athId,a=>{
+    const bank={...(a.phaseBank||{})};
+    let changed=false;
+    Object.keys(upd).forEach(k=>{
+      const cur=Array.isArray(bank[k])?bank[k]:[];
+      const rows=upd[k],sig=phbSig(rows);
+      const i=cur.findIndex(e=>e&&e.date===date);
+      if(i>=0&&phbSig(cur[i].rows)===sig)return;
+      const others=cur.filter((_,j)=>j!==i);
+      /* Aynısı başka bir günden kayıtlıysa bugünün kaydı ikinci bir kopya olmaz. */
+      if(others.some(e=>e&&phbSig(e.rows)===sig)){if(i<0)return;bank[k]=others;changed=true;return;}
+      const e={id:i>=0?cur[i].id:uid(),date,at:new Date().toISOString(),rows};
+      bank[k]=[e,...others].slice(0,PHB_MAX);changed=true;
+    });
+    return changed?{phaseBank:bank}:{};
+  });
+}
+function phbForget(athId,kind,id){
+  if(!_pbWrite||!athId)return;
+  _pbWrite(athId,a=>{
+    const cur=(a.phaseBank&&Array.isArray(a.phaseBank[kind]))?a.phaseBank[kind]:[];
+    return{phaseBank:{...(a.phaseBank||{}),[kind]:cur.filter(e=>!e||e.id!==id)}};
+  });
+}
 const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Advanced'};
 
 /* Position → grouping axis. Non-basketball rosters fall into `other`, which
@@ -44126,7 +44249,7 @@ function diFileToLibrary(instr){
     if(p.alt)file(t(p.alt.name),p.alt.link,'');
   });
 }
-function DiPatternPlan({plan,onChange:emit}){
+function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
   /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
@@ -44177,8 +44300,7 @@ function DiPatternPlan({plan,onChange:emit}){
      language, no typing) or a custom one. Preparation goes first and cool-down last, the main
      phase before the cool-down. The first phase opened takes in everything already written —
      unless it is a preparation or a cool-down, which are not where the written work belongs. */
-  const addPhase=preset=>{
-    const cur=latest.current;
+  const openPhase=(cur,preset)=>{
     const id='ph_'+Math.random().toString(36).slice(2,7);
     const n=cur.phases.length+1;
     const np={id,name:preset?'':L(`Faz ${n}`,`Phase ${n}`),preset:preset||''};
@@ -44188,8 +44310,27 @@ function DiPatternPlan({plan,onChange:emit}){
       const i=cur.phases.findIndex(x=>x.preset==='cool');ph=[...cur.phases.slice(0,i),np,...cur.phases.slice(i)];}
     else ph=[...cur.phases,np];
     const takes=!cur.phases.length&&preset!=='prep'&&preset!=='cool';
-    commit(takes?cur.list.map(p=>({...p,phase:id})):cur.list,ph);
+    return{id,list:takes?cur.list.map(p=>({...p,phase:id})):cur.list,phases:ph};
   };
+  const addPhase=preset=>{const r=openPhase(latest.current,preset);commit(r.list,r.phases);};
+  /* A phase saved for this athlete before: its exercises go at the end of that ready-made phase,
+     which is opened first if it is not open yet. */
+  const addSaved=(kind,sid)=>{
+    const e=phbList(bank,kind).find(x=>x.id===sid);if(!e)return;
+    let cur=latest.current;
+    let target=cur.phases.find(x=>x.preset===kind);
+    if(!target){
+      if(cur.phases.length>=6)return;
+      const r=openPhase(cur,kind);cur={list:r.list,phases:r.phases};target={id:r.id};
+    }
+    commit([...cur.list,...phbRows(e.rows).map(p=>({...p,phase:target.id}))],cur.phases);
+    setFolded(s=>{if(!s.has(target.id))return s;const n=new Set(s);n.delete(target.id);return n;});
+  };
+  const bankView=DI_PHASE_PRESETS.map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1]),
+    items:phbList(bank,pr.id).map(e=>{const rows=e.rows.filter(phbNamed);
+      const names=rows.map(p=>String(p.exercise||'').trim()).filter(Boolean);
+      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,
+        names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
   /* Typing the ready-made name back leaves the name unset, so it keeps following the language. */
   const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>{
     if(x.id!==id)return x;
@@ -44325,7 +44466,7 @@ function DiPatternPlan({plan,onChange:emit}){
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
     <PlanPhaseBar presets={DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1])}))}
-      onAdd={id=>addPhase(id)}/>
+      onAdd={id=>addPhase(id)} bank={bankView} onPickSaved={addSaved} onForgetSaved={onForgetSaved}/>
     {phases.length===0
       ?section('',false)
       :<>{phases.map((p,i)=><PlanPhase key={p.id} cls={'pc'+(i%PH_COLORS)} folded={folded.has(p.id)} onFold={()=>toggleFold(p.id)}
@@ -44419,9 +44560,19 @@ function diTableFromClipboard(clip,instr){
   const goals=DI_GOAL_IDS.filter(id=>have.has(id)||want.has(id));
   return{patterns,phases:diMovePhases(phases),goals,added:patterns.length-before.length,total:rows.length};
 }
-function DiInstructionForm({instr,save,athId}){
+function DiInstructionForm({instr,save,athId,date,bank}){
   const[pasted,setPasted]=useState('');
   const clip=useTableClipboard();
+  /* Each ready-made phase written here is kept for the athlete (phbAutoSave), a moment after the
+     typing stops — and at once when the card closes with a change still waiting. */
+  const phbPending=useRef(null);
+  /* Declared first so its cleanup runs before the timer's: another athlete or day keeps the edit pending for this one. */
+  useEffect(()=>()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},[athId,date]);
+  useEffect(()=>{
+    phbPending.current=()=>phbAutoSave(athId,date,instr);
+    const t=setTimeout(()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},900);
+    return()=>clearTimeout(t);
+  },[athId,date,instr.patterns,instr.phases]);
   const copyTable=()=>{
     const c=diTableToClipboard(instr);
     copyTableToClipboard(c);
@@ -44471,7 +44622,8 @@ function DiInstructionForm({instr,save,athId}){
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}
-          onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
+          onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}
+          bank={bank} onForgetSaved={(kind,id)=>phbForget(athId,kind,id)}/></div>
       </div>
     </div>
   </div>);
@@ -44960,7 +45112,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id} date={date} bank={plan.ath.phaseBank}/>
       </PlanLoadCtx.Provider>
       {/* The table reaches the athlete's calendar only through this press: until then the
           calendar is HELD — neither this session nor the plain copy of the team session is

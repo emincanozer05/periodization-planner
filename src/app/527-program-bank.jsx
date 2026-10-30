@@ -277,3 +277,53 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
     {open&&<ProgramPicker athId={athId} onClose={()=>setOpen(false)} onPick={onPick}/>}
   </>);
 }
+
+/* ---- FAZ BANKASI -------------------------------------------------------------------
+   Bireyselleştirme'nin Antrenman tablosunda bir sporcu için yazılan hazır fazlar (Hazırlık Bölümü,
+   Ana Bölüm, Soğuma) sporcunun kaydında faz faz ayrı durur: `ath.phaseBank = {prep:[…],main:[…],cool:[…]}`,
+   her kayıt {id, date, at, rows:[tablo satırı…]}. Kayıt kendiliğinden olur (`phbAutoSave`): gün ve faz başına
+   tek kayıt, faz değiştikçe aynı kayıt güncellenir; içeriği başka bir kayıtla birebir aynıysa ikincisi
+   tutulmaz (kayıtlı bir fazı tabloya eklemek yeni kayıt açmaz). Fazdaki satırlar sonradan silinse de kayıt
+   kalır; koç faz çubuğundaki listeden ✕ ile siler. Yazma program bankasının yolundan (`_pbWrite`). */
+const PHB_KINDS=['prep','main','cool'];
+const PHB_MAX=30;
+const phbNamed=p=>!!(String(p&&p.exercise||'').trim()||String(p&&p.sets||'').trim()||String(p&&p.reps||'').trim());
+/* Kaydedilen satırlar: yazılmış olanlar, fazsız; çevrimdışı tutulan görsel (data URL) kayda girmez. */
+const phbRows=rows=>diMovePatterns(rows).filter(phbNamed).map(p=>({...p,phase:'',image:/^data:/.test(p.image||'')?'':p.image}));
+const phbSig=rows=>JSON.stringify(phbRows(rows).map(p=>[p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]));
+/* Bir fazın kayıtları, en yenisi başta; bozuk kayıt okunmaz. */
+const phbList=(bank,kind)=>((bank&&Array.isArray(bank[kind]))?bank[kind]:[]).filter(e=>e&&e.id&&Array.isArray(e.rows)&&e.rows.some(phbNamed));
+function phbAutoSave(athId,date,instr){
+  if(!_pbWrite||!athId||!date)return;
+  const list=diMovePatterns(instr&&instr.patterns);
+  const upd={};
+  diMovePhases(instr&&instr.phases).forEach(ph=>{
+    if(!PHB_KINDS.includes(ph.preset))return;
+    const rows=phbRows(list.filter(p=>p.phase===ph.id));
+    if(rows.length)upd[ph.preset]=rows;
+  });
+  if(!Object.keys(upd).length)return;
+  _pbWrite(athId,a=>{
+    const bank={...(a.phaseBank||{})};
+    let changed=false;
+    Object.keys(upd).forEach(k=>{
+      const cur=Array.isArray(bank[k])?bank[k]:[];
+      const rows=upd[k],sig=phbSig(rows);
+      const i=cur.findIndex(e=>e&&e.date===date);
+      if(i>=0&&phbSig(cur[i].rows)===sig)return;
+      const others=cur.filter((_,j)=>j!==i);
+      /* Aynısı başka bir günden kayıtlıysa bugünün kaydı ikinci bir kopya olmaz. */
+      if(others.some(e=>e&&phbSig(e.rows)===sig)){if(i<0)return;bank[k]=others;changed=true;return;}
+      const e={id:i>=0?cur[i].id:uid(),date,at:new Date().toISOString(),rows};
+      bank[k]=[e,...others].slice(0,PHB_MAX);changed=true;
+    });
+    return changed?{phaseBank:bank}:{};
+  });
+}
+function phbForget(athId,kind,id){
+  if(!_pbWrite||!athId)return;
+  _pbWrite(athId,a=>{
+    const cur=(a.phaseBank&&Array.isArray(a.phaseBank[kind]))?a.phaseBank[kind]:[];
+    return{phaseBank:{...(a.phaseBank||{}),[kind]:cur.filter(e=>!e||e.id!==id)}};
+  });
+}
