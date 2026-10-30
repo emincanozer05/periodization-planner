@@ -174,7 +174,6 @@ const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
    in one of them must not rebuild the other nineteen. */
 const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
   const k=slot.key;
-  const libDefer=React.useContext(ExLibDeferCtx);
   const[altOn,setAltOn]=useState(false);
   const hasAlt=!!(slot.a_name||PT_ALT_KEYS.some(f=>slot['a_'+f]));
   const showAlt=hasAlt||altOn;
@@ -205,11 +204,13 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   return(<div className={'pt-item'+(first?' first':'')} style={style}>
     <PtImg name={slot.name} image={slot.image} onImage={url=>{
       f('image',url);
-      /* A picture pasted on the row goes into the library with the exercise — its name and
-         its Kategori · Tür too — and replaces the one its window carries, so the two always
-         show the same picture. */
+      /* A picture pasted on the row goes into the library with the exercise at once — its name
+         and its Kategori · Tür too — and replaces the one its window carries, so the two always
+         show the same picture and the next programme (another athlete's too) that names this
+         exercise shows the latest one by itself. Even under the brief, which otherwise files
+         names only at the approval: pasting a picture on a named exercise is no typo. */
       const nm=String(slot.name||'').trim();
-      if(url&&nm&&!libDefer){const hit=exLibHit(nm);
+      if(url&&nm){const hit=exLibHit(nm);
         if(!hit)addExerciseToLibrary(nm);
         rememberExerciseTags(nm,slot.tagP,slot.tagS,slot.tagD);
         rememberExerciseImage(nm,url);}

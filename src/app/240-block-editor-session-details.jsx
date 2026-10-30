@@ -11,7 +11,8 @@ const UNCAT='Kategorisiz';
 const EN_NO_TYPE='__none';
 /* True under a table whose exercises reach the library only when its programme is approved
    (the individualization brief): a name typed there and then corrected must not leave the
-   mistyped one behind in the library. The box still reports a fresh name to its host. */
+   mistyped one behind in the library. The box still reports a fresh name to its host. A picture
+   pasted on a row is the exception: it is filed at once (see PtRow). */
 const ExLibDeferCtx=React.createContext(false);
 function ExNameField({value,onChange,onPick,tags,onNewName}){
   const libDefer=React.useContext(ExLibDeferCtx);
