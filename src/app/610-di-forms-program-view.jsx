@@ -40,7 +40,7 @@ function diFileToLibrary(instr){
     if(p.alt)file(t(p.alt.name),p.alt.link,'');
   });
 }
-function DiPatternPlan({plan,onChange:emit}){
+function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
   /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
@@ -91,8 +91,7 @@ function DiPatternPlan({plan,onChange:emit}){
      language, no typing) or a custom one. Preparation goes first and cool-down last, the main
      phase before the cool-down. The first phase opened takes in everything already written —
      unless it is a preparation or a cool-down, which are not where the written work belongs. */
-  const addPhase=preset=>{
-    const cur=latest.current;
+  const openPhase=(cur,preset)=>{
     const id='ph_'+Math.random().toString(36).slice(2,7);
     const n=cur.phases.length+1;
     const np={id,name:preset?'':L(`Faz ${n}`,`Phase ${n}`),preset:preset||''};
@@ -102,8 +101,27 @@ function DiPatternPlan({plan,onChange:emit}){
       const i=cur.phases.findIndex(x=>x.preset==='cool');ph=[...cur.phases.slice(0,i),np,...cur.phases.slice(i)];}
     else ph=[...cur.phases,np];
     const takes=!cur.phases.length&&preset!=='prep'&&preset!=='cool';
-    commit(takes?cur.list.map(p=>({...p,phase:id})):cur.list,ph);
+    return{id,list:takes?cur.list.map(p=>({...p,phase:id})):cur.list,phases:ph};
   };
+  const addPhase=preset=>{const r=openPhase(latest.current,preset);commit(r.list,r.phases);};
+  /* A phase saved for this athlete before: its exercises go at the end of that ready-made phase,
+     which is opened first if it is not open yet. */
+  const addSaved=(kind,sid)=>{
+    const e=phbList(bank,kind).find(x=>x.id===sid);if(!e)return;
+    let cur=latest.current;
+    let target=cur.phases.find(x=>x.preset===kind);
+    if(!target){
+      if(cur.phases.length>=6)return;
+      const r=openPhase(cur,kind);cur={list:r.list,phases:r.phases};target={id:r.id};
+    }
+    commit([...cur.list,...phbRows(e.rows).map(p=>({...p,phase:target.id}))],cur.phases);
+    setFolded(s=>{if(!s.has(target.id))return s;const n=new Set(s);n.delete(target.id);return n;});
+  };
+  const bankView=DI_PHASE_PRESETS.map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1]),
+    items:phbList(bank,pr.id).map(e=>{const rows=e.rows.filter(phbNamed);
+      const names=rows.map(p=>String(p.exercise||'').trim()).filter(Boolean);
+      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,
+        names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
   /* Typing the ready-made name back leaves the name unset, so it keeps following the language. */
   const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>{
     if(x.id!==id)return x;
@@ -239,7 +257,7 @@ function DiPatternPlan({plan,onChange:emit}){
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
     <PlanPhaseBar presets={DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1])}))}
-      onAdd={id=>addPhase(id)}/>
+      onAdd={id=>addPhase(id)} bank={bankView} onPickSaved={addSaved} onForgetSaved={onForgetSaved}/>
     {phases.length===0
       ?section('',false)
       :<>{phases.map((p,i)=><PlanPhase key={p.id} cls={'pc'+(i%PH_COLORS)} folded={folded.has(p.id)} onFold={()=>toggleFold(p.id)}
@@ -333,9 +351,19 @@ function diTableFromClipboard(clip,instr){
   const goals=DI_GOAL_IDS.filter(id=>have.has(id)||want.has(id));
   return{patterns,phases:diMovePhases(phases),goals,added:patterns.length-before.length,total:rows.length};
 }
-function DiInstructionForm({instr,save,athId}){
+function DiInstructionForm({instr,save,athId,date,bank}){
   const[pasted,setPasted]=useState('');
   const clip=useTableClipboard();
+  /* Each ready-made phase written here is kept for the athlete (phbAutoSave), a moment after the
+     typing stops — and at once when the card closes with a change still waiting. */
+  const phbPending=useRef(null);
+  /* Declared first so its cleanup runs before the timer's: another athlete or day keeps the edit pending for this one. */
+  useEffect(()=>()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},[athId,date]);
+  useEffect(()=>{
+    phbPending.current=()=>phbAutoSave(athId,date,instr);
+    const t=setTimeout(()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},900);
+    return()=>clearTimeout(t);
+  },[athId,date,instr.patterns,instr.phases]);
   const copyTable=()=>{
     const c=diTableToClipboard(instr);
     copyTableToClipboard(c);
@@ -385,7 +413,8 @@ function DiInstructionForm({instr,save,athId}){
         <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}
-          onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
+          onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}
+          bank={bank} onForgetSaved={(kind,id)=>phbForget(athId,kind,id)}/></div>
       </div>
     </div>
   </div>);

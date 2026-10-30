@@ -222,7 +222,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <PlanLoadCtx.Provider value={loadCtx}>
-        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id}/>
+        <DiInstructionForm instr={instr} save={saveInstr} athId={plan.ath.id} date={date} bank={plan.ath.phaseBank}/>
       </PlanLoadCtx.Provider>
       {/* The table reaches the athlete's calendar only through this press: until then the
           calendar is HELD — neither this session nor the plain copy of the team session is
