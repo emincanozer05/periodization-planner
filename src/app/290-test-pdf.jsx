@@ -54,7 +54,7 @@ ${RPT_FONT}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 html,body{height:auto}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
-.hdr{display:flex;align-items:center;gap:18px;padding:16px 22px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:14px;margin-bottom:14px}
+.hdr{display:flex;align-items:center;gap:18px;padding:16px 22px;background:#0a0b0d;color:#fff;border-radius:14px;margin-bottom:14px}
 .hdr .av{width:62px;height:62px;border-radius:14px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;font-weight:700;font-size:20px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden;padding:2px}
 .hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:11px;display:block}
 .hdr .info{min-width:0}
@@ -174,7 +174,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700}
 .ath-nm{font-weight:600;line-height:1.2}
 .subm{padding-left:37px;color:var(--dim);font-family:'Google Sans',Arial,sans-serif}
-.hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#0a0b0d,#15171c);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
+.hdr{display:flex;align-items:center;justify-content:space-between;background:#0a0b0d;color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
 .hdr .sub{font-family:'Google Sans',Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
 .hdr .ttl{text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}

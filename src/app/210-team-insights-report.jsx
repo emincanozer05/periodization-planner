@@ -142,7 +142,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .pg-in.fill>.card{flex:1 1 auto;margin-bottom:0}
 .brk{break-before:page;page-break-before:always}
 @media print{.scr-sp2{display:none}}
-.hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:12px;margin-bottom:8px}
+.hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#0a0b0d;color:#fff;border-radius:12px;margin-bottom:8px}
 .hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
 .hdr h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
