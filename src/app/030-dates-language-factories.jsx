@@ -73,7 +73,7 @@ function setTheme(t){
   const light=t==='light';
   if(light)document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');
   try{localStorage.setItem(THEME_KEY,light?'light':'dark');}catch(e){}
-  try{document.querySelector('meta[name="theme-color"]').setAttribute('content',light?'#f2f3f5':'#161616');}catch(e){}
+  try{document.querySelector('meta[name="theme-color"]').setAttribute('content',light?'#f2f3f5':'#101010');}catch(e){}
   try{window.dispatchEvent(new Event('coachos-theme'));}catch(e){}
 }
 function useAppTheme(){
