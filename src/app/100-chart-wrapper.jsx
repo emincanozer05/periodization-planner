@@ -53,12 +53,10 @@ function ChartC({type,chartData,options,plugins}){
   return <canvas ref={ref}/>;
 }
 
-/* Scriptable vertical gradient for Chart.js fills (bottom→top). Returns a solid
-   fallback until the chart area exists. Makes bars/areas feel less flat. */
+/* Chart.js dolgusu: düz renk. Eskiden alttan üste bir gradyandı; tasarım gradyansız
+   olduğundan yalnızca üst renk kullanılır (ikinci parametre geriye uyum için duruyor). */
 function vGrad(topColor,bottomColor){
-  return ctx=>{const ch=ctx.chart,a=ch.chartArea;if(!a)return topColor;
-    const g=ch.ctx.createLinearGradient(0,a.bottom,0,a.top);
-    g.addColorStop(0,bottomColor);g.addColorStop(1,topColor);return g;};
+  return topColor;
 }
 /* Frosted-glass bar fill: translucent top→bottom gradient of an rgb colour, so the
    dark background shows through for an iOS-glass look. `boost` brightens on hover. */
@@ -91,7 +89,7 @@ const monoZones={
     ctx.restore();
   }
 };
-/* Soft neon halo behind each glass bar — gives depth & a stylish frosted glow.
+/* Eskiden çubukların arkasında neon bir hale çiziyordu; düz tasarımda hale yok.
    Scoped: pass `plugins={[barGlow]}` to the chart that wants it. */
 const barGlow={
   id:'barGlow',
@@ -99,8 +97,8 @@ const barGlow={
     const ds=chart.data.datasets[args.index];if(!ds)return;
     const ctx=chart.ctx;ctx.save();
     const bc=ds.borderColor;
-    ctx.shadowColor=(typeof bc==='string'&&bc!=='transparent')?bc:(typeof ds.backgroundColor==='string'?ds.backgroundColor:'rgba(34,211,238,.6)');
-    ctx.shadowBlur=12;ctx.shadowOffsetX=0;ctx.shadowOffsetY=2;
+    // Düz tasarım: parlama yok (eklenti, onu isteyen grafiklerde zararsız bir no-op olarak kalır).
+    ctx.shadowColor='transparent';ctx.shadowBlur=0;
   },
   afterDatasetDraw(chart){chart.ctx.restore();}
 };

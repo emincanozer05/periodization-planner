@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   KINEXON TARZI — tüm sekmelerin son stil katmanı
+
+   Spor performans panolarının sade, veri öncelikli görünümü:
+     • Koyu kabuk: masaüstünde üst çubuk ve kenar menüsü grafit renkte; içerik açık gri zemin
+       üstünde beyaz, gölgesiz, ince çerçeveli kartlar (açık tema). Koyu temada aynı düzen.
+     • Keskin köşeler: kartlar 6px, küçük öğeler 4px (--r-md / --r-sm, 10-styles.css :root).
+       Daireler ve haplar kendi değerinde.
+     • Gradyan, parlama, ışık lekesi, nokta/ızgara deseni yok; renk yalnızca veride ve tek
+       aksanda (seçili menü, ana düğme, odak).
+     • Başlıklar aksan çubuksuz; sayılar tablo hizasında (tabular), etiketler küçük ve
+       büyük harfli (Türkçe büyük harf için <html lang> dile göre ayarlı).
+     • Kartlar üzerine gelince yükselmez; yalnız çerçeve tonu değişir.
+
+   Özgüllük: önceki katmanlar :is(:root,:root[data-theme]) önekini kullanıyor; burada da aynı
+   önek (+ gerektiğinde bir üst sınıf) kullanılıyor ve bu dosya en son yüklendiği için kazanıyor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════════ RENKLER ═════════════ */
+:root{
+  /* Kabuk (üst çubuk + kenar menüsü): iki temada aynı grafit. */
+  --k-chrome:#0f1216;--k-chrome-2:#181c21;--k-line:#252b32;
+  --k-t:#eef1f4;--k-t2:#b4bbc5;--k-t3:#7f8792;--k-ac:#4ea1ff;
+}
+:root[data-theme="light"]{
+  --bg:#eef0f3;--bg2:#f5f6f8;--panel:#ffffff;--elevated:#f6f7f9;--hover:#eceef2;
+  --border:#dde1e6;--border2:#c9ced6;
+  --text:#0c1014;--text2:#353c46;--muted:#59616c;--dim:#656d78;
+  --shadow:none;--shadow-glow:0 0 0 1px rgba(10,108,220,.3);
+}
+:root:not([data-theme="light"]){
+  --bg:#0c0e11;--bg2:#111418;--panel:#14171b;--elevated:#191d22;--hover:#1f242a;
+  --border:#252a31;--border2:#323842;
+  --shadow:none;
+}
+
+/* ═════════════ KABUK (masaüstü) ═════════════ */
+@media(min-width:1025px){
+  :is(:root,:root[data-theme]) .topbar{background:var(--k-chrome);border-bottom:1px solid var(--k-line);color:var(--k-t)}
+  /* 10-styles.css'teki `.sidebar{background:…!important}` ve `.team-sw{…!important}` ancak !important ile geçilir. */
+  :is(:root,:root[data-theme]) .app .sidebar{background:var(--k-chrome)!important;border-right:1px solid var(--k-line)}
+  :is(:root,:root[data-theme]) .topbar .tb-sync .team-sw.sync-chip{background:transparent!important;border-color:transparent!important}
+  /* Logo koyu zemin için çizildi: açık temadaki ters çevirme kalkar. */
+  :root[data-theme="light"] .tb-logo{filter:none}
+  .tb-club,.topbar .brand-team .bt-label{color:var(--k-t3)}
+  :is(:root,:root[data-theme]) .topbar .bt-row.team-sel,
+  :is(:root,:root[data-theme]) .topbar .lang-inline{background:var(--k-chrome-2);border:1px solid var(--k-line);border-radius:var(--r-sm)}
+  :is(:root,:root[data-theme]) .topbar select{color:var(--k-t);background-color:transparent}
+  :is(:root,:root[data-theme]) .topbar select option{color:#0c1014;background:#fff}
+  .topbar .tb-sync .sync-txt b{color:var(--k-t2)}
+  :is(:root,:root[data-theme]) .topbar button:not(.btn){color:var(--k-t2)}
+
+  /* Menü: grafit üstünde açık gri yazı; seçili satır hafif dolgu + solda aksan çizgisi. */
+  :is(:root,:root[data-theme]) .sidebar .nav-glabel{color:var(--k-t3);font-size:10.5px;letter-spacing:.12em}
+  :is(:root,:root[data-theme]) .sidebar .nav-item{color:var(--k-t2);border:0;border-radius:var(--r-sm)}
+  :is(:root,:root[data-theme]) .sidebar .nav-item .ni-ic{color:var(--k-t3)}
+  :is(:root,:root[data-theme]) .sidebar .nav-item:hover{background:rgba(255,255,255,.05);color:var(--k-t)}
+  :is(:root,:root[data-theme]) .sidebar .nav-item.active{background:rgba(255,255,255,.08);color:#fff;box-shadow:inset 2px 0 0 var(--k-ac)}
+  :is(:root,:root[data-theme]) .sidebar .nav-item.active .ni-ic{color:var(--k-ac)}
+  :is(:root,:root[data-theme]) .sidebar .nav-item .ni-count{color:var(--k-t3)}
+  .sidebar .sb-account{border-top-color:var(--k-line)}
+  .sidebar .sb-account .sba-n{color:var(--k-t)}
+  .sidebar .sb-account .sba-e{color:var(--k-t3)}
+  .sidebar .sb-account .sba-av{background:var(--k-chrome-2);border-color:var(--k-line);color:var(--k-t)}
+  .sidebar .sb-account .sba-out{border-color:var(--k-line);color:var(--k-t2)}
+  .sidebar .sb-account .sba-out:hover{color:#ff8080;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1)}
+  /* Kenar menüsünün kaydırma çubuğu koyu zeminde silik. */
+  .sidebar{scrollbar-color:var(--k-line) transparent}
+}
+
+/* ═════════════ SAYFA BAŞLIĞI ═════════════ */
+:is(:root,:root[data-theme]) .ph-hero{padding:0 0 14px;margin-bottom:18px}
+:is(:root,:root[data-theme]) .ph-ttl{font-size:23px;font-weight:700;letter-spacing:-.02em}
+:is(:root,:root[data-theme]) .ph-sub{font-size:12.5px;letter-spacing:0}
+:is(:root,:root[data-theme]) .ph-stat-l{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+:is(:root,:root[data-theme]) .ph-stat-v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+/* ═════════════ KARTLAR ═════════════ */
+:is(:root,:root[data-theme]) .panel,
+:is(:root,:root[data-theme]) .ap-head,
+:is(:root,:root[data-theme]) .rc,
+:is(:root,:root[data-theme]) .rr,
+:is(:root,:root[data-theme]) .rsf-card,
+:is(:root,:root[data-theme]) .rec-card,
+:is(:root,:root[data-theme]) .pda-card,
+:is(:root,:root[data-theme]) .tcard,
+:is(:root,:root[data-theme]) .ex-card,
+:is(:root,:root[data-theme]) .stat,
+:is(:root,:root[data-theme]) .aicb,
+:is(:root,:root[data-theme]) .su-hero,
+:is(:root,:root[data-theme]) .calw-grid,
+:is(:root,:root[data-theme]) .calw-stats{border-radius:var(--r-md);box-shadow:none}
+:is(:root,:root[data-theme]) .su-hero{background:var(--panel)}
+/* Kartın üst kenarındaki renkli şeritler (öneri / program kartları) sade bir çizgi. */
+.rsf-card::before,.rec-card::before,.pda-card::before{height:2px;border-radius:0;opacity:1}
+
+/* Bölüm başlıkları: aksan çubuğu yok, tek ölçü. */
+.panel h2::before,.mc-title::before,.lb-title::before,.it-head-t b::before,.ck-head-t b::before,.lm-title::before{display:none}
+.tib-h1 i{display:none}
+.panel h2,.mc-title,.lb-title,.it-head-t b,.ck-head-t b,.ck-head-t b.ck-h-lg,.tib-h1,.su-eq-hd-l h2,.cmp-h b,.lm-title{
+  font-size:15px;font-weight:700;letter-spacing:-.005em}
+.panel h2{gap:8px}
+
+/* Sayılar sütunda hizalı. */
+.stat .v,.cws-v,.metric .v,.td-kpi b,.wv-hero b{font-variant-numeric:tabular-nums}
+
+/* Tablo başlıkları: küçük, büyük harf, ince alt çizgi; zemin düz. */
+:is(:root,:root[data-theme]) th{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+/* ═════════════ DÜĞMELER VE ALANLAR ═════════════ */
+:is(:root,:root[data-theme]) .btn,
+:is(:root,:root[data-theme]) .rost-add,
+:is(:root,:root[data-theme]) .calm-share{border-radius:var(--r-sm);font-weight:600}
+:is(:root,:root[data-theme]) .btn.danger{background:var(--high-t);border-color:var(--high-t)}
+/* Seçili segment düğmeleri: düz aksan dolgusu (gölge/parlama yok). */
+:is(:root,:root[data-theme]) .lb-seg button.on,
+:is(:root,:root[data-theme]) .calm-seg button.on,
+:is(:root,:root[data-theme]) .ath-seg button.on{box-shadow:none}
+:is(:root,:root[data-theme]) input:focus,
+:is(:root,:root[data-theme]) select:focus,
+:is(:root,:root[data-theme]) textarea:focus{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+
+/* ═════════════ BAŞLIK BANTLARI (Wellness, Takım Verileri, Gelişim Raporu) ═════════════ */
+/* Işık lekesi, nokta/ızgara deseni ve renkli alt şerit yok: düz grafit bant, kabukla aynı renk. */
+:is(:root,:root[data-theme]) .wv-hero,
+:is(:root,:root[data-theme]) .td-hero,
+:is(:root,:root[data-theme]) .dr-hero{background:var(--k-chrome);border:1px solid var(--k-line);border-radius:var(--r-md);box-shadow:none}
+.wv-glow,.wv-dots,.td-hero-glow,.dr-hero::before,.dr-hero::after{display:none}
+
+/* ═════════════ HAREKET: kartlar yükselmez ═════════════ */
+:is(:root,:root[data-theme]) :is(.atc-ev,.atc-ses,.ath-card-v,.ath-card,.ath-tile,.btn,.cal-day,.calm-cell,.calw-ses,.ck-copy,
+  .ck-hstat,.cws,.ev2-card,.ev2-res-row,.ev2-tile,.ex-card,.it2-pre,.lb-rpe-cell,.metric,.ph-stat,.rc,.rm-chip,.rost-add,
+  .rs-card2,.rsf-card,.shw-card,.stat,.stf-c,.tib-al,.tl-seg,.tp-card2,.tpc,.tpl-cat,.tryo-add,.tryo-statcard,.type-card,
+  .wlt-card,.wv-cal-d,.wv-day,.wv-ma):hover{transform:none}
+:is(:root,:root[data-theme]) .wv-day.sel{transform:none}
