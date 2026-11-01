@@ -159,7 +159,8 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
   const{jsPDF}=window.jspdf;const doc=new jsPDF();
   const fontName=await pdfUseGoogleSans(doc);
   // header
-  doc.setFillColor(8,145,178);doc.rect(0,0,210,28,'F');
+  // Kinexon: siyah başlık bandı + altında mavi çizgi; tablo başlıkları kömür grisi, sütun adları açık mavi.
+  doc.setFillColor(16,16,16);doc.rect(0,0,210,28,'F');doc.setFillColor(31,124,194);doc.rect(0,28,210,1.2,'F');
   doc.setTextColor(255);doc.setFontSize(18);doc.text(teamName,14,14);
   doc.setFontSize(11);doc.text(`${L('Koç Raporu','Coach Report')} — ${periodLabel}`,14,22);
   doc.setTextColor(40);
@@ -172,10 +173,10 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
   // weekly table
   doc.autoTable({startY:66,head:[[L('Hafta başı','Week starting'),L('Toplam AU','Total AU'),L('Ort.','Mean'),L('SS','SD'),L('Monotoni','Monotony'),L('Zorlanma','Strain'),L('Durum','Flag')]],
     body:monthWeeks.map(w=>[fd(w.wkStart),Math.round(w.total),w.mean.toFixed(0),w.sd.toFixed(1),w.monotony.toFixed(2),Math.round(w.strain),!w.monotony?'—':w.monotony>2?L('YÜKSEK','HIGH'):w.monotony>=1.5?L('İZLE','WATCH'):w.monotony>=1?L('NORMAL','NORMAL'):L('DÜŞÜK','LOW')]),
-    headStyles:{font:fontName,fillColor:[8,145,178]},styles:{font:fontName,fontSize:9}});
+    headStyles:{font:fontName,fillColor:[44,44,44],textColor:[159,210,247]},alternateRowStyles:{fillColor:[243,244,245]},styles:{font:fontName,fontSize:9}});
   // purpose mix
   if(pMix.length){doc.autoTable({head:[[L('Antrenman Türü','Training Purpose'),L('Dakika','Minutes'),L('% toplam','% of total')]],
-    body:pMix.map(p=>[p.label,p.min,p.pct.toFixed(1)+'%']),headStyles:{font:fontName,fillColor:[139,92,246]},styles:{font:fontName,fontSize:9}});}
+    body:pMix.map(p=>[p.label,p.min,p.pct.toFixed(1)+'%']),headStyles:{font:fontName,fillColor:[44,44,44],textColor:[159,210,247]},alternateRowStyles:{fillColor:[243,244,245]},styles:{font:fontName,fontSize:9}});}
   doc.save(`${teamName.replace(/\s+/g,'_')}_report_${periodLabel.replace(/[\s/]+/g,'_')}.pdf`);
 }
 

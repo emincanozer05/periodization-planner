@@ -123,7 +123,7 @@ function printTeamInsights(R){
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f7f8fa}
+:root{--accent:#1f7cc2;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f7f8fa}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 /* The sheet is laid out at the printed page's own width, on screen as well, so the
    height measured in the window is the height the printer will see. #fit is given that
@@ -142,19 +142,19 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .pg-in.fill>.card{flex:1 1 auto;margin-bottom:0}
 .brk{break-before:page;page-break-before:always}
 @media print{.scr-sp2{display:none}}
-.hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#0a0b0d;color:#fff;border-radius:12px;margin-bottom:8px}
-.hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
+.hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#0a0b0d;color:#fff;border-radius:2px;margin-bottom:8px}
+.hdr .lg{width:44px;height:44px;border-radius:2px;background:#1c2030;border:2px solid rgba(31,124,194,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
 .hdr h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
-.hdr .date{display:inline-block;margin-top:5px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .date{display:inline-block;margin-top:5px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#fff;background:var(--accent);padding:4px 11px;border-radius:2px;letter-spacing:.06em}
 .hdr .ttl{margin-left:auto;text-align:right;font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:8px}
-.kpi{border:1px solid var(--border);border-radius:10px;padding:8px 11px;background:var(--bg2)}
+.kpi{border:1px solid var(--border);border-radius:2px;padding:8px 11px;background:var(--bg2)}
 .kpi .kv{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
 .kpi .kv u{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
 .kpi .kk{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
-.card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px;display:flex;flex-direction:column}
+.card{border:1px solid var(--border);border-radius:2px;padding:10px 12px;background:#fff;margin-bottom:7px;display:flex;flex-direction:column}
 /* WHAT IS IN THE CARD FOLLOWS THE CARD. A frame stretched to the foot of the sheet with
    its rows still bunched at the top has not filled anything — it has moved the white
    space inside the border. So the body takes the height the frame was given and each
@@ -196,7 +196,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .cols>div>.card:last-child{flex:1 1 auto;margin-bottom:0}
 .none{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
 .algrid{display:grid;gap:6px}
-.al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;padding:6px 8px;background:#fffdf7}
+.al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:2px;padding:6px 8px;background:#fffdf7}
 .al.high{border-left-color:#be123c;background:#fff7f8}
 .al .k{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
 .al.high .k{color:#be123c}
@@ -210,7 +210,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .sd-r .n{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600}
 .sd-r .m{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);white-space:nowrap}
 .mini{display:inline-block;width:100%;min-width:34px;height:5px;border-radius:3px;background:#eceef1;overflow:hidden;vertical-align:middle}
-.mini i{display:block;height:100%;border-radius:3px}
+.mini i{display:block;height:100%;border-radius:2px}
 .fl{display:flex;flex-direction:column}
 .fl-r{padding:4px 0;border-bottom:1px solid #f1f2f4;flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
 .fl-r:last-child{border-bottom:none}
@@ -218,7 +218,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .fl-r .nm{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
 .fl-r .nm u{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
 .fl-r .tg{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-.tag{font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:2px 6px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
+.tag{font-family:'Google Sans',Arial,sans-serif;font-size:8px;padding:2px 6px;border-radius:2px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);letter-spacing:.03em}
 /* A pain chip is graded by colour as well as by word — grey for a region that was
    ticked on a question that never asked how bad it is, then amber, orange, red. The
    small figure on the end is how many days of the week the region came back. */
@@ -239,8 +239,8 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .tbl tfoot td{border-top:1.5px solid var(--border);border-bottom:none;font-weight:700;padding-top:6px}
 .tr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:end;height:84px;margin-bottom:6px}
 .tr .c{display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end}
-.tr .bar{width:100%;max-width:34px;height:100%;background:#f1f2f4;border-radius:5px;display:flex;align-items:flex-end;overflow:hidden}
-.tr .bar i{display:block;width:100%;background:#c9cfd6;border-radius:5px}
+.tr .bar{width:100%;max-width:34px;height:100%;background:#f1f2f4;border-radius:2px;display:flex;align-items:flex-end;overflow:hidden}
+.tr .bar i{display:block;width:100%;background:#c9cfd6;border-radius:2px}
 .tr .c.on .bar i{background:var(--accent)}
 .tr .v{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:600}
 .tr .l{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
@@ -248,7 +248,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px
 .legend{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);letter-spacing:.03em;padding-top:6px;border-top:1px solid #f1f2f4;margin-top:6px}
 .footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);margin-top:4px;padding-top:6px;border-top:1px solid var(--border);letter-spacing:.06em}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:2px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>

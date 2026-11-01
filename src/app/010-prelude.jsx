@@ -34,6 +34,16 @@ window.addEventListener('load',()=>{
   setTimeout(()=>(window.requestIdleCallback||setTimeout)(go,{timeout:8000}),6000);
 });
 
+/* KINEXON ÇIKTI KATMANI — bütün yazdırma/PDF belgelerinde RPT_FONT ile gelir (her belge onu
+   <style>'ının başına koyuyor; kurallar !important olduğu için belgenin kendi kurallarından sonra
+   da geçerli). Beyaz kâğıt üstünde uygulamanın Kinexon görünümü: tablo başlık satırı koyu kömür
+   grisi + açık mavi sütun adları, bölüm başlıkları Kinexon mavisi, arka plan renkleri basılır.
+   Vurgu rengi (#1f7cc2) ve keskin köşeler belgelerin kendi CSS'inde. */
+const KX_PRINT=`*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+thead th{background:#2c2c2c !important;color:#9fd2f7 !important;border-color:#2c2c2c !important}
+.sh .st,.section-h,.sec-h .t,.sub-h,.mono-h,.ath-tbl-h{color:#1f7cc2 !important}
+.hd .ttl,.hdr .ttl{color:#6ab8ef !important}`;
+
 /* Report/print/PDF font — Google Sans, served from this site's own fonts/ folder (Latin
    subset, OFL) so exported outputs look the same offline and in print windows. Uses an
    absolute URL so the font resolves in both print windows (window.open) and offscreen iframes. */
@@ -42,5 +52,6 @@ const RPT_FONT=`@font-face{font-family:'Google Sans';src:url('${location.origin}
 @font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
 @font-face{font-family:'Google Sans';src:url('${location.origin}/fonts/GoogleSans-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
 *{font-family:'Google Sans','Segoe UI',system-ui,sans-serif !important;font-style:normal !important}
-h1,h2,h3,h4,h5,h6{font-weight:700 !important}`;
+h1,h2,h3,h4,h5,h6{font-weight:700 !important}
+`+KX_PRINT;
 

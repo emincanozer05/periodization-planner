@@ -72,13 +72,17 @@ function printResearch(rec){
 ${RPT_FONT}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'Google Sans',Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
+/* Kinexon: üstte siyah bant (CoachOS · Araştırma), başlık altında mavi çizgi. */
+.kx-top{display:flex;justify-content:space-between;align-items:center;background:#101010;color:#fff;padding:8px 12px;margin-bottom:14px;font-size:12px;font-weight:800}
+.kx-top b{color:#3aa0e6}.kx-top span{font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6ab8ef}
 h1{font-size:23px;font-weight:800;margin-bottom:8px;line-height:1.2}
 .meta{font-size:12px;color:#475569;margin-bottom:2px}
-.apa{font-size:12px;color:#334155;background:#f1f5f9;border-left:3px solid #0891b2;padding:10px 12px;border-radius:6px;margin:14px 0;word-break:break-word}
-.sumh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#0891b2;margin:20px 0 8px;border-bottom:2px solid #e5e7eb;padding-bottom:5px}
+.apa{font-size:12px;color:#334155;background:#f1f5f9;border-left:3px solid #1f7cc2;padding:10px 12px;border-radius:2px;margin:14px 0;word-break:break-word}
+.sumh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#1f7cc2;margin:20px 0 8px;border-bottom:2px solid #101010;padding-bottom:5px}
 .sum{font-size:13px}
 .sum h2{font-size:18px;margin:.5em 0}.sum h3{font-size:15px;margin:.5em 0}.sum ul,.sum ol{padding-left:22px;margin:.4em 0}
 </style></head><body>
+<div class="kx-top"><span style="all:unset;font-size:12px;font-weight:800">COACH<b>OS</b></span><span>${L('Araştırma Özeti','Research Summary')}</span></div>
 <h1>${esc(rec.title||L('(başlıksız makale)','(untitled article)'))}</h1>
 ${rec.authorsText?`<div class="meta"><b>${L('Yazar(lar):','Author(s):')}</b> ${esc(rec.authorsText)}</div>`:''}
 ${(rec.journal||rec.year)?`<div class="meta">${esc([rec.journal,rec.year].filter(Boolean).join(' · '))}</div>`:''}

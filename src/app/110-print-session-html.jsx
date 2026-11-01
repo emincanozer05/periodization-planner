@@ -15,19 +15,19 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
    only crowd a header that has to earn its height back in exercises. Set as plain text
    (not the app's own dark-background logo image) so it reads straight on white paper
    with no box behind it. */
-.doc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.doc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;background:#101010;padding:8px 12px}
 /* The mark and what it stands for, read as one lockup on the left of the strip. */
 .doc-top-l{display:inline-flex;align-items:center;gap:9px;min-width:0}
 .doc-top .wm{display:inline-flex;align-items:center;
-  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#0f172a;flex:none}
-.doc-top .wm b{color:#0094ff;font-weight:800}
+  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#fff;flex:none}
+.doc-top .wm b{color:#3aa0e6;font-weight:800}
 /* Deliberately quiet: it explains the mark for a parent or an athlete reading the sheet
    for the first time, and should not compete with the team name below it. */
-.doc-top .wm-sub{font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.4px;white-space:nowrap}
-.doc-top-date{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
+.doc-top .wm-sub{font-size:10px;font-weight:600;color:#8b9099;letter-spacing:.4px;white-space:nowrap}
+.doc-top-date{font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:600;color:#c3c8cf;letter-spacing:.3px}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
-.doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
+.doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1f7cc2}
 .doc-l{display:flex;align-items:center;gap:12px;min-width:0}
 /* Bounded rather than forced to a fixed height: a square crest caps at max-height, a wide
    wordmark at max-width, and neither ends up letterboxed inside a box the wrong shape.
@@ -52,15 +52,15 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
    session flows naturally across pages (no half-empty pages). The header /
    metadata / block headings glue themselves to the next content using
    break-after:avoid, so we never get orphaned section headers. */
-.sess{margin-bottom:10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+.sess{margin-bottom:10px;border-radius:2px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04)}
 /* A keyline of the product's blue around the black banner: on white paper the banner
    otherwise reads as a solid slab dropped on the page, and the frame gives it an edge
    without spending any of the sheet's colour budget on a fill. Two points rather than
    one: at a hairline the blue was there on screen but the first inkjet pass thinned it
    to almost nothing, and this is a sheet that gets printed far more often than viewed. */
-.sh{padding:10px 15px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border:2px solid #0094ff;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
+.sh{padding:10px 15px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border:2px solid #1f7cc2;border-radius:0;break-after:avoid;page-break-after:avoid}
 .sh-l{font-size:18px;font-weight:800;letter-spacing:.2px;flex:1}
-.sh-own{display:block;font-size:12px;font-weight:600;color:#e6ff55;letter-spacing:.6px;text-transform:uppercase;margin-left:39px}
+.sh-own{display:block;font-size:12px;font-weight:600;color:#6ab8ef;letter-spacing:.6px;text-transform:uppercase;margin-left:39px}
 .sess.brk{break-before:page;page-break-before:always}
 /* Each athlete on a document of several starts a fresh page, under their own header. */
 .ath-doc.brk{break-before:page;page-break-before:always}
@@ -86,11 +86,11 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
    of work it is as a quiet tag at the far end, and its exercises in a six-column table —
    #, the exercise with its coaching text under it, Set × Reps, Load, Tempo, Rest. The
    table's head repeats on every page a long phase breaks onto; a row never splits. */
-const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overflow:hidden;margin-bottom:11px;background:#fff}
+const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:2px;overflow:hidden;margin-bottom:11px;background:#fff}
 .pc-hd{display:flex;align-items:center;gap:9px;padding:8px 12px;background:#f4f5f7;border-bottom:1px solid #e5e7eb;break-after:avoid;page-break-after:avoid}
-.pc-dot{flex:none;width:3px;height:14px;border-radius:2px;background:#9aab3a}
+.pc-dot{flex:none;width:3px;height:14px;border-radius:2px;background:#1f7cc2}
 .pc-t{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#0a0b0d}
-.pc-tag{margin-left:auto;flex:none;font-size:9px;color:#5c626c;border:1px solid #e5e7eb;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.pc-tag{margin-left:auto;flex:none;font-size:9px;color:#5c626c;border:1px solid #e5e7eb;border-radius:2px;padding:2px 8px;white-space:nowrap}
 .pc-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
 .pc-tbl thead{display:table-header-group}
 .pc-tbl th{font-size:9px;font-weight:600;color:#5c626c;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;text-align:center;border-bottom:1px solid #e5e7eb}
@@ -111,9 +111,9 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
    athlete programme's (printDiProgram), so a superset reads the same on both sheets. */
 const RPT_BADGE_CSS=`/* Superset rows get the green badge; a plain sequence number otherwise gets the same
    pill shape in neutral grey, so the column reads as one system either way. */
-.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
+.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:2px;text-align:center;
   font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
-.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+.ex-badge.ss{background:rgba(31,124,194,.16);color:#165f96;border:1px solid rgba(31,124,194,.5)}
 /* The alternative rides directly under the exercise it replaces, tinted amber and bound
    to it, so the pair reads as one prescription with two ways of being done rather than
    as two exercises in a row. The binding is the whole point: the row above gives up its
@@ -460,26 +460,26 @@ ${RPT_HEAD_CSS}
 /* Smaller than .ex-name on purpose — uppercase, 800 weight, letter-spaced and sitting on a
    green rule is enough to read as the heading over its exercises, and matching the exercise
    names would make the block titles shout. */
-.bh{font-size:15px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin:2px 0 4px 0;padding-bottom:4px;border-bottom:2px solid #9aab3a;display:block;break-after:avoid;page-break-after:avoid}
+.bh{font-size:15px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin:2px 0 4px 0;padding-bottom:4px;border-bottom:2px solid #1f7cc2;display:block;break-after:avoid;page-break-after:avoid}
 /* Ball practice prints as cards, not rows: the diagram is the drill, so it gets real
    width on the page and the numbers sit beside it. */
 .ball-block .bh{border-bottom-color:#ea8c2a}
 .bh-kind{float:right;font-family:'Google Sans',Arial,sans-serif;font-size:8px;letter-spacing:1px;
-  color:#ea8c2a;border:1px solid #f0c79a;border-radius:4px;padding:1px 5px;vertical-align:middle}
+  color:#ea8c2a;border:1px solid #f0c79a;border-radius:2px;padding:1px 5px;vertical-align:middle}
 .drill-cards{display:flex;flex-direction:column;gap:9px;margin-top:6px}
-.drill-card{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.drill-card{border:1px solid #e2e8f0;border-radius:2px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .dc-hd{display:flex;align-items:center;gap:8px;background:#fff7ef;border-bottom:1px solid #f0e0cf;padding:5px 9px}
 .dc-no{font-family:'Google Sans',Arial,sans-serif;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
-  border-radius:4px;padding:1px 6px}
+  border-radius:2px;padding:1px 6px}
 .dc-nm{font-size:13px;font-weight:700;color:#0f172a;flex:1}
 .dc-body{display:flex;gap:11px;padding:9px}
 .dc-fig{flex:0 0 46%;max-width:46%}
-.court-fig{width:100%;height:auto;display:block;border:1px solid #e2e8f0;border-radius:6px}
-.dc-nofig{padding:22px 8px;text-align:center;color:#cbd5e1;font-size:11px;border:1px dashed #e2e8f0;border-radius:6px}
+.court-fig{width:100%;height:auto;display:block;border:1px solid #e2e8f0;border-radius:2px}
+.dc-nofig{padding:22px 8px;text-align:center;color:#cbd5e1;font-size:11px;border:1px dashed #e2e8f0;border-radius:2px}
 .dc-txt{flex:1;min-width:0}
 .dc-presc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
 .dc-presc span{font-family:'Google Sans',Arial,sans-serif;font-size:10.5px;font-weight:700;color:#334155;
-  background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:2px 8px}
+  background:#f1f5f9;border:1px solid #e2e8f0;border-radius:2px;padding:2px 8px}
 
 /* The exercises print as phase cards — the same cards the individualization panel's
    printout draws (RPT_PHASE_CSS), so a programme reads the same whichever sheet it
@@ -491,8 +491,8 @@ ${RPT_BADGE_CSS}
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
 .ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#6f7d29;text-decoration:none;
-  background:rgba(154,171,58,.14);border:1px solid rgba(154,171,58,.45);border-radius:5px;
+.ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#165f96;text-decoration:none;
+  background:rgba(31,124,194,.14);border:1px solid rgba(31,124,194,.45);border-radius:2px;
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
@@ -500,7 +500,7 @@ ${RPT_BADGE_CSS}
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
    a picture does not make its row taller than the text beside it needs. */
-.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;border-radius:2px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
@@ -518,7 +518,7 @@ ${RPT_BADGE_CSS}
   text-transform:uppercase;color:#334155}
 .ph-note{font-size:9.5px;color:#94a3b8;margin-left:9px}
 
-.empty-block{padding:16px;text-align:center;color:#cbd5e1;font-size:12px;background:#fafbfc;border-radius:6px;border:1px dashed #e2e8f0}
+.empty-block{padding:16px;text-align:center;color:#cbd5e1;font-size:12px;background:#fafbfc;border-radius:2px;border:1px dashed #e2e8f0}
 
 /* Footer */
 .sf{padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:24px;align-items:stretch;border-radius:0 0 7px 7px;break-inside:avoid;page-break-inside:avoid}
