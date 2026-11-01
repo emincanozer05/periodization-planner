@@ -510,7 +510,7 @@ function diRowLabels(rows){
 }
 const diDose=d=>{
   const reps=d.reps||d.duration||'';
-  return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
+  return d.sets?(reps?`${d.sets} × ${reps}`:`${d.sets}×`):(reps||'—');
 };
 /* The programme on paper: the rows the card draws — the calendar's version once it has
    been edited there — laid out for the gym floor, one exercise to a line, and handed
@@ -546,11 +546,13 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
         <td class="ex"><div class="ex-ex-wrap">${img(al)}<div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
           <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></div></td>
         <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
-        <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
+        <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td>
+        <td class="nt">${rptNoteCell([al.reason],al.name,al.pattern)}</td></tr>`:'';
       return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${num}</td>
-        <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt">${rptPatHTML(r.name,r.pattern)}<div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</div></div></td>
+        <td class="ex"><div class="ex-ex-wrap">${img(r)}<div class="ex-ex-txt"><div class="pc-nm">${esc(r.name)}</div></div></div></td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
-        <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
+        <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td>
+        <td class="nt">${rptNoteCell(String(r.why||'').split('\n'),r.name,r.pattern)}</td></tr>${alRow}`;
     }).join('');
     return rptPhaseCard(bl.title,bl.tag,trs);
   }).join('');
@@ -564,12 +566,13 @@ body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 
 ${RPT_HEAD_CSS}
 ${RPT_PHASE_CSS}
 ${RPT_BADGE_CSS}
-.bs{padding:10px 16px}
+.bs{padding:12px 0 0}
 .bs .pc-card:last-child{margin-bottom:0}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
-.ex-ex-wrap{display:flex;align-items:center;gap:8px;min-width:0}
+.ex-ex-wrap{display:flex;align-items:center;gap:10px;min-width:0}
 .ex-ex-txt{min-width:0}
-.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;border-radius:2px;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:22mm;height:13mm;border:1px solid #e2e8f0;background:#fff;overflow:hidden}
+.dash{color:#cbd5e1;font-weight:400}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
@@ -581,7 +584,7 @@ ${RPT_BADGE_CSS}
 <div class="scr-sp" style="height:66px"></div>
 ${rptDocHead(esc(a.name||'—'),fdLong(date),
   rptHeadStats(rptVolStats((rows||[]).map(r=>({name:r.name,sets:r.adjusted&&r.adjusted.sets,reps:r.adjusted&&r.adjusted.reps,load:r.load}))),
-    ...sesRpeRange({rpeTarget:rpe})),teamLogo())}
+    ...sesRpeRange({rpeTarget:rpe})),teamLogo(),rptAthInfo(a))}
 <div class="sess">
 ${rptSessBanner({no:1,nameHTML:esc(title),time,duration,purpose:focus,
   meta:[{lbl:L('Pozisyon','Position'),val:a.position?posOf(a.position):''}]})}

@@ -162,7 +162,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     const setup=team.setup||{};
     try{
       printDayA4(setup.teamName||team.name||'',fdLong(date),[],{withImages:withImages===true,
-        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[picOf(a,written[a.id])]}))});
+        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),info:rptAthInfo(a),sessions:[picOf(a,written[a.id])]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){
       const msg=L(`Programı henüz takvime yazılmayan ${missing.length} sporcu çıktıya girmedi: ${missing.join(', ')}.`,
