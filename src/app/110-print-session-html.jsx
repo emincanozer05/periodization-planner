@@ -89,12 +89,12 @@ const RPT_PHASE_CSS=`.pc-card{margin-bottom:12px}
 .pc-tbl td{padding:6px;text-align:center;vertical-align:middle;border-top:1px solid #e3e7eb;font-size:10.5px;color:#3b4252;background:#fff}
 .pc-tbl tbody tr:first-child td{border-top:0}
 .pc-tbl tr{break-inside:avoid;page-break-inside:avoid}
-.pc-tbl th.n,.pc-tbl td.n{width:7%;color:#0a0b0d;font-weight:800;font-size:12px}
-.pc-tbl th.ex,.pc-tbl td.ex{width:33%;text-align:left}
-.pc-tbl th.ds,.pc-tbl td.ds{width:12%}
-.pc-tbl th:nth-child(4),.pc-tbl th:nth-child(5){width:8%}
-.pc-tbl th:nth-child(6){width:6%}
-.pc-tbl th:nth-child(7){width:9%}
+.pc-tbl th.n,.pc-tbl td.n{width:5%;color:#0a0b0d;font-weight:800;font-size:12px}
+.pc-tbl th.ex,.pc-tbl td.ex{width:38%;text-align:left}
+.pc-tbl th.ds,.pc-tbl td.ds{width:11%}
+.pc-tbl th:nth-child(4),.pc-tbl th:nth-child(5){width:7%}
+.pc-tbl th:nth-child(6){width:5%}
+.pc-tbl th:nth-child(7){width:8%}
 .pc-tbl th.nt,.pc-tbl td.nt{text-align:left}
 .pc-tbl td.nt{font-size:10px;color:#3b4252;line-height:1.4}
 .pc-nm{font-size:12px;font-weight:700;color:#0a0b0d}
@@ -516,7 +516,7 @@ ${RPT_BADGE_CSS}
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. Small, so
    a picture does not make its row taller than the text beside it needs. */
-.ex-imgwrap{flex:none;line-height:0;width:22mm;height:13mm;border:1px solid #e2e8f0;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 

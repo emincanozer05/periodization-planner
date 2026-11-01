@@ -571,7 +571,7 @@ ${RPT_BADGE_CSS}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
 .ex-ex-wrap{display:flex;align-items:center;gap:10px;min-width:0}
 .ex-ex-txt{min-width:0}
-.ex-imgwrap{flex:none;line-height:0;width:22mm;height:13mm;border:1px solid #e2e8f0;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;background:#fff;overflow:hidden}
 .dash{color:#cbd5e1;font-weight:400}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
