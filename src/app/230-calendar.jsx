@@ -850,8 +850,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 onClick={()=>{copySessionToClipboard(drawerSes);setCopied(true);}}
                 title={L(`"${drawerSes.name||'Antrenman'}" panoya kopyalanır — başka bir sporcunun (ya da günün) takviminde gün başlığındaki 📋 ile yapıştır`,`"${drawerSes.name||'Session'}" is copied to the clipboard — paste it with the 📋 on any day header, on another athlete's calendar or this one`)}>
                 {copied?L('✓ Kopyalandı','✓ Copied'):L('Antrenmanı Kopyala','Copy the Training')}</button>
-              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title={L('Bu seansı yazdır','Print this session')}>⎙ {L('Yazdır','Print')}</button>
-              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes],{withImages:true})} title={L('Bu seansı yüklenen egzersiz görselleriyle birlikte yazdır','Print this session including the uploaded exercise images')}>⎙ {L('Görselle Yazdır','Print with Image')}</button>
+              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes],{info:athMode?rptAthInfo(ownerAth):undefined})} title={L('Bu seansı yazdır','Print this session')}>⎙ {L('Yazdır','Print')}</button>
+              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes],{withImages:true,info:athMode?rptAthInfo(ownerAth):undefined})} title={L('Bu seansı yüklenen egzersiz görselleriyle birlikte yazdır','Print this session including the uploaded exercise images')}>⎙ {L('Görselle Yazdır','Print with Image')}</button>
             </div>
           </div>
           {teamMode&&rpeOpen&&(()=>{
