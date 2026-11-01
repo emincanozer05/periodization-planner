@@ -181,19 +181,19 @@ function printTestCompare(test,ath,setup,customTests,athletes){
 @page{size:A4 portrait;margin:11mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--accent:#9aab3a;--good:#16a34a;--poor:#c2410c;--flat:#94a3b8;--border:#e5e7eb;--bg2:#f4f5f7;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
+:root{--accent:#1f7cc2;--good:#16a34a;--poor:#c2410c;--flat:#94a3b8;--border:#e5e7eb;--bg2:#f4f5f7;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
 .mono{font-family:'Google Sans',Arial,sans-serif}
 
 /* Header — the same dark card the test report opens with, so the two sheets
    read as one pack when they are printed together. */
-.hdr{display:flex;gap:18px;align-items:center;padding:16px 20px;background:#0a0b0d;color:#fff;border-radius:14px;margin-bottom:12px}
-.hdr .photo{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);object-fit:cover;flex-shrink:0;background:#1c2030}
-.hdr .photo-x{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
+.hdr{display:flex;gap:18px;align-items:center;padding:16px 20px;background:#0a0b0d;color:#fff;border-radius:2px;margin-bottom:12px}
+.hdr .photo{width:74px;height:94px;border-radius:2px;border:1px solid rgba(31,124,194,.4);object-fit:cover;flex-shrink:0;background:#1c2030}
+.hdr .photo-x{width:74px;height:94px;border-radius:2px;border:1px solid rgba(31,124,194,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
 .hdr .who{flex:1}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:#fff}
 .hdr .meta{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
-.hdr .date{display:inline-block;margin-top:9px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
+.hdr .date{display:inline-block;margin-top:9px;font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;font-weight:600;color:#fff;background:var(--accent);padding:4px 10px;border-radius:2px;letter-spacing:.05em}
 .hdr .rb{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .hdr .rb img{height:30px;width:auto;object-fit:contain}
 .hdr .ttl{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
@@ -201,7 +201,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10.5
 /* At a glance — the counts first, then the five widest gaps either way. A coach
    who reads nothing else on the sheet has read this. */
 .glance{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
-.tile{border:1px solid var(--border);border-radius:11px;padding:9px 11px;background:#fff}
+.tile{border:1px solid var(--border);border-radius:2px;padding:9px 11px;background:#fff}
 .tile .n{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
 .tile .t{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
 .tile.g .n{color:var(--good)} .tile.p .n{color:var(--poor)}
@@ -209,7 +209,7 @@ body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10.5
    of them — a height is neither above nor below, so the denominator says so. */
 .tile .of{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0}
 .picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;break-inside:avoid;page-break-inside:avoid}
-.pcol{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff}
+.pcol{border:1px solid var(--border);border-radius:2px;padding:10px 12px;background:#fff}
 .pcol.g{border-left:3px solid var(--good)} .pcol.p{border-left:3px solid var(--poor)}
 .pcol h3{font-family:'Google Sans',Arial,sans-serif;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
 .pk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-top:1px solid var(--border)}
@@ -251,10 +251,10 @@ td.barc{padding:5px 4px}
    which left the eye with nothing fixed to measure from. It sits above the band
    and the fill and below the athlete's marker, so a reading right on the average
    still shows both. */
-.bar{position:relative;height:15px;border-radius:4px;background:var(--bg2);overflow:hidden}
-.bar .rng{position:absolute;top:0;bottom:0;background:#dbe1e8;border-radius:3px;z-index:1}
+.bar{position:relative;height:15px;border-radius:2px;background:var(--bg2);overflow:hidden}
+.bar .rng{position:absolute;top:0;bottom:0;background:#dbe1e8;border-radius:2px;z-index:1}
 .bar .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:#0a0b0d;opacity:1;z-index:3}
-.bar .fill{position:absolute;top:3px;bottom:3px;border-radius:3px;opacity:.9;z-index:2}
+.bar .fill{position:absolute;top:3px;bottom:3px;border-radius:2px;opacity:.9;z-index:2}
 .bar .fill.good{background:var(--good)} .bar .fill.poor{background:var(--poor)}
 .bar .fill.flat,.bar .fill.same{background:var(--flat)}
 .bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d;z-index:4;box-shadow:0 0 0 1px #fff}
@@ -264,12 +264,12 @@ td.barc{padding:5px 4px}
    so the caret says the real gap is wider than it is drawn — the Gap column has
    the number. */
 .bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d;z-index:4}
-.axis{display:flex;justify-content:space-between;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
+.axis{display:flex;justify-content:space-between;font-family:'Google Sans',Arial,sans-serif;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:2px}
 .legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .footer{text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:2px;font-family:'Google Sans',Arial,sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.spacer{display:none}}
 ${TINFO_CSS}

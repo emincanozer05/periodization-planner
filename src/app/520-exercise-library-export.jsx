@@ -128,8 +128,8 @@ function exLibraryPDF(doc,lib,opts){
   const F=o.font||'helvetica';
   const UP=s=>String(s).toLocaleUpperCase(tr?'tr':'en');
   const PW=210,PH=297,M=14,CW=PW-2*M,BOTTOM=PH-16;
-  const ACC=o.ball?'#ea8c2a':'#9aab3a';
-  const INK='#0f172a',MUTED='#64748b',SOFT='#334155',LINE='#e2e8f0',FRAME='#cbd5e1';
+  const ACC=o.ball?'#ea8c2a':'#1f7cc2';
+  const INK='#101010',MUTED='#64748b',SOFT='#334155',LINE='#e2e8f0',FRAME='#cbd5e1';
   const IW=EXPDF_IMG.w,IH=EXPDF_IMG.h,PAD=4,GAP=6,CARD_GAP=4;
   const TX=M+PAD+IW+GAP,TW=PW-M-PAD-TX,COLS=3,COL_GAP=3.5,COL=(TW-COL_GAP*(COLS-1))/COLS;
   const lh=fs=>fs*0.3528*1.3;   // line height in mm for a size in pt
@@ -163,7 +163,7 @@ function exLibraryPDF(doc,lib,opts){
   font('normal',7.5);
   const noteL=doc.splitTextToSize(note,CW-10);
   const noteH=lh(6.5)+1.2+noteL.length*lh(7.5)+6;
-  doc.setFillColor('#f8fafc');doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(M,y,CW,noteH,2,2,'FD');
+  doc.setFillColor('#f8fafc');doc.setDrawColor(LINE);doc.setLineWidth(0.3);doc.roundedRect(M,y,CW,noteH,0,0,'FD');
   doc.setFillColor(ACC);doc.rect(M,y+2,0.9,noteH-4,'F');
   font('bold',6.5,MUTED);text(UP(T('Nasıl kullanılır','How to use')),M+5,y+3,{charSpace:0.5});
   font('normal',7.5,SOFT);text(noteL,M+5,y+3+lh(6.5)+1.2,{lineHeightFactor:1.3});
@@ -217,7 +217,7 @@ function exLibraryPDF(doc,lib,opts){
     const h=Math.max(IH+2*PAD,ty-y0+PAD-1.8);
     if(draw){
       doc.setFillColor('#ffffff');doc.setDrawColor(LINE);doc.setLineWidth(0.3);
-      doc.roundedRect(M,y0,CW,h,2.5,2.5,'S');
+      doc.roundedRect(M,y0,CW,h,0,0,'S');
       const fx=M+PAD,fy=y0+PAD;
       if(img){
         doc.addImage(img,'JPEG',fx,fy,IW,IH);
@@ -237,7 +237,7 @@ function exLibraryPDF(doc,lib,opts){
     const first=sec.rows[0];
     // A heading never sits alone at the foot of a page: it moves over with its first card.
     if(y+HEAD+card(first,0,false)>BOTTOM)newPage();
-    font('bold',11,INK);text(UP(sec.title),M,y,{charSpace:0.6});
+    font('bold',11,ACC);text(UP(sec.title),M,y,{charSpace:0.6});
     const tw=doc.getTextWidth(UP(sec.title))+0.6*UP(sec.title).length;
     font('bold',9,ACC);text(String(sec.rows.length),M+tw+2.5,y+0.6);
     doc.setDrawColor(ACC);doc.setLineWidth(0.6);doc.line(M,y+6,PW-M,y+6);

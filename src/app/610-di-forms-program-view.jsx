@@ -559,7 +559,7 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe,withIma
 @page{size:A4 portrait;margin:10mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-:root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
+:root{--accent:#1f7cc2;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
 ${RPT_HEAD_CSS}
 ${RPT_PHASE_CSS}
@@ -569,11 +569,11 @@ ${RPT_BADGE_CSS}
 .adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
 .ex-ex-wrap{display:flex;align-items:center;gap:8px;min-width:0}
 .ex-ex-txt{min-width:0}
-.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;border-radius:5px;background:#fff;overflow:hidden}
+.ex-imgwrap{flex:none;line-height:0;width:32mm;height:23mm;border:1px solid #e2e8f0;border-radius:2px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
-.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:7px 16px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}
+.print-bar button{background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:2px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>

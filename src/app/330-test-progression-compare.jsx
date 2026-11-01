@@ -146,9 +146,9 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
 @page{size:A4 landscape;margin:8mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--accent:#0094ff;--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
+:root{--accent:#1f7cc2;--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
-.hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:10px}
+.hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:2px;margin-bottom:10px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .hdr .meta{font-size:9.5px;color:rgba(255,255,255,.62);margin-top:3px;letter-spacing:.04em}
@@ -180,7 +180,7 @@ tfoot td.avg{font-size:${(fs*.9).toFixed(1)}px;text-transform:uppercase;letter-s
 .legend i{font-style:normal;font-weight:700}
 .footer{margin-top:8px;padding-top:5px;border-top:1px solid var(--border);text-align:center;font-size:${(fs*.85).toFixed(1)}px;color:var(--dim);letter-spacing:.05em}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;z-index:9999}
-.print-bar button{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:2px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}thead{display:table-header-group}tr{page-break-inside:avoid}}
 </style></head><body>
@@ -367,7 +367,7 @@ ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
 body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);background:#fff;font-size:9.5px;line-height:1.4}
-.hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:11px}
+.hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:2px;margin-bottom:11px}
 .hdr img{height:34px;width:auto;object-fit:contain}
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .hdr .meta{font-size:9.5px;color:rgba(255,255,255,.62);margin-top:3px;letter-spacing:.04em}
@@ -381,7 +381,7 @@ table.mx thead th{font-size:7.5px;line-height:1.2;color:#000}
 table.mx th.ath,table.mx td.ath{width:17%}
 /* What each column means, for the athlete reading their own row. Stacked one per
    line so it reads as a list rather than as a second table. */
-.key{border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:10px;page-break-inside:avoid}
+.key{border:1px solid var(--border);border-radius:2px;padding:9px 11px;margin-bottom:10px;page-break-inside:avoid}
 .key h2{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .key .kr{display:flex;gap:8px;align-items:baseline;padding:2.5px 0;border-top:1px solid #f1f2f4}
 .key .kr:first-of-type{border-top:none}
@@ -414,7 +414,7 @@ tbody tr:nth-child(even) td{background:#fafbfc}
 .note{margin-top:8px;font-size:8.5px;color:var(--muted);line-height:1.5}
 .footer{margin-top:8px;padding-top:5px;border-top:1px solid var(--border);text-align:center;font-size:8.5px;color:var(--dim);letter-spacing:.05em}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;z-index:9999}
-.print-bar button{background:#0094ff;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button{background:#1f7cc2;color:#fff;border:none;padding:8px 18px;border-radius:2px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}thead{display:table-header-group}tr{page-break-inside:avoid}}
 </style></head><body>

@@ -469,7 +469,7 @@ ${RPT_FONT}
 *{margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{background:#fff;font-family:'Google Sans',Arial,sans-serif}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:13px;z-index:9999}
-.print-bar button{background:#ec1c24;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button{background:#ec1c24;color:#fff;border:none;padding:8px 18px;border-radius:2px;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .scr-sp{height:56px}
 .pg{max-width:190mm;margin:0 auto;padding:0 0 10mm}
 @media print{.print-bar,.scr-sp{display:none}.pg{max-width:none;padding:0}}
@@ -815,7 +815,7 @@ function testInfoTable(ids){
 /* The CSS the block needs. Both sheets already set --border / --text2, so the
    table lands in the sheet it is printed on rather than beside it. */
 const TINFO_CSS=`
-.tinfo{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;page-break-inside:auto;break-inside:auto}
+.tinfo{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-top:8px;page-break-inside:auto;break-inside:auto}
 .tinfo th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
 .tinfo td{font-family:'Google Sans',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
 .tinfo tr{page-break-inside:avoid;break-inside:avoid}
