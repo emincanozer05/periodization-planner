@@ -88,7 +88,7 @@ const SYNC_LOG=[];const SYNC_LOG_MAX=80;let _slSubs=[];
 const slog=(msg,extra)=>{
   SYNC_LOG.push({t:Date.now(),msg,extra:(extra==null||extra==='')?'':String(extra)});
   if(SYNC_LOG.length>SYNC_LOG_MAX)SYNC_LOG.shift();
-  // Abone yalnızca panel açıkken var: kapalıyken kayıt tutmanın render'a bedeli olmasın.
+  // Abone: açıkken senkron paneli ve günlüğü cihaza yazan zamanlayıcı (bkz. slogSave); ikisi de ucuz.
   for(let i=0;i<_slSubs.length;i++){try{_slSubs[i]();}catch(_){}}
 };
 const slogSub=f=>{_slSubs.push(f);return()=>{_slSubs=_slSubs.filter(x=>x!==f);};};
@@ -123,11 +123,72 @@ function syncChangedPaths(a,b,max){
   walk(a,b,'',0);
   return out;
 }
-const slogText=()=>SYNC_LOG.map(e=>{
+const slogFmt=list=>(list||[]).map(e=>{
   const d=new Date(e.t);
   const p=n=>String(n).padStart(2,'0');
   return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+e.msg+(e.extra?' '+e.extra:'');
 }).join('\n');
+const slogText=()=>slogFmt(SYNC_LOG);
+/* ÇÖKMEDEN SONRA DA OKUNAN GÜNLÜK. Günlük bellekte durur; sekme "Out of Memory" ile çöktüğünde
+   ya da sistem kapattığında onunla birlikte giderdi — yani tam ihtiyaç duyulan anda (#701'de
+   döngünün o cihazda gerçekten olup olmadığını görmek için) kanıt kayboluyordu. Artık son
+   kayıtlar en geç SLOG_SAVE_MS içinde cihaza yazılır; açılışta bir önceki oturumunki
+   `SYNC_LOG_PREV`'e alınır ve senkron panelinde gösterilir. Önceki oturum düzgün kapanmadıysa
+   (pagehide hiç gelmediyse: çökme, bellek, sistemin sekmeyi öldürmesi) bu da söylenir.
+   Bellek kullanımı (yalnız Chrome/Edge'de ölçülebilir) ve sayfadaki eleman sayısı da
+   SLOG_MEM_MS'de bir günlüğe düşer: yavaş büyüyen bir sızıntı çökmeden saatler önce görünür. */
+const SLOG_KEY='coachos_synclog', SLOG_SAVE_MS=20000, SLOG_MEM_MS=10*60*1000;
+let SYNC_LOG_PREV=null;   // {at, clean, log:[…]} — bir önceki oturumun son kayıtları
+let _slSaveT=0, _slClean=false;
+/* Depo, verinin yerel emniyet kopyasıyla (LS_KEY, 3.5 MB'ye kadar) paylaşılıyor: günlük ona yer
+   kapmasın diye en çok SLOG_MAX_CHARS tutar (uzun açıklamalar kırpılır, sığmazsa eskiler düşer).
+   Emniyet kopyası yer bulamazsa günlüğü silip yeniden dener (bkz. _lsWrite): kopya her zaman önce gelir. */
+const SLOG_MAX_CHARS=16000;
+const slogSave=()=>{
+  if(_slSaveT){clearTimeout(_slSaveT);_slSaveT=0;}
+  try{
+    let log=SYNC_LOG.map(e=>e.extra&&e.extra.length>200?{...e,extra:e.extra.slice(0,200)+'…'}:e);
+    let json=JSON.stringify({at:Date.now(),clean:_slClean,log});
+    while(json.length>SLOG_MAX_CHARS&&log.length>1){log=log.slice(Math.ceil(log.length/4));json=JSON.stringify({at:Date.now(),clean:_slClean,log});}
+    localStorage.setItem(SLOG_KEY,json);
+  }catch(_){}
+};
+const slogPrevText=()=>{
+  const p=SYNC_LOG_PREV;if(!p||!p.log||!p.log.length)return'';
+  return slogFmt(p.log);
+};
+const slogMem=why=>{
+  try{
+    const m=typeof performance!=='undefined'&&performance.memory;
+    const n=typeof document!=='undefined'&&document.getElementsByTagName?document.getElementsByTagName('*').length:0;
+    const mb=v=>Math.round(v/1048576);
+    slog('bellek'+(why?' ('+why+')':''),(m?mb(m.usedJSHeapSize)+' / '+mb(m.jsHeapSizeLimit)+' MB':'ölçülemiyor (tarayıcı vermiyor)')+(n?' · eleman='+n:''));
+  }catch(_){}
+};
+try{
+  const raw=localStorage.getItem(SLOG_KEY);
+  if(raw){const p=JSON.parse(raw);
+    if(p&&Array.isArray(p.log)&&p.log.length){
+      SYNC_LOG_PREV={at:p.at||0,clean:!!p.clean,log:p.log.slice(-SYNC_LOG_MAX)};
+      if(!p.clean)slog('önceki oturum düzgün kapanmadı (çökme, bellek yetersizliği ya da sistemin sekmeyi kapatması)',
+        'son kayıt '+new Date(p.at||0).toLocaleString()+' — senkron panelinde "Önceki oturum"');
+    }}
+}catch(_){}
+if(typeof window!=='undefined'&&window.addEventListener){
+  /* Kayıt seyrek ve toplu: her olayda değil, ilk olaydan en geç SLOG_SAVE_MS sonra. */
+  _slSubs.push(()=>{_slClean=false;if(!_slSaveT)_slSaveT=setTimeout(slogSave,SLOG_SAVE_MS);});
+  /* Düzgün kapanış: sayfa kapanırken/yenilenirken gelir; çökmede gelmez. Sekme geri dönerse
+     (bfcache) oturum sürüyor demektir, işaret kalkar. */
+  window.addEventListener('pagehide',()=>{_slClean=true;slogSave();});
+  window.addEventListener('pageshow',e=>{if(e&&e.persisted){_slClean=false;slogSave();}});
+  /* Telefon/tablet arka plandaki sekmeyi pagehide göndermeden kapatabilir; bu bir çökme değil.
+     O yüzden gizlenen sekme "düzgün" sayılır, yeniden görünür olunca işaret kalkar: "düzgün
+     kapanmadı" yalnızca sekme EKRANDAYKEN ölünce (Out of Memory'nin olduğu yer) kalır. */
+  if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{
+    _slClean=document.visibilityState==='hidden';slogSave();});
+  setTimeout(()=>slogMem('açılış'),60000);
+  setInterval(()=>slogMem(),SLOG_MEM_MS);
+}
 /* PARÇALAMA SABİT ARALIKLA DEĞİL, İÇERİĞE GÖRE YAPILIR — ve parçanın ADI içeriğinin
    hash'idir. Senkronizasyonun yavaş olmasının asıl sebebi buydu:
      • parçalar sabit bayt aralıklarında kesildiği için durumun ortasına eklenen tek bir
@@ -299,7 +360,12 @@ let _lsPend=null,_lsSched=0,_lsLast=null;
    o zaman yazmanın karşılığı yok, yalnızca telefonun takıldığı bir kare var. */
 const _lsWrite=()=>{const p=_lsPend;_lsPend=null;_lsSched=0;if(!p)return;
   if(_lsLast&&_lsLast.uid===p.uid&&_lsLast.json===p.json)return;
-  try{if(p.json.length>LS_MAX)return;localStorage.setItem(LS_KEY(p.uid),p.json);_lsLast={uid:p.uid,json:p.json};}catch(e){/* kota / gizli mod */}};
+  if(p.json.length>LS_MAX)return;
+  const put=()=>{localStorage.setItem(LS_KEY(p.uid),p.json);_lsLast={uid:p.uid,json:p.json};};
+  try{put();}catch(e){
+    /* Kota: emniyet kopyası senkron günlüğünden önce gelir — günlüğü sil, bir kez daha dene. */
+    try{if(localStorage.getItem(SLOG_KEY)!=null){localStorage.removeItem(SLOG_KEY);put();}}catch(e2){/* kota / gizli mod */}
+  }};
 const lsSave=(uid,json)=>{
   _lsPend={uid,json};
   if(_lsSched)return;
