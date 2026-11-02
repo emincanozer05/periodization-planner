@@ -13,5 +13,6 @@ require('./alerts-parity.test.js');    // Telefon sayfası · formdan kurulan ka
 require('./ai-router.test.js');        // AI · model zinciri, bütçe, retry, fallback, doğrulama
 require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, kilit, takvim güvenliği
 require('./polar.test.js');            // Polar · davet, OAuth, token saklama, bağlantı kesme
+require('./polar-sync.test.js');       // Polar · veri senkronu, commit sırası, tekrar önleme
 
 run();

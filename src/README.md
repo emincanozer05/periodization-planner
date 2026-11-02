@@ -111,7 +111,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/422-injury-surveillance.jsx` | SAKATLIK SÜRVEYANSI — maruziyet, insidans/1000 sa, burden, şiddet, nüks; Yük Takibi altında ve sporcunun Sakatlıklar sekmesinde |
 | `app/425-athlete-wellness-hrv.jsx` | WELLNESS TAB — wellness kaydı, uyku, HRV izleme (CoachOS_HRV_Monitoring v1.0: ln RMSSD, 7/28 günlük pencereler, 3 seviyeli uyarı) |
 | `app/426-athlete-info-report.jsx` | PROFİL ÇIKTISI (eski "Bilgileri Al") — sporcunun A4 dikey bilgi formu (Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil, Sakatlıklar) |
-| `app/427-athlete-polar.jsx` | POLAR — Sporcu Profili'ndeki bağlantı paneli: davet linki, canlı bağlantı durumu (`polar_links`), bağlantıyı kesme. Sunucu tarafı `functions/polar/` (bkz. `POLAR_SETUP.md`) |
+| `app/427-athlete-polar.jsx` | POLAR — Sporcu Profili'ndeki bağlantı paneli: davet linki, canlı bağlantı durumu (`polar_links`), "Verileri Senkronize Et" ve son senkron özeti, bağlantıyı kesme. Sunucu tarafı `functions/polar/` (bkz. `POLAR_SETUP.md`) |
 | `app/428-wellness-view.jsx` | WELLNESS — kenar çubuğundaki sekme: takımın o günkü ortalaması, fotoğraflı sporcu kutuları ve altında günün değerleri, sporcuya tıklayınca ay takvimi + gün ayrıntısı + AthWellness; RHR Takibi paneli |
 | `app/430-staff-roster-backup.jsx` | STAFF — the other half of the roster · ATHLETES ROSTER · ROSTER NAME MATCHING · BACKUP |
 | `app/440-sync-infra-chunking-merge.jsx` | ROOT · CLOUD SYNC — Firestore parçalı, İÇERİK ADRESLİ (Storage YOK) · ÜÇ YÖNLÜ BİRLEŞTİRME (3-way merge) |

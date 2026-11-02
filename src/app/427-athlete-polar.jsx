@@ -64,7 +64,31 @@ const POLAR_ERR_TXT={
   INVALID_GRANT:()=>L('Polar yetkilendirme kodu geçersiz ya da süresi dolmuş.','The Polar authorisation code was invalid or expired.'),
   POLAR_USER_TAKEN:()=>L('Bu Polar hesabı başka bir sporcuya bağlı.','This Polar account is linked to another athlete.'),
   COOKIE_MISSING:()=>L('Sporcu işlemi başladığı tarayıcıda tamamlamadı.','The athlete did not finish in the browser they started in.'),
+  REVOKED:()=>L('Sporcu Polar iznini kaldırmış. Yeniden bağlamak için yeni davet gönder.','The athlete revoked Polar access. Send a new invite to reconnect.'),
+  SYNC_PARTIAL:()=>L('Son senkron kısmen tamamlandı (ayrıntı aşağıda).','The last sync was partial (details below).'),
+  TOKEN_UNAVAILABLE:()=>L('Polar erişim bilgisi okunamadı. Bağlantıyı kesip yeniden bağla.','Polar credentials could not be read. Disconnect and reconnect.'),
 };
+
+/* Son senkronun özeti: hangi veriden kaç kayıt geldi, hangisi gelmedi. Yalnızca Polar'ın
+   gönderdiği sayılar — tahmin yok. Ayrıntılı veri görünümü Aşama 4'te. */
+const POLAR_KINDS=[
+  ['sleep',()=>L('Uyku','Sleep'),()=>L('gece','nights')],
+  ['recharge',()=>'Nightly Recharge',()=>L('gece','nights')],
+  ['exercises',()=>L('Antrenman','Training'),()=>L('kayıt','sessions')],
+  ['activity',()=>L('Günlük aktivite','Daily activity'),()=>L('gün','days')],
+  ['cardioLoad',()=>L('Kardiyo yükü','Cardio load'),()=>L('gün','days')],
+];
+function polarReportLines(rep){
+  if(!rep)return null;
+  const ok=[],off=[],err=[];
+  POLAR_KINDS.forEach(([k,lbl,unit])=>{
+    const r=rep[k];if(!r)return;
+    if(r.status==='ok')ok.push(`${lbl()} ${r.count||0} ${unit()}`);
+    else if(r.status==='unavailable')off.push(lbl());
+    else err.push(lbl());
+  });
+  return{ok,off,err};
+}
 const polarErrText=e=>e&&e.code?((POLAR_ERR_TXT[e.code]&&POLAR_ERR_TXT[e.code]())||L(`Son deneme başarısız (${e.code}).`,`Last attempt failed (${e.code}).`)):'';
 
 function PolarConnect({ath,teamId}){
@@ -73,6 +97,7 @@ function PolarConnect({ath,teamId}){
   const[err,setErr]=useState('');
   const[note,setNote]=useState('');
   const[invite,setInvite]=useState(null);   // {url,expiresAt} — yalnızca üretildiği oturumda görünür
+  const[syncing,setSyncing]=useState(false);
   useEffect(()=>{setInvite(null);setErr('');setNote('');},[ath.id]);
 
   const now=Date.now();
@@ -107,6 +132,15 @@ function PolarConnect({ath,teamId}){
       setNote(active?L('Bağlantı kesildi.','Disconnected.'):L('Davet iptal edildi.','Invite cancelled.'));
     });
   };
+  const doSync=async()=>{
+    setErr('');setNote('');setSyncing(true);
+    try{
+      const j=await polarCall('/sync',{athleteId:ath.id});
+      const lines=polarReportLines(j.report);
+      setNote((j.ok?L('Senkron tamamlandı','Sync complete'):L('Senkron kısmen tamamlandı','Sync partially complete'))+(lines&&lines.ok.length?' · '+lines.ok.join(' · '):''));
+    }catch(e){setErr(e.message||String(e));}
+    finally{setSyncing(false);}
+  };
   const inviteText=()=>L(`${ath.name||''} — Polar hesabını CoachOS'a bağlamak için bu linki aç ve Polar'da izin ver:`,`${ath.name||''} — open this link and allow access in Polar to connect your Polar account to CoachOS:`).trim();
   const copy=async()=>{
     if(!invite)return;
@@ -130,7 +164,8 @@ function PolarConnect({ath,teamId}){
   </div>);
 
   const canInvite=status!=='active';
-  const canCancel=status==='active'||status==='pending'||status==='expired';
+  const canCancel=status==='active'||status==='pending'||status==='expired'||status==='revoked'||status==='error';
+  const rl=link&&link.lastSyncReport?polarReportLines(link.lastSyncReport):null;
   return(<div className="panel pl-panel">
     <div className="pl-h">
       <h2>Polar</h2>
@@ -140,8 +175,11 @@ function PolarConnect({ath,teamId}){
       <div className="pl-r"><span>{L('Bağlantı durumu','Connection status')}</span><b>{link===undefined?'—':stTxt}</b></div>
       {status==='active'&&<div className="pl-r"><span>{L('Bağlandı','Connected on')}</span><b>{polarWhen(link.connectedAt)}</b></div>}
       <div className="pl-r"><span>{L('Son senkronizasyon','Last sync')}</span><b>{link&&link.lastSyncAt?polarWhen(link.lastSyncAt):'—'}</b></div>
+      {rl&&rl.ok.length>0&&<div className="pl-r"><span>{L('Son senkronda gelen','Last sync brought')}</span><b>{rl.ok.join(' · ')}</b></div>}
+      {rl&&rl.off.length>0&&<div className="pl-r"><span>{L('Polar\'dan gelmeyen','Not provided by Polar')}</span><b>{rl.off.join(', ')}</b></div>}
+      {rl&&rl.err.length>0&&<div className="pl-r pl-warn"><span>{L('Alınamayan','Failed')}</span><b>{rl.err.join(', ')}</b></div>}
       {(status==='pending'||status==='expired')&&<div className="pl-r"><span>{L('Davet geçerliliği','Invite valid until')}</span><b>{polarWhen(link.inviteExpiresAt)}</b></div>}
-      {link&&link.lastError&&status!=='active'&&<div className="pl-r pl-warn"><span>{L('Son deneme','Last attempt')}</span><b>{polarErrText(link.lastError)}</b></div>}
+      {link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&<div className="pl-r pl-warn"><span>{L('Son deneme','Last attempt')}</span><b>{polarErrText(link.lastError)}</b></div>}
     </div>
     {invite&&<div className="pl-invite">
       <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
@@ -152,15 +190,19 @@ function PolarConnect({ath,teamId}){
       </div>
     </div>}
     <div className="pl-btns">
+      {status==='active'&&<button className="btn sm" disabled={busy||syncing} onClick={doSync}>
+        {syncing?L('Senkronize ediliyor…','Syncing…'):L('Verileri Senkronize Et','Sync Data')}</button>}
       {canInvite&&<button className="btn sm" disabled={busy} onClick={makeInvite}>
-        {status==='pending'||status==='expired'?L('Yeni davet linki oluştur','Create a new invite link'):L('Polar Hesabını Bağla','Connect Polar Account')}</button>}
+        {status==='pending'||status==='expired'?L('Yeni davet linki oluştur','Create a new invite link')
+          :status==='revoked'||status==='error'?L('Yeniden bağla (yeni davet)','Reconnect (new invite)')
+          :L('Polar Hesabını Bağla','Connect Polar Account')}</button>}
       {canCancel&&<button className="btn sm sec" disabled={busy} onClick={disconnect}>
         {status==='active'?L('Polar Bağlantısını Kes','Disconnect Polar'):L('Daveti iptal et','Cancel invite')}</button>}
     </div>
     {err&&<div className="pl-err" role="alert">{err}</div>}
     {note&&<div className="pl-note" role="status">{note}</div>}
     <div className="pl-help">{status==='active'
-      ?L('Veri aktarımı (uyku, Nightly Recharge, antrenman, aktivite) bir sonraki sürümde eklenecek.','Data import (sleep, Nightly Recharge, training, activity) arrives in the next release.')
+      ?L('Polar verisi (uyku, Nightly Recharge, antrenman, günlük aktivite) ayrı kaydedilir; sporcunun mevcut kayıtlarının üzerine yazılmaz. Otomatik senkron bir sonraki sürümde gelecek.','Polar data (sleep, Nightly Recharge, training, daily activity) is stored separately and never overwrites the athlete\'s existing records. Automatic sync arrives in the next release.')
       :L('Polar hesabı sporcunun. Linki sporcuya gönder; sporcu linki kendi telefonunda açıp Polar\'da izin verdiğinde bağlantı burada "Bağlı" olarak görünür. Yeni link eskisini geçersiz kılar.','The Polar account belongs to the athlete. Send them the link; once they open it on their phone and allow access in Polar, this panel shows "Connected". A new link replaces the old one.')}</div>
   </div>);
 }

@@ -1,8 +1,10 @@
 # Polar AccessLink — kurulum ve işleyiş
 
-Sporcunun Polar hesabını CoachOS'a bağlar. **Aşama 1:** davet linki, Polar izin akışı,
-şifreli token saklama, bağlantı durumu ve bağlantıyı kesme. Veri aktarımı (uyku, Nightly
-Recharge, antrenman, aktivite) Aşama 2'de, otomatik senkron Aşama 3'te gelecek.
+Sporcunun Polar hesabını CoachOS'a bağlar.
+- **Aşama 1:** davet linki, Polar izin akışı, şifreli token saklama, bağlantı durumu, bağlantıyı kesme.
+- **Aşama 2:** manuel "Verileri Senkronize Et": uyku, Nightly Recharge, antrenman, günlük aktivite,
+  kardiyo yükü ayrı koleksiyonlara; tekrar önleme; transaction commit sırası.
+- Otomatik senkron (webhook / zamanlanmış iş) Aşama 3'te, takip ekranlarına bağlanma Aşama 4'te.
 
 ## API sürümü
 
@@ -133,9 +135,59 @@ ek doğrulanmış veri (AAD) olarak bağlı. Firestore dışa aktarımı, yedek 
 bir kural tek başına token sızdırmaz. Sunucu kimliğinin kendisi ele geçirilirse koruma yoktur
 (o kimlik hem veriyi hem anahtarı okuyabilir); anahtar kaybolursa sporcular yeniden bağlanır.
 
+## Veri senkronu (Aşama 2)
+
+Koç sporcu profilindeki Polar panelinde **Verileri Senkronize Et**'e basar → `POST /sync`
+(ID token). Aynı sporcu için iki dakikada bir manuel senkron; eşzamanlı ikinci senkron kilitle
+reddedilir.
+
+| Veri | Uç nokta (v3) | Koleksiyon / doküman adı | Model |
+|---|---|---|---|
+| Uyku | `GET /users/sleep` | `polar_sleep/{link}__{tarih}` | transaction'sız |
+| Nightly Recharge | `GET /users/nightly-recharge` | `polar_recharge/{link}__{tarih}` | transaction'sız |
+| Antrenman | `GET /exercises?zones=true` | `polar_exercises/{link}__{id}` | transaction'sız |
+| Kardiyo yükü | `GET /users/cardio-load/` | `polar_cardio_load/{link}__{tarih}` | transaction'sız, cihaz destekliyorsa |
+| Günlük aktivite | `POST /users/{id}/activity-transactions` → özetler → `PUT` commit | `polar_activity/{link}__{tarih}` | **transaction** |
+
+`{link}` = `coachUid__athleteId`. Her doküman `coachUid`, `athleteId`, normalleştirilmiş alanlar,
+`missing` (Polar'ın göndermediği alanlar), `derived` (başka alanlardan hesaplananlar), ham kayıt
+(`raw`) ve içerik özeti (`hash`) taşır.
+
+- **Tekrar önleme:** doküman adı deterministik; özet aynıysa yazılmaz. İkinci senkron sıfır yazım yapar.
+- **Commit sırası:** aktivite özetleri önce Firestore'a yazılır, yazım geri okunarak doğrulanır, ancak
+  ondan sonra Polar'da commit edilir. Yazım, doğrulama ya da bir özetin okunması başarısızsa commit
+  yapılmaz; veri Polar'da kalır ve bir sonraki transaction'da yeniden gelir.
+- **Uydurma yok:** gelmeyen alan `null`. Tek hesaplanan değer uyku süresi (`asleepSec` = evrelerin
+  toplamı, `derived` listesinde); evrelerden biri yoksa o da `null`.
+- **Hatalar:** 429 ve geçici hatalar 1-2-4 sn (ya da `Retry-After`, en çok 10 sn) bekleyerek 4 kez
+  denenir; kalıcı 429 o adımı ve sonrasını durdurur, kısmi sonuç raporlanır. 404/403 olan veri türü
+  "Polar'dan gelmeyen" olarak raporlanır. **401** → bağlantı `revoked`, token silinir, panel
+  "Yeniden bağla" gösterir.
+- Son senkronun özeti `polar_links.lastSyncReport`'ta (tür başına durum, kayıt sayısı, yazılan,
+  eksik alan sayıları); başarılı senkron `lastSyncAt`'i günceller.
+
+| Alan grubu | Kaynak alanlar |
+|---|---|
+| Uyku | `sleep_start_time`, `sleep_end_time`, `light_sleep`, `deep_sleep`, `rem_sleep`, `unrecognized_sleep_stage`, `sleep_score`, `continuity`, `continuity_class`, `total_interruption_duration`, `sleep_charge`, `sleep_rating`, `sleep_cycles` |
+| Toparlanma | `heart_rate_variability_avg` (RMSSD), `heart_rate_avg`, `beat_to_beat_avg`, `breathing_rate_avg`, `ans_charge`, `ans_charge_status`, `nightly_recharge_status` |
+| Antrenman | `duration`, `heart_rate.average/maximum`, `heart_rate_zones`, `calories`, `distance`, `training_load`, `training_load_pro` (cardio/muscle/perceived load), `sport` |
+| Aktivite | `active-steps`, `calories`, `active-calories`, `duration` |
+
 ## Testler
 
-`cd functions && npm test`: `test/polar.test.js` (sahte Firestore + sahte Polar, ağ yok):
+Gerçek Firestore emulator'ünde (Java gerekir; önce `cd functions && npm ci`), depo kökünden:
+
+```
+npx firebase-tools emulators:exec --only firestore --project demo-polar "node tools/polar-emulator-test.js"
+```
+
+Aynı akışı gerçek transaction / getAll / batch ile çalıştırır ve `firestore.rules`'u koç oturumu
+taklidiyle sınar (sahibi okur, başka koç / oturumsuz / istemci yazımı reddedilir).
+
+`cd functions && npm test`: `test/polar.test.js` ve `test/polar-sync.test.js` (sahte Firestore +
+sahte Polar, ağ yok). Senkron tarafı: commit sırası, yazım/doğrulama hatasında commit olmaması,
+yinelenen senkron, eksik alanlar, 401 → revoked, 429/5xx bekleme, desteklenmeyen tür, kilit,
+başka koçun sporcusu. Bağlantı tarafı:
 hatalı / süresi geçmiş / yeniden kullanılan state, çerezsiz ya da farklı çerezli callback (CSRF),
 `invalid_grant`, izin verilmemesi, Polar'a ulaşılamaması / 429 / 5xx, eksik token yanıtı, 409,
 Polar hesabının ikinci sporcuya bağlanma girişimi, başka koçun sporcusuna davet / bağlantı kesme

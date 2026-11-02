@@ -15,6 +15,11 @@ const api = require('../polar/api');
 const links = require('../polar/links');
 const { handle, readCookie } = require('../polar/handler');
 
+/* Gerçek Firestore `undefined` taşıyan dokümanı BÜTÜNÜYLE reddediyor; sahte de reddetsin. */
+function assertNoUndefined(v, path) {
+  if (v === undefined) throw new Error('Firestore: undefined değer (' + path + ')');
+  if (v && typeof v === 'object') for (const k of Object.keys(v)) assertNoUndefined(v[k], path + '.' + k);
+}
 /* ── Sahte Firestore ─────────────────────────────────────────────────────── */
 function fakeDb() {
   const data = new Map();
@@ -24,7 +29,7 @@ function fakeDb() {
     return {
       id, path,
       async get() { return { exists: data.has(path), id, data: () => clone(data.get(path)) }; },
-      async set(v, o) { data.set(path, o && o.merge ? Object.assign({}, data.get(path) || {}, clone(v)) : clone(v)); },
+      async set(v, o) { assertNoUndefined(v, path); data.set(path, o && o.merge ? Object.assign({}, data.get(path) || {}, clone(v)) : clone(v)); },
       async delete() { data.delete(path); },
     };
   };

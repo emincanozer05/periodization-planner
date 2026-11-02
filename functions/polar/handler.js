@@ -10,6 +10,7 @@
    function adresine — uygulama hem vercel.app'ten hem web.app'ten açılabiliyor):
      POST /invite       { teamId, athleteId }  → { url, expiresAt }
      POST /disconnect   { athleteId }          → { remote }
+     POST /sync         { athleteId }          → { ok, report, lastSyncAt }   (Aşama 2)
 
    Neden callback'te Firebase oturumu yok: Polar dönüşü tarayıcının düz bir
    yönlendirmesi, ID token taşıyamaz; üstelik izni veren kişi sporcu ve onun CoachOS
@@ -20,6 +21,7 @@ const { COOKIE, ALLOWED_ORIGINS } = require('./config');
 const { parseKey, decrypt } = require('./crypto');
 const api = require('./api');
 const links = require('./links');
+const sync = require('./sync');
 const pages = require('./pages');
 
 /* form-action YOK, bilerek: "Polar ile bağlan" formu bize POST ediyor, biz Polar'a 303
@@ -110,6 +112,11 @@ const INVITE_MSG = {
   ATHLETE_NOT_FOUND: [409, 'Sporcu bu takımın sunucudaki kadrosunda görünmüyor. Birkaç saniye sonra tekrar dene.'],
   ALREADY_LINKED: [409, 'Bu sporcunun Polar bağlantısı zaten kurulu.'],
   NOT_FOUND: [404, 'Bu sporcu için bir Polar bağlantısı ya da daveti yok.'],
+  NOT_ACTIVE: [409, 'Polar bağlantısı aktif değil. Önce sporcuyu bağla.'],
+  SYNC_IN_PROGRESS: [409, 'Bu sporcu için senkron zaten çalışıyor. Biraz sonra tekrar dene.'],
+  TOO_SOON: [429, 'Son senkron az önce yapıldı. İki dakika sonra tekrar dene.'],
+  TOKEN_UNAVAILABLE: [409, 'Polar erişim bilgisi okunamadı. Bağlantıyı kesip sporcuyu yeniden bağla.'],
+  REVOKED: [409, 'Sporcu Polar iznini kaldırmış. Yeniden bağlamak için yeni bir davet linki gönder.'],
 };
 
 async function jsonRoute(route, req, res, deps) {
@@ -127,6 +134,10 @@ async function jsonRoute(route, req, res, deps) {
         url: `${deps.cfg.publicBase}/api/polar/start?t=${encodeURIComponent(r.ticket)}`,
         expiresAt: r.expiresAt,
       });
+    }
+    if (route === '/sync') {
+      const r = await sync.syncLink(deps, { coachUid, athleteId: links.cleanAthleteId(body.athleteId), manual: true });
+      return sendJson(res, 200, { ok: r.ok, report: r.report, lastSyncAt: r.lastSyncAt });
     }
     // /disconnect
     const r = await links.disconnect({
@@ -267,7 +278,7 @@ async function handle(req, res, deps) {
   baseHeaders(res);
   const route = routeOf(req);
   try {
-    if (route === '/invite' || route === '/disconnect') return await jsonRoute(route, req, res, deps);
+    if (route === '/invite' || route === '/disconnect' || route === '/sync') return await jsonRoute(route, req, res, deps);
     if (route === '/start') return await startRoute(req, res, deps);
     if (route === '/callback') return await callbackRoute(req, res, deps);
     res.status(404).set('Content-Type', 'text/plain; charset=utf-8').send('not found');
