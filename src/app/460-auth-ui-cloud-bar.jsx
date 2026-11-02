@@ -289,7 +289,10 @@ function SyncDiag({sync,onClose}){
     [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
     [L('Durum','Status'),sync.status],
   ];
-  const text=()=>rows.map(r=>r[0]+': '+r[1]).join('\n')+'\n\n'+slogText();
+  const prev=slogPrevText();
+  const prevHead=SYNC_LOG_PREV?(L('Önceki oturum','Previous session')+' · '+new Date(SYNC_LOG_PREV.at).toLocaleString()
+    +(SYNC_LOG_PREV.clean?'':L(' · düzgün kapanmadı',' · did not close cleanly'))):'';
+  const text=()=>rows.map(r=>r[0]+': '+r[1]).join('\n')+'\n\n'+slogText()+(prev?'\n\n== '+prevHead+' ==\n'+prev:'');
   const copy=()=>{
     const t=text();
     const done=()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);};
@@ -321,6 +324,11 @@ function SyncDiag({sync,onClose}){
       <pre style={{marginTop:6,maxHeight:220,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
         border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'var(--dim)'}}>
         {slogText()||L('(henüz olay yok)','(no events yet)')}</pre>
+      {prev&&<>
+        <div style={{marginTop:12,fontSize:11,color:SYNC_LOG_PREV.clean?'var(--muted)':'var(--yellow)',textTransform:'uppercase',letterSpacing:.4}}>{prevHead}</div>
+        <pre style={{marginTop:6,maxHeight:180,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
+          border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'var(--dim)'}}>{prev}</pre>
+      </>}
       <div style={{display:'flex',gap:8,marginTop:12}}>
         <button className="btn sec sm" style={{flex:1}} onClick={copy}>{copied?L('Kopyalandı ✓','Copied ✓'):L('Kopyala','Copy')}</button>
         <button className="btn sm" style={{flex:1}} onClick={onClose}>{L('Kapat','Close')}</button>

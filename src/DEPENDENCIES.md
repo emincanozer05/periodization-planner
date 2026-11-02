@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1787**, yinelenen: **0**
+- Üst düzey ad sayısı: **1797**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -102,7 +102,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 54 | `athlete-info-report` | 1 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑ |
 | 55 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv` |
 | 56 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
-| 57 | `sync-infra-chunking-merge` | 78 | `team-data-migration` |
+| 57 | `sync-infra-chunking-merge` | 88 | `team-data-migration` |
 | 58 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge` |
 | 59 | `auth-ui-cloud-bar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`, `privacy-notice`↑, `language-selector-nav-icons`↑ |
 | 60 | `privacy-notice` | 5 | `prelude`, `dates-language-factories` |
