@@ -34749,9 +34749,18 @@ const slogText=()=>slogFmt(SYNC_LOG);
 const SLOG_KEY='coachos_synclog', SLOG_SAVE_MS=20000, SLOG_MEM_MS=10*60*1000;
 let SYNC_LOG_PREV=null;   // {at, clean, log:[…]} — bir önceki oturumun son kayıtları
 let _slSaveT=0, _slClean=false;
+/* Depo, verinin yerel emniyet kopyasıyla (LS_KEY, 3.5 MB'ye kadar) paylaşılıyor: günlük ona yer
+   kapmasın diye en çok SLOG_MAX_CHARS tutar (uzun açıklamalar kırpılır, sığmazsa eskiler düşer).
+   Emniyet kopyası yer bulamazsa günlüğü silip yeniden dener (bkz. _lsWrite): kopya her zaman önce gelir. */
+const SLOG_MAX_CHARS=16000;
 const slogSave=()=>{
   if(_slSaveT){clearTimeout(_slSaveT);_slSaveT=0;}
-  try{localStorage.setItem(SLOG_KEY,JSON.stringify({at:Date.now(),clean:_slClean,log:SYNC_LOG}));}catch(_){}
+  try{
+    let log=SYNC_LOG.map(e=>e.extra&&e.extra.length>200?{...e,extra:e.extra.slice(0,200)+'…'}:e);
+    let json=JSON.stringify({at:Date.now(),clean:_slClean,log});
+    while(json.length>SLOG_MAX_CHARS&&log.length>1){log=log.slice(Math.ceil(log.length/4));json=JSON.stringify({at:Date.now(),clean:_slClean,log});}
+    localStorage.setItem(SLOG_KEY,json);
+  }catch(_){}
 };
 const slogPrevText=()=>{
   const p=SYNC_LOG_PREV;if(!p||!p.log||!p.log.length)return'';
@@ -34960,7 +34969,12 @@ let _lsPend=null,_lsSched=0,_lsLast=null;
    o zaman yazmanın karşılığı yok, yalnızca telefonun takıldığı bir kare var. */
 const _lsWrite=()=>{const p=_lsPend;_lsPend=null;_lsSched=0;if(!p)return;
   if(_lsLast&&_lsLast.uid===p.uid&&_lsLast.json===p.json)return;
-  try{if(p.json.length>LS_MAX)return;localStorage.setItem(LS_KEY(p.uid),p.json);_lsLast={uid:p.uid,json:p.json};}catch(e){/* kota / gizli mod */}};
+  if(p.json.length>LS_MAX)return;
+  const put=()=>{localStorage.setItem(LS_KEY(p.uid),p.json);_lsLast={uid:p.uid,json:p.json};};
+  try{put();}catch(e){
+    /* Kota: emniyet kopyası senkron günlüğünden önce gelir — günlüğü sil, bir kez daha dene. */
+    try{if(localStorage.getItem(SLOG_KEY)!=null){localStorage.removeItem(SLOG_KEY);put();}}catch(e2){/* kota / gizli mod */}
+  }};
 const lsSave=(uid,json)=>{
   _lsPend={uid,json};
   if(_lsSched)return;

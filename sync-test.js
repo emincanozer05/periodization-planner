@@ -251,7 +251,7 @@ function loadSyncModule(world) {
   const args = ['bag', 'firebase', 'window', 'document', 'navigator', 'location', 'localStorage', 'sessionStorage',
     'Worker', 'Blob', 'requestIdleCallback', 'cancelIdleCallback'];
   const bag = {};
-  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;')(
+  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;bag.slog=slog;bag.slogSave=slogSave;bag.lsSave=lsSave;bag.lsFlush=lsFlush;')(
     bag, world.firebase, world.win, world.document, world.navigator, world.location,
     world.localStorage, world.sessionStorage,
     undefined, undefined, undefined, undefined);   // Worker/Blob yok → parçalama ana iş parçacığında
@@ -887,6 +887,27 @@ async function scenarioLogSurvivesCrash() {
 
   w = makeWorld(); w.localStorage.setItem('coachos_synclog', prevLog(true)); BAG = loadSyncModule(w);
   check('düzgün kapanmış oturumda yanlış alarm yok', !/düzgün kapanmadı/.test(BAG.slogText()) && /phaseBank/.test(BAG.slogPrevText()), BAG.slogText());
+
+  // Boyut sınırı: uzun açıklamalı 80 olay bile depoda küçük bir yer tutar.
+  for (let i = 0; i < 90; i++) BAG.slog('olay ' + i, 'x'.repeat(2000));
+  BAG.slogSave();
+  const len = (w.localStorage.getItem('coachos_synclog') || '').length;
+  check('günlük depoda en çok 16 KB tutuyor (' + len + ')', len > 0 && len <= 16000, 'uzunluk=' + len);
+
+  // Kota: depo doluyken verinin emniyet kopyası günlükten önce gelir.
+  w = makeWorld();
+  const st = {}; const QUOTA = 40000;
+  w.localStorage = { getItem: k => (k in st ? st[k] : null), removeItem: k => { delete st[k]; },
+    setItem: (k, v) => { const used = Object.keys(st).filter(x => x !== k).reduce((n, x) => n + st[x].length, 0);
+      if (used + String(v).length > QUOTA) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; } st[k] = String(v); } };
+  BAG = loadSyncModule(w);
+  for (let i = 0; i < 80; i++) BAG.slog('olay ' + i, 'y'.repeat(150));
+  BAG.slogSave();
+  const hadLog = 'coachos_synclog' in st;
+  BAG.lsSave('coach1', JSON.stringify({ teams: [{ id: 't0', note: 'z'.repeat(QUOTA - 3000) }] }));
+  BAG.lsFlush();
+  check('depo doluyken emniyet kopyası yine yazıldı (günlük ona yer açtı)', hadLog && 'coachos_last_state_coach1' in st && !('coachos_synclog' in st),
+    'günlük vardı=' + hadLog + ' kopya=' + ('coachos_last_state_coach1' in st) + ' günlük kaldı=' + ('coachos_synclog' in st));
   endScene();
 }
 
