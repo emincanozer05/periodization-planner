@@ -285,6 +285,7 @@ function SyncDiag({sync,onClose}){
     [L('Dinleyici uyanma sayısı','Listener wakeups'),String(d.snaps||0)],
     [L('Görülen doküman','Docs seen'),String(d.docs||0)],
     [L('Bulut parça sayısı','Cloud chunks'),String(d.chunks||0)],
+    [L('Kendiliğinden değişiklik (1 dk)','Unprompted changes (1 min)'),String(d.auto||0)+(d.autoTrip?L(' — SİGORTA AÇIK, yazım yavaşlatıldı',' — BREAKER ON, writes slowed'):'')],
     [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
     [L('Durum','Status'),sync.status],
   ];
@@ -329,7 +330,7 @@ function SyncDiag({sync,onClose}){
 }
 
 function CloudBar({sync,onOpen}){
-  const{user,status,syncErr,syncNote,clearSyncNote}=sync;
+  const{user,status,syncErr,syncNote,clearSyncNote,syncWarn}=sync;
   const[diagOpen,setDiagOpen]=useState(false);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:L('Çevrimdışı','Offline'),syncing:L('Senkronize ediliyor…','Syncing…'),synced:L('Senkronize','Synced'),error:L('Senkron hatası!','Sync error!')}[status];
@@ -367,6 +368,14 @@ function CloudBar({sync,onOpen}){
         ):(
           <>⚠ {L('Senkronizasyon hatası:','Sync error:')} <b>{syncErr}</b><br/>{L('Sayfayı yenile veya tekrar giriş yap.','Refresh the page or sign in again.')}</>
         )}
+      </div>
+    )}
+    {!syncErr&&syncWarn&&(
+      <div role="status" style={{margin:'6px 0 0',padding:'8px 10px',border:'1px solid var(--yellow)',borderRadius:6,
+                   background:'rgba(250,204,21,.08)',color:'var(--yellow)',fontSize:11,lineHeight:1.5}}>
+        <b>{L('Kayıt yavaşlatıldı.','Saving slowed down.')}</b> {L(syncWarn,'Something keeps changing the data without you touching it. Cloud saves were slowed so this tab does not wear out; nothing is lost and your own edits still save at once.')}
+        <a style={{display:'block',marginTop:6,color:'var(--accent2)',cursor:'pointer',fontWeight:600}}
+           onClick={()=>setDiagOpen(true)}>{L('Ayrıntılar (senkron günlüğü)','Details (sync log)')}</a>
       </div>
     )}
     {!syncErr&&syncNote&&(

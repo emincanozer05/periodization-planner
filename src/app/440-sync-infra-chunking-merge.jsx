@@ -97,6 +97,32 @@ const slogSub=f=>{_slSubs.push(f);return()=>{_slSubs=_slSubs.filter(x=>x!==f);};
    yenilendi" şikâyeti neyin yenilediğini söylemeden kalırdı. Günlükte bu satır yoksa yenileyen
    uygulama değildir: tarayıcı (aşağı çekerek yenileme) ya da işletim sistemi (bellek baskısı). */
 try{const w=sessionStorage.getItem('coachos_reload_why');if(w){sessionStorage.removeItem('coachos_reload_why');slog('sayfa uygulama tarafından yenilendi: '+w);}}catch(_){}
+/* İki hâl arasında nesnesi DEĞİŞEN en derin yollar (ör. "teams[T1].athletes[a3].phaseBank"):
+   yalnızca referans karşılaştırması, kopyalamadan ve serileştirmeden. Kimliği olan dizi öğeleri
+   [id] ile, olmayanlar sırasıyla adlandırılır. Kendiliğinden yazım sigortası (useCloudSync)
+   bunu günlüğe yazar: koç dokunmadan durmadan değişen hâlin HANGİ özellikten geldiği
+   oradan okunur. */
+function syncChangedPaths(a,b,max){
+  const out=[],lim=max||6;
+  const walk=(x,y,p,d)=>{
+    if(out.length>=lim||x===y)return;
+    if(!x||!y||typeof x!=='object'||typeof y!=='object'||d>=6||Array.isArray(x)!==Array.isArray(y)){out.push(p||'(kök)');return;}
+    const before=out.length;
+    if(Array.isArray(x)){
+      const byId=y.every(v=>v&&v.id!=null)&&x.every(v=>v&&v.id!=null);
+      if(byId){const m=new Map(x.map(v=>[v.id,v]));
+        y.forEach(v=>walk(m.get(v.id),v,p+'['+v.id+']',d+1));
+        if(x.length!==y.length&&out.length===before)out.push(p+' (öğe sayısı '+x.length+'→'+y.length+')');}
+      else{for(let i=0;i<Math.max(x.length,y.length);i++)walk(x[i],y[i],p+'['+i+']',d+1);}
+    }else{
+      const ks=new Set([...Object.keys(x),...Object.keys(y)]);
+      ks.forEach(k=>walk(x[k],y[k],p?p+'.'+k:k,d+1));
+    }
+    if(out.length===before)out.push(p||'(kök)');   // yalnız nesnesi yenilenmiş, içeriği aynı
+  };
+  walk(a,b,'',0);
+  return out;
+}
 const slogText=()=>SYNC_LOG.map(e=>{
   const d=new Date(e.t);
   const p=n=>String(n).padStart(2,'0');

@@ -73,6 +73,38 @@ function useCloudSync(data,setData){
       total-=h.get(k).length;h.delete(k);
     }
   };
+  /* ═══════════════════════════════════════════════════════════════════════
+     KENDİLİĞİNDEN YAZIM SİGORTASI — bir döngü sekmeyi çökertmesin.
+
+     Kimi özellikler veriyi koç dokunmadan da günceller (faz bankası, takvime yazılan
+     bireysel program, sRPE, maç listesi…). Bunlardan biri bir gün kendi yazdığına ya da öbür
+     cihazın yazdığına karşılık yeniden yazarsa durum hiç durmadan değişir; her değişiklik
+     bütün durumu serileştirip buluta gönderir ve sekme sonunda "Out of Memory" ile çöker
+     (bkz. faz bankası, #701). Hangi özelliğin bunu yapacağını önceden bilemeyiz; bilebileceğimiz
+     şey belirtisi: koç hiçbir şeye dokunmadığı hâlde dakikada onlarca kayıt.
+
+     O belirti görülünce yazımlar AUTO_GAP_MS'de bire iner. Veri kaybolmaz — giden her yazım
+     o anki son hâldir — yalnızca bulut daha seyrek güncellenir. Koçun kendi düzenlemesi
+     (dokunuştan sonraki AUTO_QUIET_MS içinde) her zaman beklemeden gider. Hangi yolun
+     değiştiği günlüğe yazılır, göstergenin altında bir uyarı çıkar. Değişiklikler kesilince
+     sigorta kendiliğinden kapanır. */
+  const AUTO_QUIET_MS=3000, AUTO_WIN_MS=60000, AUTO_MAX=12, AUTO_GAP_MS=30000;
+  const userActAt=useRef(0);            // koçun son dokunuşu / tuşu
+  const prevSeen=useRef(null);          // yazım efektinin bir önceki turda gördüğü hâl
+  const autoRun=useRef({t:[],trip:0,lastWrite:0,logged:0});
+  const[syncWarn,setSyncWarn]=useState('');
+  useEffect(()=>{
+    if(typeof window==='undefined'||!window.addEventListener)return;
+    const act=()=>{userActAt.current=Date.now();};
+    const evs=['pointerdown','keydown','input','paste','drop'];
+    evs.forEach(e=>window.addEventListener(e,act,true));
+    return()=>evs.forEach(e=>window.removeEventListener(e,act,true));
+  },[]);
+  const autoUntrip=why=>{
+    const A=autoRun.current;if(!A.trip)return;
+    A.trip=0;A.t=[];A.logged=0;
+    slog('sigorta: kapandı',why);setSyncWarn('');
+  };
   const healBase=useRef(null);          // onarım yazımı: bilerek üstüne yazılan bozuk manifestin rev'i
   const conflicts=useRef({n:0,at:0});   // art arda reddedilen manifest yazımı (sonsuz döngü olmasın)
   const repairing=useRef(false);        // eksik parça onarımı uçuşta mı
@@ -1432,6 +1464,8 @@ function useCloudSync(data,setData){
       const now=Date.now();
       const st=statusRef.current;
       ensureNetwork();
+      { const A=autoRun.current;
+        if(A.trip&&now-(A.t[A.t.length-1]||0)>AUTO_WIN_MS)autoUntrip(Math.round(AUTO_WIN_MS/1000)+' sn boyunca kendiliğinden değişiklik yok'); }
 
       /* 0) Bir yazım uzun süredir onay bekliyor: bağlantı ölü olabilir. Bunu yalnızca
             bağlantıyı yeniden açmak çözer (bkz. kickNetwork); aralık art arda açılır.
@@ -1542,19 +1576,36 @@ function useCloudSync(data,setData){
     return Math.min(220,Math.max(60,Math.round(len/40000)));    // ~2.4MB → 60ms, 4MB → 100ms, 9MB+ → 220ms
   };
   useEffect(()=>{
+    const prevData=prevSeen.current;prevSeen.current=data;
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;lastEditAt.current=Date.now();setStatus('syncing');
+    /* Sigorta (bkz. AUTO_*): koçun dokunuşu olmadan gelen değişiklikler sayılır. */
+    const now=Date.now(),A=autoRun.current;
+    let wait=writeDelay();
+    if(now-userActAt.current>AUTO_QUIET_MS){
+      A.t.push(now);while(A.t.length&&now-A.t[0]>AUTO_WIN_MS)A.t.shift();
+      if(!A.trip&&A.t.length>=AUTO_MAX){
+        A.trip=now;A.logged=0;
+        slog('sigorta: koç dokunmadan '+A.t.length+' değişiklik / '+Math.round(AUTO_WIN_MS/1000)+' sn → yazım '+Math.round(AUTO_GAP_MS/1000)+' sn\'de bire indirildi');
+        setSyncWarn('Bir özellik veriyi sen dokunmadan durmadan güncelliyor. Sekmenin yorulmaması için bulut kaydı yavaşlatıldı; veri kaybolmuyor, senin düzenlemelerin beklemeden kaydediliyor.');
+      }
+      if(A.trip){
+        if(A.logged<6){A.logged++;slog('sigorta: kendiliğinden değişen',syncChangedPaths(prevData,data).join(', ')||'?');}
+        wait=Math.max(wait,A.lastWrite+AUTO_GAP_MS-now);
+      }
+    }
     /* Bekleme dolduğunda yazımı hemen değil, tarayıcının ilk boş anında başlat. Yazım
        durumun tamamını seri hâle getirip parçalara böler; kaydırmanın ortasına denk
        geldiğinde kare düşüren iş budur. Boş an gelmezse zaman aşımı yine de yazdırır. */
     timer.current=setTimeout(()=>{
+      autoRun.current.lastWrite=Date.now();
       // Boş an beklenir ama uzun beklenmez: 2.5 sn'lik zaman aşımı, diğer cihazın değişikliği
       // görmesini tek başına saniyelerce geciktirebiliyordu.
       if(typeof requestIdleCallback==='function')requestIdleCallback(()=>writeNow(),{timeout:120});
       else writeNow();
-    },writeDelay());
+    },wait);
   },[data,user]);
 
   /* Panelin okuduğu canlı iç durum. Ref'ler render sırasında okunuyor — teşhis için
@@ -1570,6 +1621,7 @@ function useCloudSync(data,setData){
     serverAgo:lastServerAt.current?Math.round((Date.now()-lastServerAt.current)/1000):-1,
     skew:skew.current,
     kicks:netKick.current.total,
+    auto:autoRun.current.t.length,autoTrip:!!autoRun.current.trip,
   });
   /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
      şeyden birini söyler — okundu (taşıma sağlam, sorun mantıkta), zaman aşımı (cihaz
@@ -1590,7 +1642,7 @@ function useCloudSync(data,setData){
       return(c==='timeout'?'sunucuya ULAŞILAMIYOR (zaman aşımı)':'hata: '+c)+' ('+ms+'ms)';
     }
   };
-  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
+  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
