@@ -123,6 +123,40 @@ function syncChangedPaths(a,b,max){
   walk(a,b,'',0);
   return out;
 }
+/* VERİ BOYUTU ÇÖZÜMLEMESİ — senkron panelinde "neyin yer kapladığı". Senkron her kayıtta durumun
+   tamamını metne çeviriyor; durum büyüdükçe her düzenleme pahalılaşıyor ve sekme belleği
+   zorluyor. Sayılar JSON'daki karakter sayısıdır (panelin "Veri boyutu" ile aynı ölçü):
+   türe göre (gömülü görsel / PDF / video / yazı), bölgeye göre (kütüphane, sporcular,
+   takvim…) ve en büyük tek tek kayıtlar, yollarıyla. Kişisel ad değil kimlik yazılır. */
+function syncSizeReport(state){
+  const kind={},area={},big=[];
+  const kindOf=s=>s.indexOf('data:image')===0?'gömülü görsel':s.indexOf('data:application/pdf')===0?'gömülü PDF'
+    :s.indexOf('data:video')===0?'gömülü video':s.indexOf('data:')===0?'gömülü başka dosya':'yazı ve sayılar';
+  let total=0;
+  const seen=new Set();
+  const walk=(n,p,ar)=>{
+    if(typeof n==='string'){const z=n.length+2;total+=z;const k=kindOf(n);kind[k]=(kind[k]||0)+z;area[ar]=(area[ar]||0)+z;
+      if(z>=20000)big.push([z,k,p]);return;}
+    if(n==null||typeof n!=='object'){const z=String(n).length+1;total+=z;kind['yazı ve sayılar']=(kind['yazı ve sayılar']||0)+z;area[ar]=(area[ar]||0)+z;return;}
+    if(seen.has(n))return;seen.add(n);
+    if(Array.isArray(n))n.forEach((v,i)=>walk(v,p+'['+(v&&typeof v==='object'&&v.id!=null?v.id:i)+']',ar));
+    else Object.keys(n).forEach(k=>{
+      if(!p&&k==='activeTeamId')return;
+      const q=p?p+'.'+k:k;
+      walk(n[k],q,ar||(/^teams\[[^\]]+\]$/.test(p)?q:(p===''&&k!=='teams'?k:'')));
+    });
+  };
+  walk(state,'','');
+  const mb=z=>(z/1048576).toFixed(z>=1048576?1:2)+' MB';
+  const rows=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
+  const out=['Toplam ~'+mb(total)];
+  out.push('','Türe göre:');rows(kind).forEach(([k,z])=>out.push('  '+k+': '+mb(z)+' ('+Math.round(z*100/Math.max(1,total))+'%)'));
+  out.push('','Bölgeye göre (10 KB üstü):');rows(area).filter(([,z])=>z>=10240).slice(0,10).forEach(([k,z])=>out.push('  '+(k||'(diğer)')+': '+mb(z)));
+  big.sort((a,b)=>b[0]-a[0]);
+  out.push('','En büyük '+Math.min(15,big.length)+' kayıt'+(big.length>15?' (toplam '+big.length+' büyük kayıt, '+mb(big.reduce((n,b)=>n+b[0],0))+')':'')+':');
+  big.slice(0,15).forEach(([z,k,p])=>out.push('  '+mb(z)+' · '+k+' · '+p));
+  return out.join('\n');
+}
 const slogFmt=list=>(list||[]).map(e=>{
   const d=new Date(e.t);
   const p=n=>String(n).padStart(2,'0');

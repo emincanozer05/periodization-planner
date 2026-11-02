@@ -492,6 +492,11 @@ ${FMS_INFO_CSS}
    Returns {name,size,at,pages:[dataURL],data} or throws with a readable reason. */
 const FMS_PDF_MAX=12*1024*1024;     // refuse anything past this — it is synced, not just held
 const FMS_PDF_KEEP=6*1024*1024;     // above this only the pages are kept, not the original
+/* Sayfalar ve orijinal, oturum açıksa doğrudan bulut depolamaya yüklenir; kayda yalnızca
+   adresleri girer. Yükleme olmazsa sayfalar kayda gömülür (liftLocalMedia sonra taşır), orijinal
+   ise yalnızca bu boyutun altındaysa: 6 MB'lık bir PDF metin olarak ~8 MB tutup HER senkron
+   kaydında baştan sona taşınıyordu — 35 MB'lık durumların başlıca kaynağı. */
+const FMS_PDF_INLINE=1024*1024;
 async function fmsReadPdf(file){
   if(!file)throw new Error('No file.');
   const isPdf=/\.pdf$/i.test(file.name||'')||file.type==='application/pdf';
@@ -524,7 +529,16 @@ async function fmsReadPdf(file){
     pages.push(cv.toDataURL('image/jpeg',0.82));
   }
   if(!pages.length)throw new Error(L('PDF boş görünüyor.','That PDF appears to be empty.'));
-  return{name:file.name||'FMS.pdf',size:file.size,at:new Date().toISOString(),pages,data:dataUrl};
+  let data=dataUrl;
+  const fb=(typeof FB==='function')?FB():null;
+  if(fb&&fb.storage&&fb.auth&&fb.auth().currentUser){
+    try{
+      for(let i=0;i<pages.length;i++)pages[i]=await uploadMedia(await (await fetch(pages[i])).blob(),'fms');
+      data=await uploadMedia(file,'fms',null,file.name||'FMS.pdf');
+    }catch(e){warnStorageFailure(e);}
+  }
+  if(typeof data==='string'&&data.indexOf('data:')===0&&file.size>FMS_PDF_INLINE)data=null;
+  return{name:file.name||'FMS.pdf',size:file.size,at:new Date().toISOString(),pages,data};
 }
 
 /* =========================================================
