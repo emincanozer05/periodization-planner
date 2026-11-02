@@ -836,6 +836,40 @@ async function scenarioCloseDuringPreRead() {
   endScene(); h.unmount();
 }
 
+/* KENDİLİĞİNDEN YAZIM DÖNGÜSÜ (#701'in genel sigortası). Bir özellik veriyi koç dokunmadan
+   durmadan değiştiriyor (faz bankasının iki cihaz arasında gidip gelmesi gibi). Her değişiklik
+   bütün durumu buluta yazıyordu ve sekme "Out of Memory" ile çöktü. Sorulan: yazımlar
+   seyreliyor mu, koçun kendi düzenlemesi yine de beklemeden gidiyor mu, döngü bitince
+   sigorta kapanıyor mu, günlük suçluyu adıyla söylüyor mu. */
+async function scenarioAutoWriteLoop() {
+  scene('koç dokunmadan durmadan değişen veri: yazım seyreliyor, koçun düzenlemesi beklemiyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  const revs = new Set();
+  const watch = setInterval(() => { const r = cloudRev(w); if (r != null) revs.add(r); }, 20);
+  const loopState = n => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Takım' }, days: {},
+    athletes: [{ id: 'a1', name: 'Ali', phaseBank: { prep: [{ id: 'k1', rows: ['tur' + n] }] } }] }], templates: [] });
+  let n = 0;
+  const loop = setInterval(() => out.setData(loopState(++n)), 250);   // dakikada ~240 değişiklik
+  await sleep(12000);
+  const during = revs.size;
+  check('döngü sürerken yazım seyreldi (' + during + ' yazım / ' + n + ' değişiklik)', during <= 16, 'yazım=' + during + ' (değişiklik=' + n + ')');
+  check('uyarı gösterildi', !!out.sync.syncWarn, 'syncWarn boş');
+  const log = BAG.slogText();
+  check('günlük suçluyu adıyla söylüyor', /sigorta: kendiliğinden değişen.*athletes\[a1\]\.phaseBank/.test(log), log.split('\n').filter(l => /sigorta/.test(l)).join(' | '));
+
+  // Koç bir şeye dokunuyor: onun düzenlemesi 30 sn beklemeden gider.
+  (w.evts.pointerdown || []).forEach(f => f());
+  const before = revs.size;
+  out.setData(loopState(++n));
+  await sleep(1200);
+  check('koçun düzenlemesi beklemeden yazıldı', revs.size > before, 'yazım ' + before + ' → ' + revs.size);
+
+  clearInterval(loop);
+  endScene(); clearInterval(watch); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -846,7 +880,7 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
     scenarioNeverReachesServer, scenarioStaleOverwrite, scenarioSingleDeleteSyncs,
     scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
     scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
-    scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead,
+    scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead, scenarioAutoWriteLoop,
   ];
   // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
   const only = process.env.SYNCTEST_ONLY;

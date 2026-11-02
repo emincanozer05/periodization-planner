@@ -103,7 +103,10 @@ function playwright() {
   throw new Error('playwright bulunamadı (npm i -g playwright)');
 }
 
-(async () => {
+/* Kütüphane listesi, yönlendirmeler ve sahte oturum başka tarayıcı sınamalarınca da kullanılır
+   (tools/sync-loop-test.js): tek yerde dursun, sürümler iki dosyada ayrı ayrı kaymasın. */
+module.exports = { PKGS, ROUTES, FAKE_AUTH, libFile, playwright };
+if (require.main === module) (async () => {
   if (!fs.existsSync(path.join(DIST, 'index.html'))) throw new Error(DIST + '/index.html yok: önce `node build.js`');
   const { chromium } = playwright();
   const cache = {};
