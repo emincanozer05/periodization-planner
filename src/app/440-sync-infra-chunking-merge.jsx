@@ -129,32 +129,49 @@ function syncChangedPaths(a,b,max){
    türe göre (gömülü görsel / PDF / video / yazı), bölgeye göre (kütüphane, sporcular,
    takvim…) ve en büyük tek tek kayıtlar, yollarıyla. Kişisel ad değil kimlik yazılır. */
 function syncSizeReport(state){
-  const kind={},area={},big=[];
+  const kind={},big=[],schema=new Map(),perAth=[];
   const kindOf=s=>s.indexOf('data:image')===0?'gömülü görsel':s.indexOf('data:application/pdf')===0?'gömülü PDF'
     :s.indexOf('data:video')===0?'gömülü video':s.indexOf('data:')===0?'gömülü başka dosya':'yazı ve sayılar';
-  let total=0;
+  /* Alan şeması: kimlikler [*], tarih anahtarları {tarih}, kimlik gibi anahtarlar {*} olur;
+     böylece "bütün sporcuların bütün günlerindeki egzersiz açıklamaları" tek satırda toplanır. */
+  const keyOf=k=>/^\d{4}-\d{2}-\d{2}$/.test(k)?'{tarih}':/^[A-Za-z_][A-Za-z0-9_]{0,30}$/.test(k)&&!/\d{3}/.test(k)?k:'{*}';
+  const upOf=sp=>{const m=sp.match(/^(.*?)(\[\*\]|\.[^.[]+)$/);return m?m[1]:'';};
   const seen=new Set();
-  const walk=(n,p,ar)=>{
-    if(typeof n==='string'){const z=n.length+2;total+=z;const k=kindOf(n);kind[k]=(kind[k]||0)+z;area[ar]=(area[ar]||0)+z;
-      if(z>=20000)big.push([z,k,p]);return;}
-    if(n==null||typeof n!=='object'){const z=String(n).length+1;total+=z;kind['yazı ve sayılar']=(kind['yazı ve sayılar']||0)+z;area[ar]=(area[ar]||0)+z;return;}
-    if(seen.has(n))return;seen.add(n);
-    if(Array.isArray(n))n.forEach((v,i)=>walk(v,p+'['+(v&&typeof v==='object'&&v.id!=null?v.id:i)+']',ar));
-    else Object.keys(n).forEach(k=>{
-      if(!p&&k==='activeTeamId')return;
-      const q=p?p+'.'+k:k;
-      walk(n[k],q,ar||(/^teams\[[^\]]+\]$/.test(p)?q:(p===''&&k!=='teams'?k:'')));
-    });
+  const walk=(n,p,sp,d)=>{
+    let z;
+    if(typeof n==='string'){z=n.length+2;const k=kindOf(n);kind[k]=(kind[k]||0)+z;if(z>=20000)big.push([z,k,p]);}
+    else if(n==null||typeof n!=='object'){z=String(n).length+1;kind['yazı ve sayılar']=(kind['yazı ve sayılar']||0)+z;}
+    else if(seen.has(n))z=0;
+    else{
+      seen.add(n);z=2;
+      if(Array.isArray(n))n.forEach((v,i)=>{z+=walk(v,p+'['+(v&&typeof v==='object'&&v.id!=null?v.id:i)+']',sp+'[*]',d+1)+1;});
+      else Object.keys(n).forEach(k=>{if(!p&&k==='activeTeamId')return;
+        z+=k.length+4+walk(n[k],p?p+'.'+k:k,sp?sp+'.'+keyOf(k):keyOf(k),d+1);});
+    }
+    if(sp&&d<=16){const e=schema.get(sp);if(e){e.z+=z;e.n++;}else schema.set(sp,{z,n:1,up:upOf(sp)});}
+    if(/^teams\[[^\]]+\]\.athletes\[[^\]]+\]$/.test(p))perAth.push([z,p]);
+    return z;
   };
-  walk(state,'','');
-  const mb=z=>(z/1048576).toFixed(z>=1048576?1:2)+' MB';
-  const rows=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
+  const total=walk(state,'','',0);
+  const mb=z=>z>=1048576?(z/1048576).toFixed(1)+' MB':Math.max(1,Math.round(z/1024))+' KB';
+  const pct=z=>Math.round(z*100/Math.max(1,total))+'%';
   const out=['Toplam ~'+mb(total)];
-  out.push('','Türe göre:');rows(kind).forEach(([k,z])=>out.push('  '+k+': '+mb(z)+' ('+Math.round(z*100/Math.max(1,total))+'%)'));
-  out.push('','Bölgeye göre (10 KB üstü):');rows(area).filter(([,z])=>z>=10240).slice(0,10).forEach(([k,z])=>out.push('  '+(k||'(diğer)')+': '+mb(z)));
+  out.push('','Türe göre:');Object.entries(kind).sort((a,b)=>b[1]-a[1]).forEach(([k,z])=>out.push('  '+k+': '+mb(z)+' ('+pct(z)+')'));
+  /* Alanlar: toplamın %2'sinden büyük olanlar, en büyükten; her satırda kaç kayıt olduğu ve kayıt
+     başına ortalama. Bir alt alan üst alanının neredeyse tamamıysa (ör. days → sessions) ikisi de
+     görünür: hangisinin asıl yükü taşıdığı en derin büyük satırdan okunur. */
+  out.push('','Alana göre (toplamın %2\'sinden büyük, bütün kayıtlar birleşik):');
+  /* Yükünün neredeyse tamamı (%95) tek bir alt alanda olan satır gizlenir: o zincirin yalnızca
+     dallandığı ya da bittiği yer görünür (ör. "…exercises[*].description" doğrudan). */
+  const kids=new Map();schema.forEach((e,k)=>{if(e.up!=null){const m=kids.get(e.up)||0;if(e.z>m)kids.set(e.up,e.z);}});
+  [...schema.entries()].filter(([k,e])=>e.z>=total*0.02&&!((kids.get(k)||0)>=e.z*0.95)).sort((a,b)=>b[1].z-a[1].z).slice(0,25)
+    .forEach(([k,e])=>out.push('  '+mb(e.z)+' ('+pct(e.z)+') · '+e.n+' kayıt · ort. '+mb(e.z/e.n)+' · '+k));
+  perAth.sort((a,b)=>b[0]-a[0]);
+  if(perAth.length){out.push('','En büyük sporcular ('+perAth.length+' sporcudan):');
+    perAth.slice(0,5).forEach(([z,p])=>out.push('  '+mb(z)+' · '+p));}
   big.sort((a,b)=>b[0]-a[0]);
-  out.push('','En büyük '+Math.min(15,big.length)+' kayıt'+(big.length>15?' (toplam '+big.length+' büyük kayıt, '+mb(big.reduce((n,b)=>n+b[0],0))+')':'')+':');
-  big.slice(0,15).forEach(([z,k,p])=>out.push('  '+mb(z)+' · '+k+' · '+p));
+  if(big.length){out.push('','En büyük '+Math.min(10,big.length)+' tek kayıt (20 KB üstü):');
+    big.slice(0,10).forEach(([z,k,p])=>out.push('  '+mb(z)+' · '+k+' · '+p));}
   return out.join('\n');
 }
 const slogFmt=list=>(list||[]).map(e=>{
