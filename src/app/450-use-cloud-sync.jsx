@@ -1242,9 +1242,13 @@ function useCloudSync(data,setData){
       if(!hasPendingMedia(before))return;
       lifting.current=true;
       try{
-        const clone=JSON.parse(JSON.stringify(before));
-        // Taşıma sırasında kullanıcı bir şey değiştirdiyse bu turu atla — düzenlemesi ezilmesin.
-        if(await liftLocalMedia(clone,fb,user.uid)&&dataRef.current===before){dataRef.current=clone;setData(clone);}
+        /* Taşınan dosyaların adresleri, tur sürerken yapılan düzenlemeler ezilmeden EN SON hâle
+           işlenir (bkz. liftLocalMedia / swapStrings). */
+        const swaps=await liftLocalMedia(before,fb,user.uid);
+        if(swaps&&swaps.size){
+          slog('medya: buluta taşındı','adet='+swaps.size);
+          setData(prev=>swapStrings(prev,swaps));
+        }
       }catch(e){console.warn('media lift',e);}
       lifting.current=false;
     };
@@ -1642,7 +1646,8 @@ function useCloudSync(data,setData){
       return(c==='timeout'?'sunucuya ULAŞILAMIYOR (zaman aşımı)':'hata: '+c)+' ('+ms+'ms)';
     }
   };
-  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
+  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
+    sizeReport:()=>syncSizeReport(dataRef.current),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),

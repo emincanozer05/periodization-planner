@@ -108,6 +108,10 @@ function lmSweep(){
 }
 const isLocalRef=v=>typeof v==='string'&&v.indexOf(LM_REF)===0;
 const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.indexOf('data:video')===0);
+/* Veriye gömülü PDF (FMS sonuç sayfasının orijinali). Görsel değildir — <img>'e verilmez,
+   isInlineMedia'dan bu yüzden ayrı — ama aynı şekilde buluta taşınır: 6 MB'lık bir PDF,
+   metin olarak ~8 MB ile her kayıtta senkronun içinde dolaşıyordu. */
+const isInlineDoc=v=>typeof v==='string'&&v.indexOf('data:application/pdf')===0;
 /* True when the slot holds something but the something cannot be shown — a handle whose
    file is on another device or was evicted from this one. The upload surfaces test this
    rather than plain truthiness, so a picture that cannot be drawn reads as an empty slot
@@ -180,7 +184,7 @@ async function saveLocalMedia(dataUrl){
 // embedded by an older version. Cheap enough to run before each retry round.
 function hasPendingMedia(node,seen){
   seen=seen||new Set();
-  if(isLocalRef(node)||isInlineMedia(node))return true;
+  if(isLocalRef(node)||isInlineMedia(node)||isInlineDoc(node))return true;
   if(!node||typeof node!=='object'||seen.has(node))return false;
   seen.add(node);
   return Object.keys(node).some(k=>hasPendingMedia(node[k],seen));
@@ -365,7 +369,7 @@ function mediaReport(node,acc,seen){
   seen=seen||new Set();
   if(typeof node==='string'){
     if(isLocalRef(node))acc[_lmCache.has(node.slice(LM_REF.length))?'device':'lost']++;
-    else if(isInlineMedia(node))acc.inline++;
+    else if(isInlineMedia(node)||isInlineDoc(node))acc.inline++;
     else if(node.indexOf('drive:')===0)acc.drive++;
     else if(/^https?:\/\/[^ ]*(firebasestorage|googleusercontent|drive\.google)/.test(node))acc.cloud++;
     return acc;
@@ -409,59 +413,74 @@ function mergeMediaFrom(cur,bak){
    the rules should not have to wait one out. */
 let _liftPausedUntil=0;
 const liftPaused=()=>Date.now()<_liftPausedUntil;
+/* Buluta taşınacak her şey (görsel, video, PDF, cihazdaki tutamak), DOKUNMADAN okunur ve
+   `eski değer → yeni değer` haritası döner; uygulayan swapStrings'tir. Eskiden durumun tamamı
+   kopyalanıp (35 MB'lık bir durumda her 5 dakikada bir 70 MB'lık geçici bellek) yerinde
+   değiştiriliyor, tur sürerken koç tek bir şeye dokunursa bütün tur çöpe atılıyordu: koç
+   çalıştığı sürece taşıma hiç bitmiyor, yüklenen dosyalar da boşa gidiyordu. Harita ise
+   turun sonunda o anki EN SON hâle uygulanır; arada yapılan düzenleme kaybolmaz. */
 async function liftLocalMedia(obj,fb,uid){
-  if(!fb||!fb.storage||!uid)return false;
-  let changed=false,failed=false;
-  const upBlob=async blob=>{const url=await uploadMedia(blob,'migrated',null);changed=true;return url;};
-  const fromInline=async dataUrl=>{
-    // Storage shut → the picture stays exactly where it is. Moving it to the device store
-    // would shrink the synced document but make the picture device-only, and a photo that
-    // vanishes from the coach's other devices costs more than a slow sync ever did.
-    try{return await upBlob(await (await fetch(dataUrl)).blob());}
-    catch(e){failed=true;warnStorageFailure(e);return dataUrl;}
+  const swaps=new Map();
+  if(!fb||!fb.storage||!uid)return swaps;
+  let failed=false;
+  const found=new Set();
+  const walk=(node,seen)=>{
+    if(typeof node==='string'){if(isInlineMedia(node)||isInlineDoc(node)||isLocalRef(node))found.add(node);return;}
+    if(!node||typeof node!=='object'||seen.has(node))return;
+    seen.add(node);
+    if(Array.isArray(node))node.forEach(v=>walk(v,seen));else Object.keys(node).forEach(k=>walk(node[k],seen));
   };
-  /* One handle can appear in several places, so each is resolved once and the answer
-     reused — otherwise the same file is uploaded twice. The device copies are left alone:
-     this round's result is thrown away whenever the coach edits while it runs, and deleting
-     the file here would take the picture with it. lmSweep() collects them after a write. */
-  const seen=new Map();
-  const fromRef=async ref=>{
-    if(seen.has(ref))return seen.get(ref);
-    const id=ref.slice(LM_REF.length);
-    const data=_lmCache.get(id);
-    if(!data)return ref;                       // file is on another device — leave the handle alone
-    let out;
-    try{
-      out=await upBlob(await (await fetch(data)).blob());
-    }catch(e){
-      failed=true;warnStorageFailure(e);
-      /* Cloud still shut and the picture is here: write it back into the state. That is
-         what puts a photo taken on this device back on all the others, and it undoes the
-         handles an earlier version left behind — a picture is never left living in one
-         browser's storage alone. */
-      changed=true;out=data;
-    }
-    seen.set(ref,out);
-    return out;
-  };
-  const lift=v=>isInlineMedia(v)?fromInline(v):fromRef(v);
-  const walk=async node=>{
-    if(Array.isArray(node)){
-      for(let i=0;i<node.length;i++){
-        const v=node[i];
-        if(isInlineMedia(v)||isLocalRef(v))node[i]=await lift(v);
-        else if(v&&typeof v==='object')await walk(v);
+  walk(obj,new Set());
+  const upBlob=async blob=>uploadMedia(blob,'migrated',null,blob.type==='application/pdf'?'file.pdf':undefined);
+  for(const v of found){
+    if(failed&&!isLocalRef(v))continue;   // bulut kapalı: kalan gömülüleri bu turda deneme
+    if(isLocalRef(v)){
+      const data=_lmCache.get(v.slice(LM_REF.length));
+      if(!data)continue;                    // dosya başka bir cihazda — tutamağa dokunma
+      try{swaps.set(v,await upBlob(await (await fetch(data)).blob()));}
+      catch(e){
+        failed=true;warnStorageFailure(e);
+        /* Bulut hâlâ kapalı ve görsel burada: duruma geri yaz. Bu cihazda çekilen fotoğraf
+           öbür cihazlara da böyle ulaşır; görsel tek bir tarayıcının deposunda kalmaz. */
+        swaps.set(v,data);
       }
-    }else if(node&&typeof node==='object'){
-      for(const k of Object.keys(node)){
-        const v=node[k];
-        if(isInlineMedia(v)||isLocalRef(v))node[k]=await lift(v);
-        else if(v&&typeof v==='object')await walk(v);
-      }
+    }else{
+      /* Bulut kapalıysa gömülü dosya olduğu yerde kalır: cihaz deposuna taşımak senkronu
+         küçültürdü ama dosyayı tek cihaza hapsederdi. */
+      try{swaps.set(v,await upBlob(await (await fetch(v)).blob()));}
+      catch(e){failed=true;warnStorageFailure(e);}
     }
-  };
-  await walk(obj);
+  }
   if(failed)_liftPausedUntil=Date.now()+30*60*1000;
-  return changed;
+  return swaps;
+}
+/* Haritadaki dizgileri değiştirir; değişmeyen dalların nesnesi aynı kalır (React ve senkron
+   önbelleği için). Hiçbir şey değişmezse aynı nesne döner. */
+function swapStrings(node,map){
+  if(typeof node==='string')return map.has(node)?map.get(node):node;
+  if(!node||typeof node!=='object'||!map.size)return node;
+  if(Array.isArray(node)){
+    let out=null;
+    for(let i=0;i<node.length;i++){const v=swapStrings(node[i],map);if(v!==node[i]){if(!out)out=node.slice();out[i]=v;}}
+    return out||node;
+  }
+  let out=null;
+  for(const k of Object.keys(node)){const v=swapStrings(node[k],map);if(v!==node[k]){if(!out)out={...node};out[k]=v;}}
+  return out||node;
+}
+/* Bulut depolamaya gerçekten yazılabiliyor mu? Küçük bir dosya yazılır ve hemen silinir.
+   Senkron paneli sorar: veri boyutu büyükse ilk soru, dosyaların neden buluta
+   taşınamadığıdır (kurallar yayınlanmamış, kova yok, oturum yok…). */
+async function storageProbe(){
+  const fb=(typeof FB==='function')?FB():null;
+  if(!fb||!fb.storage)return'bulut depolama kütüphanesi yüklenmedi';
+  const user=fb.auth&&fb.auth().currentUser;if(!user)return'oturum yok';
+  const t0=Date.now();
+  try{
+    const ref=fb.storage().ref().child('users/'+user.uid+'/probe/'+Date.now()+'.txt');
+    await withTimeout(ref.put(new Blob(['ok'],{type:'text/plain'})),20000);
+    try{await ref.delete();}catch(e){}
+    return'çalışıyor ('+(Date.now()-t0)+' ms)';
+  }catch(e){return'YAZILAMIYOR: '+((e&&e.code)||(e&&e.message)||'?')+' ('+(Date.now()-t0)+' ms)';}
 }
 

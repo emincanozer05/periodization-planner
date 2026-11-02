@@ -73,6 +73,7 @@ function loadApp() {
     auth: () => ({ currentUser: { uid: 'coach1', getIdToken: async () => 'ID_TOKEN' } }),
     firestore: Object.assign(() => ({}), { FieldValue: { serverTimestamp: () => 'TS' } }),
   };
+  bag.fakeFirebase = fakeFirebase;   // bulut depolama sınaması burada geçici bir storage takar
   const names = ['bag', 'React', 'ReactDOM', 'document', 'window', 'navigator', 'location',
     'localStorage', 'sessionStorage', 'firebase', 'fetch', 'alert', 'confirm', 'prompt',
     'IntersectionObserver', 'ResizeObserver', 'matchMedia', 'Worker', 'Blob', 'indexedDB',
@@ -96,7 +97,7 @@ function loadApp() {
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
-    'guardSessions', 'restoreSessionsFrom', 'sesCount',
+    'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
     'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
@@ -1926,6 +1927,48 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const rd = r.state.teams[0].days;
     check('yedekten geri alma: yalnızca eksikler eklenir, yenisi korunur, çift kayıt yok',
       r.n === 3 && rd['2026-10-12'].sessions.map(s => s.id).join() === 't1,yeni,t2' && rd['2026-10-13'].sessions[0].id === 't3', JSON.stringify(rd['2026-10-12'].sessions.map(s => s.id)) + ' n=' + r.n);
+  }
+
+  /* ─── gömülü dosyalar buluta taşınıyor (35 MB'lık durum) ─────────────── */
+  {
+    const png = 'data:image/png;base64,' + Buffer.from('resim').toString('base64');
+    const pdf = 'data:application/pdf;base64,' + Buffer.from('%PDF-1.4 sahte').toString('base64');
+    const st = { exercises: [{ id: 'e1', name: 'Squat', image: png }], teams: [{ id: 'T1', athletes: [{ id: 'a1',
+      tests: [{ fms: { pdf: { name: 'f.pdf', pages: [png], data: pdf } } }], note: 'aynı kalır' }] }] };
+    check('PDF de buluta taşınacak gömülü dosya sayılıyor', A.hasPendingMedia({ x: pdf }) === true);
+    const rep = A.syncSizeReport(st);
+    check('boyut raporu türleri ayırıyor (görsel / PDF)', /gömülü görsel/.test(rep) && /gömülü PDF/.test(rep), rep);
+    const big = { teams: [{ id: 'T1', athletes: [{ id: 'a1', tests: [{ fms: { pdf: { data: 'data:application/pdf;base64,' + 'A'.repeat(300000) } } }] }] }] };
+    check('boyut raporu en büyük kaydı yoluyla gösteriyor', /teams\[T1\]\.athletes\[a1\]\.tests\[0\]\.fms\.pdf\.data/.test(A.syncSizeReport(big)), A.syncSizeReport(big));
+
+    const prevFetch = global.fetch;   // önceki bir test fetch'i taklitle değiştirdi; data: adresi burada çözülür
+    global.fetch = async u => { const [h, b] = String(u).split(','); return { blob: async () => new Blob([Buffer.from(b, 'base64')], { type: h.slice(5).split(';')[0] }) }; };
+    // Bulut depolama açık: her farklı dosya bir kez yüklenir, harita döner, durum kopyalanmaz.
+    const ups = [];
+    const fb = A.fakeFirebase;
+    fb.storage = () => ({ ref: () => ({ child: p => ({
+      put: b => { ups.push([p, b.type]); const t = { on: (ev, prog, rej, res) => setTimeout(res, 0), then: (r) => Promise.resolve().then(r) }; return t; },
+      getDownloadURL: async () => 'https://firebasestorage.googleapis.com/v0/b/x/o/' + encodeURIComponent(p) + '?alt=media',
+    }) }) });
+    const swaps = await A.liftLocalMedia(st, fb, 'coach1');
+    check('taşıma: iki farklı dosya, iki yükleme (aynı görsel iki yerde bir kez)', swaps.size === 2 && ups.length === 2, 'swaps=' + swaps.size + ' yükleme=' + ups.length);
+    check('taşıma: PDF, PDF olarak yükleniyor', ups.some(([p, t]) => /\.pdf$/.test(p) && t === 'application/pdf'), JSON.stringify(ups));
+    check('taşıma: durumun kendisine dokunulmuyor', st.exercises[0].image === png && st.teams[0].athletes[0].tests[0].fms.pdf.data === pdf);
+    // Tur sürerken koç düzenleme yaptı: harita EN SON hâle uygulanır, düzenleme kaybolmaz.
+    const edited = { ...st, teams: [{ ...st.teams[0], athletes: [{ ...st.teams[0].athletes[0], note: 'koç değiştirdi' }] }] };
+    const after = A.swapStrings(edited, swaps);
+    const a1 = after.teams[0].athletes[0];
+    check('taşıma: tur sırasındaki düzenleme korunuyor, adresler işleniyor',
+      a1.note === 'koç değiştirdi' && /^https:/.test(a1.tests[0].fms.pdf.data) && /^https:/.test(a1.tests[0].fms.pdf.pages[0]) && /^https:/.test(after.exercises[0].image),
+      JSON.stringify(after).slice(0, 300));
+    check('taşıma: hiçbir şey taşınmazsa aynı nesne dönüyor', A.swapStrings(edited, new Map()) === edited);
+    check('taşıma sonrası bekleyen gömülü dosya kalmıyor', A.hasPendingMedia(after) === false);
+
+    // Bulut depolama kapalı: hiçbir dosya yerinden oynamaz (tek cihaza hapsedilmez).
+    fb.storage = () => ({ ref: () => ({ child: () => ({ put: () => ({ on: (ev, prog, rej) => setTimeout(() => rej(Object.assign(new Error('x'), { code: 'storage/unauthorized' })), 0) }) }) }) });
+    const none = await A.liftLocalMedia(st, fb, 'coach1');
+    check('bulut kapalıyken gömülü dosyalar yerinde kalıyor', none.size === 0, 'swaps=' + none.size);
+    delete fb.storage; global.fetch = prevFetch;
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

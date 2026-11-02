@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1798**, yinelenen: **0**
+- Üst düzey ad sayısı: **1803**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -17,9 +17,9 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 | `dates-language-factories` | 81 | 2 |
 | `prelude` | 65 | 1 |
 | `constants-session-focus` | 42 | 1 |
-| `photo-local-media-store` | 35 | 2 |
+| `photo-local-media-store` | 37 | 2 |
 | `periods-weeks-load-monotony` | 28 | 7 |
-| `test-metadata-fms` | 20 | 3 |
+| `test-metadata-fms` | 20 | 5 |
 | `exercise-taxonomy-text` | 18 | 3 |
 | `move-taxonomy` | 14 | 2 |
 | `rhr-team-sync-picker` | 12 | 5 |
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **100** / toplam bağ 591
+- Geriye bağ sayısı: **102** / toplam bağ 594
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 57 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -49,7 +49,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 1 | `prelude` | 13 | `dates-language-factories`↑ |
 | 2 | `constants-session-focus` | 82 | `dates-language-factories`↑ |
 | 3 | `dates-language-factories` | 83 | `prelude`, `constants-session-focus` |
-| 4 | `test-metadata-fms` | 77 | `prelude`, `dates-language-factories`, `print-week`↑ |
+| 4 | `test-metadata-fms` | 78 | `prelude`, `dates-language-factories`, `print-week`↑, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
 | 5 | `test-thumbs` | 1 | — |
 | 6 | `athlete-boxes` | 76 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`↑ |
 | 7 | `session-load-clipboard` | 26 | `prelude`, `constants-session-focus`, `dates-language-factories` |
@@ -62,7 +62,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 14 | `crest-week-image` | 12 | `prelude`, `dates-language-factories`, `print-week`, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
 | 15 | `print-month` | 8 | `prelude`, `constants-session-focus`, `dates-language-factories`, `print-session-html`, `print-week`, `crest-week-image`, `photo-local-media-store`↑, `block-editor-session-details`↑ |
 | 16 | `pdf-share-coach-report` | 11 | `prelude`, `dates-language-factories`, `print-session-html`, `crest-week-image` |
-| 17 | `photo-local-media-store` | 42 | `drive-embed-body-model`↑, `sync-infra-chunking-merge`↑ |
+| 17 | `photo-local-media-store` | 45 | `drive-embed-body-model`↑, `sync-infra-chunking-merge`↑ |
 | 18 | `setup-all-teams-calendar` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `privacy-notice`↑, `wellness-alerts-coach`↑ |
 | 19 | `season-plan` | 11 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `team-data-migration`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `setup-all-teams-calendar`, `session-editor-planner`↑, `exercise-taxonomy-text`↑ |
 | 20 | `move-taxonomy` | 34 | `dates-language-factories`, `exercise-taxonomy-text`↑ |
@@ -102,9 +102,9 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 54 | `athlete-info-report` | 1 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑ |
 | 55 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv` |
 | 56 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
-| 57 | `sync-infra-chunking-merge` | 89 | `team-data-migration` |
+| 57 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
 | 58 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge` |
-| 59 | `auth-ui-cloud-bar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`, `privacy-notice`↑, `language-selector-nav-icons`↑ |
+| 59 | `auth-ui-cloud-bar` | 9 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `sync-infra-chunking-merge`, `privacy-notice`↑, `language-selector-nav-icons`↑ |
 | 60 | `privacy-notice` | 5 | `prelude`, `dates-language-factories` |
 | 61 | `exercise-taxonomy-text` | 22 | `prelude`, `dates-language-factories`, `move-taxonomy`¹ |
 | 62 | `exercise-video-picker` | 6 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `exercise-taxonomy-text` |
