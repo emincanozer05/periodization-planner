@@ -359,19 +359,29 @@ function diTableFromClipboard(clip,instr){
   const goals=DI_GOAL_IDS.filter(id=>have.has(id)||want.has(id));
   return{patterns,phases:diMovePhases(phases),goals,added:patterns.length-before.length,total:rows.length};
 }
-function DiInstructionForm({instr,save,athId,date,bank}){
+function DiInstructionForm({instr,save,athId,date,srcKey,bank}){
   const[pasted,setPasted]=useState('');
   const clip=useTableClipboard();
   /* Each ready-made phase written here is kept for the athlete (phbAutoSave), a moment after the
      typing stops — and at once when the card closes with a change still waiting. */
   const phbPending=useRef(null);
+  /* What this card last handed to the bank. `instr` is rebuilt on every change of the state —
+     each snapshot the cloud sync applies too — so the effect below wakes far more often than
+     the table changes. Only a table that reads differently from the one already handed over is
+     saved: a write arriving from another device (or a saved phase the coach just deleted) does
+     not make this card write its phases again. */
+  const phbDone=useRef('');
   /* Declared first so its cleanup runs before the timer's: another athlete or day keeps the edit pending for this one. */
-  useEffect(()=>()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},[athId,date]);
+  useEffect(()=>()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},[athId,date,srcKey]);
   useEffect(()=>{
-    phbPending.current=()=>phbAutoSave(athId,date,instr);
+    const key=[athId,date,srcKey||'',JSON.stringify(diMovePhases(instr.phases).map(p=>[p.id,p.preset])),
+      JSON.stringify(diMovePatterns(instr.patterns).map(p=>[p.phase,p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,
+        p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]))].join('|');
+    if(key===phbDone.current){phbPending.current=null;return;}
+    phbPending.current=()=>{phbDone.current=key;phbAutoSave(athId,date,instr,srcKey||'');};
     const t=setTimeout(()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},900);
     return()=>clearTimeout(t);
-  },[athId,date,instr.patterns,instr.phases]);
+  },[athId,date,srcKey,instr.patterns,instr.phases]);
   const copyTable=()=>{
     const c=diTableToClipboard(instr);
     copyTableToClipboard(c);

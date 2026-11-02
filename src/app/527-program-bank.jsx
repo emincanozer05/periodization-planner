@@ -281,8 +281,8 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
 /* ---- FAZ BANKASI -------------------------------------------------------------------
    Bireyselleştirme'nin Antrenman tablosunda bir sporcu için yazılan hazır fazlar (Hazırlık Bölümü,
    Ana Bölüm, Soğuma) sporcunun kaydında faz faz ayrı durur: `ath.phaseBank = {prep:[…],main:[…],cool:[…]}`,
-   her kayıt {id, date, at, rows:[tablo satırı…]}. Kayıt kendiliğinden olur (`phbAutoSave`): gün ve faz başına
-   tek kayıt, faz değiştikçe aynı kayıt güncellenir; içeriği başka bir kayıtla birebir aynıysa ikincisi
+   her kayıt {id, date, src, at, rows:[tablo satırı…]}. Kayıt kendiliğinden olur (`phbAutoSave`): gün, seans ve
+   faz başına tek kayıt, faz değiştikçe aynı kayıt güncellenir; içeriği başka bir kayıtla birebir aynıysa ikincisi
    tutulmaz (kayıtlı bir fazı tabloya eklemek yeni kayıt açmaz). Fazdaki satırlar sonradan silinse de kayıt
    kalır; koç faz çubuğundaki listeden ✕ ile siler. Yazma program bankasının yolundan (`_pbWrite`). */
 const PHB_KINDS=['prep','main','cool'];
@@ -293,7 +293,15 @@ const phbRows=rows=>diMovePatterns(rows).filter(phbNamed).map(p=>({...p,phase:''
 const phbSig=rows=>JSON.stringify(phbRows(rows).map(p=>[p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]));
 /* Bir fazın kayıtları, en yenisi başta; bozuk kayıt okunmaz. */
 const phbList=(bank,kind)=>((bank&&Array.isArray(bank[kind]))?bank[kind]:[]).filter(e=>e&&e.id&&Array.isArray(e.rows)&&e.rows.some(phbNamed));
-function phbAutoSave(athId,date,instr){
+/* GÜN + SEANS BAŞINA TEK KAYIT. Kayıt yalnızca güne bağlıyken aynı sporcunun aynı gündeki iki
+   seansı (sabah / akşam) tek kaydı paylaşıyordu: iki cihazda (ya da iki sekmede) iki ayrı seans
+   açıkken her cihaz senkronla gelen hâli görünce kendi fazını o kaydın üstüne yeniden yazıyor,
+   öbürü de aynısını yapıyordu. Bu bitmeyen bir yazım döngüsüydü: her turda bütün durum
+   serileştirilip buluta gidiyor, sekme saatler içinde belleği doldurup "Out of Memory" ile
+   çöküyordu. Artık kayıt seansın anahtarını (`src`) da taşır; seanssız eski bir kayıt aynı günün
+   ilk yazan seansına geçer. */
+const phbSlot=(e,date,src)=>!!e&&e.date===date&&(e.src||'')===(src||'');
+function phbAutoSave(athId,date,instr,src){
   if(!_pbWrite||!athId||!date)return;
   const list=diMovePatterns(instr&&instr.patterns);
   const upd={};
@@ -309,12 +317,13 @@ function phbAutoSave(athId,date,instr){
     Object.keys(upd).forEach(k=>{
       const cur=Array.isArray(bank[k])?bank[k]:[];
       const rows=upd[k],sig=phbSig(rows);
-      const i=cur.findIndex(e=>e&&e.date===date);
+      let i=cur.findIndex(e=>phbSlot(e,date,src));
+      if(i<0&&src)i=cur.findIndex(e=>phbSlot(e,date,''));
       if(i>=0&&phbSig(cur[i].rows)===sig)return;
       const others=cur.filter((_,j)=>j!==i);
       /* Aynısı başka bir günden kayıtlıysa bugünün kaydı ikinci bir kopya olmaz. */
       if(others.some(e=>e&&phbSig(e.rows)===sig)){if(i<0)return;bank[k]=others;changed=true;return;}
-      const e={id:i>=0?cur[i].id:uid(),date,at:new Date().toISOString(),rows};
+      const e={id:i>=0?cur[i].id:uid(),date,...(src?{src}:{}),at:new Date().toISOString(),rows};
       bank[k]=[e,...others].slice(0,PHB_MAX);changed=true;
     });
     return changed?{phaseBank:bank}:{};
