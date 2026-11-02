@@ -254,6 +254,17 @@ ta('davet sayfası GET ile yalnızca gösteriliyor (link önizlemesi akışı ba
   assert.ok(String(r.headers['content-security-policy']).includes("frame-ancestors 'none'"));
 });
 
+ta('davet sayfasının güvenlik kuralı Polar\'ın giriş yönlendirme zincirini engellemiyor (form-action yok)', async () => {
+  // Chrome form-action'ı yönlendirmelerin tamamına uyguluyor: Polar giriş için başka bir
+  // alan adına geçtiğinde "Polar ile bağlan" düğmesi sessizce sayfada kalıyordu.
+  const env = setup();
+  const { ticket } = await invite(env);
+  const r = await request(env.deps, { method: 'GET', path: '/start', query: { t: ticket } });
+  assert.ok(!/form-action/.test(String(r.headers['content-security-policy'])));
+  const err = await request(env.deps, { method: 'GET', path: '/start', query: { t: 'yok' } });
+  assert.ok(!/form-action/.test(String(err.headers['content-security-policy'])));
+});
+
 ta('süresi geçmiş davet: sayfa ve POST reddediliyor', async () => {
   const env = setup();
   const { ticket } = await invite(env);
