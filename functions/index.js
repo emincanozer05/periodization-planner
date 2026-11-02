@@ -493,3 +493,38 @@ exports.geminiProxy = functions
       throw new functions.https.HttpsError('internal', aiProxy.USER_MSG.DEFAULT, { code: 'INTERNAL' });
     }
   });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POLAR ACCESSLINK — sporcunun Polar hesabını bağlama (Aşama 1)
+
+   Tek HTTPS function: davet, Polar izin akışı, callback ve bağlantı kesme.
+   Ayrıntı: functions/polar/*.js ve POLAR_SETUP.md.
+
+   Bölge europe-west1: YENİ bir function, mevcutlar (us-central1) yerinde kalıyor;
+   Firestore eur3'te olduğu için veritabanına yakın. Vercel /api/polar/* isteklerini
+   buraya yönlendiriyor (vercel.json → rewrites), redirect adresi Vercel'de kalıyor.
+
+   Sırlar Secret Manager'da: POLAR_CLIENT_SECRET, POLAR_TOKEN_KEY.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const polarConfig = require('./polar/config');
+const polarHandler = require('./polar/handler');
+const POLAR_REGION = process.env.POLAR_FUNCTION_REGION || 'europe-west1';
+
+/* Token, code, secret ve sporcunun verisi log'a girmez; yalnızca olay, bağlantı
+   kimliği ve hata kodu. */
+const polarLog = (level, event, fields) => {
+  const fn = functions.logger[level] || functions.logger.info;
+  fn('polar: ' + event, Object.assign({ event }, fields || {}));
+};
+
+exports.polarApi = functions
+  .region(POLAR_REGION)
+  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 60, memory: '256MB' })
+  .https.onRequest((req, res) => polarHandler.handle(req, res, {
+    db: db(),
+    fetch: (...a) => globalThis.fetch(...a),
+    verifyIdToken: t => admin.auth().verifyIdToken(t),
+    cfg: polarConfig.settings(),
+    now: () => Date.now(),
+    log: polarLog,
+  }));

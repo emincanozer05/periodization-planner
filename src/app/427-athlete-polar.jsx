@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   POLAR — sporcu profilindeki bağlantı paneli (Aşama 1: davet, durum, bağlantı kesme)
+
+   Polar hesabı sporcunun; izni de sporcu veriyor. Koç burada bir DAVET LİNKİ üretiyor
+   ve sporcuya gönderiyor (WhatsApp, kopyala). Sporcu linki telefonunda açıp Polar'da
+   izin verince sunucu (functions/polar, polarApi) eşleşmeyi kuruyor; bu panel durumu
+   Firestore'daki `polar_links` satırından canlı okuyor. Panel hiçbir şey YAZMIYOR:
+   o koleksiyon tarayıcıya kapalı, yazan yalnızca sunucu. Sporcunun senkronlanan
+   verisine (`team.athletes`) de dokunulmuyor.
+
+   Token, client secret ve Polar kullanıcı kimliğinin token'ı bu sayfaya hiç gelmiyor.
+   Davet ve bağlantı kesme isteği koçun Firebase oturumuyla (ID token) imzalanıyor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const POLAR_FN_BASE='https://europe-west1-periodization-planner.cloudfunctions.net/polarApi';
+
+async function polarCall(path,body){
+  const fb=FB();
+  const u=fb&&fb.auth&&fb.auth().currentUser;
+  if(!u||u.isAnonymous)throw new Error(L('Polar bağlantısı için koç hesabıyla oturum açman gerekiyor.','Sign in with the coach account to use Polar.'));
+  let tok='';
+  try{tok=await u.getIdToken();}catch(e){throw new Error(L('Oturum doğrulanamadı — sayfayı yenile.','The session could not be verified — reload the page.'));}
+  let r;
+  try{
+    r=await fetch(POLAR_FN_BASE+path,{method:'POST',
+      headers:{'content-type':'application/json',authorization:'Bearer '+tok},
+      body:JSON.stringify(body||{})});
+  }catch(e){throw new Error(L('Ağ hatası — internet bağlantını kontrol et.','Network error — check your connection.'));}
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok||!j||j.error){
+    throw new Error((j&&j.error&&j.error.message)||L(`Polar servisine ulaşılamadı (${r.status}).`,`The Polar service could not be reached (${r.status}).`));
+  }
+  return j;
+}
+
+/* Bu sporcunun bağlantı satırı, canlı. undefined = yükleniyor, null = kayıt yok. */
+function usePolarLink(athId){
+  const[uid,setUid]=useState(()=>{const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;return u&&!u.isAnonymous?u.uid:null;});
+  const[link,setLink]=useState(undefined);
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb||!fb.auth)return;
+    return fb.auth().onAuthStateChanged(u=>setUid(u&&!u.isAnonymous?u.uid:null));
+  },[]);
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb||!uid||!athId){setLink(null);return;}
+    setLink(undefined);
+    return fb.firestore().collection('polar_links')
+      .where('coachUid','==',uid).where('athleteId','==',String(athId))
+      .onSnapshot(s=>setLink(s.empty?null:(s.docs[0].data()||null)),
+        e=>{console.warn('polar_links',e);setLink(null);});
+  },[uid,athId]);
+  return{uid,link};
+}
+
+const polarWhen=ms=>{
+  if(!ms)return'—';
+  try{return new Date(ms).toLocaleString(L('tr-TR','en-GB'),{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  catch(e){return new Date(ms).toISOString().slice(0,16).replace('T',' ');}
+};
+
+const POLAR_ERR_TXT={
+  DENIED:()=>L('Sporcu izin vermedi.','The athlete declined access.'),
+  INVALID_GRANT:()=>L('Polar yetkilendirme kodu geçersiz ya da süresi dolmuş.','The Polar authorisation code was invalid or expired.'),
+  POLAR_USER_TAKEN:()=>L('Bu Polar hesabı başka bir sporcuya bağlı.','This Polar account is linked to another athlete.'),
+  COOKIE_MISSING:()=>L('Sporcu işlemi başladığı tarayıcıda tamamlamadı.','The athlete did not finish in the browser they started in.'),
+};
+const polarErrText=e=>e&&e.code?((POLAR_ERR_TXT[e.code]&&POLAR_ERR_TXT[e.code]())||L(`Son deneme başarısız (${e.code}).`,`Last attempt failed (${e.code}).`)):'';
+
+function PolarConnect({ath,teamId}){
+  const{uid,link}=usePolarLink(ath.id);
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const[note,setNote]=useState('');
+  const[invite,setInvite]=useState(null);   // {url,expiresAt} — yalnızca üretildiği oturumda görünür
+  useEffect(()=>{setInvite(null);setErr('');setNote('');},[ath.id]);
+
+  const now=Date.now();
+  let status=link?link.status:'none';
+  if(status==='pending'&&link.inviteExpiresAt&&link.inviteExpiresAt<now)status='expired';
+  const ST={
+    none:[L('Bağlı değil','Not connected'),'off'],
+    pending:[L('Davet gönderildi · sporcunun izni bekleniyor','Invite sent · waiting for the athlete'),'wait'],
+    expired:[L('Davetin süresi doldu','Invite expired'),'off'],
+    active:[L('Bağlı','Connected'),'on'],
+    disconnected:[L('Bağlantı kesildi','Disconnected'),'off'],
+    revoked:[L('Sporcu izni kaldırdı','Access revoked by the athlete'),'bad'],
+    error:[L('Hata','Error'),'bad'],
+  };
+  const[stTxt,stCls]=ST[status]||ST.none;
+
+  const run=async fn=>{setErr('');setNote('');setBusy(true);try{await fn();}catch(e){setErr(e.message||String(e));}finally{setBusy(false);}};
+  const makeInvite=()=>run(async()=>{
+    if(!teamId)throw new Error(L('Takım bilgisi bulunamadı.','Team not found.'));
+    const j=await polarCall('/invite',{teamId,athleteId:ath.id});
+    setInvite({url:j.url,expiresAt:j.expiresAt});
+  });
+  const disconnect=()=>{
+    const active=status==='active';
+    const q=active
+      ?L('Polar bağlantısı kesilsin mi? Polar tarafında da izin kaldırılır ve yeni veri gelmez. Daha önce aktarılmış veriler silinmez.','Disconnect Polar? Access is also revoked on Polar and no new data will arrive. Data already imported is kept.')
+      :L('Davet iptal edilsin mi? Gönderilen link artık çalışmaz.','Cancel the invite? The link you sent will stop working.');
+    if(!window.confirm(q))return;
+    run(async()=>{
+      await polarCall('/disconnect',{athleteId:ath.id});
+      setInvite(null);
+      setNote(active?L('Bağlantı kesildi.','Disconnected.'):L('Davet iptal edildi.','Invite cancelled.'));
+    });
+  };
+  const inviteText=()=>L(`${ath.name||''} — Polar hesabını CoachOS'a bağlamak için bu linki aç ve Polar'da izin ver:`,`${ath.name||''} — open this link and allow access in Polar to connect your Polar account to CoachOS:`).trim();
+  const copy=async()=>{
+    if(!invite)return;
+    let ok=false;
+    try{await navigator.clipboard.writeText(invite.url);ok=true;}
+    catch(e){
+      try{const ta=document.createElement('textarea');ta.value=invite.url;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);}catch(e2){ok=false;}
+    }
+    setNote(ok?L('Link kopyalandı.','Link copied.'):L('Kopyalanamadı — linki elle seç.','Could not copy — select the link manually.'));
+  };
+  const share=async()=>{
+    if(!invite)return;
+    if(navigator.share){try{await navigator.share({title:'CoachOS · Polar',text:inviteText(),url:invite.url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+    window.open('https://wa.me/?text='+encodeURIComponent(inviteText()+' '+invite.url),'_blank','noopener');
+  };
+
+  if(!uid)return(<div className="panel pl-panel">
+    <div className="pl-h"><h2>Polar</h2></div>
+    <div className="pl-help">{L('Polar bağlantısı için koç hesabıyla oturum aç.','Sign in with the coach account to connect Polar.')}</div>
+  </div>);
+
+  const canInvite=status!=='active';
+  const canCancel=status==='active'||status==='pending'||status==='expired';
+  return(<div className="panel pl-panel">
+    <div className="pl-h">
+      <h2>Polar</h2>
+      <span className={'pl-st pl-'+stCls}>{link===undefined?L('Yükleniyor…','Loading…'):stTxt}</span>
+    </div>
+    <div className="pl-rows">
+      <div className="pl-r"><span>{L('Bağlantı durumu','Connection status')}</span><b>{link===undefined?'—':stTxt}</b></div>
+      {status==='active'&&<div className="pl-r"><span>{L('Bağlandı','Connected on')}</span><b>{polarWhen(link.connectedAt)}</b></div>}
+      <div className="pl-r"><span>{L('Son senkronizasyon','Last sync')}</span><b>{link&&link.lastSyncAt?polarWhen(link.lastSyncAt):'—'}</b></div>
+      {(status==='pending'||status==='expired')&&<div className="pl-r"><span>{L('Davet geçerliliği','Invite valid until')}</span><b>{polarWhen(link.inviteExpiresAt)}</b></div>}
+      {link&&link.lastError&&status!=='active'&&<div className="pl-r pl-warn"><span>{L('Son deneme','Last attempt')}</span><b>{polarErrText(link.lastError)}</b></div>}
+    </div>
+    {invite&&<div className="pl-invite">
+      <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
+      <input readOnly value={invite.url} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
+      <div className="pl-btns">
+        <button className="btn sm" onClick={share}>{L('Paylaş','Share')}</button>
+        <button className="btn sm sec" onClick={copy}>{L('Kopyala','Copy')}</button>
+      </div>
+    </div>}
+    <div className="pl-btns">
+      {canInvite&&<button className="btn sm" disabled={busy} onClick={makeInvite}>
+        {status==='pending'||status==='expired'?L('Yeni davet linki oluştur','Create a new invite link'):L('Polar Hesabını Bağla','Connect Polar Account')}</button>}
+      {canCancel&&<button className="btn sm sec" disabled={busy} onClick={disconnect}>
+        {status==='active'?L('Polar Bağlantısını Kes','Disconnect Polar'):L('Daveti iptal et','Cancel invite')}</button>}
+    </div>
+    {err&&<div className="pl-err" role="alert">{err}</div>}
+    {note&&<div className="pl-note" role="status">{note}</div>}
+    <div className="pl-help">{status==='active'
+      ?L('Veri aktarımı (uyku, Nightly Recharge, antrenman, aktivite) bir sonraki sürümde eklenecek.','Data import (sleep, Nightly Recharge, training, activity) arrives in the next release.')
+      :L('Polar hesabı sporcunun. Linki sporcuya gönder; sporcu linki kendi telefonunda açıp Polar\'da izin verdiğinde bağlantı burada "Bağlı" olarak görünür. Yeni link eskisini geçersiz kılar.','The Polar account belongs to the athlete. Send them the link; once they open it on their phone and allow access in Polar, this panel shows "Connected". A new link replaces the old one.')}</div>
+  </div>);
+}

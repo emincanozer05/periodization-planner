@@ -12,5 +12,6 @@ require('./pending.test.js');          // HTTPS kapısı · tetikleyicinin kaç�
 require('./alerts-parity.test.js');    // Telefon sayfası · formdan kurulan kayıt sunucununkiyle aynı
 require('./ai-router.test.js');        // AI · model zinciri, bütçe, retry, fallback, doğrulama
 require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, kilit, takvim güvenliği
+require('./polar.test.js');            // Polar · davet, OAuth, token saklama, bağlantı kesme
 
 run();
