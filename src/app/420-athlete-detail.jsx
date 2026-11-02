@@ -17,7 +17,7 @@ const ATH_IC={
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
 const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
-function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,customTests,initialTab}){
+function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,customTests,initialTab,teamId}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   const[rpeOpen,setRpeOpen]=useState(false);
@@ -107,7 +107,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
-    {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
+    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/></>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>

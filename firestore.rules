@@ -301,5 +301,27 @@ service cloud.firestore {
       allow read: if isOwner() || isTeamStaff();
       allow write: if false;
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       POLAR ACCESSLINK (functions/polar)
+
+       Hepsini YALNIZCA sunucu (polarApi, Admin SDK) yazıyor; Admin SDK kuralların
+       dışında çalıştığı için aşağıdaki "write: if false" satırları tarayıcıyı
+       kapatıyor, function'ı değil.
+
+       Token, OAuth state, davet ve "Polar kullanıcısı → sporcu" eşleşmesi
+       istemciye TAMAMEN kapalı: okuma da yok. Erişim token'ı ayrıca şifreli.
+       Bağlantı durumunu yalnızca hesabın sahibi (coachUid) okuyor; ekip üyeleri
+       (anonim oturum) görmüyor.
+       ═══════════════════════════════════════════════════════════════════════ */
+    match /polar_tokens/{id}       { allow read, write: if false; }
+    match /polar_oauth_states/{id} { allow read, write: if false; }
+    match /polar_tickets/{id}      { allow read, write: if false; }
+    match /polar_users/{id}        { allow read, write: if false; }
+
+    match /polar_links/{linkId} {
+      allow read: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow write: if false;
+    }
   }
 }

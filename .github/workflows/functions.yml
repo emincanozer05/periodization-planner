@@ -118,6 +118,25 @@ jobs:
         run: |
           echo "::warning::AI functions deploy edilemedi. GEMINI_API_KEY secret'ı tanımlı mı? (firebase functions:secrets:set GEMINI_API_KEY) — AI_RELIABILITY.md → Kurulum."
 
+      # Polar AccessLink (davet + OAuth). Ayrı adım: POLAR_CLIENT_SECRET ve
+      # POLAR_TOKEN_KEY Secret Manager'da henüz yoksa bu adım düşer ama kuralları,
+      # wellness'ı ve AI'yı sürüklemez. Kurulum: POLAR_SETUP.md.
+      - name: Deploy Polar function
+        id: deploy_polar
+        if: env.HAS_CREDENTIALS == 'true'
+        continue-on-error: true
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only functions:polarApi
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: Polar deploy uyarısı
+        if: env.HAS_CREDENTIALS == 'true' && steps.deploy_polar.outcome == 'failure'
+        run: |
+          echo "::warning::polarApi deploy edilemedi. POLAR_CLIENT_SECRET ve POLAR_TOKEN_KEY secret'ları tanımlı mı? (firebase functions:secrets:set …) — POLAR_SETUP.md."
+
       - name: Deploy atlandı
         if: env.HAS_CREDENTIALS != 'true'
         run: |
