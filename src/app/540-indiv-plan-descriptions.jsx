@@ -168,7 +168,45 @@ const liveSlot=r=>!!String(r.name||'').trim();
    what lets a stored session be fingerprinted again later and compared with the one that
    was written, which is how a program edited by hand on the calendar is recognised. */
 const INDIV_SIG_SKIP=new Set(['id','indiv','sourceId','sRPE','au','athletes','notes']);
-function indivSig(ses){
+/* PARMAK İZİ KISA BİR ÖZETTİR. Eskiden parmak izi programın KENDİSİYDİ — bütün oturumun
+   JSON'u, gömülü egzersiz görselleriyle birlikte: oturum başına ortalama 68 KB, en büyüğü
+   677 KB. Sporcu sayısı × gün sayısı kadar çoğalınca bir hesapta verinin %81'i (28 MB) bu
+   alandan ibaretti; senkron her kayıtta bunu taşıyor, sekme belleği dolduruyordu ("Out of
+   Memory"). Karşılaştırma için metnin kendisine değil özetine ihtiyaç var: aynı metin aynı
+   özeti verir. İki ayrı tohumla 2×53 bitlik özet (çakışma pratikte imkânsız), `h1:` önekiyle.
+   Eski uzun parmak izleri migrate'te (indivSigCompact) aynı özete çevrilir: karşılaştırmanın
+   sonucu hiçbir oturum için değişmez, hiçbir program kendiliğinden yeniden yazılmaz. */
+const SIG_PFX='h1:';
+function sigHash(str){
+  const h=seed=>{let a=0xdeadbeef^seed,b=0x41c6ce57^seed;
+    for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677);}
+    a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);
+    b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);
+    return (4294967296*(2097151&b)+(a>>>0)).toString(36);};
+  return SIG_PFX+h(1)+'.'+h(7);
+}
+const isSigHash=v=>typeof v==='string'&&v.indexOf(SIG_PFX)===0;
+function indivSig(ses){return sigHash(indivSigRaw(ses));}
+/* Verideki eski (uzun) parmak izlerini özete çevirir — yerinde, kaç tanesinin çevrildiğini
+   döndürür. Takvimlerde, park edilmiş sezonlarda, nerede olursa olsun: `indiv.sig` taşıyan
+   her nesne. Çevrilecek bir şey kalmamışsa yalnızca bir okuma turudur. */
+function indivSigCompact(node){
+  let n=0;const seen=new Set();
+  const walk=v=>{
+    if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);
+    if(Array.isArray(v)){v.forEach(walk);return;}
+    const iv=v.indiv;
+    if(iv&&typeof iv==='object'&&typeof iv.sig==='string'&&iv.sig&&!isSigHash(iv.sig)){v.indiv={...iv,sig:sigHash(iv.sig)};n++;}
+    for(const k in v)if(k!=='indiv')walk(v[k]);
+  };
+  walk(node);
+  if(n)_sigCompactPending+=n;
+  return n;
+}
+/* Kaç eski iz çevrildi de henüz buluta yazılmadı: senkronun gözcüsü bunu görünce bir kez yazar
+   (bulut kopyası da küçülsün, koçun ilk düzenlemesini beklemesin). */
+let _sigCompactPending=0;
+function indivSigRaw(ses){
   const walk=(v,d)=>{
     if(Array.isArray(v))return v.map(x=>walk(x,d+1));
     if(v&&typeof v==='object')return Object.keys(v)
@@ -185,7 +223,9 @@ function indivSig(ses){
    to compare them against, and guessing would block writing for good. */
 function indivHandEdited(ses){
   const sig=ses&&ses.indiv&&ses.indiv.sig;
-  return !!sig&&indivSig(ses)!==sig;
+  if(!sig)return false;
+  // Özete çevrilmemiş eski bir parmak izi (eski bir cihazdan yeni gelmiş olabilir) metnin kendisiyle kıyaslanır.
+  return isSigHash(sig)?indivSig(ses)!==sig:indivSigRaw(ses)!==sig;
 }
 
 /* ---- AI-written exercise descriptions, in the app's language ---------------------

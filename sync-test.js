@@ -241,17 +241,20 @@ function loadSyncModule(world) {
   const src = html.slice(a, b);
   const stub = `
     let _n=0; const uid=()=>'id'+(++_n);
-    const migrate=x=>x;
+    /* Gerçek migrate'in parmak izi çevirisinin taklidi: uzun iz (__longSig) taşıyan hâl küçültülür
+       ve bekleyen yazım sayılır (bkz. scenarioSigCompactWritten). */
+    const migrate=x=>{if(x&&x.__longSig){delete x.__longSig;_sigCompactPending++;}return x;};
     const makeDefault=()=>({activeTeamId:'t0',teams:[{id:'t0',setup:{teamName:'Örnek'},days:{},athletes:[]}],templates:[]});
     const stripDeviceOnly=o=>{if(!o||typeof o!=='object')return o;const{activeTeamId,...r}=o;return r;};
     const restoredLocalMedia=c=>c; const hasPendingMedia=()=>false;
     const liftLocalMedia=async()=>false; const liftPaused=()=>true;
     const _lmCache=new Map(); const lmSweep=()=>{}; const mediaReport=()=>'';
+    let _sigCompactPending=0;
   `;
   const args = ['bag', 'firebase', 'window', 'document', 'navigator', 'location', 'localStorage', 'sessionStorage',
     'Worker', 'Blob', 'requestIdleCallback', 'cancelIdleCallback'];
   const bag = {};
-  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;bag.slog=slog;bag.slogSave=slogSave;bag.lsSave=lsSave;bag.lsFlush=lsFlush;')(
+  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;bag.slog=slog;bag.slogSave=slogSave;bag.lsSave=lsSave;bag.lsFlush=lsFlush;bag.sigCompacted=n=>{_sigCompactPending=n;};')(
     bag, world.firebase, world.win, world.document, world.navigator, world.location,
     world.localStorage, world.sessionStorage,
     undefined, undefined, undefined, undefined);   // Worker/Blob yok → parçalama ana iş parçacığında
@@ -911,6 +914,33 @@ async function scenarioLogSurvivesCrash() {
   endScene();
 }
 
+/* Program parmak izlerinin özete çevrilmesi (migrate) ekrandaki hâli buluttakinden küçültür,
+   ama bu hâl "buluttan geldi" sayıldığı için kendiliğinden yazılmazdı: bulut kopyası koçun
+   ilk düzenlemesine kadar 34 MB kalırdı. Sorulan: gözcü bunu görüp bir kez yazıyor mu. */
+async function scenarioSigCompactWritten() {
+  scene('eski parmak izleri özete çevrilince bulut kopyası da bir kez yazılıyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  // Başka bir cihaz (eski sürüm) uzun izli bir hâl yazdı; bu cihaz onu okurken küçültüyor.
+  const before = w.fake.commits;
+  remoteWrite(w, { ...realState(2), __longSig: 'x'.repeat(5000) }, Date.now() + 1000, cloudRev(w));
+  w.fake.emit({});
+  await sleep(3500);   // bir gözcü turu
+  // Buluttaki GÜNCEL hâl: manifestin gösterdiği parçalar (henüz silinmemiş eski parçalar sayılmaz).
+  const mf = w.fake.docs.get('coach1') || {};
+  const cloud = (mf.ids || []).map(hh => (w.fake.docs.get('coach1_' + hh) || {}).c || '').join('');
+  check('çeviri sonrası buluta yazıldı, buluttaki kopya artık küçük', w.fake.commits > before && !/__longSig/.test(cloud),
+    'commit ' + before + ' → ' + w.fake.commits + ' bulutta uzun iz=' + /__longSig/.test(cloud));
+  const after = w.fake.commits;
+  await sleep(4500);
+  check('yalnızca bir kez (tekrar tekrar yazmıyor)', w.fake.commits === after, 'commit ' + after + ' → ' + w.fake.commits);
+  check('günlükte söylendi', /parmak izi özete çevrildi/.test(BAG.slogText()));
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -921,7 +951,7 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
     scenarioNeverReachesServer, scenarioStaleOverwrite, scenarioSingleDeleteSyncs,
     scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
     scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
-    scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead, scenarioAutoWriteLoop, scenarioLogSurvivesCrash,
+    scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead, scenarioAutoWriteLoop, scenarioLogSurvivesCrash, scenarioSigCompactWritten,
   ];
   // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
   const only = process.env.SYNCTEST_ONLY;

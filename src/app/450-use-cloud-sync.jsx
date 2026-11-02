@@ -1536,6 +1536,14 @@ function useCloudSync(data,setData){
       // 5) Yazım uçuşta ya da zamanlayıcı kurulu: kendi yolunda, karışma.
       if(writing.current||queued.current||timer.current)return;
 
+      /* 5b) Gelen veride eski uzun program parmak izleri özete çevrildi (migrate → indivSigCompact):
+            ekrandaki hâl buluttakinden küçük ama "buluttan geldi" sayıldığı için kendiliğinden
+            yazılmazdı. Bir kez yaz: bulut kopyası da küçülsün. */
+      if(typeof _sigCompactPending!=='undefined'&&_sigCompactPending>0){
+        slog('veri: '+_sigCompactPending+' eski program parmak izi özete çevrildi → buluta yazılıyor');
+        _sigCompactPending=0;dirty.current=true;writeNow();return;
+      }
+
       /* 6) Ekrandaki hâl bulutta olandan farklı ama ne yazım var ne zamanlayıcı: düzenleme
             hazır değilken yapıldığı (ya da bir tur yarıda bırakıldığı) için düşmüş. Yaz. */
       const cur=ser(dataRef.current);
