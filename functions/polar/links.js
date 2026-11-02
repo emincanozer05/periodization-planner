@@ -200,8 +200,10 @@ async function disconnect({ db, coachUid, athleteId, tokenKey, deregister, decry
   const l = ls.exists ? (ls.data() || {}) : null;
   if (!l || l.coachUid !== uid) throw new LinkError('NOT_FOUND');
   let remote = 'none';
-  const pid = l.status === 'active' && l.polarUserId ? String(l.polarUserId) : null;
-  if (pid) {
+  // İzni kaldırılmış (revoked) ya da hatalı bağlantıda da Polar kimliği duruyor olabilir:
+  // eşleşme kaydı temizlenmezse o Polar hesabı başka bir sporcuya bağlanamaz.
+  const pid = l.polarUserId ? String(l.polarUserId) : null;
+  if (pid && l.status === 'active') {
     const ts = await db.collection(COL.TOKENS).doc(pid).get();
     if (ts.exists) {
       let accessToken = null;
@@ -224,15 +226,15 @@ async function disconnect({ db, coachUid, athleteId, tokenKey, deregister, decry
     if (l.ticketHash) tx.delete(db.collection(COL.TICKETS).doc(l.ticketHash));
     tx.set(linkRef, {
       status: 'disconnected', disconnectedAt: t, lastPolarUserId: pid || l.lastPolarUserId || null,
-      polarUserId: null, ticketHash: null, inviteExpiresAt: null, lastError: null, updatedAt: t,
+      polarUserId: null, ticketHash: null, inviteExpiresAt: null, lastError: null, syncLockUntil: null, updatedAt: t,
     }, { merge: true });
   });
-  return { linkId: id, remote, wasActive: !!pid };
+  return { linkId: id, remote, wasActive: l.status === 'active' };
 }
 
 const newMemberId = () => 'cos_' + randomToken(16);
 
 module.exports = {
   LinkError, linkIdOf, createInvite, loadTicket, beginAuth, consumeState, precheck,
-  completeLink, noteFailure, disconnect, newMemberId,
+  completeLink, noteFailure, disconnect, newMemberId, cleanAthleteId: cleanId,
 };
