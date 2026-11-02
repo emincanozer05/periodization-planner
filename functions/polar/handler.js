@@ -22,7 +22,12 @@ const api = require('./api');
 const links = require('./links');
 const pages = require('./pages');
 
-const HTML_CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://flow.polar.com; base-uri 'none'; frame-ancestors 'none'";
+/* form-action YOK, bilerek: "Polar ile bağlan" formu bize POST ediyor, biz Polar'a 303
+   ile yönlendiriyoruz, Polar da giriş için kendi başka alan adlarına yönlendiriyor.
+   Chrome form-action'ı yönlendirme zincirinin TAMAMINDA uyguluyor; Polar'ın zincirindeki
+   herhangi bir alan adı listede yoksa düğme sessizce hiçbir yere gitmiyordu (sahada
+   olan buydu). Sayfada betik yok ve formun hedefi sabit, kısıtın koruduğu bir şey yok. */
+const HTML_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
 
 function baseHeaders(res) {
   res.set('Cache-Control', 'no-store');
