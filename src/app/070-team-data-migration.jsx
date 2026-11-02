@@ -280,6 +280,10 @@ function migrate(data){
   }
   if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam()];
   data.teams=data.teams.map(migrateTeam);
+  /* Programların uzun parmak izleri kısa özete (bkz. indivSigCompact): bir hesapta verinin %81'i bu
+     alandı. Her okumada çalışır — eski sürümle açık kalmış bir cihaz yine uzun yazabilir — ama
+     çevrilecek bir şey yoksa yalnızca bir okuma turudur. */
+  try{indivSigCompact(data.teams);}catch(e){/* parmak izi yalnızca bir karşılaştırma kolaylığı */}
   /* The team on screen comes from this browser, not from the cloud. Every state that
      reaches the screen passes through here — the first cloud read, the local safety copy,
      each snapshot the other device writes and the merge base behind it — so resolving it in

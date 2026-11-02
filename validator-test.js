@@ -97,7 +97,7 @@ function loadApp() {
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
-    'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
+    'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'indivSig', 'indivSigRaw', 'indivSigCompact', 'indivHandEdited', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
     'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
@@ -1522,6 +1522,31 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       e[2].pattern === 'Upper Body Pull' && e[2].plane === 'Horizontal Pull' && e[2].dir === 'Chest-Supported' && e[0].load === '70% 1RM' && e[0].tempo === '3-0-1' &&
       e[0].description === 'Derinlik kontrollü' && e[0].alt.sets === '3' && e[0].alt.reps === '8' && e[0].alt.load === '60% 1RM' &&
       e[0].link === 'https://x.test/s', JSON.stringify(e.map(x => [x.name, x.pattern, x.plane, x.superset])));
+
+    /* Parmak izi: programın kendisi değil, kısa bir özet (bir hesapta verinin %81'i bu alandı).
+       Elle düzenleme algısı eski uzun izde de, özette de aynı kararı vermeli. */
+    {
+      const big = { ...ses, blocks: ses.blocks.map(b => ({ ...b, exercises: b.exercises.map(x => ({ ...x, image: 'data:image/jpeg;base64,' + 'Q'.repeat(200000) })) })) };
+      big.indiv = { ...big.indiv, sig: A.indivSig(big) };
+      check('parmak izi kısa: 200 KB görselli programda bile 40 karakterden az (' + big.indiv.sig.length + ')', big.indiv.sig.length < 40 && /^h1:/.test(big.indiv.sig));
+      check('parmak izi: dokunulmamış program elle düzenlenmiş sayılmıyor', A.indivHandEdited(big) === false);
+      const hand = { ...big, blocks: [{ ...big.blocks[0], exercises: [{ ...big.blocks[0].exercises[0], sets: '9' }, ...big.blocks[0].exercises.slice(1)] }] };
+      check('parmak izi: takvimde değiştirilen set elle düzenleme olarak görülüyor', A.indivHandEdited(hand) === true);
+      // Eski sürümün yazdığı uzun iz: aynı kararlar, migrate'ten önce ve sonra.
+      const oldSes = { ...big, indiv: { ...big.indiv, sig: A.indivSigRaw(big) } };
+      const oldHand = { ...hand, indiv: { ...hand.indiv, sig: A.indivSigRaw(big) } };
+      const before = [A.indivHandEdited(oldSes), A.indivHandEdited(oldHand)];
+      const st = { teams: [{ id: 'T', athletes: [{ id: 'a', days: { [TODAY]: { sessions: [oldSes, oldHand] } } }], seasonData: { S: { days: { [TODAY]: { sessions: [{ ...oldSes }] } } } } }] };
+      const n = A.indivSigCompact(st.teams);
+      const [c1, c2] = st.teams[0].athletes[0].days[TODAY].sessions;
+      const parked = st.teams[0].seasonData.S.days[TODAY].sessions[0];
+      check('eski uzun izler özete çevriliyor (takvim ve park edilmiş sezon dahil)', n === 3 && /^h1:/.test(c1.indiv.sig) && /^h1:/.test(parked.indiv.sig) && c1.indiv.sig === big.indiv.sig, 'n=' + n);
+      check('çeviriden önce ve sonra elle düzenleme kararı aynı (dokunulmamış: hayır, değiştirilmiş: evet)',
+        before.join() === 'false,true' && [A.indivHandEdited(c1), A.indivHandEdited(c2)].join() === 'false,true', before.join() + ' → ' + [A.indivHandEdited(c1), A.indivHandEdited(c2)].join());
+      check('çevrilecek iz kalmayınca ikinci tur hiçbir şeye dokunmuyor', A.indivSigCompact(st.teams) === 0);
+      const m = A.migrate(JSON.parse(JSON.stringify({ teams: [{ id: 'T', athletes: [{ id: 'a', days: { [TODAY]: { sessions: [oldSes] } } }] }] })));
+      check('migrate buluttan gelen veride izleri çeviriyor', /^h1:/.test(m.teams[0].athletes[0].days[TODAY].sessions[0].indiv.sig));
+    }
 
     /* Fazlar: her faz programda kendi adıyla bir bölüm; fazsız satırlar sona kalıyor. */
     const phased = {

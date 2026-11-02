@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1803**, yinelenen: **0**
+- Üst düzey ad sayısı: **1809**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **102** / toplam bağ 594
+- Geriye bağ sayısı: **103** / toplam bağ 595
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 57 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -103,7 +103,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 55 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv` |
 | 56 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 57 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
-| 58 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge` |
+| 58 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `indiv-plan-descriptions`↑ |
 | 59 | `auth-ui-cloud-bar` | 9 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `sync-infra-chunking-merge`, `privacy-notice`↑, `language-selector-nav-icons`↑ |
 | 60 | `privacy-notice` | 5 | `prelude`, `dates-language-factories` |
 | 61 | `exercise-taxonomy-text` | 22 | `prelude`, `dates-language-factories`, `move-taxonomy`¹ |
@@ -115,7 +115,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 67 | `program-history` | 10 | `prelude`, `dates-language-factories`, `ai-layer`↑ |
 | 68 | `program-bank` | 34 | `prelude`, `dates-language-factories`, `move-taxonomy`, `program-history`, `indiv-plan-descriptions`↑, `ai-layer`↑ |
 | 69 | `athlete-context-readiness` | 20 | `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `exercise-library-export` |
-| 70 | `indiv-plan-descriptions` | 23 | `prelude`, `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`, `move-taxonomy`, `session-analysis-muscle-model`, `athlete-context-readiness`, `ai-coach`↑ |
+| 70 | `indiv-plan-descriptions` | 29 | `prelude`, `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`, `move-taxonomy`, `session-analysis-muscle-model`, `athlete-context-readiness`, `ai-coach`↑ |
 | 71 | `coach-assistant` | 18 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `periods-weeks-load-monotony`, `block-editor-session-details`, `exercise-library-export`, `athlete-context-readiness` |
 | 72 | `di-engine-baseline` | 31 | `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `exercise-library-export`, `athlete-context-readiness` |
 | 73 | `atp-athlete-training-profile` | 59 | `dates-language-factories`, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `exercise-taxonomy-text`¹, `di-engine-baseline`, `sport-context-equipment`↑ |
