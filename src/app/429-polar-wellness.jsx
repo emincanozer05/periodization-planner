@@ -11,9 +11,10 @@
    antrenman sayısı ve toplam yükü. Sporcunun senkronlanan kendi verisine
    (team.athletes) hiçbir şey yazılmıyor: bu bölüm yalnızca okur.
 
-   Grafikler: tek eksen (iki farklı ölçü iki ayrı grafik), tek seride gösterge
-   yok, iki seride gösterge var; renk çifti renk körlüğü denetiminden geçti
-   (koyu #3b82f6/#d97706, açık #2563eb/#b45309).
+   Sporcu görünümü sade: üstte son değer + 7 günlük ortalama kutucukları, altında
+   yalnızca 4 grafik (HRV, uyku süresi, gece nabzı, antrenman yükü). Tek eksen,
+   tek renk; HRV ve gece nabzında her gece soluk nokta, üstünde 7 günlük ortalama
+   çizgisi — ikisi biçimle ayrılıyor ve başlıkta düz yazıyla adlandırılıyor.
    ═══════════════════════════════════════════════════════════════════════════ */
 const PW_DAYS=[14,28,56];
 const PW_DAY=86400000;
@@ -45,70 +46,98 @@ const PW_STATUS={
   none:()=>[L('Bağlı değil','Not connected'),'off'],
 };
 
-function pwChartOpts({legend,zero,unit,dec}){
+/* Sade grafik: az eksen yazısı, neredeyse görünmez ızgara, gösterge kutusu yok
+   (gerekirse başlıkta düz yazı gösterge), noktalar yalnızca üzerine gelince. */
+function pwChartOpts({zero,unit,dec}){
   const f=v=>pwNum(v)?(dec?v.toFixed(dec):Math.round(v))+(unit?' '+unit:''):'—';
   return{responsive:true,maintainAspectRatio:false,animation:false,
     interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:!!legend,position:'top',align:'start',labels:{color:'#cbd5e1',boxWidth:10,boxHeight:10,usePointStyle:true,font:{size:11}}},
-      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${f(c.raw)}`}}},
-    scales:{x:{grid:{display:false},ticks:{color:'#94a3b8',maxTicksLimit:8,maxRotation:0,font:{size:10}}},
-      y:{beginAtZero:!!zero,grid:{color:'rgba(255,255,255,.07)'},border:{display:false},ticks:{color:'#94a3b8',maxTicksLimit:5,font:{size:10}}}}};
+    plugins:{legend:{display:false},
+      tooltip:{displayColors:false,callbacks:{label:c=>pwNum(c.raw)?`${c.dataset.label}: ${f(c.raw)}`:null}}},
+    scales:{x:{grid:{display:false},border:{display:false},ticks:{color:'#94a3b8',maxTicksLimit:5,maxRotation:0,font:{size:10}}},
+      y:{beginAtZero:!!zero,grace:'10%',grid:{color:'rgba(255,255,255,.05)'},border:{display:false},ticks:{color:'#94a3b8',maxTicksLimit:4,font:{size:10},padding:6}}}};
 }
 
-function PwChart({title,unit,note,kind,labels,sets,zero,dec}){
+/* Her gece soluk bir nokta, üstünde 7 günlük ortalamanın tek, net çizgisi. */
+function pwRoll7(vals){return vals.map((_,i)=>{const w=vals.slice(Math.max(0,i-6),i+1).filter(pwNum);return w.length>=3?w.reduce((s,x)=>s+x,0)/w.length:null;});}
+const pwDots=(label,data,color)=>({type:'line',label,data,showLine:false,pointRadius:3,pointHoverRadius:5,
+  pointBackgroundColor:color+'73',pointBorderWidth:0,borderColor:color,order:2});
+const pwMeanLine=(label,data,color)=>({type:'line',label,data,borderColor:color,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,
+  pointBackgroundColor:color,tension:.35,spanGaps:true,order:1});
+const pwBars=(label,data,color)=>({type:'bar',label,data,backgroundColor:color,borderRadius:3,borderSkipped:'start',barPercentage:.6,categoryPercentage:.9});
+
+function PwChart({title,unit,help,legend,labels,sets,zero,dec}){
   const has=sets.some(s=>s.data.some(pwNum));
   return(<div className="pw-card">
-    <div className="pw-ct"><b>{title}</b>{unit&&<span>{unit}</span>}</div>
-    {has?<div className="pw-cv"><ChartC type={kind} chartData={{labels,datasets:sets}} options={pwChartOpts({legend:sets.length>1,zero,unit,dec})}/></div>
+    <div className="pw-ct"><b>{title}</b>{unit&&<span>{unit}</span>}{legend&&has&&<em className="pw-leg">{legend}</em>}</div>
+    {has?<div className="pw-cv"><ChartC type="line" chartData={{labels,datasets:sets}} options={pwChartOpts({zero,unit,dec})}/></div>
       :<div className="pw-none">{L('Polar bu aralıkta bu veriyi göndermedi.','Polar sent no data for this in the selected range.')}</div>}
-    {note&&has&&<div className="pw-note">{note}</div>}
+    {help&&has&&<div className="pw-note">{help}</div>}
   </div>);
+}
+
+/* Kutucuk: son değer büyük, altında 7 günlük ortalama ve son değerin tarihi. */
+function pwLast(arr,f){for(let i=(arr||[]).length-1;i>=0;i--){const v=f(arr[i]);if(pwNum(v))return{v,date:arr[i].date};}return null;}
+function pwAvg7(arr,f,ref){return ref?pwMean((arr||[]).filter(x=>x.date>pwShift(ref,-7)).map(f)):null;}
+function PwTile({label,value,unit,sub}){
+  return(<div className="pw-tile"><span className="pw-tl">{label}</span>
+    <b className="pw-tv">{value}{unit&&value!=='—'?<small> {unit}</small>:null}</b>
+    <span className="pw-ts">{sub}</span></div>);
 }
 
 function PwAthlete({a,name,from,to,onClose}){
   const theme=useAppTheme();
-  const C1=theme==='light'?'#2563eb':'#3b82f6', C2=theme==='light'?'#b45309':'#d97706';
+  const C1=theme==='light'?'#2563eb':'#3b82f6';
   const keys=pwKeys(from,to);
   const labels=keys.map(pwDm);
   const by=(arr,f)=>{const m=new Map((arr||[]).map(x=>[x.date,x]));return keys.map(k=>{const x=m.get(k);return x&&pwNum(f(x))?f(x):null;});};
-  const hrv=by(a.recharge,x=>x.hrvMs);
-  const hrv7=keys.map((k,i)=>{const w=hrv.slice(Math.max(0,i-6),i+1).filter(pwNum);return w.length>=3?w.reduce((s,x)=>s+x,0)/w.length:null;});
+  const hrv=by(a.recharge,x=>x.hrvMs), nhr=by(a.recharge,x=>x.hrAvg);
   const exDay=keys.map(k=>{const xs=(a.exercises||[]).filter(e=>e.date===k&&pwNum(e.trainingLoad));return xs.length?xs.reduce((s,e)=>s+e.trainingLoad,0):null;});
-  const line=(label,data,color)=>({label,data,borderColor:color,backgroundColor:color,borderWidth:2,pointRadius:4,pointHoverRadius:6,spanGaps:false,tension:0});
-  const bar=(label,data,color)=>({label,data,backgroundColor:color,borderRadius:4,borderSkipped:'start',barPercentage:.7,categoryPercentage:.85});
   const ex=(a.exercises||[]).slice().reverse();
+  const tile=(label,arr,f,fmtV,unit)=>{const l=pwLast(arr,f);const m=l?pwAvg7(arr,f,l.date):null;
+    return<PwTile key={label} label={label} value={l?fmtV(l.v):'—'} unit={unit}
+      sub={l?L(`7g ort. ${fmtV(m)} · ${pwDm(l.date)}`,`7d avg ${fmtV(m)} · ${pwDm(l.date)}`):L('veri yok','no data')}/>;};
+  const todayIso=pwIso(Date.now());
+  const ex7=(a.exercises||[]).filter(e=>e.date>pwShift(todayIso,-7));
+  const load7=ex7.map(e=>e.trainingLoad).filter(pwNum);
+  const legend=L('nokta: her gece · çizgi: 7 günlük ortalama','dot: each night · line: 7-day mean');
   return(<div className="panel pw-ath">
     <div className="pw-ath-h">
       <div><h2>{name}</h2><span className="pw-sub">{L('Polar verisi','Polar data')} · {fd(from)} – {fd(to)}</span></div>
       <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button>
     </div>
+    <div className="pw-tiles">
+      {tile(L('Uyku','Sleep'),a.sleep,x=>x.asleepSec,v=>pwDur(v))}
+      {tile(L('Uyku skoru','Sleep score'),a.sleep,x=>x.sleepScore,v=>pwR(v))}
+      {tile('HRV',a.recharge,x=>x.hrvMs,v=>pwR(v),'ms')}
+      {tile(L('Gece nabzı','Night HR'),a.recharge,x=>x.hrAvg,v=>pwR(v),'bpm')}
+      {tile(L('Solunum','Breathing'),a.recharge,x=>x.breathingRate,v=>pwR(v,1),L('/dk','/min'))}
+      {tile('ANS Charge',a.recharge,x=>x.ansCharge,v=>pwR(v,1))}
+      {tile(L('Adım','Steps'),a.activity,x=>x.steps,v=>pwNum(v)?Math.round(v).toLocaleString('tr-TR'):'—')}
+      <PwTile label={L('Antrenman (7 gün)','Training (7 days)')} value={String(ex7.length)} unit={L('seans','sessions')}
+        sub={load7.length?L(`toplam yük ${Math.round(load7.reduce((x,y)=>x+y,0))}`,`total load ${Math.round(load7.reduce((x,y)=>x+y,0))}`):L('yük verisi yok','no load data')}/>
+    </div>
     <div className="pw-charts">
-      <PwChart title="HRV · RMSSD" unit="ms" kind="line" labels={labels}
-        sets={[line(L('Gece HRV','Nightly HRV'),hrv,C1),line(L('7 günlük ortalama','7-day mean'),hrv7,C2)]}
-        note={L('7 günlük ortalama hesaplanır (en az 3 gece).','The 7-day mean is calculated (at least 3 nights).')}/>
-      <PwChart title={L('Uyku süresi','Sleep duration')} unit={L('saat','hours')} kind="bar" labels={labels} zero dec={1}
-        sets={[bar(L('Uyku','Sleep'),by(a.sleep,x=>pwNum(x.asleepSec)?x.asleepSec/3600:null),C1)]}
-        note={L('Uyku süresi = Polar\'ın uyku evrelerinin toplamı.','Sleep duration = sum of Polar\'s sleep stages.')}/>
-      <PwChart title={L('Uyku skoru','Sleep score')} kind="line" labels={labels}
-        sets={[line(L('Uyku skoru','Sleep score'),by(a.sleep,x=>x.sleepScore),C1)]}/>
-      <PwChart title={L('Gece kalp atım hızı','Nightly heart rate')} unit="bpm" kind="line" labels={labels}
-        sets={[line(L('Gece nabzı','Night HR'),by(a.recharge,x=>x.hrAvg),C1)]}/>
-      <PwChart title={L('Solunum hızı','Breathing rate')} unit={L('/dk','/min')} kind="line" labels={labels} dec={1}
-        sets={[line(L('Solunum','Breathing'),by(a.recharge,x=>x.breathingRate),C1)]}/>
-      <PwChart title="ANS Charge" kind="line" labels={labels} dec={1}
-        sets={[line('ANS Charge',by(a.recharge,x=>x.ansCharge),C1)]}/>
-      <PwChart title={L('Günlük adım','Daily steps')} kind="bar" labels={labels} zero
-        sets={[bar(L('Adım','Steps'),by(a.activity,x=>x.steps),C1)]}/>
-      <PwChart title={L('Antrenman yükü','Training load')} unit={L('Polar, günlük toplam','Polar, daily total')} kind="bar" labels={labels} zero
-        sets={[bar(L('Yük','Load'),exDay,C1)]}/>
+      <PwChart title="HRV" unit="ms" legend={legend} labels={labels}
+        sets={[pwMeanLine(L('7 günlük ortalama','7-day mean'),pwRoll7(hrv),C1),pwDots(L('Gece','Night'),hrv,C1)]}
+        help={L('Sporcunun kendi ortalamasına göre okunur. Çizginin belirgin düşmesi yorgunluk ya da eksik toparlanma işareti olabilir.','Read against the athlete\'s own average. A clear drop in the line can signal fatigue or incomplete recovery.')}/>
+      <PwChart title={L('Uyku süresi','Sleep duration')} unit={L('saat','hours')} labels={labels} zero dec={1}
+        sets={[pwBars(L('Uyku','Sleep'),by(a.sleep,x=>pwNum(x.asleepSec)?x.asleepSec/3600:null),C1)]}
+        help={L('Her çubuk bir gece (Polar uyku evrelerinin toplamı).','Each bar is one night (sum of Polar sleep stages).')}/>
+      <PwChart title={L('Gece kalp atım hızı','Night heart rate')} unit="bpm" legend={legend} labels={labels}
+        sets={[pwMeanLine(L('7 günlük ortalama','7-day mean'),pwRoll7(nhr),C1),pwDots(L('Gece','Night'),nhr,C1)]}
+        help={L('Her zamankinden yüksek seyretmesi toparlanmanın eksik kaldığını gösterebilir.','Running higher than usual can signal incomplete recovery.')}/>
+      <PwChart title={L('Antrenman yükü','Training load')} unit={L('günlük','daily')} labels={labels} zero
+        sets={[pwBars(L('Yük','Load'),exDay,C1)]}
+        help={L('Polar\'ın hesapladığı günlük antrenman yükü; boş gün = kayıtlı antrenman yok.','Daily training load calculated by Polar; empty day = no recorded session.')}/>
     </div>
     <div className="pw-sess">
       <div className="pw-ct"><b>{L('Antrenmanlar','Training sessions')}</b><span>{ex.length}</span></div>
       {ex.length?<div className="pw-tw"><table className="pw-t">
-        <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Spor','Sport')}</th><th>{L('Süre','Duration')}</th><th>{L('Ort. nabız','Avg HR')}</th><th>{L('Maks. nabız','Max HR')}</th><th>kcal</th><th>{L('Yük','Load')}</th><th>{L('Kardiyo yükü','Cardio load')}</th></tr></thead>
+        <thead><tr><th>{L('Tarih','Date')}</th><th>{L('Spor','Sport')}</th><th>{L('Süre','Duration')}</th><th>{L('Ort. nabız','Avg HR')}</th><th>{L('Maks. nabız','Max HR')}</th><th>kcal</th><th>{L('Yük','Load')}</th></tr></thead>
         <tbody>{ex.map(e=><tr key={e.exerciseId||e.startTime}>
           <td>{fd(e.date)}</td><td>{e.sport?String(e.sport).replace(/_/g,' ').toLocaleLowerCase('tr'):'—'}</td><td>{pwDur(e.durationSec)}</td>
-          <td>{pwR(e.hrAvg)}</td><td>{pwR(e.hrMax)}</td><td>{pwR(e.calories)}</td><td>{pwR(e.trainingLoad,1)}</td><td>{pwR(e.cardioLoad,1)}</td></tr>)}</tbody>
+          <td>{pwR(e.hrAvg)}</td><td>{pwR(e.hrMax)}</td><td>{pwR(e.calories)}</td><td>{pwR(e.trainingLoad)}</td></tr>)}</tbody>
       </table></div>:<div className="pw-none">{L('Bu aralıkta Polar antrenman kaydı yok.','No Polar training sessions in this range.')}</div>}
     </div>
   </div>);
