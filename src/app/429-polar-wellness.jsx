@@ -27,6 +27,14 @@ function pwMean(a){const v=a.filter(pwNum);return v.length?v.reduce((s,x)=>s+x,0
 function pwDur(sec){if(!pwNum(sec))return'—';const m=Math.round(sec/60);return L(`${Math.floor(m/60)} sa ${m%60} dk`,`${Math.floor(m/60)}h ${m%60}m`);}
 const pwR=(v,d=0)=>pwNum(v)?(d?v.toFixed(d):String(Math.round(v))):'—';
 const pwDm=iso=>iso?fd(iso).slice(0,5):'—';
+/* Uyku süresi Polar uygulamasındaki gibi: uykuya dalıştan uyanmaya (sleep_end − sleep_start).
+   "Gerçek uyku" (asleepSec) bundan gece içindeki uyanıklıklar çıkmış hâli — ayrı gösteriliyor.
+   İki zaman damgasından biri yoksa süre de yok (tahmin edilmiyor). */
+function pwSleepTime(s){
+  if(!s||!s.sleepStart||!s.sleepEnd)return null;
+  const d=(Date.parse(s.sleepEnd)-Date.parse(s.sleepStart))/1000;
+  return isFinite(d)&&d>0&&d<24*3600?d:null;
+}
 
 const PW_STATUS={
   active:()=>[L('Bağlı','Connected'),'on'],
@@ -98,7 +106,8 @@ function PwAthlete({a,title,from,to,tools}){
       {tools}
     </div>
     <div className="pw-tiles">
-      {tile(L('Uyku','Sleep'),a.sleep,x=>x.asleepSec,v=>pwDur(v))}
+      {tile(L('Uyku süresi','Sleep time'),a.sleep,x=>pwSleepTime(x),v=>pwDur(v))}
+      {tile(L('Gerçek uyku','Actual sleep'),a.sleep,x=>x.asleepSec,v=>pwDur(v))}
       {tile(L('Uyku skoru','Sleep score'),a.sleep,x=>x.sleepScore,v=>pwR(v))}
       {tile('HRV',a.recharge,x=>x.hrvMs,v=>pwR(v),'ms')}
       {tile(L('Gece nabzı','Night HR'),a.recharge,x=>x.hrAvg,v=>pwR(v),'bpm')}
@@ -113,8 +122,8 @@ function PwAthlete({a,title,from,to,tools}){
         sets={[pwMeanLine(L('7 günlük ortalama','7-day mean'),pwRoll7(hrv),C1),pwDots(L('Gece','Night'),hrv,C1)]}
         help={L('Sporcunun kendi ortalamasına göre okunur. Çizginin belirgin düşmesi yorgunluk ya da eksik toparlanma işareti olabilir.','Read against the athlete\'s own average. A clear drop in the line can signal fatigue or incomplete recovery.')}/>
       <PwChart title={L('Uyku süresi','Sleep duration')} unit={L('saat','hours')} labels={labels} zero dec={1}
-        sets={[pwBars(L('Uyku','Sleep'),by(a.sleep,x=>pwNum(x.asleepSec)?x.asleepSec/3600:null),C1)]}
-        help={L('Her çubuk bir gece (Polar uyku evrelerinin toplamı).','Each bar is one night (sum of Polar sleep stages).')}/>
+        sets={[pwBars(L('Uyku süresi','Sleep time'),by(a.sleep,x=>{const t=pwSleepTime(x);return t==null?null:t/3600;}),C1)]}
+        help={L('Her çubuk bir gece: uykuya dalıştan uyanmaya, Polar uygulamasındaki uyku süresi.','Each bar is one night: from falling asleep to waking, as in the Polar app.')}/>
       <PwChart title={L('Gece kalp atım hızı','Night heart rate')} unit="bpm" legend={legend} labels={labels}
         sets={[pwMeanLine(L('7 günlük ortalama','7-day mean'),pwRoll7(nhr),C1),pwDots(L('Gece','Night'),nhr,C1)]}
         help={L('Her zamankinden yüksek seyretmesi toparlanmanın eksik kaldığını gösterebilir.','Running higher than usual can signal incomplete recovery.')}/>
@@ -232,7 +241,7 @@ function PolarWellness({team,dayKey,onOpen}){
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
-          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Uyku skoru','Sleep score')}</th>
+          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku süresi','Sleep time')}</th><th>{L('Uyku skoru','Sleep score')}</th>
           <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th><th>{L('Solunum','Breathing')}</th><th>ANS</th>
           <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
@@ -246,7 +255,7 @@ function PolarWellness({team,dayKey,onOpen}){
             tabIndex={canOpen?0:undefined} onKeyDown={canOpen?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(a.id);}}:undefined}>
             <td className="pw-name">{a.name||'—'}</td>
             <td><span className={'pw-st pw-'+stCls}>{stTxt}</span></td>
-            <td>{s?pwDur(s.asleepSec):'—'}</td>
+            <td>{s?pwDur(pwSleepTime(s)):'—'}</td>
             <td>{s?pwR(s.sleepScore):'—'}</td>
             <td>{r?pwR(r.hrvMs):'—'}</td>
             <td>{r?pwR(r.hrAvg):'—'}</td>
