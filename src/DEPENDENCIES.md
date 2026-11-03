@@ -22,7 +22,7 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 | `test-metadata-fms` | 20 | 5 |
 | `exercise-taxonomy-text` | 18 | 3 |
 | `move-taxonomy` | 14 | 2 |
-| `sync-infra-chunking-merge` | 13 | 1 |
+| `sync-infra-chunking-merge` | 14 | 1 |
 | `rhr-team-sync-picker` | 12 | 5 |
 
 ## Bağımsız adaylar
@@ -35,12 +35,12 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **106** / toplam bağ 604
-- Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 58 parça
+- Geriye bağ sayısı: **108** / toplam bağ 606
+- Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 59 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
   - `move-taxonomy` ↔ `exercise-taxonomy-text`
-  - `test-metadata-fms` ↔ `athlete-boxes` ↔ `team-data-migration` ↔ `periods-weeks-load-monotony` ↔ `rhr-team-sync-picker` ↔ `print-session-html` ↔ `print-week` ↔ `crest-week-image` ↔ `print-month` ↔ `pdf-share-coach-report` ↔ `photo-local-media-store` ↔ `setup-all-teams-calendar` ↔ `session-analysis-muscle-model` ↔ `calendar` ↔ `session-kinds` ↔ `block-editor-session-details` ↔ `pattern-plan-table` ↔ `ball-practice` ↔ `session-editor-planner` ↔ `interval-timer` ↔ `test-pdf` ↔ `athletic-dev-report` ↔ `dev-report-page` ↔ `athlete-vs-squad` ↔ `testing-session` ↔ `test-progression-compare` ↔ `team-data` ↔ `evaluation-tryouts` ↔ `athlete-detail-snapshot` ↔ `program-design-assistant` ↔ `program-writer` ↔ `test-reports-recommends` ↔ `atp-profile-ui` ↔ `athlete-detail` ↔ `injury-surveillance` ↔ `athlete-wellness-hrv` ↔ `athlete-info-report` ↔ `athlete-polar` ↔ `staff-roster-backup` ↔ `sync-infra-chunking-merge` ↔ `exercise-video-picker` ↔ `exercise-modal-cards` ↔ `exercise-library-export` ↔ `program-history` ↔ `program-bank` ↔ `athlete-context-readiness` ↔ `indiv-plan-descriptions` ↔ `coach-assistant` ↔ `di-engine-baseline` ↔ `atp-athlete-training-profile` ↔ `sport-context-equipment` ↔ `di-adjust-tier-bundle` ↔ `ai-layer` ↔ `di-forms-program-view` ↔ `ai-coach` ↔ `checkin-wellness-alerts-client` ↔ `lift-log` ↔ `wellness-alerts-coach`
+  - `test-metadata-fms` ↔ `athlete-boxes` ↔ `team-data-migration` ↔ `periods-weeks-load-monotony` ↔ `rhr-team-sync-picker` ↔ `print-session-html` ↔ `print-week` ↔ `crest-week-image` ↔ `print-month` ↔ `pdf-share-coach-report` ↔ `photo-local-media-store` ↔ `setup-all-teams-calendar` ↔ `session-analysis-muscle-model` ↔ `calendar` ↔ `session-kinds` ↔ `block-editor-session-details` ↔ `pattern-plan-table` ↔ `ball-practice` ↔ `session-editor-planner` ↔ `interval-timer` ↔ `test-pdf` ↔ `athletic-dev-report` ↔ `dev-report-page` ↔ `athlete-vs-squad` ↔ `testing-session` ↔ `test-progression-compare` ↔ `team-data` ↔ `evaluation-tryouts` ↔ `athlete-detail-snapshot` ↔ `program-design-assistant` ↔ `program-writer` ↔ `test-reports-recommends` ↔ `atp-profile-ui` ↔ `athlete-detail` ↔ `injury-surveillance` ↔ `athlete-wellness-hrv` ↔ `athlete-info-report` ↔ `athlete-polar` ↔ `polar-wellness` ↔ `staff-roster-backup` ↔ `sync-infra-chunking-merge` ↔ `exercise-video-picker` ↔ `exercise-modal-cards` ↔ `exercise-library-export` ↔ `program-history` ↔ `program-bank` ↔ `athlete-context-readiness` ↔ `indiv-plan-descriptions` ↔ `coach-assistant` ↔ `di-engine-baseline` ↔ `atp-athlete-training-profile` ↔ `sport-context-equipment` ↔ `di-adjust-tier-bundle` ↔ `ai-layer` ↔ `di-forms-program-view` ↔ `ai-coach` ↔ `checkin-wellness-alerts-client` ↔ `lift-log` ↔ `wellness-alerts-coach`
 
 ## Parça parça
 
@@ -95,14 +95,14 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 47 | `scouting-notes` | 14 | `prelude`, `dates-language-factories` |
 | 48 | `profile-tab` | 3 | `prelude`, `dates-language-factories`, `scouting-notes` |
 | 49 | `atp-profile-ui` | 27 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `fv-profile`, `atp-athlete-training-profile`↑ |
-| 50 | `athlete-detail` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`¹, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `test-pdf`, `test-reports-recommends`, `profile-tab`, `atp-profile-ui`, `athlete-phv`↑, `injury-surveillance`↑, `athlete-info-report`↑, `athlete-polar`↑ |
+| 50 | `athlete-detail` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`¹, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `test-pdf`, `test-reports-recommends`, `profile-tab`, `atp-profile-ui`, `athlete-phv`↑, `injury-surveillance`↑, `athlete-info-report`↑, `athlete-polar`↑, `polar-wellness`↑ |
 | 51 | `athlete-phv` | 12 | `prelude`, `dates-language-factories` |
 | 52 | `injury-surveillance` | 15 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony` |
 | 53 | `athlete-wellness-hrv` | 17 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `athlete-detail-snapshot` |
 | 54 | `athlete-info-report` | 1 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `athlete-context-readiness`↑ |
 | 55 | `athlete-polar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`↑ |
 | 56 | `wellness-view` | 13 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `athlete-wellness-hrv`, `polar-wellness`↑ |
-| 57 | `polar-wellness` | 23 | `prelude`, `dates-language-factories`, `chart-wrapper`, `athlete-polar` |
+| 57 | `polar-wellness` | 23 | `prelude`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
 | 58 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 59 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
 | 60 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `indiv-plan-descriptions`↑ |

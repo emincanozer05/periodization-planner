@@ -107,7 +107,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
-    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/></>}
+    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/><PolarAthleteCharts ath={ath} teamId={teamId}/></>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
