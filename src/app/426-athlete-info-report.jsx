@@ -3,7 +3,8 @@
 
    One A4 portrait document in five parts, in the order of the tabs it is drawn from:
    the Athlete Profile, the Head Coach's Observations, the Athletic Profile, the
-   anthropometric measurements over time and the Injuries. The Athletic Profile always
+   anthropometric measurements over time, the Injuries and — for an athlete linked to Polar —
+   the season's Polar Loop sleep and recovery, month by month (429, pwSheetSection). The Athletic Profile always
    starts on a page of its own, never at the foot of the one before.
    The Athletic Profile prints every Movement Screen, Jump & Reactivity and Speed & Agility
    test the athlete has taken beside its (grey-scale) picture and what it measures — the
@@ -13,9 +14,13 @@
    in boxes, judgements in words, every scale with its key. It opens in its own window and goes straight to the print dialog, where "Save as
    PDF" writes the file; the browser paginates it, and no block is cut across a page.
    ═══════════════════════════════════════════════════════════════════════════ */
-function printAthleteInfo(ath,setup,exercises,teamDays){
+function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
   const w=window.open('','_blank','width=980,height=1200');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  /* The window opens at once (inside the click, or the pop-up blocker stops it) and says it is
+     getting ready while the Polar Loop section (429, pwSheetSection) is fetched; the sheet is
+     written when that answers (25 s at most), without the section if the athlete never linked Polar. */
+  try{w.document.open();w.document.write(`<!DOCTYPE html><meta charset="utf-8"><title>${L('Hazırlanıyor…','Preparing…')}</title><body style="font:14px system-ui,sans-serif;color:#3a4350;padding:32px">${L('Profil çıktısı hazırlanıyor (Polar Loop verisi alınıyor)…','Preparing the profile printout (fetching Polar Loop data)…')}</body>`);w.document.close();}catch(e){}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const txt=s=>{const t=String(s||'').trim();return t?`<div class="txt">${esc(t)}</div>`:`<div class="txt none">—</div>`;};
   const{age,h,w:wt,ws,bf}=athProfileBasics(ath);
@@ -235,6 +240,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
       :`<div class="card none">${L('Kayıtlı sakatlık yok.','No injuries recorded.')}</div>`}
   </section>`;
   const today_=fdL(fmt(today));
+  const writeSheet=s6=>{if(w.closed)return;
   /* The sheet opens the print dialog itself once every picture has loaded (or failed) and
      the fonts are in — a dialog opened earlier prints the pictures still loading as broken
      boxes. A font that never arrives holds it back 3 s at most, a picture 20 s. Its closing
@@ -244,6 +250,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays){
 @page{size:A4 portrait;margin:12mm 12mm 13mm}
 ${RPT_FONT}
 ${ATH_SHEET_CSS}
+${PW_SHEET_CSS}
 </style></head><body>
 <div class="pbar">${L('Sporcu bilgileri hazır','Athlete information is ready')} · <button onclick="window.print()">${L('Yazdır / PDF olarak kaydet','Print / Save as PDF')}</button><button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="hd">
@@ -252,7 +259,7 @@ ${ATH_SHEET_CSS}
     <div class="meta">${[ath.position?esc(POS_FULL[ath.position]||ath.position):'',pNow?esc(`${pNow.k} · ${L(pNow.tr,pNow.en)}`):''].filter(Boolean).join(' · ')}</div></div>
   <div class="r">${hasMedia(setup.logo)||setup.teamName?`<div class="tm">${hasMedia(setup.logo)?`<img src="${esc(mediaSrc(setup.logo))}" alt=""/>`:''}${setup.teamName?`<span>${esc(setup.teamName)}</span>`:''}</div>`:''}<div class="t">${L('Sporcu Bilgi Formu','Athlete Information Sheet')}</div><div class="d">${today_}</div></div>
 </div>
-${s1}${s2}${s3}${s4}${s5}
+${s1}${s2}${s3}${s4}${s5}${s6}
 <div class="ft"><span>${esc(setup.teamName||'')} · CoachOS</span><span>${L(`${today_} tarihinde oluşturuldu`,`Generated ${today_}`)}</span></div>
 <script>
 (function(){var go=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},350);};
@@ -265,4 +272,6 @@ setTimeout(ready,20000);})();
 <\/script>
 </body></html>`;
   w.document.open();w.document.write(html);w.document.close();
+  };
+  pwSheetSection(ath,teamId,setup,6).then(writeSheet,()=>writeSheet(''));
 }
