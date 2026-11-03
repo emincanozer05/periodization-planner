@@ -174,7 +174,7 @@ function PolarAthleteCharts({ath,teamId}){
 
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
    Wellness'ın üstündeki tarih seçicide hangi gün seçiliyse o günün verisi.
-   Gece verisi (uyku, HRV, gece nabzı, solunum, ANS) uyanılan SABAHIN tarihini
+   Gece verisi (uyku, yatış/uyanış saati, HRV, gece nabzı, ANS) uyanılan SABAHIN tarihini
    taşır — CoachOS'un gece kaydıyla aynı kural. Adım ve antrenman o güne ait;
    bugün seçiliyse gün içinde artar. Satıra tıklayınca sporcunun sayfası açılır;
    14/28 günlük grafikler orada. Başlığın solunda Polar Loop logosu (pwLogoSrc). */
@@ -245,8 +245,8 @@ function PolarWellness({team,dayKey,onOpen}){
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
-          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Uyku skoru','Sleep score')}</th>
-          <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th><th>{L('Solunum','Breathing')}</th><th>ANS</th>
+          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Yatış','Bedtime')}</th><th>{L('Uyanış','Wake')}</th><th>{L('Uyku skoru','Sleep score')}</th>
+          <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th><th>ANS</th>
           <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
@@ -260,18 +260,19 @@ function PolarWellness({team,dayKey,onOpen}){
             <td className="pw-name">{a.name||'—'}</td>
             <td><span className={'pw-st pw-'+stCls}>{stTxt}</span></td>
             <td>{s?pwDur(s.asleepSec):'—'}</td>
+            <td>{s?pwHm(pwClock(s.sleepStart,12*60)):'—'}</td>
+            <td>{s?pwHm(pwClock(s.sleepEnd,-6*60)):'—'}</td>
             <td>{s?pwR(s.sleepScore):'—'}</td>
             <td>{r?pwR(r.hrvMs):'—'}</td>
             <td>{r?pwR(r.hrAvg):'—'}</td>
-            <td>{r?pwR(r.breathingRate,1):'—'}</td>
             <td>{r?pwR(r.ansCharge,1):'—'}</td>
             <td>{act&&pwNum(act.steps)?Math.round(act.steps).toLocaleString('tr-TR'):'—'}</td>
             <td>{ex.length?`${ex.length} · ${exDur.length?pwDur(exDur.reduce((x,y)=>x+y,0)):'—'}`:'—'}</td>
             <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
-      <div className="pw-foot">{L(`Uyku, HRV, gece nabzı, solunum ve ANS o sabah uyanılan gecenin verisidir. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
-        `Sleep, HRV, night HR, breathing and ANS belong to the night ending that morning. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
+      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
+        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}
   </div>);
 }
