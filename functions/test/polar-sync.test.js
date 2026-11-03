@@ -462,3 +462,18 @@ ta('takım verisi: kimliksiz istek 401', async () => {
   const r = await teamReq(env, { teamId: 'team1' }, 'forged');
   assert.strictEqual(r.status, 401);
 });
+
+ta('takım verisi: tek gün (from = to) ve tek sporcu süzgeci', async () => {
+  const env = setup();
+  await syncReq(env);
+  env.db.put('polar_sleep', 'coach1__ath1__2026-10-31', { coachUid: 'coach1', date: '2026-10-31', sleepScore: 70 });
+  const day = await teamReq(env, { teamId: 'team1', from: '2026-11-01', to: '2026-11-01' });
+  assert.deepStrictEqual(day.json.athletes[0].sleep.map(x => x.date), ['2026-11-01']);
+  assert.strictEqual(day.json.from, '2026-11-01');
+  const other = await teamReq(env, { teamId: 'team1', athleteId: 'yok', days: 28 });
+  assert.deepStrictEqual(other.json.athletes, []);
+  const mine = await teamReq(env, { teamId: 'team1', athleteId: 'ath1', days: 28 });
+  assert.deepStrictEqual(mine.json.athletes.map(a => a.athleteId), ['ath1']);
+  const bad = await teamReq(env, { teamId: 'team1', from: '2026-01-01', to: '2026-11-01' });   // 92 günden uzun → days'e düşer
+  assert.strictEqual(bad.json.days, 28);
+});

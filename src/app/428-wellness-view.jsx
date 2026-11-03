@@ -225,7 +225,7 @@ function WvAthCard({a,d,i,onOpen}){
 }
 
 /* ---- Sporcunun takvimi: ay görünümü, gün ayrıntısı, ayın eğrileri ---- */
-function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
+function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const MS=WV_METRICS();
   const[month,setMonth]=useState(()=>{const d=parseD(dayKey);return{y:d.getFullYear(),m:d.getMonth()};});
   const[metric,setMetric]=useState('readiness');
@@ -316,6 +316,7 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
         return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}>
           <span>{m.label}</span><b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
     </div>
+    <PolarAthleteCharts ath={ath} teamId={teamId}/>
     <div className="wv-sec-h">{L('Kayıtlar, Uyku ve HRV','Records, Sleep & HRV')}</div>
     <AthWellness ath={ath} updAth={updAth}/>
   </div>);
@@ -335,7 +336,7 @@ function WellnessView({team,updateTeam,focus}){
   const rhrWks=useMemo(()=>rhrWeeks(dayKey,RHR_WEEKS),[dayKey]);
   const sel=selId&&athletes.find(a=>a.id===selId);
   useEffect(()=>{try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}},[selId]);
-  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)}/>;
+  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)} teamId={team.id}/>;
   const ql=q.trim().toLocaleLowerCase('tr');
   const shown=rows.filter(r=>!ql||(r.a.name||'').toLocaleLowerCase('tr').includes(ql)).sort((x,y)=>{
     if(sort==='low'||sort==='high'){const xv=x.d&&x.d.readiness,yv=y.d&&y.d.readiness;
@@ -352,7 +353,7 @@ function WellnessView({team,updateTeam,focus}){
         {v:low,l:L('düşük (<3)','low (<3)'),c:low?'#f97316':undefined}]}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
       <WvTeamPanel athletes={athletes} dayKey={dayKey} rows={rows}/>
-      <PolarWellness team={team}/>
+      <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)}/>
       <div className="wv-ath-h">
         <h2>{L('Sporcular','Athletes')}<span>{L('profile tıkla → takvim ve ayrıntılı veriler','click a profile → calendar & detailed data')}</span></h2>
         <div className="wv-ath-tools">

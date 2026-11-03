@@ -32336,7 +32336,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
-    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/></>}
+    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/><PolarAthleteCharts ath={ath} teamId={teamId}/></>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
@@ -34226,7 +34226,7 @@ function WvAthCard({a,d,i,onOpen}){
 }
 
 /* ---- Sporcunun takvimi: ay görünümü, gün ayrıntısı, ayın eğrileri ---- */
-function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
+function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const MS=WV_METRICS();
   const[month,setMonth]=useState(()=>{const d=parseD(dayKey);return{y:d.getFullYear(),m:d.getMonth()};});
   const[metric,setMetric]=useState('readiness');
@@ -34317,6 +34317,7 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack}){
         return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}>
           <span>{m.label}</span><b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
     </div>
+    <PolarAthleteCharts ath={ath} teamId={teamId}/>
     <div className="wv-sec-h">{L('Kayıtlar, Uyku ve HRV','Records, Sleep & HRV')}</div>
     <AthWellness ath={ath} updAth={updAth}/>
   </div>);
@@ -34336,7 +34337,7 @@ function WellnessView({team,updateTeam,focus}){
   const rhrWks=useMemo(()=>rhrWeeks(dayKey,RHR_WEEKS),[dayKey]);
   const sel=selId&&athletes.find(a=>a.id===selId);
   useEffect(()=>{try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}},[selId]);
-  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)}/>;
+  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)} teamId={team.id}/>;
   const ql=q.trim().toLocaleLowerCase('tr');
   const shown=rows.filter(r=>!ql||(r.a.name||'').toLocaleLowerCase('tr').includes(ql)).sort((x,y)=>{
     if(sort==='low'||sort==='high'){const xv=x.d&&x.d.readiness,yv=y.d&&y.d.readiness;
@@ -34353,7 +34354,7 @@ function WellnessView({team,updateTeam,focus}){
         {v:low,l:L('düşük (<3)','low (<3)'),c:low?'#f97316':undefined}]}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
       <WvTeamPanel athletes={athletes} dayKey={dayKey} rows={rows}/>
-      <PolarWellness team={team}/>
+      <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)}/>
       <div className="wv-ath-h">
         <h2>{L('Sporcular','Athletes')}<span>{L('profile tıkla → takvim ve ayrıntılı veriler','click a profile → calendar & detailed data')}</span></h2>
         <div className="wv-ath-tools">
@@ -34379,13 +34380,14 @@ function WellnessView({team,updateTeam,focus}){
    WELLNESS → POLAR: "Verileri al", takım tablosu ve sporcu grafikleri
 
    "Verileri al": takımın Polar'a bağlı her sporcusu için sunucuda senkron
-   (functions/polar → /sync, aynı anda 3 sporcu), ardından takımın son N günlük
-   Polar verisi tek istekle (/team-data) gelir. Senkron az önce yapıldıysa
-   (TOO_SOON) sporcu "güncel" sayılır; veri yine gösterilir.
+   (functions/polar → /sync, aynı anda 3 sporcu), ardından Wellness'ta SEÇİLİ
+   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir. Senkron
+   az önce yapıldıysa (TOO_SOON) sporcu "güncel" sayılır. 14/28/56 günlük
+   grafikler sporcunun kendi sayfasında (PolarAthleteCharts).
 
    Ekranda yalnızca Polar'ın gönderdiği değerler var; gelmeyen değer "—".
-   Hesaplanan tek şeyler adıyla belli: HRV 7 günlük ortalaması, 7 günlük
-   antrenman sayısı ve toplam yükü. Sporcunun senkronlanan kendi verisine
+   Hesaplanan şeyler adıyla belli (7 günlük ortalamalar, günün antrenman
+   süresi/yük toplamı). Sporcunun senkronlanan kendi verisine
    (team.athletes) hiçbir şey yazılmıyor: bu bölüm yalnızca okur.
 
    Sporcu görünümü sade: üstte son değer + 7 günlük ortalama kutucukları, altında
@@ -34403,16 +34405,6 @@ function pwMean(a){const v=a.filter(pwNum);return v.length?v.reduce((s,x)=>s+x,0
 function pwDur(sec){if(!pwNum(sec))return'—';const m=Math.round(sec/60);return L(`${Math.floor(m/60)} sa ${m%60} dk`,`${Math.floor(m/60)}h ${m%60}m`);}
 const pwR=(v,d=0)=>pwNum(v)?(d?v.toFixed(d):String(Math.round(v))):'—';
 const pwDm=iso=>iso?fd(iso).slice(0,5):'—';
-
-/* Bir sporcunun tablo satırı: son değerler + 7 günlük özetler (adıyla hesaplanan). */
-function pwSummary(a,todayIso){
-  const last=arr=>arr&&arr.length?arr[arr.length-1]:null;
-  const s=last(a.sleep),r=last(a.recharge),act=last(a.activity);
-  const hrv7=r?pwMean(a.recharge.filter(x=>x.date>pwShift(r.date,-7)).map(x=>x.hrvMs)):null;
-  const ex7=(a.exercises||[]).filter(e=>e.date>pwShift(todayIso,-7));
-  const loads=ex7.map(e=>e.trainingLoad).filter(pwNum);
-  return{s,r,act,hrv7,ex7n:ex7.length,load7:loads.length?loads.reduce((x,y)=>x+y,0):null};
-}
 
 const PW_STATUS={
   active:()=>[L('Bağlı','Connected'),'on'],
@@ -34462,7 +34454,7 @@ function PwTile({label,value,unit,sub}){
     <span className="pw-ts">{sub}</span></div>);
 }
 
-function PwAthlete({a,name,from,to,onClose}){
+function PwAthlete({a,title,from,to,tools}){
   const theme=useAppTheme();
   const C1=theme==='light'?'#2563eb':'#3b82f6';
   const keys=pwKeys(from,to);
@@ -34474,14 +34466,14 @@ function PwAthlete({a,name,from,to,onClose}){
   const tile=(label,arr,f,fmtV,unit)=>{const l=pwLast(arr,f);const m=l?pwAvg7(arr,f,l.date):null;
     return<PwTile key={label} label={label} value={l?fmtV(l.v):'—'} unit={unit}
       sub={l?L(`7g ort. ${fmtV(m)} · ${pwDm(l.date)}`,`7d avg ${fmtV(m)} · ${pwDm(l.date)}`):L('veri yok','no data')}/>;};
-  const todayIso=pwIso(Date.now());
+  const todayIso=fmt(new Date());
   const ex7=(a.exercises||[]).filter(e=>e.date>pwShift(todayIso,-7));
   const load7=ex7.map(e=>e.trainingLoad).filter(pwNum);
   const legend=L('nokta: her gece · çizgi: 7 günlük ortalama','dot: each night · line: 7-day mean');
   return(<div className="panel pw-ath">
     <div className="pw-ath-h">
-      <div><h2>{name}</h2><span className="pw-sub">{L('Polar verisi','Polar data')} · {fd(from)} – {fd(to)}</span></div>
-      <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button>
+      <div><h2>{title}</h2><span className="pw-sub">{fd(from)} – {fd(to)}</span></div>
+      {tools}
     </div>
     <div className="pw-tiles">
       {tile(L('Uyku','Sleep'),a.sleep,x=>x.asleepSec,v=>pwDur(v))}
@@ -34520,21 +34512,60 @@ function PwAthlete({a,name,from,to,onClose}){
   </div>);
 }
 
-function PolarWellness({team}){
-  const[data,setData]=useState(null);         // /team-data yanıtı
+/* ── Bireysel: 14 / 28 / 56 günlük kutucuklar + grafikler ─────────────────────
+   Sporcu profilinde (Kadro → sporcu → Profil, Polar panelinin altında) ve
+   Wellness'ta sporcunun kendi sayfasında. Kendi verisini kendisi ister
+   (/team-data, yalnızca bu sporcu); senkron yapmaz. */
+function PolarAthleteCharts({ath,teamId}){
   const[days,setDays]=useState(28);
+  const[data,setData]=useState(undefined);   // undefined: yükleniyor · null: veri/bağlantı yok
+  const[err,setErr]=useState('');
+  useEffect(()=>{
+    let alive=true;setErr('');
+    if(!teamId||!ath||!ath.id){setData(null);return;}
+    const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;
+    if(!u||u.isAnonymous){setData(null);return;}
+    setData(undefined);
+    polarCall('/team-data',{teamId,athleteId:String(ath.id),days})
+      .then(j=>{if(!alive)return;const a=(j.athletes||[])[0];setData(a?{a,from:j.from,to:j.to}:null);})
+      .catch(e=>{if(alive){setErr(e.message||String(e));setData(null);}});
+    return()=>{alive=false;};
+  },[ath&&ath.id,teamId,days]);
+  if(data===null&&!err)return null;          // Polar bağlantısı hiç olmamış sporcu: bölüm görünmez
+  const tools=<div className="lb-seg">{PW_DAYS.map(d=><button key={d} className={days===d?'on':''} onClick={()=>setDays(d)}>{L(`${d} gün`,`${d} days`)}</button>)}</div>;
+  if(err)return<div className="panel pw-ath"><div className="pw-ath-h"><div><h2>{L('Polar verisi','Polar data')}</h2></div>{tools}</div><div className="pw-err">{err}</div></div>;
+  if(data===undefined)return<div className="panel pw-ath"><div className="pw-ath-h"><div><h2>{L('Polar verisi','Polar data')}</h2><span className="pw-sub">{L('Yükleniyor…','Loading…')}</span></div>{tools}</div></div>;
+  return<PwAthlete a={data.a} title={L(`Polar verisi · son ${days} gün`,`Polar data · last ${days} days`)} from={data.from} to={data.to} tools={tools}/>;
+}
+
+/* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
+   Wellness'ın üstündeki tarih seçicide hangi gün seçiliyse o günün verisi.
+   Gece verisi (uyku, HRV, gece nabzı, solunum, ANS) uyanılan SABAHIN tarihini
+   taşır — CoachOS'un gece kaydıyla aynı kural. Adım ve antrenman o güne ait;
+   bugün seçiliyse gün içinde artar. Satıra tıklayınca sporcunun sayfası açılır;
+   14/28/56 günlük grafikler orada. */
+function PolarWellness({team,dayKey,onOpen}){
+  const[data,setData]=useState(null);         // /team-data yanıtı (yalnızca seçili gün)
   const[busy,setBusy]=useState(false);
   const[prog,setProg]=useState(null);         // {done,total,fails:[{name,msg}]}
   const[err,setErr]=useState('');
-  const[sel,setSel]=useState(null);
-  useEffect(()=>{setData(null);setSel(null);setProg(null);setErr('');},[team.id]);
+  const day=dayKey||fmt(new Date());
+  useEffect(()=>{setData(null);setProg(null);setErr('');},[team.id]);
   const nameOf=id=>{const a=(team.athletes||[]).find(x=>x.id===id);return a?(a.name||''):'';};
-  const load=async d=>{const j=await polarCall('/team-data',{teamId:team.id,days:d});setData(j);return j;};
+  const load=async d=>{const j=await polarCall('/team-data',{teamId:team.id,from:d,to:d});setData(j);return j;};
+  /* Gün değişince (veri bir kez alındıysa) yalnızca o günü yeniden oku — senkron yok. */
+  useEffect(()=>{
+    if(!data||data.from===day)return;
+    let alive=true;setBusy(true);
+    polarCall('/team-data',{teamId:team.id,from:day,to:day}).then(j=>{if(alive)setData(j);})
+      .catch(e=>{if(alive)setErr(e.message||String(e));}).finally(()=>{if(alive)setBusy(false);});
+    return()=>{alive=false;};
+  },[day]);
 
   const fetchAll=async()=>{
     setErr('');setBusy(true);setProg(null);
     try{
-      const first=await load(days);
+      const first=await load(day);
       const act=(first.athletes||[]).filter(a=>a.status==='active');
       const fails=[];let done=0;
       setProg({done,total:act.length,fails:[]});
@@ -34548,24 +34579,24 @@ function PolarWellness({team}){
         }
       };
       await Promise.all([worker(),worker(),worker()]);
-      await load(days);
+      await load(day);
     }catch(e){setErr(e.message||String(e));}
     finally{setBusy(false);}
   };
-  const changeDays=async d=>{setDays(d);if(!data)return;setBusy(true);setErr('');try{await load(d);}catch(e){setErr(e.message||String(e));}finally{setBusy(false);}};
 
-  const todayIso=pwIso(Date.now());
+  const isToday=day===fmt(new Date());
   const byId=new Map(((data&&data.athletes)||[]).map(a=>[a.athleteId,a]));
   const rows=(team.athletes||[]).filter(a=>a&&a.id).map(a=>({a,p:byId.get(String(a.id))||null}))
     .sort((x,y)=>(!!y.p-!!x.p)||(x.a.name||'').localeCompare(y.a.name||'','tr'));
   const nLinked=rows.filter(r=>r.p&&r.p.status==='active').length;
-  const selRow=sel&&rows.find(r=>String(r.a.id)===sel&&r.p);
+  const pick=(arr)=>(arr||[]).find(x=>x.date===day)||null;
 
   return(<div className="panel pw">
     <div className="pw-h">
-      <div><h2>Polar</h2><span className="pw-sub">{data?L(`${nLinked} sporcu bağlı · son ${data.days} gün`,`${nLinked} athletes connected · last ${data.days} days`):L('Polar\'a bağlı sporcuların uyku, toparlanma, aktivite ve antrenman verisi','Sleep, recovery, activity and training data of athletes connected to Polar')}</span></div>
+      <div><h2>Polar</h2><span className="pw-sub">{data
+        ?L(`${nLinked} sporcu bağlı · ${fd(day)}${isToday?' (bugün)':''}`,`${nLinked} athletes connected · ${fd(day)}${isToday?' (today)':''}`)
+        :L('Polar\'a bağlı sporcuların günlük uyku, toparlanma, aktivite ve antrenman verisi','Daily sleep, recovery, activity and training data of Polar-connected athletes')}</span></div>
       <div className="pw-tools">
-        <div className="lb-seg">{PW_DAYS.map(d=><button key={d} className={days===d?'on':''} disabled={busy} onClick={()=>changeDays(d)}>{L(`${d} gün`,`${d} days`)}</button>)}</div>
         <button className="btn sm" disabled={busy} onClick={fetchAll}>{busy?L('Veriler alınıyor…','Fetching…'):L('Verileri al','Fetch data')}</button>
       </div>
     </div>
@@ -34575,37 +34606,37 @@ function PolarWellness({team}){
       {prog.fails.map(f=><div key={f.name} className="pw-fail">{f.name}: {f.msg}</div>)}
     </div>}
     {err&&<div className="pw-err" role="alert">{err}</div>}
-    {!data?<div className="pw-empty">{L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update and list every Polar-connected athlete. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
+    {!data?<div className="pw-empty">{L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
-          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Son gece','Last night')}</th><th>{L('Uyku','Sleep')}</th><th>{L('Skor','Score')}</th>
-          <th>HRV</th><th>{L('HRV 7g ort.','HRV 7d avg')}</th><th>{L('Gece nabzı','Night HR')}</th><th>{L('Solunum','Breathing')}</th><th>ANS</th>
-          <th>{L('Adım','Steps')}</th><th>{L('Antr. 7g','Sessions 7d')}</th><th>{L('Yük 7g','Load 7d')}</th>
+          <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Uyku skoru','Sleep score')}</th>
+          <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th><th>{L('Solunum','Breathing')}</th><th>ANS</th>
+          <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
           const[stTxt,stCls]=(PW_STATUS[(p&&p.status)||'none']||PW_STATUS.none)();
-          const open=!!(p&&(p.sleep.length||p.recharge.length||p.activity.length||p.exercises.length));
-          const m=open?pwSummary(p,todayIso):null;   // hiç verisi olmayan satırda sayı yerine "—"
-          return(<tr key={a.id} className={(open?'pw-click ':'')+(sel===String(a.id)?'on':'')} onClick={open?()=>setSel(sel===String(a.id)?null:String(a.id)):undefined}
-            tabIndex={open?0:undefined} onKeyDown={open?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSel(String(a.id));}}:undefined}>
+          const s=p&&pick(p.sleep),r=p&&pick(p.recharge),act=p&&pick(p.activity);
+          const ex=p?(p.exercises||[]).filter(e=>e.date===day):[];
+          const exDur=ex.map(e=>e.durationSec).filter(pwNum),exLoad=ex.map(e=>e.trainingLoad).filter(pwNum);
+          const canOpen=!!p&&typeof onOpen==='function';
+          return(<tr key={a.id} className={canOpen?'pw-click':''} onClick={canOpen?()=>onOpen(a.id):undefined}
+            tabIndex={canOpen?0:undefined} onKeyDown={canOpen?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(a.id);}}:undefined}>
             <td className="pw-name">{a.name||'—'}</td>
             <td><span className={'pw-st pw-'+stCls}>{stTxt}</span></td>
-            <td>{m&&m.s?pwDm(m.s.date):'—'}</td>
-            <td>{m&&m.s?pwDur(m.s.asleepSec):'—'}</td>
-            <td>{m&&m.s?pwR(m.s.sleepScore):'—'}</td>
-            <td>{m&&m.r?pwR(m.r.hrvMs):'—'}</td>
-            <td>{m?pwR(m.hrv7):'—'}</td>
-            <td>{m&&m.r?pwR(m.r.hrAvg):'—'}</td>
-            <td>{m&&m.r?pwR(m.r.breathingRate,1):'—'}</td>
-            <td>{m&&m.r?pwR(m.r.ansCharge,1):'—'}</td>
-            <td>{m&&m.act?pwR(m.act.steps):'—'}</td>
-            <td>{m?m.ex7n:'—'}</td>
-            <td>{m?pwR(m.load7):'—'}</td>
+            <td>{s?pwDur(s.asleepSec):'—'}</td>
+            <td>{s?pwR(s.sleepScore):'—'}</td>
+            <td>{r?pwR(r.hrvMs):'—'}</td>
+            <td>{r?pwR(r.hrAvg):'—'}</td>
+            <td>{r?pwR(r.breathingRate,1):'—'}</td>
+            <td>{r?pwR(r.ansCharge,1):'—'}</td>
+            <td>{act&&pwNum(act.steps)?Math.round(act.steps).toLocaleString('tr-TR'):'—'}</td>
+            <td>{ex.length?`${ex.length} · ${exDur.length?pwDur(exDur.reduce((x,y)=>x+y,0)):'—'}`:'—'}</td>
+            <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
-      <div className="pw-foot">{L('Satıra tıkla → sporcunun grafikleri. "—": Polar bu değeri göndermedi. HRV 7g ortalaması, 7 günlük antrenman sayısı ve yük toplamı hesaplanır.','Click a row → the athlete\'s charts. "—": Polar did not send this value. HRV 7-day mean, 7-day session count and load total are calculated.')}</div>
-      {selRow&&<PwAthlete key={selRow.a.id} a={selRow.p} name={selRow.a.name||selRow.p.athleteName} from={data.from} to={data.to} onClose={()=>setSel(null)}/>}
+      <div className="pw-foot">{L(`Uyku, HRV, gece nabzı, solunum ve ANS o sabah uyanılan gecenin verisidir. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28/56 günlük grafikleri.`,
+        `Sleep, HRV, night HR, breathing and ANS belong to the night ending that morning. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28/56-day charts.`)}</div>
     </>}
   </div>);
 }

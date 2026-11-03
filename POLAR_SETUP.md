@@ -173,25 +173,26 @@ reddedilir.
 | Antrenman | `duration`, `heart_rate.average/maximum`, `heart_rate_zones`, `calories`, `distance`, `training_load`, `training_load_pro` (cardio/muscle/perceived load), `sport` |
 | Aktivite | `active-steps`, `calories`, `active-calories`, `duration` |
 
-## Wellness → Polar ("Verileri al")
+## Wellness → Polar ("Verileri al") ve sporcu grafikleri
 
-Wellness sekmesindeki **Polar** bölümü:
-
+**Wellness sekmesi → Polar bölümü (günlük):**
 1. **Verileri al** → takımın Polar'a bağlı her sporcusu için `POST /sync` (aynı anda 3 sporcu).
    Son iki dakikada senkronlanmış sporcu (`TOO_SOON`) "güncel" sayılır.
-2. Ardından `POST /team-data { teamId, days }` takımın son 14 / 28 / 56 gününü tek yanıtta döndürür
-   (ham kayıt yok, yalnızca normalleştirilmiş alanlar).
-3. **Takım tablosu:** son gece, uyku süresi ve skoru, HRV, HRV 7 günlük ortalaması, gece nabzı, solunum,
-   ANS charge, son günün adımı, 7 günlük antrenman sayısı ve Polar yük toplamı. Polar'ın göndermediği
-   değer "—".
-4. **Satıra tıklayınca sporcu grafikleri:** HRV + 7 günlük ortalama, uyku süresi, uyku skoru, gece
-   nabzı, solunum, ANS charge, günlük adım, günlük antrenman yükü; altında antrenman listesi (süre,
-   ortalama/maksimum nabız, kalori, yük, kardiyo yükü).
+2. Ardından `POST /team-data { teamId, from: gün, to: gün }`: Wellness'ın üstündeki tarih seçicide
+   **seçili günün** verisi. Gün değişince yalnızca o gün yeniden okunur (senkron yok).
+3. Tablo: uyku süresi, uyku skoru, HRV, gece nabzı, solunum, ANS (o sabah uyanılan gece), adım ve
+   antrenman sayısı / süresi / Polar yükü (o gün). Polar'ın göndermediği değer "—".
+4. Satıra tıklayınca sporcunun Wellness sayfası açılır.
+
+**Sporcunun kendi sayfası (14 / 28 / 56 gün):** Kadro → sporcu → Profil (Polar panelinin altında)
+ve Wellness'ta sporcunun sayfası. `POST /team-data { teamId, athleteId, days }`; kutucuklar (son
+değer + 7 günlük ortalama) ve 4 grafik: HRV (gece noktası + 7 günlük ortalama çizgisi), uyku süresi,
+gece nabzı (nokta + çizgi), günlük antrenman yükü; altında antrenman listesi.
 
 `/team-data` her sporcu için doküman adı aralığıyla sorgular (`coachUid__athleteId__tarih…`): ek
 Firestore indeksi gerekmez ve aralığın başı doğrulanmış koç kimliğinden kurulduğu için başka hesabın
 verisine ulaşılamaz. Bu yüzden antrenman dokümanlarının adı tarihle başlar
-(`polar_exercises/{link}__{tarih}__{id}`).
+(`polar_exercises/{link}__{tarih}__{id}`). Açık aralık en çok 92 gün.
 
 ## Testler
 

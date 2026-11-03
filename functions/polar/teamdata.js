@@ -29,17 +29,32 @@ const PICK = {
 };
 const pick = (o, keys) => keys.reduce((a, k) => (a[k] = o[k] == null ? null : o[k], a), {});
 
-/* deps: { db, docIdField, now } — docIdField: admin.firestore.FieldPath.documentId() */
-async function loadTeamData(deps, { coachUid, teamId, days }) {
-  const { db, docIdField, now } = deps;
-  const uid = cleanAthleteId(coachUid);
-  const tId = cleanAthleteId(teamId);
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SPAN_DAYS = 92;
+
+/* Aralık: ya açık { from, to } (Wellness'ın seçili günü: from = to = o gün), ya da
+   bugünden geriye { days } (sporcu grafikleri: 14 / 28 / 56). */
+function rangeOf({ from, to, days }, now) {
+  if (ISO.test(String(from || '')) && ISO.test(String(to || '')) && from <= to) {
+    const span = (Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / DAY;
+    if (span <= MAX_SPAN_DAYS) return { from, to, days: span + 1 };
+  }
   const n = Math.min(90, Math.max(7, Math.round(Number(days) || 28)));
   // Polar tarihleri yerel gün; UTC'ye göre bir gün pay bırakılıyor (gece yarısı kayması).
-  const from = iso(now() - n * DAY);
-  const to = iso(now() + DAY);
+  return { from: iso(now() - n * DAY), to: iso(now() + DAY), days: n };
+}
+
+/* deps: { db, docIdField, now } — docIdField: admin.firestore.FieldPath.documentId()
+   opts: { coachUid, teamId, athleteId?, from?, to?, days? } */
+async function loadTeamData(deps, opts) {
+  const { db, docIdField, now } = deps;
+  const uid = cleanAthleteId(opts.coachUid);
+  const tId = cleanAthleteId(opts.teamId);
+  const onlyAth = opts.athleteId != null && opts.athleteId !== '' ? cleanAthleteId(opts.athleteId) : null;
+  const { from, to, days: n } = rangeOf(opts, now);
   const ls = await db.collection(COL.LINKS).where('coachUid', '==', uid).get();
-  const linkDocs = ls.docs.map(d => d.data() || {}).filter(l => l.coachUid === uid && l.teamId === tId && l.athleteId);
+  const linkDocs = ls.docs.map(d => d.data() || {})
+    .filter(l => l.coachUid === uid && l.teamId === tId && l.athleteId && (!onlyAth || String(l.athleteId) === onlyAth));
   const athletes = await Promise.all(linkDocs.map(async l => {
     const linkId = linkIdOf(uid, l.athleteId);
     const out = {
