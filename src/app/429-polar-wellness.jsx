@@ -368,12 +368,14 @@ async function pwSeasonData(ath,teamId,setup){
   if(!as.length)return null;                 // Polar bağlantısı hiç olmamış sporcu
   const all=k=>as.flatMap(a=>a[k]||[]);
   const sleep=all('sleep'),recharge=all('recharge');
-  return{status:as[as.length-1].status,
+  const last=as[as.length-1];
+  return{status:last.status,lastSyncAt:last.lastSyncAt||null,
     months:months.map(mo=>({...mo,started:mo.from<=today,
       sleep:sleep.filter(x=>x.date>=mo.from&&x.date<=mo.to),recharge:recharge.filter(x=>x.date>=mo.from&&x.date<=mo.to)}))};
 }
 
 const PW_SHEET_CSS=`
+.pl-sec{break-inside:avoid;page-break-inside:avoid}
 .plh .plg{height:26px;width:auto;flex:none;margin-left:auto}
 .pl-t{table-layout:fixed;margin-bottom:4px}
 .pl-t th,.pl-t td{text-align:center;padding:4px 4px;white-space:nowrap}
@@ -406,7 +408,7 @@ async function pwSheetSection(ath,teamId,setup,n){
   const head=`<div class="sec-h plh"><span class="n">${n}</span><div><div class="t">Polar Loop</div>
     <div class="d">${esc(L(`Uyku ve toparlanma, aylık ortalamalar · sezon ${span}`,`Sleep and recovery, monthly averages · season ${span}`))}</div></div>
     <img class="plg" src="${PW_LOGO_PRINT}" alt="Polar Loop"/></div>`;
-  if(d.error)return`<section class="blk">${head}<div class="card none">${esc(L('Polar verisi alınamadı: ','Polar data could not be loaded: ')+d.error)}</div></section>`;
+  if(d.error)return`<section class="pl-sec">${head}<div class="card none">${esc(L('Polar verisi alınamadı: ','Polar data could not be loaded: ')+d.error)}</div></section>`;
   const u=(v,unit)=>v==='—'?v:`${v}<small class="u">${unit}</small>`;
   const r0=v=>pwR(v),r1=v=>pwR(v,1);
   const ans=v=>pwNum(v)?(v>0?'+':'')+v.toFixed(1):'—';
@@ -431,10 +433,18 @@ async function pwSheetSection(ath,teamId,setup,n){
       <th>${L('Ort. ANS','Avg ANS')}</th><th>${L('Nightly Recharge dağılımı (gece sayısı)','Nightly Recharge distribution (nights)')}</th></tr>
     ${rows.map(x=>rechRow(moCell(x.mo),x.st,cls(x))).join('')}${rechRow(totCell,season,'tot')}</table>
     <div class="pl-key">${PW_RECHARGE.map(r=>`<span><i style="background:${r.c}"></i>${esc(L(r.tr,r.en))}</span>`).join('')}</div>`;
+  /* Hiç veri yoksa boş tablo basılmaz: neden olabileceği (bağlantı durumu, son senkron) tek satırda. */
   const anyData=season.nSleep||season.nRech;
-  return`<section>${head}
-    ${anyData?'':`<div class="card none blk">${L('Sezon boyunca Polar\'dan uyku ya da toparlanma verisi gelmedi.','No sleep or recovery data came from Polar during the season.')}</div>`}
-    <div class="blk"><div class="sub-h">${L('Uyku','Sleep')}</div>${sleepT}</div>
+  if(!anyData){
+    const[stTxt]=(PW_STATUS[d.status||'none']||PW_STATUS.none)();
+    const ls=pwNum(d.lastSyncAt)?fd(fmt(new Date(d.lastSyncAt))):L('hiç yapılmadı','never');
+    return`<section class="pl-sec">${head}<div class="card none">${esc(L(`Sezon boyunca Polar'dan uyku ya da toparlanma verisi gelmedi · Polar: ${stTxt} · son senkron: ${ls}`,
+      `No sleep or recovery data came from Polar during the season · Polar: ${stTxt} · last sync: ${ls}`))}</div></section>`;
+  }
+  /* Başlık ve içerik aynı sayfada: bölüm bölünmeden (sığmazsa bütünüyle) sonraki sayfaya geçer;
+     yine de bölünürse başlık Uyku tablosuyla aynı blokta kalır. */
+  return`<section class="pl-sec">
+    <div class="blk">${head}<div class="sub-h">${L('Uyku','Sleep')}</div>${sleepT}</div>
     <div class="blk"><div class="sub-h">${L('Toparlanma','Recovery')}</div>${rechT}</div>
     <div class="pl-fn">${L('Değerler Polar Loop\'un gönderdiği gecelerin aylık ortalamasıdır; "—": o ay veri yok. Gece verisi uyanılan sabahın tarihini taşır. Hesaplananlar: uyku düzenliliği = uykuya dalış ve uyanma saatinin standart sapması (en az 3 gece); uyku verimliliği = uyku süresi ÷ uykuya dalıştan uyanmaya geçen süre; uyku süresi = Polar uyku evrelerinin toplamı. ANS: Polar ANS Charge (−10 … +10).',
       'Values are monthly means of the nights Polar Loop sent; "—": no data that month. Night data carries the date of the morning woken up. Calculated: sleep regularity = standard deviation of sleep onset and wake-up time (at least 3 nights); sleep efficiency = sleep time ÷ time from sleep onset to wake-up; sleep time = sum of Polar sleep stages. ANS: Polar ANS Charge (−10 … +10).')}</div>
