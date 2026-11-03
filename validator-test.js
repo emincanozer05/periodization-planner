@@ -1308,9 +1308,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       (() => { const o = A.diMovePatterns([{ id: 'horizontal_push' }, { id: 'vertical_pull', type: ['x'] }]);
         return o[0].id === 'upper_push' && o[0].type[0] === 'Horizontal Push' && o[0].direction.length === 0 &&
           o[1].id === 'upper_pull' && o[1].type[0] === 'Vertical Pull'; })(), JSON.stringify(b.patterns));
-    check('her kategorinin kutuları: Tür, yönü olanlarda Yön; 12 kategori (FMS dahil)',
+    check('her kategorinin kutuları: Tür, yönü olanlarda Yön; 14 kategori (FMS, Mobilite, Motor Kontrol dahil)',
       (() => { const f = id => A.DI_MOVE_PATTERNS.find(p => p.id === id).facets.map(x => x.k).join(',');
-        return A.DI_MOVE_PATTERNS.length === 12 && f('fms') === 'type' && f('knee_dominant') === 'type,direction' && f('hip_dominant') === 'type' &&
+        return A.DI_MOVE_PATTERNS.length === 14 && f('fms') === 'type' && f('mobility') === 'type' && f('motor_control') === 'type' && f('knee_dominant') === 'type,direction' && f('hip_dominant') === 'type' &&
           f('upper_push') === 'type,direction' && f('upper_pull') === 'type,direction' && f('core') === 'type' && f('carry') === 'type' &&
           f('olympic') === 'type' && f('plyometric') === 'type,direction' && f('med_ball') === 'type,direction' &&
           f('full_body') === 'type,direction' && f('accessory') === 'type' &&
@@ -1651,10 +1651,12 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   group('Ek — Hareket taksonomisi: Kategori · Tür · Yön');
   {
     const cats = A.MV_CATS.map(c => c.k);
-    check('12 kategori (FMS dahil), kütüphane rafları da aynı liste; her rafın filtresi kendi türleri',
-      cats.join('|') === 'Knee Dominant|Hip Dominant|Upper Body Push|Upper Body Pull|Core|Carry|Olympic Lift|Plyometric|Medicine Ball|Full Body|Accessory|FMS' &&
+    check('14 kategori (FMS, Mobilite, Motor Kontrol dahil), kütüphane rafları da aynı liste; her rafın filtresi kendi türleri',
+      cats.join('|') === 'Knee Dominant|Hip Dominant|Upper Body Push|Upper Body Pull|Core|Carry|Olympic Lift|Plyometric|Medicine Ball|Full Body|Accessory|FMS|Mobility|Motor Control' &&
       A.EX_TYPES.join('|') === cats.join('|') && A.SUB_TYPES['Carry'].values.length === 5 && A.SUB_TYPES['Accessory'].values.length === 13 &&
-      A.SUB_TYPES['FMS'].values.length === 13 && A.SUB_TYPES['FMS'].label === 'Pattern',
+      A.SUB_TYPES['FMS'].values.length === 13 && A.SUB_TYPES['FMS'].label === 'Pattern' &&
+      A.SUB_TYPES['Mobility'].values.length === 6 && A.SUB_TYPES['Mobility'].label === 'Region' && A.SUB_TYPES['Motor Control'].values.length === 7 &&
+      A.MV_CATS.find(c => c.k === 'Mobility').tr === 'Mobilite' && A.MV_CATS.find(c => c.k === 'Motor Control').tr === 'Motor Kontrol',
       cats.join('|'));
     check('yön listeleri yalnızca istenen kategorilerde',
       A.MV_CATS.filter(c => c.dirs.length).map(c => c.k).join('|') === 'Knee Dominant|Upper Body Push|Upper Body Pull|Plyometric|Medicine Ball|Full Body' &&

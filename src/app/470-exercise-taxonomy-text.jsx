@@ -1,7 +1,7 @@
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-/* The library's shelves are the twelve categories of the MOVEMENT TAXONOMY (185): the same
+/* The library's shelves are the fourteen categories of the MOVEMENT TAXONOMY (185): the same
    Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
    shelf an older version had (Mobility, Stability …) keeps its value and is listed under
    "Kategorisiz" until it is given one of these. */

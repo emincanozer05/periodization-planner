@@ -92,7 +92,7 @@ const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
    with the category it trains (Kategori), its type (Tür) and, where the category has one,
-   its direction (Yön) — the twelve categories of the MOVEMENT TAXONOMY. */
+   its direction (Yön) — the fourteen categories of the MOVEMENT TAXONOMY. */
 const EX_PATTERNS=MV_KEYS;
 /* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
    execution — is one of its category's own types (MOVEMENT TAXONOMY). */
@@ -178,7 +178,8 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core',
-  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory'};
+  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory',
+  'Mobility':'Mobility','Motor Control':'Motor Ctrl'};
 /* What a set of exercise rows trains, read off the rows themselves. Every row already
    carries the pattern it trains and how that pattern is executed; a row nobody tagged is
    looked up in the shared library by name, exactly the way the load distribution resolves
