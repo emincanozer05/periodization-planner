@@ -70,6 +70,12 @@ const query = (col, uid) => ({ structuredQuery: { from: [{ collectionId: col }],
   await db.collection('polar_links').doc('coach1__ath1').set({ lastSyncStartedAt: 0 }, { merge: true });
   const r2 = await sync.syncLink({ db, fetch, cfg, now, log: () => {}, sleep: async () => {} }, { coachUid: 'coach1', athleteId: 'ath1', manual: true });
   check('ikinci senkron sıfır yazım', ['sleep', 'recharge', 'exercises', 'activity'].every(k => r2.report[k].written === 0), JSON.stringify(r2.report));
+  const teamdata = require(F + '/polar/teamdata');
+  const td = await teamdata.loadTeamData({ db, docIdField: admin.firestore.FieldPath.documentId(), now }, { coachUid: 'coach1', teamId: 'team1', days: 28 });
+  const ta0 = td.athletes[0] || {};
+  check('takım verisi doküman adı aralığıyla geliyor (uyku, recharge, aktivite, antrenman)', td.athletes.length === 1 && ta0.sleep.length === 1 && ta0.recharge.length === 1 && ta0.activity.length === 1 && ta0.exercises.length === 1, JSON.stringify(td).slice(0, 300));
+  const td2 = await teamdata.loadTeamData({ db, docIdField: admin.firestore.FieldPath.documentId(), now }, { coachUid: 'coach2', teamId: 'team1', days: 28 });
+  check('başka koç aynı takım kimliğiyle hiçbir veri almıyor', td2.athletes.length === 0);
   check('mevcut veri aynı', (await db.collection('kullanici_verileri').doc('coach1').get()).data().rev === 3);
 
   console.log('Güvenlik kuralları (REST, koç oturumu taklidi)');

@@ -11,6 +11,7 @@
      POST /invite       { teamId, athleteId }  → { url, expiresAt }
      POST /disconnect   { athleteId }          → { remote }
      POST /sync         { athleteId }          → { ok, report, lastSyncAt }   (Aşama 2)
+     POST /team-data    { teamId, days }       → takımın Polar verisi (Wellness → "Verileri al")
 
    Neden callback'te Firebase oturumu yok: Polar dönüşü tarayıcının düz bir
    yönlendirmesi, ID token taşıyamaz; üstelik izni veren kişi sporcu ve onun CoachOS
@@ -22,6 +23,7 @@ const { parseKey, decrypt } = require('./crypto');
 const api = require('./api');
 const links = require('./links');
 const sync = require('./sync');
+const teamdata = require('./teamdata');
 const pages = require('./pages');
 
 /* form-action YOK, bilerek: "Polar ile bağlan" formu bize POST ediyor, biz Polar'a 303
@@ -134,6 +136,10 @@ async function jsonRoute(route, req, res, deps) {
         url: `${deps.cfg.publicBase}/api/polar/start?t=${encodeURIComponent(r.ticket)}`,
         expiresAt: r.expiresAt,
       });
+    }
+    if (route === '/team-data') {
+      const r = await teamdata.loadTeamData(deps, { coachUid, teamId: body.teamId, days: body.days });
+      return sendJson(res, 200, r);
     }
     if (route === '/sync') {
       const r = await sync.syncLink(deps, { coachUid, athleteId: links.cleanAthleteId(body.athleteId), manual: true });
@@ -278,7 +284,7 @@ async function handle(req, res, deps) {
   baseHeaders(res);
   const route = routeOf(req);
   try {
-    if (route === '/invite' || route === '/disconnect' || route === '/sync') return await jsonRoute(route, req, res, deps);
+    if (route === '/invite' || route === '/disconnect' || route === '/sync' || route === '/team-data') return await jsonRoute(route, req, res, deps);
     if (route === '/start') return await startRoute(req, res, deps);
     if (route === '/callback') return await callbackRoute(req, res, deps);
     res.status(404).set('Content-Type', 'text/plain; charset=utf-8').send('not found');
