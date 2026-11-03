@@ -94,6 +94,21 @@ const MV_CATS=[
       ['Upper Extremity Patterns','Üst Ekstremite Paternleri','Upper Extremity Patterns']],
     typeLab:['Patern','Pattern'],
     dirs:[]},
+  /* Mobility — filed by the region worked on (the regions the old Mobility shelf already used, so
+     a card saved under it lands here with its type intact). */
+  {k:'Mobility',id:'mobility',tr:'Mobilite',en:'Mobility',color:'#6366f1',
+    types:[['Ankle','Ayak Bileği','Ankle'],['Hip','Kalça','Hip'],['Spine','Omurga','Spine'],['Shoulder','Omuz','Shoulder'],
+      ['Wrist','El Bileği','Wrist'],['Neck','Boyun','Neck']],
+    typeLab:['Bölge','Region'],
+    dirs:[]},
+  /* Motor Control — what the drill trains in the nervous system rather than the muscle: how the
+     joint is held, felt and controlled. */
+  {k:'Motor Control',id:'motor_control',tr:'Motor Kontrol',en:'Motor Control',color:'#b3a100',
+    types:[['Breathing','Nefes','Breathing'],['Postural Control','Postüral Kontrol','Postural Control'],
+      ['Joint Stability','Eklem Stabilitesi','Joint Stability'],['Balance','Denge','Balance'],
+      ['Proprioception','Propriosepsiyon','Proprioception'],['Neuromuscular Control','Nöromüsküler Kontrol','Neuromuscular Control'],
+      ['Landing Mechanics','İniş Mekaniği','Landing Mechanics']],
+    dirs:[]},
 ];
 const MV_KEYS=MV_CATS.map(c=>c.k);
 const mvCat=k=>MV_CATS.find(c=>c.k===k)||null;
@@ -155,6 +170,13 @@ const MV_TYPE_WORDS={
     [/rotary|bird ?dog|quadruped/,'Rotary Stability'],[/trunk stability|push[- ]?up/,'Trunk Stability Pushup'],
     [/shoulder mobility|reach/,'Shoulder Mobility'],[/single[- ]?leg stance|single[- ]?leg balance/,'Single Leg Stance'],
     [/upper extremity/,'Upper Extremity Patterns']],
+  'Mobility':[[/ankle|calf stretch|dorsiflexion/,'Ankle'],[/hip|90[- ]?90|pigeon|couch|hamstring|adductor|groin|frog/,'Hip'],
+    [/thoracic|t[- ]?spine|spine|cat[- ]?cow|open book|lumbar|rotation/,'Spine'],[/shoulder|scap|lat stretch|pec|sleeper|wall slide/,'Shoulder'],
+    [/wrist|forearm/,'Wrist'],[/neck|cervical/,'Neck']],
+  'Motor Control':[[/breath|diaphragm|crocodile|90[- ]?90 breathing/,'Breathing'],[/landing|stick|drop landing|deceleration/,'Landing Mechanics'],
+    [/proprioception|eyes closed|perturbation/,'Proprioception'],[/balance|single[- ]?leg stance|y[- ]?balance|star excursion/,'Balance'],
+    [/posture|postural|dead ?bug|bird ?dog/,'Postural Control'],[/neuromuscular|activation|motor control|patterning/,'Neuromuscular Control'],
+    [/stability|stabilization|isometric hold|rhythmic/,'Joint Stability']],
 };
 const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
   [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],

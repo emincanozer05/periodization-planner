@@ -18155,6 +18155,21 @@ const MV_CATS=[
       ['Upper Extremity Patterns','Üst Ekstremite Paternleri','Upper Extremity Patterns']],
     typeLab:['Patern','Pattern'],
     dirs:[]},
+  /* Mobility — filed by the region worked on (the regions the old Mobility shelf already used, so
+     a card saved under it lands here with its type intact). */
+  {k:'Mobility',id:'mobility',tr:'Mobilite',en:'Mobility',color:'#6366f1',
+    types:[['Ankle','Ayak Bileği','Ankle'],['Hip','Kalça','Hip'],['Spine','Omurga','Spine'],['Shoulder','Omuz','Shoulder'],
+      ['Wrist','El Bileği','Wrist'],['Neck','Boyun','Neck']],
+    typeLab:['Bölge','Region'],
+    dirs:[]},
+  /* Motor Control — what the drill trains in the nervous system rather than the muscle: how the
+     joint is held, felt and controlled. */
+  {k:'Motor Control',id:'motor_control',tr:'Motor Kontrol',en:'Motor Control',color:'#b3a100',
+    types:[['Breathing','Nefes','Breathing'],['Postural Control','Postüral Kontrol','Postural Control'],
+      ['Joint Stability','Eklem Stabilitesi','Joint Stability'],['Balance','Denge','Balance'],
+      ['Proprioception','Propriosepsiyon','Proprioception'],['Neuromuscular Control','Nöromüsküler Kontrol','Neuromuscular Control'],
+      ['Landing Mechanics','İniş Mekaniği','Landing Mechanics']],
+    dirs:[]},
 ];
 const MV_KEYS=MV_CATS.map(c=>c.k);
 const mvCat=k=>MV_CATS.find(c=>c.k===k)||null;
@@ -18216,6 +18231,13 @@ const MV_TYPE_WORDS={
     [/rotary|bird ?dog|quadruped/,'Rotary Stability'],[/trunk stability|push[- ]?up/,'Trunk Stability Pushup'],
     [/shoulder mobility|reach/,'Shoulder Mobility'],[/single[- ]?leg stance|single[- ]?leg balance/,'Single Leg Stance'],
     [/upper extremity/,'Upper Extremity Patterns']],
+  'Mobility':[[/ankle|calf stretch|dorsiflexion/,'Ankle'],[/hip|90[- ]?90|pigeon|couch|hamstring|adductor|groin|frog/,'Hip'],
+    [/thoracic|t[- ]?spine|spine|cat[- ]?cow|open book|lumbar|rotation/,'Spine'],[/shoulder|scap|lat stretch|pec|sleeper|wall slide/,'Shoulder'],
+    [/wrist|forearm/,'Wrist'],[/neck|cervical/,'Neck']],
+  'Motor Control':[[/breath|diaphragm|crocodile|90[- ]?90 breathing/,'Breathing'],[/landing|stick|drop landing|deceleration/,'Landing Mechanics'],
+    [/proprioception|eyes closed|perturbation/,'Proprioception'],[/balance|single[- ]?leg stance|y[- ]?balance|star excursion/,'Balance'],
+    [/posture|postural|dead ?bug|bird ?dog/,'Postural Control'],[/neuromuscular|activation|motor control|patterning/,'Neuromuscular Control'],
+    [/stability|stabilization|isometric hold|rhythmic/,'Joint Stability']],
 };
 const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
   [/split[- ]?stance|staggered/,'Split Stance'],[/single[- ]?leg|1[- ]?leg|one[- ]?leg/,'Single-Leg Stance'],
@@ -18430,7 +18452,7 @@ const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
    with the category it trains (Kategori), its type (Tür) and, where the category has one,
-   its direction (Yön) — the twelve categories of the MOVEMENT TAXONOMY. */
+   its direction (Yön) — the fourteen categories of the MOVEMENT TAXONOMY. */
 const EX_PATTERNS=MV_KEYS;
 /* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
    execution — is one of its category's own types (MOVEMENT TAXONOMY). */
@@ -18516,7 +18538,8 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core',
-  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory'};
+  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory',
+  'Mobility':'Mobility','Motor Control':'Motor Ctrl'};
 /* What a set of exercise rows trains, read off the rows themselves. Every row already
    carries the pattern it trains and how that pattern is executed; a row nobody tagged is
    looked up in the shared library by name, exactly the way the load distribution resolves
@@ -38347,7 +38370,7 @@ function PrivacyLink({className,children}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-/* The library's shelves are the twelve categories of the MOVEMENT TAXONOMY (185): the same
+/* The library's shelves are the fourteen categories of the MOVEMENT TAXONOMY (185): the same
    Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
    shelf an older version had (Mobility, Stability …) keeps its value and is listed under
    "Kategorisiz" until it is given one of these. */
@@ -44245,13 +44268,13 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-/* The coach's patterns are the twelve categories of the MOVEMENT TAXONOMY — the same chips,
+/* The coach's patterns are the fourteen categories of the MOVEMENT TAXONOMY — the same chips,
    the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
    category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
    throws and full-body lifts have no movement_pattern of their own: they are matched on their
    coach_pattern tag only, and picking one opens no pain-closed pattern. */
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
-  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[]};
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[],mobility:[],motor_control:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
   {k:'type',label:mvTypeLab(c.k),opts:c.types},
   ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));

@@ -252,13 +252,13 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-/* The coach's patterns are the twelve categories of the MOVEMENT TAXONOMY — the same chips,
+/* The coach's patterns are the fourteen categories of the MOVEMENT TAXONOMY — the same chips,
    the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
    category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
    throws and full-body lifts have no movement_pattern of their own: they are matched on their
    coach_pattern tag only, and picking one opens no pain-closed pattern. */
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
-  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[]};
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[],mobility:[],motor_control:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
   {k:'type',label:mvTypeLab(c.k),opts:c.types},
   ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
