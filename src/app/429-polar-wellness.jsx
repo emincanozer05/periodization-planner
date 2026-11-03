@@ -177,8 +177,9 @@ function PolarAthleteCharts({ath,teamId}){
    Gece verisi (uyku, HRV, gece nabzı, solunum, ANS) uyanılan SABAHIN tarihini
    taşır — CoachOS'un gece kaydıyla aynı kural. Adım ve antrenman o güne ait;
    bugün seçiliyse gün içinde artar. Satıra tıklayınca sporcunun sayfası açılır;
-   14/28 günlük grafikler orada. */
+   14/28 günlük grafikler orada. Başlığın solunda Polar Loop logosu (pwLogoSrc). */
 function PolarWellness({team,dayKey,onOpen}){
+  const theme=useAppTheme();
   const[data,setData]=useState(null);         // /team-data yanıtı (yalnızca seçili gün)
   const[busy,setBusy]=useState(false);
   const[prog,setProg]=useState(null);         // {done,total,fails:[{name,msg}]}
@@ -227,9 +228,9 @@ function PolarWellness({team,dayKey,onOpen}){
 
   return(<div className="panel pw">
     <div className="pw-h">
-      <div><h2>Polar</h2><span className="pw-sub">{data
+      <div className="pw-ath-id"><img className="pw-logo" src={pwLogoSrc(theme)} alt="Polar Loop"/><div><h2>Polar</h2><span className="pw-sub">{data
         ?L(`${nLinked} sporcu bağlı · ${fd(day)}${isToday?' (bugün)':''}`,`${nLinked} athletes connected · ${fd(day)}${isToday?' (today)':''}`)
-        :L('Polar\'a bağlı sporcuların günlük uyku, toparlanma, aktivite ve antrenman verisi','Daily sleep, recovery, activity and training data of Polar-connected athletes')}</span></div>
+        :L('Polar\'a bağlı sporcuların günlük uyku, toparlanma, aktivite ve antrenman verisi','Daily sleep, recovery, activity and training data of Polar-connected athletes')}</span></div></div>
       <div className="pw-tools">
         <button className="btn sm" disabled={busy} onClick={fetchAll}>{busy?L('Veriler alınıyor…','Fetching…'):L('Verileri al','Fetch data')}</button>
       </div>
