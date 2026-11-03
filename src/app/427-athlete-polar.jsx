@@ -27,7 +27,9 @@ async function polarCall(path,body){
   }catch(e){throw new Error(L('Ağ hatası — internet bağlantını kontrol et.','Network error — check your connection.'));}
   let j=null;try{j=await r.json();}catch(e){}
   if(!r.ok||!j||j.error){
-    throw new Error((j&&j.error&&j.error.message)||L(`Polar servisine ulaşılamadı (${r.status}).`,`The Polar service could not be reached (${r.status}).`));
+    const err=new Error((j&&j.error&&j.error.message)||L(`Polar servisine ulaşılamadı (${r.status}).`,`The Polar service could not be reached (${r.status}).`));
+    err.code=(j&&j.error&&j.error.code)||'HTTP_'+r.status;   // ör. TOO_SOON: toplu senkron bunu "güncel" sayar
+    throw err;
   }
   return j;
 }

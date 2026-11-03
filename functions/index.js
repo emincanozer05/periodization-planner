@@ -524,6 +524,7 @@ exports.polarApi = functions
     db: db(),
     fetch: (...a) => globalThis.fetch(...a),
     verifyIdToken: t => admin.auth().verifyIdToken(t),
+    docIdField: admin.firestore.FieldPath.documentId(),
     cfg: polarConfig.settings(),
     now: () => Date.now(),
     log: polarLog,

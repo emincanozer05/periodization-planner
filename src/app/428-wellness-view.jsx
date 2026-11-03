@@ -352,6 +352,7 @@ function WellnessView({team,updateTeam,focus}){
         {v:low,l:L('düşük (<3)','low (<3)'),c:low?'#f97316':undefined}]}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
       <WvTeamPanel athletes={athletes} dayKey={dayKey} rows={rows}/>
+      <PolarWellness team={team}/>
       <div className="wv-ath-h">
         <h2>{L('Sporcular','Athletes')}<span>{L('profile tıkla → takvim ve ayrıntılı veriler','click a profile → calendar & detailed data')}</span></h2>
         <div className="wv-ath-tools">

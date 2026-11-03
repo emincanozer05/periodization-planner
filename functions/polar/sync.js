@@ -5,7 +5,7 @@
    kaydına (team.athletes, nightLog…) DOKUNULMUYOR:
      polar_sleep/{link}__{tarih}        uyku
      polar_recharge/{link}__{tarih}     Nightly Recharge (HRV, gece nabzı, solunum, ANS)
-     polar_exercises/{link}__{id}       antrenman (süre, nabız, bölgeler, enerji, yük)
+     polar_exercises/{link}__{tarih}__{id}  antrenman (süre, nabız, bölgeler, enerji, yük)
      polar_activity/{link}__{tarih}     günlük aktivite (adım, kalori)
      polar_cardio_load/{link}__{tarih}  kardiyo yükü (cihaz destekliyorsa)
 
@@ -193,7 +193,8 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
   const steps = [
     ['sleep', () => syncList(ctx, 'sleep', '/users/sleep', ['nights'], N.sleep, n => n.date)],
     ['recharge', () => syncList(ctx, 'recharge', '/users/nightly-recharge', ['recharges'], N.recharge, n => n.date)],
-    ['exercises', () => syncList(ctx, 'exercises', '/exercises?zones=true', ['exercises'], N.exercise, n => n.exerciseId)],
+    // Ad tarihle başlıyor: takım ekranı son N günü ad aralığıyla, ek indeks olmadan okuyor.
+    ['exercises', () => syncList(ctx, 'exercises', '/exercises?zones=true', ['exercises'], N.exercise, n => (n.date && n.exerciseId ? `${n.date}__${n.exerciseId}` : null))],
     ['cardioLoad', () => syncList(ctx, 'cardioLoad', '/users/cardio-load/', ['cardio_load', 'cardio-load'], N.cardioLoad, n => n.date)],
     ['activity', () => syncActivity(ctx)],
   ];

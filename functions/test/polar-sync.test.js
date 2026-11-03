@@ -44,7 +44,20 @@ function fakeDb(events) {
     put: (col, id, v) => data.set(col + '/' + id, clone(v)),
     ids: col => [...data.keys()].filter(k => k.startsWith(col + '/')).map(k => k.slice(col.length + 1)),
     cols: () => [...new Set([...data.keys()].map(k => k.split('/')[0]))],
-    collection: col => ({ doc: id => refFor(col, id) }),
+    collection: col => {
+      // where(...).where(...).get() — '__docid__' doküman adını temsil ediyor (FieldPath.documentId()).
+      const query = filters => ({
+        where: (f, op, v) => query(filters.concat([[f, op, v]])),
+        async get() {
+          const docs = [...data.entries()].filter(([path]) => path.startsWith(col + '/')).filter(([path, d]) => filters.every(([f, op, v]) => {
+            const x = f === '__docid__' ? path.slice(col.length + 1) : (d || {})[f];
+            return op === '==' ? x === v : op === '>=' ? x >= v : op === '<=' ? x <= v : false;
+          })).map(([path, d]) => ({ id: path.slice(col.length + 1), data: () => clone(d) }));
+          return { docs };
+        },
+      });
+      return { doc: id => refFor(col, id), where: (f, op, v) => query([[f, op, v]]) };
+    },
     async getAll(...refs) { return Promise.all(refs.map(r => r.get())); },
     batch() {
       const ops = [];
@@ -131,7 +144,7 @@ function setup(over) {
   const polar = fakePolar(events, over && over.routes);
   const waits = [];
   const deps = {
-    db, fetch: polar.fetch, cfg: C.settings({ POLAR_CLIENT_SECRET: 'x', POLAR_TOKEN_KEY: KEY }),
+    db, fetch: polar.fetch, cfg: C.settings({ POLAR_CLIENT_SECRET: 'x', POLAR_TOKEN_KEY: KEY }), docIdField: '__docid__',
     now: () => clock, log: () => {}, sleep: async ms => { waits.push(ms); },
     verifyIdToken: async tok => ({ 'tok-coach1': { uid: 'coach1', firebase: {} }, 'tok-coach2': { uid: 'coach2', firebase: {} } })[tok] || Promise.reject(new Error('x')),
   };
@@ -217,7 +230,7 @@ ta('tam senkron: ayrı koleksiyonlar, deterministik adlar, ham veri, son senkron
   assert.strictEqual(s.coachUid, 'coach1');
   assert.deepStrictEqual(s.raw.hypnogram, NIGHT.hypnogram);
   assert.strictEqual(env.db.get('polar_recharge', 'coach1__ath1__2026-11-01').hrvMs, 68);
-  assert.deepStrictEqual(env.db.ids('polar_exercises'), ['coach1__ath1__Ex-1-a']);
+  assert.deepStrictEqual(env.db.ids('polar_exercises'), ['coach1__ath1__2026-11-01__Ex-1-a']);
   // Aynı gün iki aktivite özeti: en son oluşturulan kaldı.
   const a = env.db.get('polar_activity', 'coach1__ath1__2026-11-01');
   assert.strictEqual(a.steps, 11234);
@@ -400,4 +413,52 @@ ta('mevcut sporcu verisine dokunulmuyor; yalnızca polar_* koleksiyonları', asy
   await syncReq(env);
   assert.deepStrictEqual(env.db.get('kullanici_verileri', 'coach1'), before);
   assert.deepStrictEqual(env.db.cols().filter(c => !c.startsWith('polar_') && c !== 'kullanici_verileri'), []);
+});
+
+/* ═══ Takım verisi (Wellness → "Verileri al") ═════════════════════════════ */
+section('Polar · takım verisi: yalnızca kendi takımı, ham veri yok, tarih aralığı');
+
+async function teamReq(env, body, tok = 'tok-coach1') {
+  const res = fakeRes();
+  await handle({ method: 'POST', path: '/team-data', query: {}, body, headers: { authorization: 'Bearer ' + tok } }, res, env.deps);
+  return { status: res.statusCode, json: JSON.parse(res.body) };
+}
+
+ta('senkron sonrası takım verisi: bağlantı durumu + uyku/recharge/aktivite/antrenman, ham veri yok', async () => {
+  const env = setup();
+  await syncReq(env);
+  const r = await teamReq(env, { teamId: 'team1', days: 28 });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.athletes.length, 1);
+  const a = r.json.athletes[0];
+  assert.strictEqual(a.athleteId, 'ath1');
+  assert.strictEqual(a.status, 'active');
+  assert.strictEqual(a.sleep[0].sleepScore, 81);
+  assert.strictEqual(a.sleep[0].asleepSec, 26000);
+  assert.strictEqual(a.recharge[0].hrvMs, 68);
+  assert.strictEqual(a.activity[0].steps, 11234);
+  assert.strictEqual(a.exercises[0].trainingLoad, 95.5);
+  assert.ok(!JSON.stringify(r.json).includes('hypnogram'), 'ham veri yanıta girmemeli');
+  assert.ok(!JSON.stringify(r.json).includes('AT-777'));
+});
+
+ta('tarih aralığı dışındaki kayıtlar gelmiyor; başka takımın ve başka koçun verisi gelmiyor', async () => {
+  const env = setup();
+  await syncReq(env);
+  env.db.put('polar_sleep', 'coach1__ath1__2026-08-01', { coachUid: 'coach1', date: '2026-08-01', sleepScore: 10 });
+  env.db.put('polar_links', 'coach1__ath9', { coachUid: 'coach1', teamId: 'team2', athleteId: 'ath9', status: 'active' });
+  env.db.put('polar_links', 'coach2__athZ', { coachUid: 'coach2', teamId: 'team1', athleteId: 'athZ', status: 'active' });
+  env.db.put('polar_sleep', 'coach2__athZ__2026-11-01', { coachUid: 'coach2', date: '2026-11-01', sleepScore: 50 });
+  const r = await teamReq(env, { teamId: 'team1', days: 28 });
+  assert.deepStrictEqual(r.json.athletes.map(a => a.athleteId), ['ath1']);
+  assert.ok(!r.json.athletes[0].sleep.some(x => x.date === '2026-08-01'));
+  const other = await teamReq(env, { teamId: 'team1', days: 28 }, 'tok-coach2');
+  assert.deepStrictEqual(other.json.athletes.map(a => a.athleteId), ['athZ']);
+  assert.ok(!JSON.stringify(other.json).includes('"sleepScore":81'), 'başka koçun verisi sızmamalı');
+});
+
+ta('takım verisi: kimliksiz istek 401', async () => {
+  const env = setup();
+  const r = await teamReq(env, { teamId: 'team1' }, 'forged');
+  assert.strictEqual(r.status, 401);
 });
