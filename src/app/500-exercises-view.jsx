@@ -36,12 +36,6 @@ function ExercisesView({data,setData}){
   const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
   const goBack=()=>{setActiveType(null);setFilt({});setQ('');};
-  // How many times each exercise name is prescribed across the whole season program (all teams).
-  const usageCounts=useMemo(()=>{const m={};
-    (data.teams||[]).forEach(t=>Object.values(t.days||{}).forEach(day=>(day.sessions||[]).forEach(s=>(s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(ex=>{
-      const n=(ex.name||'').trim().toLowerCase();if(n)m[n]=(m[n]||0)+1;})))));
-    return m;},[data.teams]);
-  const usedOf=e=>usageCounts[(e.name||'').trim().toLowerCase()]||0;
   // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!TYPES.includes(e.type)).length;
@@ -104,7 +98,7 @@ function ExercisesView({data,setData}){
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
         ?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.')
         :L('Aramanla eşleşen sonuç yok.','Nothing matches your search.')}</div>}
-      <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
+      <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} onOpen={openCard}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
     </div>);
   }
@@ -159,7 +153,7 @@ function ExercisesView({data,setData}){
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
       :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
       {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
-    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
+    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={openCard}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
   </div>);
 }

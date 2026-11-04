@@ -313,7 +313,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
   </div>);
 }
 
-function ExerciseCardRaw({ex,onOpen,used=0}){
+function ExerciseCardRaw({ex,onOpen}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   const shownName=useExerciseText(ex.name);
   const[hov,setHov]=useState(false);
@@ -345,7 +345,6 @@ function ExerciseCardRaw({ex,onOpen,used=0}){
         : <div className="ex-thumb-ph">{exLib(ex)==='ball'?'🏀':'🏋'}</div>
       )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
-      {used>0&&<span className="ex-used" title={L(`Sezon programında ${used} kez kullanıldı`,`Used ${used}× in the season program`)}>{L(`${used}× kullanıldı`,`${used}× used`)}</span>}
     </div>
     <div className="ex-cbody">
       <div className="ex-cname">{shownName||L('(isimsiz egzersiz)','(unnamed exercise)')}</div>
