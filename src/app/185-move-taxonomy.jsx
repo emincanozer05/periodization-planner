@@ -104,10 +104,9 @@ const MV_CATS=[
   /* Motor Control — what the drill trains in the nervous system rather than the muscle: how the
      joint is held, felt and controlled. */
   {k:'Motor Control',id:'motor_control',tr:'Motor Kontrol',en:'Motor Control',color:'#b3a100',
-    types:[['Breathing','Nefes','Breathing'],['Postural Control','Postüral Kontrol','Postural Control'],
+    types:[['Breathing','Nefes','Breathing'],['Movement Quality','Hareket Kalitesi','Movement Quality'],
       ['Joint Stability','Eklem Stabilitesi','Joint Stability'],['Balance','Denge','Balance'],
-      ['Proprioception','Propriosepsiyon','Proprioception'],['Neuromuscular Control','Nöromüsküler Kontrol','Neuromuscular Control'],
-      ['Landing Mechanics','İniş Mekaniği','Landing Mechanics']],
+      ['Proprioception','Propriosepsiyon','Proprioception'],['Landing Mechanics','İniş Mekaniği','Landing Mechanics']],
     dirs:[]},
 ];
 const MV_KEYS=MV_CATS.map(c=>c.k);
@@ -175,7 +174,7 @@ const MV_TYPE_WORDS={
     [/wrist|forearm/,'Wrist'],[/neck|cervical/,'Neck']],
   'Motor Control':[[/breath|diaphragm|crocodile|90[- ]?90 breathing/,'Breathing'],[/landing|stick|drop landing|deceleration/,'Landing Mechanics'],
     [/proprioception|eyes closed|perturbation/,'Proprioception'],[/balance|single[- ]?leg stance|y[- ]?balance|star excursion/,'Balance'],
-    [/posture|postural|dead ?bug|bird ?dog/,'Postural Control'],[/neuromuscular|activation|motor control|patterning/,'Neuromuscular Control'],
+    [/posture|postural|dead ?bug|bird ?dog|neuromuscular|activation|motor control|patterning|movement quality/,'Movement Quality'],
     [/stability|stabilization|isometric hold|rhythmic/,'Joint Stability']],
 };
 const MV_STANCE_WORDS_PUSH=[[/half[- ]?kneeling|\bhk\b/,'Half Kneeling'],[/tall[- ]?kneeling/,'Tall Kneeling'],
@@ -222,6 +221,8 @@ function mvGuessDir(k,name,type){
 const MV_TYPE_ALIAS={
   'Upper Body Push':{Horizontal:'Horizontal Push',Vertical:'Vertical Push'},
   'Upper Body Pull':{Horizontal:'Horizontal Pull',Vertical:'Vertical Pull'},
+  /* Postural Control and Neuromuscular Control were folded into one type, Movement Quality. */
+  'Motor Control':{'Postural Control':'Movement Quality','Neuromuscular Control':'Movement Quality'},
 };
 /* The push and the pull were once filed by the direction of the arm (Horizontal / Vertical /
    Angled); that is their plane now, so only an angled press carries over — as an incline. */
@@ -255,6 +256,7 @@ function mvLibType(it,k){
   if(!it||!k)return'';
   const ok=mvTypes(k);
   if(ok.includes(it.subType))return it.subType;
+  const al=(MV_TYPE_ALIAS[k]||{})[it.subType];if(al)return al;
   if(it.exPattern===k&&ok.includes(it.exPlane))return it.exPlane;
   return mvNormType(k,it.exPattern===k?it.exPlane:'',it.name);
 }
