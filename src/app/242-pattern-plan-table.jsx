@@ -124,15 +124,43 @@ function PtCat({value,color,options,onChange,label}){
    with no link takes one) and its picture (only a card with no picture of its own takes it —
    a picture already on the card is the coach's choice and stays). Giving a named row its
    category is what calls this: the exercise is then a real one, filed with what it carries. */
-function ptFileExercise(name,{pattern,plane,dir,image,link}={}){
+/* `force`: the coach set the category / type on the row, so the card takes them even when it
+   is already filed elsewhere (setExerciseTags). */
+function ptFileExercise(name,{pattern,plane,dir,image,link,force}={}){
   const nm=String(name||'').trim();
   if(!nm)return;
   const hit=exLibHit(nm);
   if(!hit)addExerciseToLibrary(nm);
-  if(MV_KEYS.includes(pattern))rememberExerciseTags(nm,pattern,plane||'',dir||'');
+  if(MV_KEYS.includes(pattern))(force?setExerciseTags:rememberExerciseTags)(nm,pattern,plane||'',dir||'');
   if(safeURL(link))rememberExerciseLink(nm,link);
   const img=String(image||'').trim();
   if(img&&!(hit&&hit.pic))rememberExerciseImage(nm,img);
+}
+/* What the library says an exercise is: its Kategori (`k`), and the Tür (`t`) and Yön (`d`) the
+   card names outright — never a guess. null when the card has no category (or there is no card). */
+function ptLibFiling(name){
+  const hit=exLibHit(name);
+  const k=mvLibCat(hit);
+  if(!k)return null;
+  const okT=mvTypes(k);
+  const t=okT.includes(hit.subType)?hit.subType:((MV_TYPE_ALIAS[k]||{})[hit.subType]
+    ||(hit.exPattern===k&&okT.includes(hit.exPlane)?hit.exPlane:''));
+  return{k,t,d:mvDirs(k).includes(hit.dir)?hit.dir:''};
+}
+/* A row's Kategori · Tür · Yön (k, t, d) brought to what the library says about its exercise, so
+   the coach never fills them in again: an exercise is filed once, in the library (or by setting
+   them on any row, which files them there), and every program row writing it follows. What the
+   card leaves blank the row keeps, where it belongs to the same category; a row moved to another
+   category reads the rest off the name. null when the row already agrees, or the library has
+   no category for the exercise. */
+function ptAlignToLib(name,k,t,d){
+  const f=ptLibFiling(name);
+  if(!f)return null;
+  const same=k===f.k;
+  const type=f.t||(same?(mvTypes(f.k).includes(t)?t:''):mvGuessType(f.k,name));
+  const dir=f.d||(same?(mvDirs(f.k).includes(d)?d:''):mvGuessDir(f.k,name,type));
+  if(same&&(t||'')===type&&(d||'')===dir)return null;
+  return{k:f.k,t:type||'',d:dir||''};
 }
 /* The exercise's picture, on the left of its card: the one put on the row itself, else the one
    the library carries for that name (its program image, else the video's thumbnail). The box
@@ -574,11 +602,14 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
      and reads the rest off its name. '' takes the category off: the row stays, uncounted. */
   const setPattern=(ex,v)=>{
     if(!v){const{pattern,plane,dir,...rest}=ex;return{...rest,pattern:'',plane:'',dir:'',noPat:true};}
-    const plane=mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
-    const dir=mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
+    /* The type and direction the library card already names for this category come with it. */
+    const lib=ptLibFiling(ex.name);const lf=lib&&lib.k===v?lib:null;
+    const plane=(lf&&lf.t)||mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
+    const dir=(lf&&lf.d)||mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
     /* A named exercise given its category goes into the library with it — and with the
-       picture and link on its row, so a card the library did not have arrives complete. */
-    ptFileExercise(ex.name,{pattern:v,plane,dir,image:ex.image,link:ex.link});
+       picture and link on its row, so a card the library did not have arrives complete. The
+       category set here is the exercise's filing from now on: the card moves to it. */
+    ptFileExercise(ex.name,{pattern:v,plane,dir,image:ex.image,link:ex.link,force:true});
     const{noPat,...rest}=ex;
     return{...rest,pattern:v,plane,dir};
   };
@@ -648,11 +679,22 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onRowCat:(k,v)=>edit(k,ex=>setPattern(ex,v)),
     onType:(k,v)=>{const ex=byI[k];if(!ex)return;
       const dir=ex.dir||mvGuessDir(ex.pattern,ex.name,v);
-      rememberExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
+      setExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
     onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
+  /* Every row follows what the library says its exercise is — on opening, and the moment the
+     library changes (a card re-filed in the library, or on another program). A row the coach
+     took the category off (`noPat`) is left alone. */
+  const libVer=useLibVersion();
+  useEffect(()=>{
+    rows.forEach(r=>{const ex=r.ex;
+      if(ex.noPat||!String(ex.name||'').trim())return;
+      const a=ptAlignToLib(ex.name,catOf(ex),ex.plane||'',ex.dir||'');
+      if(a)edit(r.i,x=>x.noPat||x.name!==ex.name?x:{...x,pattern:a.k,plane:a.t,dir:a.d});
+    });
+  },[libVer,rows]);
   return(<div className="pt-host">
     <PlanTable groups={groups} handlers={handlers}
       max={12} hasDetail detail={k=>{const ex=byI[k];

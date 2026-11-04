@@ -98,7 +98,7 @@ function loadApp() {
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
     'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'indivSig', 'indivSigRaw', 'indivSigCompact', 'indivHandEdited', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
-    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS'];
+    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1710,6 +1710,30 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const t = A.exTagsFromLib({ name: 'Box Jump', type: 'Plyometric', subType: 'Jump', dir: 'Vertical' }, {});
     check('kütüphaneden seçilen egzersiz kategorisini, türünü ve yönünü getiriyor',
       t.pattern === 'Plyometric' && t.plane === 'Jump' && t.dir === 'Vertical', JSON.stringify(t));
+    /* Program satırı kütüphanedeki hâline uyar: kategori, tür ve yön her seferinde yeniden seçilmez. */
+    A.setLibItems([{ name: 'Prone Y Raise', type: 'Motor Control', subType: 'Joint Stability', exPattern: '', exPlane: '', dir: '' },
+      { name: 'Box Jump', type: 'Plyometric', subType: '', exPattern: '', exPlane: '', dir: 'Vertical' },
+      { name: 'Yeni Hareket', type: '', subType: '', exPattern: '', exPlane: '', dir: '' }]);
+    const al1 = A.ptAlignToLib('Prone Y Raise', 'Accessory', 'Scapula', '');
+    const al2 = A.ptAlignToLib('Prone Y Raise', '', '', '');
+    const al3 = A.ptAlignToLib('Prone Y Raise', 'Motor Control', 'Joint Stability', '');
+    const al4 = A.ptAlignToLib('Box Jump', 'Plyometric', 'Hop', '');
+    check('satır kütüphaneye uyuyor: farklı/boş kategori kütüphanenin kategori ve türünü alıyor, uyan satıra dokunulmuyor, kartın boş bıraktığı tür satırda kalıyor',
+      al1 && al1.k === 'Motor Control' && al1.t === 'Joint Stability' && al2 && al2.k === 'Motor Control' && al2.t === 'Joint Stability' &&
+      al3 === null && al4 && al4.k === 'Plyometric' && al4.t === 'Hop' && al4.d === 'Vertical' &&
+      A.ptAlignToLib('Yeni Hareket', 'Core', '', '') === null && A.ptAlignToLib('Bilinmeyen', 'Core', '', '') === null,
+      JSON.stringify([al1, al2, al3, al4]));
+    const nc = A.diMovePatterns([{ id: '', exercise: 'Prone Y Raise', noCat: true }, { id: 'core', exercise: 'Plank', noCat: true }]);
+    check('Bireyselleştirme: kategorisi bilerek kaldırılan satır işaretini koruyor (kategorili satırda işaret yok)',
+      nc[0].noCat === true && !('noCat' in nc[1]), JSON.stringify(nc));
+    let forced = null;
+    A.registerLibTags((nm, pat, pl, dir, force) => { forced = { nm, pat, pl, dir, force }; });
+    A.setExerciseTags('Prone Y Raise', 'Motor Control', 'Balance', '');
+    const li = A.getLibItems().find(x => x.name === 'Prone Y Raise');
+    check('satırda seçilen kategori/tür kütüphane kartına kesin yazılıyor ve seçicinin kopyası anında güncelleniyor',
+      forced && forced.force === true && forced.pl === 'Balance' && li.type === 'Motor Control' && li.subType === 'Balance' &&
+      A.ptLibFiling('Prone Y Raise').t === 'Balance', JSON.stringify([forced, li]));
+    A.registerLibTags(null);
     A.setLibItems([]);
   }
 

@@ -355,6 +355,9 @@ function diMovePatterns(v){
     /* A picture pasted on the row: an uploaded URL, or the data URL kept while offline. */
     o.image=typeof obj.image==='string'&&/^(https?:|data:image\/)/.test(obj.image)?obj.image:'';
     o.superset=/^[A-F]$/i.test(String(obj.superset||'').trim())?String(obj.superset).trim().toUpperCase():'';
+    /* The coach took the category off this row on purpose: it stays uncategorised even when the
+       library files its exercise (the table aligns every other row to the library). */
+    if(id===''&&obj.noCat===true)o.noCat=true;
     const ar=(obj.alt&&typeof obj.alt==='object')?obj.alt:{name:obj.alt};
     o.alt={name:txt(ar.name,120)};
     DI_MOVE_DOSE.forEach(k=>{o.alt[k]=txt(ar[k],40);});
