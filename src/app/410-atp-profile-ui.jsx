@@ -1,8 +1,9 @@
 /* ═══ ATHLETE PROFILE (Athlete Training Profile) — the tab beside Profile ═══
-   Four sections on the same cards the scouting sheet uses, Joint by Joint first. It,
-   the Athletic Profile and the Constraints are the coach's and are written straight onto
-   `ath.trainingProfile`; Exercise Exposure is drawn from the calendar and cannot be
-   edited, only read. Nothing here selects an exercise
+   The latest tests, the F-V summary and two sections on the same cards the scouting sheet
+   uses: the Athletic Development Priorities, the coach's, written straight onto
+   `ath.trainingProfile`; and Exercise Exposure, drawn from the calendar and never edited,
+   only read. (Joint by Joint and Constraints were taken off the tab; a profile saved with
+   them keeps them on the record, unread.) Nothing here selects an exercise
    or builds a session — the profile reaches programming through the individualization
    JSON (atpSnapshot), as context.
 
@@ -62,7 +63,7 @@ function AtpProfile({q,onSet,onClear}){
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
-    <AtpSecHead n={2} title={atpT('Athletic Development Priorities')}
+    <AtpSecHead n={1} title={atpT('Athletic Development Priorities')}
       desc={L(`Her fiziksel kalite için bu dönemde ne kadar geliştirileceği. Test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir; öncelik verilmeyen kalite korunur.`,
         `How much this period develops every physical quality. Set from test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities; a quality left unrated is maintained.`)}>
       {ATP_PRIORITY.map(p=><span key={p.id} className={`atp-hc pr-${p.id}`}><i/>{atpT(p.en)}<b>{byPri(p.id).length}{p.id==='high'?`/${ATP_HIGH_MAX}`:''}</b></span>)}
@@ -88,106 +89,6 @@ function AtpProfile({q,onSet,onClear}){
     </div>
   </div>);
 }
-/* A constraint as the coach reads it: a catalogue entry in the app language, one the
-   coach typed exactly as it was typed. */
-const atpConShow=c=>atpConDef(c&&c.id)?atpT(atpConLabel(c)):atpConLabel(c);
-function AtpConPanel({kind,list,other,onList}){
-  const[open,setOpen]=useState(false);
-  const[cat,setCat]=useState('suggest');
-  const[custom,setCustom]=useState('');
-  const[customCat,setCustomCat]=useState('load');
-  const[msg,setMsg]=useState('');
-  const hard=kind==='hard';
-  const mine=new Set(list.map(c=>c.id)),theirs=new Set(other.map(c=>c.id));
-  const otherName=atpT(hard?'Soft':'Hard');
-  const add=id=>{if(!mine.has(id)&&!theirs.has(id))onList([...list,{id}]);};
-  const remove=id=>onList(list.filter(c=>c.id!==id));
-  const patch=(id,p)=>onList(list.map(c=>c.id===id?{...c,...p}:c));
-  const low=x=>String(x||'').trim().toLocaleLowerCase(REPORT_LANG==='tr'?'tr-TR':'en-US');
-  /* A typed constraint that names a catalogue entry IS that entry — in either language —
-     so the same rule can never sit on the list twice, or on both lists, just because it
-     was typed. */
-  const addCustom=()=>{
-    const t=custom.trim();if(!t)return;
-    const hit=ATP_CONSTRAINTS.find(c=>low(c.en)===low(t)||low(atpT(c.en))===low(t));
-    if(hit){
-      if(theirs.has(hit.id)){setMsg(L(`"${atpT(hit.en)}" zaten ${otherName} listesinde.`,`"${hit.en}" is already on the ${otherName} list.`));return;}
-      if(!atpConFits(hit,kind)){setMsg(L(`"${atpT(hit.en)}" yalnızca ${otherName} olabilir.`,`"${hit.en}" can only be ${otherName}.`));return;}
-      add(hit.id);
-    }else{
-      if([...list,...other].some(c=>low(atpConLabel(c))===low(t)||low(atpConShow(c))===low(t))){setMsg(L('Bu kısıt zaten ekli.','That constraint is already there.'));return;}
-      onList([...list,{id:'c_'+uid(),label:t,cat:customCat}]);
-    }
-    setCustom('');setMsg('');
-  };
-  const opts=(cat==='suggest'?ATP_CON_SUGGEST[kind].map(atpConDef):ATP_CONSTRAINTS.filter(c=>c.cat===cat)).filter(Boolean);
-  return(<div className={`atp-con ${kind}`}>
-    <div className="atp-con-h">
-      <span className="atp-con-badge">{atpT(hard?'Hard':'Soft')}</span>
-      <div className="atp-con-tx">
-        <div className="atp-con-t">{atpT(hard?'Hard Constraints':'Soft Constraints')}</div>
-        <div className="atp-con-d">{hard?L('Kesin olarak uyulması gereken kısıtlamalar.','Rules that must be followed, without exception.')
-          :L('Kesin yasak olmayan; tercih edilen veya sınırlandırılması gereken durumlar.','Not prohibitions — preferences, or things to keep limited.')}</div>
-      </div>
-      <span className="atp-con-n">{list.length}</span>
-    </div>
-    <div className="atp-con-list">
-      {list.length===0&&<div className="atp-con-none">{hard?L('Kesin kısıt yok.','No hard constraints.'):L('Esnek kısıt yok.','No soft constraints.')}</div>}
-      {list.map(c=>{const d=atpConDef(c.id);const withVal=!!(d&&d.ph);return(
-        <div key={c.id} className="atp-con-row">
-          <div className="atp-con-top">
-            {atpCatLabel(atpConCat(c))?<span className="atp-con-cat">{atpT(atpCatLabel(atpConCat(c)))}</span>
-              :<span className="atp-con-cat">{L('Diğer','Other')}</span>}
-            <span className="atp-con-l" title={d&&REPORT_LANG==='tr'?d.en:undefined}>{atpConShow(c)}</span>
-            <button className="atp-x" onClick={()=>remove(c.id)} title={L('Kısıtı kaldır','Remove constraint')} aria-label={L('Kısıtı kaldır','Remove constraint')}>✕</button>
-          </div>
-          <div className={`atp-con-in${withVal?' two':''}`}>
-            {withVal&&<input value={c.value||''} onChange={e=>patch(c.id,{value:e.target.value})} placeholder={L(d.ph[0],d.ph[1])}
-              aria-label={L('Değer','Value')}/>}
-            <input value={c.note||''} onChange={e=>patch(c.id,{note:e.target.value})}
-              placeholder={L('Not — bölge, süre, gerekçe…','Note — region, duration, reason…')} aria-label={L('Not','Note')}/>
-          </div>
-        </div>);})}
-    </div>
-    <button className="atp-con-add" onClick={()=>{setOpen(o=>!o);setMsg('');}}>{open?L('Kapat','Close'):L('+ Kısıt ekle','+ Add constraint')}</button>
-    {open&&<div className="atp-pick">
-      <div className="atp-pick-tabs">
-        <button className={cat==='suggest'?'on':''} onClick={()=>setCat('suggest')}>{L('Önerilen','Suggested')}</button>
-        {ATP_CON_CATS.map(k=><button key={k.id} className={cat===k.id?'on':''} onClick={()=>setCat(k.id)}>{atpT(k.en)}</button>)}
-      </div>
-      <div className="atp-pick-list">{opts.map(d=>{
-        const on=mine.has(d.id),elsewhere=theirs.has(d.id),fits=atpConFits(d,kind);
-        const why=elsewhere?L(`${otherName} listesinde — bir kısıt iki listede birden olamaz.`,`On the ${otherName} list — a constraint cannot be on both.`)
-          :!fits?L(`Bu kısıt yalnızca ${otherName} olabilir.`,`This constraint can only be ${otherName}.`):undefined;
-        return<button key={d.id} className={`atp-opt${on?' on':''}`} disabled={!on&&(elsewhere||!fits)} title={why}
-          onClick={()=>on?remove(d.id):add(d.id)}>{on?'✓':'+'} {atpT(d.en)}{elsewhere&&<i>{otherName}</i>}</button>;})}</div>
-      <div className="atp-pick-custom">
-        <select value={customCat} onChange={e=>setCustomCat(e.target.value)} aria-label={L('Kategori','Category')}>
-          {ATP_CON_CATS.map(k=><option key={k.id} value={k.id}>{atpT(k.en)}</option>)}</select>
-        <input value={custom} onChange={e=>{setCustom(e.target.value);setMsg('');}} onKeyDown={e=>{if(e.key==='Enter')addCustom();}}
-          placeholder={L('Özel kısıt yaz…','Write a custom constraint…')}/>
-        <button onClick={addCustom} disabled={!custom.trim()}>{L('Ekle','Add')}</button>
-      </div>
-      {msg&&<div className="atp-pick-msg">{msg}</div>}
-    </div>}
-  </div>);
-}
-function AtpConstraints({con,onChange}){
-  return(<div className="sc-sec" id="atp-s2">
-    <AtpSecHead n={3} title={atpT('Constraints')}
-      desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Kesin ve Esnek kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
-        'The limits and preferences training has to take into account. Hard and Soft are kept strictly apart — a constraint can sit on one list only.')}>
-      <span className="atp-hc cn-hard"><i/>{atpT('Hard')}<b>{con.hard.length}</b></span>
-      <span className="atp-hc cn-soft"><i/>{atpT('Soft')}<b>{con.soft.length}</b></span>
-    </AtpSecHead>
-    <div className="sc-sec-b">
-      <div className="atp-con2">
-        <AtpConPanel kind="hard" list={con.hard} other={con.soft} onList={l=>onChange({...con,hard:l})}/>
-        <AtpConPanel kind="soft" list={con.soft} other={con.hard} onList={l=>onChange({...con,soft:l})}/>
-      </div>
-    </div>
-  </div>);
-}
 /* The four ways a set is filed besides the exercise itself, one at a time on a tab. */
 const ATP_EXP_LAYERS=[
   {id:'patterns',en:'Movement Pattern',      dTr:'Hareketin çalıştırdığı patern',dEn:'What the movement trains',fixed:true},
@@ -195,66 +96,112 @@ const ATP_EXP_LAYERS=[
   {id:'loading', en:'Loading Characteristic',dTr:'Vücudun nasıl yüklendiği',dEn:'How the body was loaded',fixed:true},
   {id:'families',en:'Exercise Family',       dTr:'Birbiriyle ilişkili egzersiz grupları',dEn:'Groups of related exercises',fixed:false},
 ];
-function AtpExposure({exp,refDate,setRefDate}){
+/* Exercise Exposure on screen. Above the two lists, the window's sets spread over the
+   pattern table's own categories (Kategori, 185) as one bar — a category is a filter: a click
+   keeps only its exercises in the list. Each count is read beside the same window just
+   before it (the 7 days before these 7 …), so a jump or a drop in volume shows at once. */
+const atpAgo=(d,end)=>{if(!d)return'—';const n=Math.round((parseD(end)-parseD(d))/864e5);
+  return n<=0?L('bugün','today'):n===1?L('dün','yesterday'):L(`${n} gün önce`,`${n} days ago`);};
+const atpCatCol=k=>(mvCat(k)||{}).color||'var(--dim)';
+const atpCatName=k=>k?mvCatLabel(k):L('Kategorisiz','No category');
+function AtpExposure({exp,prev,refDate,setRefDate}){
   const[win,setWin]=useState('d7');
   const[all,setAll]=useState(false);
   const[lay,setLay]=useState('patterns');
+  const[cat,setCat]=useState(null);       // a Kategori picked on the bar: the exercise list keeps only it
+  const[q,setQ]=useState('');
   const lv=id=>ATP_EXP_LEVELS.find(x=>x.id===id)||ATP_EXP_LEVELS[0];
   const pill=id=><span className={`atp-lv x-${id}`} title={L(lv(id).dTr,lv(id).dEn)}>{atpAb(lv(id))}</span>;
   const byWin=list=>list.filter(t=>t.sets[win]>0)
     .sort((a,b)=>(b.sets[win]-a.sets[win])||String(b.lastUsed||'').localeCompare(String(a.lastUsed||'')));
-  const exRows=byWin(exp.exercises);
+  const exAll=byWin(exp.exercises);
+  const cats=byWin(exp.categories||[]);
+  const catOn=cat!=null&&cats.some(c=>c.key===cat)?cat:null;
+  const ql=q.trim().toLocaleLowerCase('tr');
+  const exRows=exAll.filter(t=>(catOn==null||(t.mvCat||'')===catOn)&&(!ql||String(t.label).toLocaleLowerCase('tr').includes(ql)));
   const shown=all?exRows:exRows.slice(0,10);
   const W=ATP_EXP_WINDOWS.find(w=>w.id===win);
-  const totalSets=exRows.reduce((n,t)=>n+t.sets[win],0);
-  /* One row: a name, a bar as long as its share of the busiest row, the set count and the
-     level. The bar is only there to be compared down the list; the level is the reading. */
+  const sum=list=>list.reduce((n,t)=>n+(t.sets[win]||0),0);
+  const totalSets=sum(exAll);
+  /* The same window just before this one; the last session has none. */
+  const pv=win!=='last'&&prev&&prev[win]?prev[win]:null;
+  const pvSets=pv?pv.exercises.reduce((n,t)=>n+(t.sets[win]||0),0):null;
+  const pvSess=pv?pv.sessions[win]:null;
+  const pvEx=pv?pv.exercises.filter(t=>t.sets[win]>0).length:null;
+  const delta=(v,p)=>{if(p==null)return null;const d=v-p;
+    return<span className={`atp-xd ${d>0?'up':d<0?'dn':''}`} title={L('Bir önceki aynı uzunluktaki döneme göre','Against the window of the same length just before')}>
+      {d>0?'▲ +':d<0?'▼ ':'= '}{d===0?'':d}<small>{L(` önceki: ${p}`,` prev: ${p}`)}</small></span>;};
   const bar=(t,max)=><span className={`atp-ly-bar x-${t.level[win]}`}><i style={{width:`${Math.max(6,Math.round(t.sets[win]/max*100))}%`}}/></span>;
   const L0=ATP_EXP_LAYERS.find(x=>x.id===lay);
   const lList=exp[lay]||[];
   const lOn=byWin(lList),lMax=Math.max(1,...lOn.map(t=>t.sets[win]));
   const lOff=L0.fixed?lList.filter(t=>!(t.sets[win]>0)):[];
-  const exMax=Math.max(1,...exRows.map(t=>t.sets[win]));
+  const exMax=Math.max(1,...exAll.map(t=>t.sets[win]));
   const stats=win==='last'
-    ?[[L('Seans','Session'),exp.last?fd(exp.last.date):'—',exp.last&&exp.last.name],
-      [L('Egzersiz','Exercises'),exRows.length],[L('Toplam set','Total sets'),totalSets]]
-    :[[L('Aralık','Window'),`${fd(exp.from[win])} – ${fd(exp.end)}`],[L('Seans','Sessions'),exp.sessions[win]],
-      [L('Egzersiz','Exercises'),exRows.length],[L('Toplam set','Total sets'),totalSets]];
-  return(<div className="sc-sec" id="atp-s3">
-    <AtpSecHead n={4} title={atpT('Exercise Exposure')}
-      desc={L('Sporcunun takvimindeki antrenman kayıtlarından otomatik oluşur: seçilen aralıkta hangi egzersize ve hangi kategoriye kaç set maruz kaldığı. Düzey set sayısından okunur.',
-        'Built automatically from the training records on the athlete’s calendar: how many sets of which exercise and which category the athlete did in the chosen window. The level is read from the set count.')}>
+    ?[{k:L('Seans','Session'),v:exp.last?fd(exp.last.date):'—',s:exp.last&&[exp.last.name,atpAgo(exp.last.date,exp.end)].filter(Boolean).join(' · ')},
+      {k:L('Egzersiz','Exercises'),v:exAll.length},{k:L('Toplam set','Total sets'),v:totalSets}]
+    :[{k:L('Aralık','Window'),v:`${fd(exp.from[win]).slice(0,5)} – ${fd(exp.end).slice(0,5)}`,s:L(`${W.days} gün`,`${W.days} days`)},
+      {k:L('Seans','Sessions'),v:exp.sessions[win],d:delta(exp.sessions[win],pvSess)},
+      {k:L('Egzersiz','Exercises'),v:exAll.length,d:delta(exAll.length,pvEx)},
+      {k:L('Toplam set','Total sets'),v:totalSets,d:delta(totalSets,pvSets),s:W.days>7?L(`haftada ≈ ${Math.round(totalSets*7/W.days)} set`,`≈ ${Math.round(totalSets*7/W.days)} sets / week`):null}];
+  const isToday=refDate===fmt(today);
+  return(<div className="sc-sec atp-xp" id="atp-s3">
+    <AtpSecHead n={2} title={atpT('Exercise Exposure')}
+      desc={L('Sporcunun takvimindeki antrenman kayıtlarından (takım seansları dahil) otomatik oluşur: seçilen aralıkta hangi kategoriye ve egzersize kaç set maruz kaldığı. Kategori, patern tablosundaki Kategori · Tür etiketinden okunur; düzey set sayısından.',
+        'Built automatically from the training records on the athlete’s calendar (team sessions included): how many sets of which category and exercise in the chosen window. The category is read from the pattern table’s Kategori · Tür tag; the level from the set count.')}>
       <span className="atp-hc atp-auto">{L('Otomatik','Automatic')}</span>
     </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-xbar">
         <div className="atp-wseg" role="tablist">{ATP_EXP_WINDOWS.map(w=>
           <button key={w.id} role="tab" aria-selected={win===w.id} className={win===w.id?'on':''} onClick={()=>setWin(w.id)}>{atpT(w.en)}</button>)}</div>
-        <label className="atp-ref"><span>{L('Referans günü','Reference day')}</span>
-          <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/></label>
+        <div className="atp-ref">
+          <span>{L('Referans günü','Reference day')}</span>
+          <button className="atp-ref-step" onClick={()=>setRefDate(fmt(addD(parseD(refDate),-7)))} title={L('Bir hafta geri','One week back')} aria-label={L('Bir hafta geri','One week back')}>‹</button>
+          <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/>
+          <button className="atp-ref-step" onClick={()=>setRefDate(fmt(addD(parseD(refDate),7)))} title={L('Bir hafta ileri','One week forward')} aria-label={L('Bir hafta ileri','One week forward')}>›</button>
+          {!isToday&&<button className="atp-ref-today" onClick={()=>setRefDate(fmt(today))}>{L('Bugün','Today')}</button>}
+        </div>
       </div>
       {!exp.last?<div className="atp-xempty">{L('Takvimde egzersiz kaydı yok. Egzersiz maruziyeti, sporcunun takvimine yazılan seanslardan — takım seansları dahil — kendiliğinden oluşur.',
           'No exercise on the calendar yet. Exercise Exposure builds itself from the sessions on the athlete’s calendar, team sessions included.')}</div>
       :<>
-        <div className="atp-xstats">{stats.map(([k,v,sub])=>
-          <div key={k} className={`atp-xstat${String(v).length>12?' wide':''}`}><div className="k">{k}</div><div className="v">{v}</div>{sub&&<div className="s">{sub}</div>}</div>)}
-          <div className="atp-xleg" title={L('Düzey, seçilen aralıktaki set sayısından okunur (gün aralıkları haftalık ortalamayla).','The level is read from the set count in the window (day windows as a weekly average).')}>
-            <div className="k">{L('Maruziyet düzeyi','Exposure level')}</div>
-            <div className="l">{ATP_EXP_LEVELS.slice(1).map(l=><span key={l.id}><i className={`atp-sw x-${l.id}`}/>{atpT(l.en)}</span>)}</div>
-          </div>
+        <div className="atp-xstats">{stats.map(x=>
+          <div key={x.k} className={`atp-xstat${String(x.v).length>12?' wide':''}`}><div className="k">{x.k}</div>
+            <div className="v">{x.v}</div>{x.d&&<div className="s">{x.d}</div>}{x.s&&<div className="s">{x.s}</div>}</div>)}
+        </div>
+        {cats.length>0&&<div className="atp-xcat">
+          <div className="atp-xcat-h"><b>{L('Kategori dağılımı','Spread by category')}</b>
+            <span>{catOn!=null?<button className="atp-xcat-clr" onClick={()=>setCat(null)}>{L('Filtreyi kaldır','Clear filter')} ✕</button>
+              :L('kategoriye tıkla → egzersiz listesi süzülür','click a category → filters the exercise list')}</span></div>
+          <div className="atp-xcat-bar" role="group" aria-label={L('Kategori dağılımı','Spread by category')}>{cats.map(c=>
+            <button key={c.key||'none'} className={catOn===c.key?'on':catOn!=null?'dim':''} style={{flexGrow:c.sets[win],background:atpCatCol(c.key)}}
+              onClick={()=>setCat(x=>x===c.key?null:c.key)} title={`${atpCatName(c.key)} · ${c.sets[win]} set · %${Math.round(c.sets[win]/Math.max(1,totalSets)*100)}`}
+              aria-pressed={catOn===c.key}/>)}</div>
+          <div className="atp-xcat-leg">{cats.map(c=>
+            <button key={c.key||'none'} className={catOn===c.key?'on':catOn!=null?'dim':''} onClick={()=>setCat(x=>x===c.key?null:c.key)} aria-pressed={catOn===c.key}>
+              <i style={{background:atpCatCol(c.key)}}/>{atpCatName(c.key)}<b>{c.sets[win]}</b><em>%{Math.round(c.sets[win]/Math.max(1,totalSets)*100)}</em></button>)}</div>
+        </div>}
+        <div className="atp-xleg-row" title={L('Düzey, seçilen aralıktaki set sayısından okunur (gün aralıkları haftalık ortalamayla).','The level is read from the set count in the window (day windows as a weekly average).')}>
+          <span className="k">{L('Maruziyet düzeyi','Exposure level')}</span>
+          {ATP_EXP_LEVELS.slice(1).map(l=><span key={l.id}><i className={`atp-sw x-${l.id}`}/>{atpT(l.en)}</span>)}
         </div>
         <div className="atp-xcols">
           <div className="atp-grp">
             <div className="atp-grp-h">
-              <div><div className="atp-grp-t">{atpT('Exercise')}</div><div className="atp-grp-s">{atpT(W.en)}</div></div>
+              <div><div className="atp-grp-t">{atpT('Exercise')}{catOn!=null&&<span className="atp-xf"><i style={{background:atpCatCol(catOn)}}/>{atpCatName(catOn)}</span>}</div>
+                <div className="atp-grp-s">{atpT(W.en)}</div></div>
+              <input className="atp-xsearch" value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercise…')} aria-label={L('Egzersiz ara','Search exercise')}/>
               <span className="atp-grp-c"><b>{exRows.length}</b></span>
             </div>
-            {exRows.length===0?<div className="atp-ly-empty">{L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
-            :shown.map(t=>{const l=t.level[win];return(
+            {exRows.length===0?<div className="atp-ly-empty">{exAll.length?L('Bu süzgeçle egzersiz yok.','No exercise matches this filter.'):L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
+            :shown.map(t=>{const l=t.level[win];const k=t.mvCat||'';return(
               <div key={t.key} className="atp-ex-r">
                 <div className="atp-ex-tx">
-                  <div className="atp-ex-n" title={t.label}>{t.label}</div>
-                  <div className="atp-ex-m">{atpT(t.family)} · {L('son','last')} {fd(t.lastUsed)} · <span title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}× / {L('28 gün','28 d')}</span></div>
+                  <div className="atp-ex-n" title={t.label}><i className="atp-ex-dot" style={{background:atpCatCol(k)}}/>{t.label}</div>
+                  <div className="atp-ex-m">{k?<>{mvCatLabel(k)}{t.mvType?` · ${mvTermOr(k,t.mvType)}`:''}</>:atpT(t.family)}
+                    {' · '}<span title={fd(t.lastUsed)}>{atpAgo(t.lastUsed,exp.end)}</span>
+                    {' · '}<span title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}× / {L('28 gün','28 d')}</span></div>
                 </div>
                 {bar(t,exMax)}
                 <span className="atp-ly-s">{t.sets[win]} set</span>
@@ -279,168 +226,6 @@ function AtpExposure({exp,refDate,setRefDate}){
           </div>
         </div>
       </>}
-    </div>
-  </div>);
-}
-/* ---- Joint by Joint: rated on the mannequin photograph ----
-   The coach's own joint map (joint-model.jpg, made from "Eklem Ağrısı Haritası.png"): the
-   athlete from the front and from the back, each joint marked where the photograph marks
-   it. The front shows the athlete's right on the left of the picture, the back the other
-   way round. Every joint is a marker drawn over the photograph's own dot: a ring in the
-   colour of its need (blue for a mobile joint, amber for a stable one), filled in the
-   colour of the level once it is rated (green Low, yellow Medium, red High). The
-   thoracic spine is one dot on the photograph and two motions in the record (extension
-   and rotation); its marker opens both. The photograph has no dot on the feet, so those
-   two markers are the only ones that sit on bare skin.
-
-   Beside the figures the chain itself, head to foot, alternating mobile and stable —
-   the approach read as a table, each side a cell that opens the same picker. */
-const ATP_JB_IMG={src:'joint-model.jpg',w:1000,h:951};
-const ATP_JB_MARKS=[
-  {id:'cervical',  keys:['cervical'],                    at:[744,131],    r:23},
-  {id:'scapula_l', keys:['scapula_l'],                   at:[689.1,209],  r:23},
-  {id:'scapula_r', keys:['scapula_r'],                   at:[799,208.8],  r:23},
-  {id:'thoracic',  keys:['thoracic_ext','thoracic_rot'], at:[744.2,262.3],r:23},
-  {id:'lumbar',    keys:['lumbar'],                      at:[743.6,357.6],r:23},
-  {id:'shoulder_r',keys:['shoulder_r'],                  at:[152.8,185.3],r:23},
-  {id:'shoulder_l',keys:['shoulder_l'],                  at:[347.4,185.2],r:23},
-  {id:'elbow_r',   keys:['elbow_r'],                     at:[119.6,319.7],r:23},
-  {id:'elbow_l',   keys:['elbow_l'],                     at:[377.8,321.1],r:23},
-  {id:'wrist_r',   keys:['wrist_r'],                     at:[72.1,421.3], r:21},
-  {id:'wrist_l',   keys:['wrist_l'],                     at:[420.9,422.7],r:21},
-  {id:'hip_r',     keys:['hip_r'],                       at:[186.7,427.4],r:23},
-  {id:'hip_l',     keys:['hip_l'],                       at:[313,427.7],  r:23},
-  {id:'knee_r',    keys:['knee_r'],                      at:[191.2,623.1],r:23},
-  {id:'knee_l',    keys:['knee_l'],                      at:[308.6,623.8],r:23},
-  {id:'ankle_r',   keys:['ankle_r'],                     at:[181.9,800.4],r:21},
-  {id:'ankle_l',   keys:['ankle_l'],                     at:[316.7,800.7],r:21},
-  {id:'foot_r',    keys:['foot_r'],                      at:[170,856],    r:19},
-  {id:'foot_l',    keys:['foot_l'],                      at:[329,856],    r:19},
-];
-const atpJbMarkOf=key=>ATP_JB_MARKS.find(m=>m.keys.includes(key))||null;
-const atpJbRow=key=>ATP_JOINT_ROWS.find(r=>r.key===key);
-/* A joint's name with its side, in the app language. */
-const atpJbLabel=r=>`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
-/* A marker's name: the joint and side, or just "Thoracic Spine" for the two motions. */
-const atpJbMarkLabel=m=>m.keys.length>1?atpT('Thoracic Spine'):atpJbLabel(atpJbRow(m.keys[0]));
-/* The level letter a rated marker carries, so a level is read without its colour too. */
-const atpJbLetter=id=>({low:L('D','L'),medium:L('O','M'),high:L('Y','H')}[id]||'');
-function AtpJbStage({joints,sel,onPick,children}){
-  const marker=m=>{
-    const rows=m.keys.map(atpJbRow);
-    const need=rows[0].joint.need;
-    /* A two-motion marker shows the stronger of its two levels. */
-    const lv=Math.max(0,...m.keys.map(k=>atpJointLv((joints[k]||{}).level)));
-    const lvId=lv?ATP_JOINT_LEVELS[lv-1].id:null;
-    const on=sel===m.id;
-    const[x,y]=m.at,R=m.r;
-    const tip=`${atpJbMarkLabel(m)} — ${atpT(ATP_JOINT_NEEDS.find(n=>n.id===need).en)}: ${m.keys.map(k=>{const v=(joints[k]||{}).level;
-      return(m.keys.length>1?`${atpT(atpJbRow(k).joint.en)} `:'')+(v?atpT(ATP_JOINT_LEVELS[atpJointLv(v)-1].en):'—');}).join(' · ')}`;
-    const pick=e=>{e.stopPropagation();onPick(m.id);};
-    return(<g key={m.id} className={`jb2-m jb-${need}${lvId?` jl-${lvId}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
-      role="button" tabIndex={0} aria-label={tip} aria-pressed={on} aria-haspopup="dialog"
-      onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}}}>
-      <title>{tip}</title>
-      <circle className="jb2-hit" r={R+8}/>
-      {on&&<circle className="jb2-halo" r={R+7}/>}
-      <circle className="jb2-disc" r={R-1.5}/>
-      <circle className="jb2-ring" r={R-2.5}/>
-      {lvId?<text className="jb2-lt" textAnchor="middle" dy="7">{atpJbLetter(lvId)}</text>:<circle className="jb2-core" r={5.5}/>}
-      {m.keys.length>1&&<text className="jb2-two" textAnchor="middle" y={-R-7}>E · R</text>}
-    </g>);
-  };
-  return(<div className="jb2-stage">
-    <img src={ATP_JB_IMG.src} alt="" width={ATP_JB_IMG.w} height={ATP_JB_IMG.h} draggable="false"/>
-    <svg viewBox={`0 0 ${ATP_JB_IMG.w} ${ATP_JB_IMG.h}`} className="jb2-svg" role="group" aria-label="Joint by Joint">
-      {ATP_JB_MARKS.map(marker)}
-    </svg>
-    <span className="jb2-cap" style={{left:'25%'}}>{atpT('Front')}</span>
-    <span className="jb2-cap" style={{left:'75%'}}>{atpT('Back')}</span>
-    <span className="jb2-side" style={{left:'3%'}}>{atpT('Right')}</span>
-    <span className="jb2-side" style={{left:'47%',transform:'translateX(-100%)'}}>{atpT('Left')}</span>
-    <span className="jb2-side" style={{left:'53%'}}>{atpT('Left')}</span>
-    <span className="jb2-side" style={{left:'97%',transform:'translateX(-100%)'}}>{atpT('Right')}</span>
-    {children}
-  </div>);
-}
-/* The picker that opens next to a marker: the need, the three levels and a note — once
-   per motion on the thoracic spine. It sits below the marker (above it for the lower
-   half of the picture) and is kept inside the picture at the edges. */
-function AtpJointPop({m,joints,onSet,onNote,onClose}){
-  const[x,y]=m.at;
-  const left=x/ATP_JB_IMG.w*100,top=y/ATP_JB_IMG.h*100;
-  const up=top>55;
-  const need=ATP_JOINT_NEEDS.find(n=>n.id===atpJbRow(m.keys[0]).joint.need);
-  const one=k=>{const r=atpJbRow(k),j=joints[k]||{};return(
-    <div key={k} className="jb2-pop-b">
-      {m.keys.length>1&&<div className="jb2-pop-k">{atpT(r.joint.en)}</div>}
-      <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
-        <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
-          title={L(l.dTr,l.dEn)} onClick={()=>{onSet(k,'level',l.id);if(m.keys.length===1)onClose();}}><i/>{atpT(l.en)}</button>)}</div>
-      <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(k,e.target.value)}
-        placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
-      {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
-    </div>);};
-  return(<div className={`atp-jb-pop jb2-pop${up?' up':''}`} role="dialog" aria-label={atpJbMarkLabel(m)}
-    style={{left:`clamp(118px, ${left}%, calc(100% - 118px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
-    <div className="atp-jb-pop-h">
-      <b>{atpJbMarkLabel(m)}</b>
-      <span className={`atp-jb-tag jb-${need.id}`}><i/>{atpT(need.en)}</span>
-      <button className="atp-x" onClick={onClose} aria-label={L('Kapat','Close')} title={L('Kapat','Close')}>✕</button>
-    </div>
-    {m.keys.map(one)}
-  </div>);
-}
-function AtpJoints({joints,onSet,onNote}){
-  const[sel,setSel]=useState(null);
-  const boxRef=useRef(null);
-  /* A click anywhere outside the figures and the chain, or Escape, closes the picker. */
-  useEffect(()=>{
-    if(!sel)return;
-    const down=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setSel(null);};
-    const key=e=>{if(e.key==='Escape')setSel(null);};
-    document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
-    return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
-  },[sel]);
-  const pick=id=>setSel(k=>k===id?null:id);
-  const rated=ATP_JOINT_ROWS.filter(r=>(joints[r.key]||{}).level);
-  const count=id=>rated.filter(r=>r.joint.need===id).length;
-  const selMark=sel&&ATP_JB_MARKS.find(m=>m.id===sel);
-  const cell=r=>{const j=joints[r.key]||{};const m=atpJbMarkOf(r.key);const on=m&&sel===m.id;
-    return(<button key={r.key} className={`jb2-cell${j.level?` jl-${j.level}`:''}${on?' on':''}`}
-      onClick={e=>{e.stopPropagation();if(m)pick(m.id);}} title={j.note||atpJbLabel(r)}
-      aria-label={`${atpJbLabel(r)}: ${j.level?atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en):'—'}`}>
-      {j.level?<><i/>{atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</>:<span className="jb2-none">—</span>}
-      {j.note&&<em className="jb2-note">{L('not','note')}</em>}
-    </button>);};
-  return(<div className="sc-sec" id="atp-s4">
-    <AtpSecHead n={1} title={<span lang="en">Joint by Joint</span>}
-      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç.',
-        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs.')}>
-      <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
-      <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
-    </AtpSecHead>
-    <div className="sc-sec-b">
-      <div className="jb2" ref={boxRef}>
-        <AtpJbStage joints={joints} sel={sel} onPick={pick}>
-          {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
-        </AtpJbStage>
-        {/* Only the chain table beside the mannequin, sized to sit next to it. */}
-        <div className="jb2-chain">
-          <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
-            <div className="jb2-tr jb2-th" role="row">
-              <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
-              <span role="columnheader">{atpT('Right')}</span><span role="columnheader">{atpT('Left')}</span>
-            </div>
-            {ATP_JOINTS.map(j=>{const rs=ATP_JOINT_ROWS.filter(r=>r.joint.id===j.id);return(
-              <div key={j.id} className={`jb2-tr jb-${j.need}`} role="row">
-                <span className="jb2-jn" role="cell">{atpT(j.en)}</span>
-                <span className="jb2-need" role="cell"><i/>{atpT(j.need==='mobility'?'Mobility':'Stability')}</span>
-                {j.bi?<>{cell(rs[0])}{cell(rs[1])}</>:<span className="jb2-mid" role="cell">{cell(rs[0])}</span>}
-              </div>);})}
-          </div>
-        </div>
-      </div>
     </div>
   </div>);
 }
@@ -526,6 +311,9 @@ function TrainingProfileTab({ath,updAth,exercises}){
   const[refDate,setRefDate]=useState(()=>fmt(today));
   const refOk=/^\d{4}-\d{2}-\d{2}$/.test(refDate||'')?refDate:fmt(today);
   const exp=useMemo(()=>atpExposure(ath,refOk,{libMap}),[ath.days,libMap,refOk]);
+  /* Each window read beside the one of the same length just before it. */
+  const prev=useMemo(()=>{const o={};ATP_EXP_WINDOWS.filter(w=>w.days).forEach(w=>{
+    o[w.id]=atpExposure(ath,fmt(addD(parseD(refOk),-w.days)),{libMap});});return o;},[ath.days,libMap,refOk]);
   /* Clicking the priority that is already on takes it off again. */
   const setQ=(id,field,v)=>{
     const cur={...(tp.qualities[id]||{})};
@@ -543,21 +331,10 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(!confirm(L('Atletik Gelişim Öncelikleri\'ndeki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Development Priorities?')))return;
     save({qualities:{}});
   };
-  /* A joint's level for one need; clicking the level that is on takes it off. A joint
-     left with neither need nor note is dropped from the record. */
-  const setJ=(key,field,v)=>{
-    const cur={...(tp.joints[key]||{})};
-    if(field==='note'?!v:cur[field]===v)delete cur[field];else cur[field]=v;
-    const nx={...tp.joints};
-    if(Object.keys(cur).length)nx[key]=cur;else delete nx[key];
-    save({joints:nx});
-  };
   return(<div className="atp-wrap">
     <AtpTestStrip ath={ath}/>
     <FvSummaryCard ath={ath}/>
-    <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
-    <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
-    <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
+    <AtpExposure exp={exp} prev={prev} refDate={refOk} setRefDate={setRefDate}/>
   </div>);
 }

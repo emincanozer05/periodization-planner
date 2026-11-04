@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    WELLNESS TAB — the morning check-in, the night's sleep and HRV
 
-   Left, the wellness log: the check-in's six answers over two weeks. Right, the night:
-   how long the athlete slept, when they fell asleep and woke, and HRV (RMSSD) read
+   The night: how long the athlete slept, when they fell asleep and woke, and HRV (RMSSD) read
    against the athlete's own reference, with a three-level alert. Under both, the four
    things HRV is read beside: sleeping heart rate, sleep duration, wellness and sRPE load.
+   (The check-in log that sat on the left now lives under the Wellness curve, 428 WvRecords.)
 
    The nights are typed in (Polar Loop gives RMSSD from the first four hours of sleep)
    and kept on `ath.nightLog` — [{id,date,bedTime,wakeTime,hrv,sleepHR}], one row per
@@ -168,113 +168,6 @@ function WlSpark({vals,color,colorOf,avg,five,h,bars,labels}){
         {pres.map((p,k)=><circle key={p.i} cx={X(p.i)} cy={Y(p.v)} r={k===pres.length-1?3.3:2.3} fill={colorOf?colorOf(p.v):color}/>)}</>}
       {labels&&pres.map(p=><text key={'t'+p.i} x={X(p.i)} y={Y(p.v)-6} textAnchor="middle" className="wl-sv" fill={colorOf?colorOf(p.v):'var(--text2)'}>{fmtV(p.v)}</text>)}
     </svg>
-  </div>);
-}
-/* ---- The wellness log: six answers over a two-week window ---- */
-function WellnessLog({ath,updAth}){
-  const[wlEnd,setWlEnd]=useState(()=>{const ds=(ath.wellness||[]).map(w=>w.date).filter(Boolean).sort();return ds.length?ds[ds.length-1]:fmt(today);});
-  const[tableOpen,setTableOpen]=useState(false);
-  const[lim,setLim]=useState(10);
-  const W=ath.wellness||[];
-  const METRICS=[
-    {id:'readiness',label:L('Hazır Oluş','Readiness'),color:'#10b981',unit:'/5',hi:true},
-    {id:'sleep',label:L('Uyku','Sleep'),color:'#3b82f6',unit:'/5',hi:true},
-    // The check-in's questions in the form's order — the same list as the heatmap.
-    {id:'mentalFatigue',label:L('Zihinsel Yorgunluk','Mental Fatigue'),color:'#8b5cf6',unit:'/5',hi:true},
-    {id:'physicalFatigue',label:L('Fiziksel Yorgunluk','Physical Fatigue'),color:'#f97316',unit:'/5',hi:true},
-    {id:'soreness',label:L('Kas Ağrısı','Muscle Soreness'),color:'#f43f5e',unit:'/5',hi:true},
-    {id:'RHR',label:L('İstirahat Nabzı','Resting HR'),color:'#06b6d4',unit:'bpm',hi:false},
-  ];
-  // 1-5 scores in the check-in form's own colours: 1 red … 5 blue.
-  const s5=v=>score5Color(v)||'var(--dim)';
-  const fmtN=(v,five)=>v==null?'—':(five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v)));
-  const start=fmt(addD(parseD(wlEnd),-13));
-  const days=Array.from({length:14},(_,i)=>fmt(addD(parseD(start),i)));
-  const byDay={};W.forEach(w=>{if(w.date&&w.date>=start&&w.date<=wlEnd)byDay[w.date]=w;});
-  const nIn=Object.keys(byDay).length;
-  return(<div className="panel wl2-log">
-    <div className="wl2-h">
-      <div><h2>{L('Wellness Kaydı','Wellness Log')}</h2>
-        <div className="wl2-s">{L(`Sabah check-in · ${fd(start).slice(0,5)} – ${fd(wlEnd).slice(0,5)} · ${nIn} kayıt`,`Morning check-in · ${fd(start).slice(0,5)} – ${fd(wlEnd).slice(0,5)} · ${nIn} entries`)}</div></div>
-      <div className="wl2-nav">
-        <button className="btn sm sec" onClick={()=>setWlEnd(w=>fmt(addD(parseD(w),-7)))} title={L('Önceki hafta','Previous week')}>‹</button>
-        <button className="btn sm sec" onClick={()=>setWlEnd(w=>fmt(addD(parseD(w),7)))} title={L('Sonraki hafta','Next week')}>›</button>
-        <button className="btn sm sec" onClick={()=>{const ds=W.map(x=>x.date).filter(Boolean).sort();setWlEnd(ds.length?ds[ds.length-1]:fmt(today));}}>{L('En son','Latest')}</button>
-        <button className="btn sm sec" onClick={()=>{const w={id:uid(),srcId:null,date:fmt(today),RHR:'',sleep:'',mentalFatigue:'',physicalFatigue:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...W,w]});setTableOpen(true);}}>+ {L('Elle','Manual')}</button>
-      </div>
-    </div>
-    {W.length===0&&<div className="empty-st">{L('Wellness verisi yok — check-in formundan gelir ya da elle eklenir','No wellness data — it comes from the check-in form or is added by hand')}</div>}
-    {W.length>0&&<div className="wl2-rows">
-      {METRICS.map(m=>{
-        const five=m.unit==='/5';
-        const series=days.map(d=>{const w=byDay[d];if(!w)return null;const v=recNum(w[m.id]);return v==null?null:v;});
-        const present=series.filter(v=>v!=null);
-        const latest=present.length?present[present.length-1]:null;
-        const prev=present.length>1?present[present.length-2]:null;
-        const avg=present.length?present.reduce((a,b)=>a+b,0)/present.length:null;
-        const delta=(latest!=null&&prev!=null)?latest-prev:null;
-        const good=delta==null?true:(m.hi?delta>=0:delta<=0);
-        return(<div key={m.id} className="wl2-row" style={{'--mc':m.color}}>
-          <div className="wl2-m">
-            <div className="wl2-ml">{m.label}</div>
-            <div className="wl2-mv"><b style={{color:latest==null?'var(--dim)':(five?s5(latest):'var(--text)')}}>{fmtN(latest,five)}</b><span>{m.unit}</span>
-              {delta!=null&&delta!==0&&<em className={good?'up':'dn'}>{delta>0?'+':''}{fmtN(delta,five)}</em>}</div>
-          </div>
-          <WlSpark vals={series} color={m.color} colorOf={five?s5:null} avg={avg} five={five} labels/>
-          <div className="wl2-avg"><b>{fmtN(avg,five)}</b><span>{L('ort.','avg')} · {present.length}</span></div>
-        </div>);
-      })}
-    </div>}
-    {W.length>0&&<>
-      <div className="row" style={{justifyContent:'space-between',marginTop:12,marginBottom:tableOpen?10:0}}>
-        <strong style={{fontSize:13,color:'var(--text2)'}}>{L('Ayrıntılı kayıtlar','Detailed records')} <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({W.length} {L('satır','rows')})</span></strong>
-        <button className="btn sec sm" onClick={()=>setTableOpen(o=>!o)}>{tableOpen?L('▲ Gizle','▲ Hide'):L('▼ Göster','▼ Show')}</button>
-      </div>
-      {tableOpen&&(()=>{const rev=[...W].reverse();const vis=rev.slice(0,lim);const hasMore=rev.length>lim;
-        return<div style={{overflowX:'auto'}}><table><thead><tr>
-          <th>{L('Tarih','Date')}</th><th>RHR</th><th>{L('Uyku','Sleep')}</th><th>{L('Zihinsel Yorg.','Mental Fat.')}</th><th>{L('Fiziksel Yorg.','Physical Fat.')}</th><th>{L('Kas Ağrısı','Soreness')}</th><th>{L('Hazır Oluş','Readiness')}</th><th style={{width:50}}></th>
-        </tr></thead><tbody>
-          {vis.map((w,idx)=>{const realIdx=W.length-1-idx;
-            /* A value the coach types here is theirs: the field is stamped on the
-               record so the next form sync writes around it instead of over it. */
-            const uw=(k,v)=>{const a=[...W];const cur=a[realIdx];
-              const next={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
-              // The single fatigue number other screens read follows its two halves.
-              if(k==='mentalFatigue'||k==='physicalFatigue')next.fatigue=wellFatigue(next)??'';
-              a[realIdx]=next;
-              updAth(ath.id,{wellness:a});};
-            /* A row written before fatigue was split has one fatigue score and no
-               halves; it shows in both boxes, greyed, until the coach types over it. */
-            const oldFat=recNum(w.mentalFatigue)==null&&recNum(w.physicalFatigue)==null&&recNum(w.fatigue)!=null?String(w.fatigue):undefined;
-            return<tr key={w.id||idx}>
-              <td><input type="date" value={w.date} onChange={e=>uw('date',e.target.value)} style={{width:130}}/><div className="help">{fd(w.date)}</div></td>
-              <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
-              <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw('sleep',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.mentalFatigue??''} placeholder={oldFat} onChange={e=>uw('mentalFatigue',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.physicalFatigue??''} placeholder={oldFat} onChange={e=>uw('physicalFatigue',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw('soreness',e.target.value)} style={{width:55}}/></td>
-              {/* Area of Pain and Source have no column here: both stay on the record —
-                  the pain report and the heatmap read areaOfPain, and srcId decides what
-                  the next sync may overwrite. */}
-              <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
-              {/* Formdan gelen satırın silinmesi kaynağını da mezar taşına yazıyor: gönderim
-                  14 gün `checkins`'te duruyor ve taşı olmayan satırı gelen kutusu geri getirirdi. */}
-              <td><button className="btn xs danger" onClick={()=>{
-                const row=W[realIdx];
-                const src=row&&row.srcId;
-                const upd={wellness:W.filter((_,j)=>j!==realIdx)};
-                if(src)upd.deletedWellnessSrcIds=[...new Set([...(ath.deletedWellnessSrcIds||[]),src])];
-                updAth(ath.id,upd);
-              }}>✕</button></td>
-            </tr>;})}
-        </tbody></table>
-        <div className="row" style={{justifyContent:'center',marginTop:10,gap:6}}>
-          {hasMore&&<button className="btn sm sec" onClick={()=>setLim(n=>n+10)}>{L(`10 tane daha (${rev.length-lim} kaldı)`,`Show 10 more (${rev.length-lim} remaining)`)}</button>}
-          {lim>10&&<button className="btn sm sec" onClick={()=>setLim(10)}>{L('Daralt','Collapse')}</button>}
-          <span style={{fontSize:11,color:'var(--dim)',alignSelf:'center'}}>{L(`${rev.length} kayıttan ${vis.length} tanesi`,`Showing ${vis.length} of ${rev.length}`)}</span>
-        </div></div>;
-      })()}
-    </>}
   </div>);
 }
 /* ---- The HRV chart: daily RMSSD, its 7-day mean, the 28-day reference and the
@@ -458,7 +351,6 @@ function AthWellness({ath,updAth}){
   const M=useMemo(()=>hrvModel(ath),[ath.nightLog,ath.wellness]);
   return(<div className="wl2">
     <div className="wl2-grid">
-      <WellnessLog ath={ath} updAth={updAth}/>
       <AthSleepHrv ath={ath} updAth={updAth} M={M} days={days} setDays={setDays}/>
     </div>
     <div className="hrv-ctx-h">{L('Toparlanma göstergeleri','Recovery indicators')}<span>{L(`HRV ile birlikte okunur · son ${days} gün`,`read with HRV · last ${days} days`)}</span></div>
