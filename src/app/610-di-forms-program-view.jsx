@@ -53,6 +53,24 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
     sent.current=[];
     latest.current={list:nl,phases:np};
   },[plan&&plan.patterns,plan&&plan.phases]);
+  /* Every row follows what the library says its exercise is (Kategori · Tür · Yön) — on opening
+     and the moment the library changes — so an exercise filed once is never filled in again. A
+     row the coach took the category off (`noCat`) is left alone. */
+  const libVer=useLibVersion();
+  useEffect(()=>{
+    const cur=latest.current.list;
+    let changed=false;
+    const next=cur.map(p=>{
+      if(p.noCat||!String(p.exercise||'').trim())return p;
+      const row=diMoveRow(p.id);
+      const a=ptAlignToLib(p.exercise,row?row.k:'',(p.type||[])[0]||'',(p.direction||[])[0]||'');
+      const c=a&&mvCat(a.k);
+      if(!c)return p;
+      changed=true;
+      return{...p,id:c.id,type:a.t?[a.t]:[],direction:a.d?[a.d]:[]};
+    });
+    if(changed)commit(next,latest.current.phases);
+  },[libVer,plan&&plan.patterns]);
   const commit=(l,ph)=>{
     const nl=diMovePatterns(l),np=diMovePhases(ph);
     latest.current={list:nl,phases:np};
@@ -178,13 +196,18 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
     };
     /* A row put under a category keeps the type and direction it has where they are that
        category's, and reads the rest off its exercise's name; '' takes the category off. */
+    /* Taking the category off marks the row (`noCat`): it then stays uncategorised even though
+       the library files its exercise somewhere (a warm-up drill is not main work). The type and
+       direction the library card already names for the chosen category come with it. */
     const recat=(p,nid)=>{
       const c=mvCatById(nid);
-      if(!c)return{...p,id:'',type:[],direction:[]};
+      const{noCat,...q}=p;
+      if(!c)return{...q,id:'',type:[],direction:[],noCat:true};
       const keep=(v,ok)=>ok.includes(v)?v:'';
-      const ty=(p.id===nid&&keep((p.type||[])[0],mvTypes(c.k)))||mvGuessType(c.k,p.exercise);
-      const dr=(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
-      return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
+      const lib=ptLibFiling(p.exercise);const lf=lib&&lib.k===c.k?lib:null;
+      const ty=(lf&&lf.t)||(p.id===nid&&keep((p.type||[])[0],mvTypes(c.k)))||mvGuessType(c.k,p.exercise);
+      const dr=(lf&&lf.d)||(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
+      return{...q,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
     /* A named exercise given a category is filed into the library at once — with its
        Kategori · Tür · Yön, its picture and its link — rather than waiting for the programme's
@@ -193,7 +216,7 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
     const fileCat=p=>{
       const row=diMoveRow(p.id);
       if(row&&String(p.exercise||'').trim())
-        ptFileExercise(p.exercise,{pattern:row.k,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',image:p.image,link:p.link});
+        ptFileExercise(p.exercise,{pattern:row.k,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',image:p.image,link:p.link,force:true});
       return p;
     };
     const handlers={
@@ -241,7 +264,8 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
            different exercise picked over a row takes that exercise's picture, not the old one. */
         patch(k,p=>{const nm=String(it&&it.name||'').slice(0,120);
           const same=String(p.exercise||'').trim().toLowerCase()===nm.trim().toLowerCase();
-          return{...p,exercise:nm,link:(it&&it.link)||p.link||'',image:(it&&it.image)||(same?p.image:'')||''};});
+          const{noCat,...q}=p;   // a new exercise picked: it is filed the way the library has it
+          return{...q,exercise:nm,link:(it&&it.link)||p.link||'',image:(it&&it.image)||(same?p.image:'')||''};});
         withLib(k,it,true);
       },
       /* A name the library has never seen was typed and the box left: if a card by that name
@@ -261,7 +285,10 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       /* The group's category box: every row of the run takes it ('' takes it off, rows stay). */
       onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         setList(latest.current.list.map((p,i)=>run.at.includes(i)?fileCat(recat(p,nid)):p));},
-      onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
+      /* The type set on a row is the exercise's type from now on: the library card takes it. */
+      onType:(k,v)=>patch(k,p=>{const row=diMoveRow(p.id);
+        if(row&&String(p.exercise||'').trim())setExerciseTags(p.exercise,row.k,v||'',(p.direction||[])[0]||'');
+        return{...p,type:v?[v]:[]};}),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
         if(a==null||b==null)return;

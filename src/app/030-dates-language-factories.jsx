@@ -140,8 +140,17 @@ function clubNameNow(){return _clubName;}
    prop-threading: the left pane lists exercises, the right pane the categories they belong
    to, and picking a row copies the library's cover/link onto the program's exercise. */
 let _libItems=[];
-function setLibItems(a){_libItems=Array.isArray(a)?a:[];}
+/* The library's version, and the tables listening to it: a program table re-reads what the
+   library says about its exercises (Kategori · Tür · Yön) the moment the library changes. */
+let _libVer=0;
+const _libSubs=new Set();
+function setLibItems(a){_libItems=Array.isArray(a)?a:[];_libVer++;_libSubs.forEach(f=>{try{f(_libVer);}catch(e){}});}
 function getLibItems(){return _libItems;}
+function useLibVersion(){
+  const[v,setV]=useState(_libVer);
+  useEffect(()=>{_libSubs.add(setV);setV(_libVer);return()=>{_libSubs.delete(setV);};},[]);
+  return v;
+}
 /* Replace a previously auto-added exercise name with the box's latest value, so
    editing/clearing a field doesn't leave the old (or partial) name in the library. */
 let _libReplace=null;
@@ -161,6 +170,21 @@ function registerLibTags(fn){_libTags=fn;}
 function rememberExerciseTags(name,pattern,plane,dir){
   const nm=(name||'').trim();
   if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'',dir||'');
+}
+/* The coach set an exercise's Kategori · Tür on a program row: that IS the exercise's filing
+   now, so the library card takes it — even a card already on a shelf — and every program
+   table showing the exercise follows it (they align to the library). The picker's copy is
+   patched at once as well, so a table re-reading the library before the App has rebuilt it
+   does not put the old filing back for a moment. */
+function setExerciseTags(name,pattern,plane,dir){
+  const nm=(name||'').trim(),pat=String(pattern||'').trim();
+  if(!nm||!pat)return;
+  const lo=nm.toLowerCase();
+  const tag={type:pat,subType:plane||'',dir:dir||'',exPattern:pat,exPlane:plane||''};
+  const i=_libItems.findIndex(it=>(it.name||'').trim().toLowerCase()===lo);
+  setLibItems(i<0?[..._libItems,{name:nm,sub:[],image:'',pic:'',link:'',desc:'',action:'',...tag}]
+    :_libItems.map((it,j)=>j===i?{...it,...tag}:it));
+  if(_libTags)_libTags(nm,pat,plane||'',dir||'',true);
 }
 /* The picture the coach puts on a program row, remembered against the exercise ITSELF
    the same way its pattern / execution are — write the exercise into the next program

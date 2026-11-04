@@ -40,19 +40,22 @@ function App(){
   /* Tagging an exercise's pattern / execution on any program writes the pair onto the
      library entry, so writing that exercise into the next program fills both in. A name
      the library has never seen is added carrying the tags, exactly as typing it would. */
-  registerLibTags((nm,pattern,plane,dir)=>setData(prev=>{
+  registerLibTags((nm,pattern,plane,dir,force)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
     const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
     /* A card not yet on a shelf of the movement taxonomy is filed where the row put it — the
-       library's Kategori · Tür · Yön are the same boxes. A filed card keeps its shelf: the
-       library card is where it is moved. */
-    const file=cur=>(!cur||!MV_KEYS.includes(cur.type))&&MV_KEYS.includes(pattern)
+       library's Kategori · Tür · Yön are the same boxes. A filed card keeps its shelf when a
+       name is merely written under some category; when the coach SETS the category or the type
+       on a row (`force`), the card is moved there: that is the exercise's filing from now on,
+       and it is what every program writing this exercise takes. */
+    const file=cur=>(force||!cur||!MV_KEYS.includes(cur.type))&&MV_KEYS.includes(pattern)
       ?{type:pattern,subType:mvTypes(pattern).includes(plane)?plane:'',dir:mvDirs(pattern).includes(dir)?dir:''}:{};
     if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',exPattern:pattern,exPlane:plane,...file(null)},...exs]};
     const cur=exs[i];
     const f=file(cur);
-    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane&&!f.type)return prev;
+    const same=f.type?cur.type===f.type&&(cur.subType||'')===f.subType&&(cur.dir||'')===f.dir:true;
+    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane&&same)return prev;
     const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane,...f};
     return{...prev,exercises:next};
   }));
