@@ -267,7 +267,9 @@ const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI
    the values they name. */
 const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push'],vertical_push:['upper_push','Vertical Push'],
   horizontal_pull:['upper_pull','Horizontal Pull'],vertical_pull:['upper_pull','Vertical Pull']};
-const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional'};
+const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional',
+  /* Motor Control: Postural Control and Neuromuscular Control became Movement Quality. */
+  'Postural Control':'Movement Quality','Neuromuscular Control':'Movement Quality'};
 /* The table the picker draws: one column per facet kind, the same five for every
    pattern. A pattern's facet sits in the column of its kind (the core's task is its
    type, every side / stance / load-distribution facet is its stance); a pattern with

@@ -1655,9 +1655,15 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       cats.join('|') === 'Knee Dominant|Hip Dominant|Upper Body Push|Upper Body Pull|Core|Carry|Olympic Lift|Plyometric|Medicine Ball|Full Body|Accessory|FMS|Mobility|Motor Control' &&
       A.EX_TYPES.join('|') === cats.join('|') && A.SUB_TYPES['Carry'].values.length === 5 && A.SUB_TYPES['Accessory'].values.length === 13 &&
       A.SUB_TYPES['FMS'].values.length === 13 && A.SUB_TYPES['FMS'].label === 'Pattern' &&
-      A.SUB_TYPES['Mobility'].values.length === 6 && A.SUB_TYPES['Mobility'].label === 'Region' && A.SUB_TYPES['Motor Control'].values.length === 7 &&
+      A.SUB_TYPES['Mobility'].values.length === 6 && A.SUB_TYPES['Mobility'].label === 'Region' && A.SUB_TYPES['Motor Control'].values.length === 6 &&
       A.MV_CATS.find(c => c.k === 'Mobility').tr === 'Mobilite' && A.MV_CATS.find(c => c.k === 'Motor Control').tr === 'Motor Kontrol',
       cats.join('|'));
+    check('Motor Kontrol: Postüral ve Nöromüsküler Kontrol yerine Hareket Kalitesi; eski değerler ona okunuyor',
+      A.MV_CATS.find(c => c.k === 'Motor Control').types.map(t => t[1]).join(',') === 'Nefes,Hareket Kalitesi,Eklem Stabilitesi,Denge,Propriosepsiyon,İniş Mekaniği' &&
+      A.mvNormType('Motor Control', 'Postural Control', 'X') === 'Movement Quality' &&
+      A.mvNormType('Motor Control', 'Neuromuscular Control', 'X') === 'Movement Quality' &&
+      A.mvMigrateLibCard({ name: 'X', type: 'Motor Control', subType: 'Neuromuscular Control' }).subType === 'Movement Quality' &&
+      A.diMovePatterns([{ id: 'motor_control', exercise: 'X', type: ['Postural Control'] }])[0].type[0] === 'Movement Quality');
     check('yön listeleri yalnızca istenen kategorilerde',
       A.MV_CATS.filter(c => c.dirs.length).map(c => c.k).join('|') === 'Knee Dominant|Upper Body Push|Upper Body Pull|Plyometric|Medicine Ball|Full Body' &&
       A.MV_CATS.find(c => c.k === 'Medicine Ball').dirs.map(d => d[1]).join(',') === 'Öne,Geriye,Yukarı,Aşağı,Yana,Rotasyonel,Diyagonal' &&
