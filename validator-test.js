@@ -848,6 +848,17 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify([pull.patterns, press.patterns]));
     const tagged = A.atpClassify(row('Özel Hareket', { pattern: 'Core', plane: 'Anti-Rotation' }), libMap);
     check('satırdaki patern etiketi isimden önce geliyor', has(tagged.patterns, 'Anti-Rotation'), JSON.stringify(tagged));
+    // Patern tablosunun Kategori · Tür · Yön etiketi (185) maruziyette okunuyor.
+    const vp = A.atpClassify(row('DB Press', { pattern: 'Upper Body Push', plane: 'Vertical Push' }), libMap);
+    const pj = A.atpClassify(row('Özel Sıçrama', { pattern: 'Plyometric', plane: 'Jump', dir: 'Lateral' }), libMap);
+    const mb = A.atpClassify(row('Özel Atış', { pattern: 'Medicine Ball', plane: 'Slam' }), libMap);
+    const ol = A.atpClassify(row('Özel Olimpik', { pattern: 'Olympic Lift', plane: 'Clean' }), libMap);
+    check('Kategori · Tür etiketi: dikey itiş, pliometrik yanal sıçrama, med ball atış, olimpik',
+      has(vp.patterns, 'Vertical Push') && vp.family === 'Vertical Press Family' && vp.mvCat === 'Upper Body Push' &&
+      has(pj.patterns, 'Plyometric') && has(pj.stimuli, 'Jumping') && has(pj.stimuli, 'Lateral Movement') && pj.family === 'Jump Family' &&
+      has(mb.stimuli, 'Throwing') && mb.family === 'Med Ball Throw Family' &&
+      ol.family === 'Olympic Lift Family' && has(ol.patterns, 'Full Body'),
+      JSON.stringify([vp.patterns, pj.stimuli, mb.stimuli, ol.family]));
 
     // Maruziyet: takvimden, pencereler referans gününe göre; bugünün seansı sayılmıyor.
     const days = {};

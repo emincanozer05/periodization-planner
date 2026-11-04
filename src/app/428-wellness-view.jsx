@@ -8,8 +8,9 @@
         oluşun 1-5 dağılımı ve son 14 günün takım hazır oluş eğrisi.
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
-        takvimi açılır: ay görünümünde her gün kendi rengiyle, seçilen günün ayrıntısı,
-        ayın metrik eğrileri ve en altta sporcunun Wellness / Uyku / HRV kaydı.
+        takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
+        seçilen günün ayrıntısı, hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
+        kayıtları (check-in + Polar gece nabzı), en altta Uyku / HRV.
    Puanlar check-in formunun kendi renkleriyle boyanır (SCORE5_COLORS: 1 kırmızı … 5 mavi),
    formla ekran hiçbir zaman farklı renk söylemez. Haftalık RHR trendi (RHRMonitor) eski
    ısı haritasının son düğmesiydi; burada kendi paneli olarak duruyor.
@@ -224,59 +225,183 @@ function WvAthCard({a,d,i,onOpen}){
   </button>);
 }
 
-/* ---- Sporcunun takvimi: ay görünümü, gün ayrıntısı, ayın eğrileri ---- */
+/* ---- Sporcunun sayfası: takvim (hafta / ay), gün ayrıntısı, wellness eğrisi + kayıtlar ----
+   Sporcu sayfasının ölçüleri: check-in'in beş puanı ve check-in'deki istirahat nabzının yerine
+   Polar'ın gece nabzı (usePolarNightHR, 429). Takvim ve eğri birbirinden bağımsız olarak bir
+   haftayı (Pzt–Paz) ya da bir ayı gösterir; ‹ › o dönemi kaydırır. Takvim haftayla açılır. */
+const WV_DET_METRICS=()=>[...WV_METRICS().filter(m=>m.five),
+  {id:'nightHR',label:L('Gece Nabzı','Night HR'),short:L('Gece N.','Night HR'),five:false,polar:true}];
+function wvPeriod(mode,anchor){
+  const a=parseD(anchor);
+  if(mode==='week'){const st=sow(a);const days=Array.from({length:7},(_,i)=>fmt(addD(st,i)));return{from:days[0],to:days[6],days};}
+  const l=new Date(a.getFullYear(),a.getMonth()+1,0);
+  const days=Array.from({length:l.getDate()},(_,i)=>fmt(new Date(a.getFullYear(),a.getMonth(),i+1)));
+  return{from:days[0],to:days[days.length-1],days,y:a.getFullYear(),m:a.getMonth()};
+}
+const wvShift=(mode,anchor,d)=>{const a=parseD(anchor);return fmt(mode==='week'?addD(a,7*d):new Date(a.getFullYear(),a.getMonth()+d,1));};
+function wvPeriodLbl(mode,P){
+  if(mode==='month')return`${MN[P.m]} ${P.y}`;
+  const a=parseD(P.from),b=parseD(P.to);
+  return a.getMonth()===b.getMonth()?`${a.getDate()}–${b.getDate()} ${MN[b.getMonth()]} ${b.getFullYear()}`
+    :`${a.getDate()} ${MN[a.getMonth()]} – ${b.getDate()} ${MN[b.getMonth()]} ${b.getFullYear()}`;
+}
+/* Hafta / Ay seçimi ve dönemi kaydıran oklar — takvimde ve eğride aynı parça. */
+function WvPeriodNav({mode,setMode,label,onShift,onToday,showToday}){
+  const wk=mode==='week';
+  return(<div className="wv-pnav">
+    <div className="lb-seg wv-pseg" role="group" aria-label={L('Görünüm','View')}>
+      {[['week',L('Hafta','Week')],['month',L('Ay','Month')]].map(([id,t])=>
+        <button key={id} className={mode===id?'on':''} aria-pressed={mode===id} onClick={()=>setMode(id)}>{t}</button>)}</div>
+    <div className="wv-cal-nav">
+      <button className="btn sm sec" onClick={()=>onShift(-1)} aria-label={wk?L('Önceki hafta','Previous week'):L('Önceki ay','Previous month')}>‹</button>
+      {label&&<span className="wv-plbl">{label}</span>}
+      <button className="btn sm sec" onClick={()=>onShift(1)} aria-label={wk?L('Sonraki hafta','Next week'):L('Sonraki ay','Next month')}>›</button>
+      {showToday&&<button className="btn sm sec" onClick={onToday}>{L('Bugün','Today')}</button>}
+    </div>
+  </div>);
+}
+/* Seçili dönemin kayıtları — eski "Wellness Kaydı"nın tablosu buraya taşındı. Okuma görünümü
+   her günün check-in puanlarını ve Polar gece nabzını yan yana verir; "Düzenle" dönemin
+   check-in satırlarını düzenlenebilir yapar (elle yazılan alan kayda işlenir, sonraki form
+   senkronu üzerine yazmaz), "+ Elle" seçili güne boş bir satır açar. */
+function WvRecords({ath,updAth,P,val,nh,addDate,onAdded}){
+  const[edit,setEdit]=useState(false);
+  const[all,setAll]=useState(false);
+  const W=ath.wellness||[];
+  const MS=WV_DET_METRICS();
+  const tk=fmt(today);
+  const rows=P.days.filter(k=>wvDay(ath,k)||val(k,'nightHR')!=null).reverse();
+  const shown=all?rows:rows.slice(0,10);
+  const recs=W.map((w,i)=>({w,i})).filter(x=>x.w&&x.w.date>=P.from&&x.w.date<=P.to)
+    .sort((a,b)=>String(b.w.date).localeCompare(String(a.w.date))||b.i-a.i);
+  const addManual=()=>{
+    const w={id:uid(),srcId:null,date:addDate||tk,RHR:'',sleep:'',mentalFatigue:'',physicalFatigue:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};
+    updAth(ath.id,{wellness:[...W,w]});setEdit(true);if(onAdded)onAdded(w.date);
+  };
+  /* A value the coach types here is theirs: the field is stamped on the record so the next
+     form sync writes around it instead of over it. */
+  const uw=(i,k,v)=>{const a=[...W];const cur=a[i];
+    const next={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
+    if(k==='mentalFatigue'||k==='physicalFatigue')next.fatigue=wellFatigue(next)??'';
+    a[i]=next;updAth(ath.id,{wellness:a});};
+  /* Formdan gelen satırın silinmesi kaynağını da mezar taşına yazıyor: gönderim 14 gün
+     `checkins`'te duruyor ve taşı olmayan satırı gelen kutusu geri getirirdi. */
+  const del=i=>{const row=W[i];const src=row&&row.srcId;
+    const upd={wellness:W.filter((_,j)=>j!==i)};
+    if(src)upd.deletedWellnessSrcIds=[...new Set([...(ath.deletedWellnessSrcIds||[]),src])];
+    updAth(ath.id,upd);};
+  const cell=(m,v)=><td key={m.id} className="wv-rec-v"><b style={{color:v==null?'var(--dim)':m.five?(score5Color(v)||'var(--text)'):'var(--text)'}}>{wvFmt(v,m.five)}</b></td>;
+  return(<div className="wv-rec">
+    <div className="wv-rec-h">
+      <div><b>{L('Kayıtlar','Records')}</b><span>{L(`${rows.length} gün · sabah check-in ve Polar gece nabzı`,`${rows.length} days · morning check-in and Polar night HR`)}</span></div>
+      <div className="wv-rec-tools">
+        <button className="btn sm sec" onClick={addManual} title={L(`${fd(addDate||tk)} için boş bir check-in satırı`,`An empty check-in row for ${fd(addDate||tk)}`)}>+ {L('Elle','Manual')}</button>
+        <button className={'btn sm'+(edit?'':' sec')} onClick={()=>setEdit(e=>!e)} disabled={!edit&&!recs.length}>{edit?L('Bitti','Done'):L('Düzenle','Edit')}</button>
+      </div>
+    </div>
+    {!edit?(rows.length===0?<div className="wv-rec-none">{L('Bu dönemde kayıt yok.','No records in this period.')}</div>
+    :<div className="wv-rec-w"><table className="wv-rec-t">
+      <thead><tr><th>{L('Gün','Day')}</th>{MS.map(m=><th key={m.id}>{m.short}</th>)}<th>RHR</th><th/></tr></thead>
+      <tbody>{shown.map(k=>{const d=wvDay(ath,k);const dt=parseD(k);
+        return<tr key={k} className={k===addDate?'sel':''}>
+          <td className="wv-rec-d"><b>{DN[(dt.getDay()+6)%7]}</b> {fd(k).slice(0,5)}</td>
+          {MS.map(m=>cell(m,m.id==='nightHR'?val(k,'nightHR'):(d?d[m.id]:null)))}
+          <td className="wv-rec-v"><b style={{color:d&&d.RHR!=null?'var(--text2)':'var(--dim)'}}>{d&&d.RHR!=null?Math.round(d.RHR):'—'}</b></td>
+          <td>{d&&(d.pain||d.note)&&<i className="wv-rec-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}
+            title={d.pain?d.pain.list.map(p=>p.region+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}/>}</td>
+        </tr>;})}</tbody>
+    </table>
+      {rows.length>10&&<button className="wv-rec-more" onClick={()=>setAll(x=>!x)}>{all?L('Daralt','Collapse'):L(`Tümünü göster (${rows.length})`,`Show all (${rows.length})`)}</button>}
+    </div>)
+    :(recs.length===0?<div className="wv-rec-none">{L('Bu dönemde düzenlenecek check-in satırı yok. "+ Elle" ile ekle.','No check-in row to edit in this period. Add one with "+ Manual".')}</div>
+    :<div className="wv-rec-w"><table className="wv-rec-t ed"><thead><tr>
+      <th>{L('Tarih','Date')}</th><th>{L('Hazır Oluş','Readiness')}</th><th>{L('Uyku','Sleep')}</th><th>{L('Zihinsel Yorg.','Mental Fat.')}</th><th>{L('Fiziksel Yorg.','Physical Fat.')}</th><th>{L('Kas Ağrısı','Soreness')}</th><th>RHR</th><th style={{width:44}}/>
+    </tr></thead><tbody>
+      {recs.map(({w,i})=>{
+        /* A row written before fatigue was split has one fatigue score and no halves; it
+           shows in both boxes, greyed, until the coach types over it. */
+        const oldFat=recNum(w.mentalFatigue)==null&&recNum(w.physicalFatigue)==null&&recNum(w.fatigue)!=null?String(w.fatigue):undefined;
+        return<tr key={w.id||i}>
+          <td><input type="date" value={w.date||''} onChange={e=>uw(i,'date',e.target.value)} style={{width:136}}/></td>
+          <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw(i,'readiness',e.target.value)} style={{width:62}}/></td>
+          <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw(i,'sleep',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.mentalFatigue??''} placeholder={oldFat} onChange={e=>uw(i,'mentalFatigue',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.physicalFatigue??''} placeholder={oldFat} onChange={e=>uw(i,'physicalFatigue',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw(i,'soreness',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" value={w.RHR??''} onChange={e=>uw(i,'RHR',e.target.value)} style={{width:60}}/></td>
+          <td><button className="btn xs danger" onClick={()=>del(i)} aria-label={L('Satırı sil','Delete row')}>✕</button></td>
+        </tr>;})}
+    </tbody></table></div>)}
+    {nh&&!nh.off&&nh.err&&<div className="wv-rec-note">{L('Polar gece nabzı alınamadı: ','Polar night HR could not be loaded: ')}{nh.err}</div>}
+  </div>);
+}
 function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
-  const MS=WV_METRICS();
-  const[month,setMonth]=useState(()=>{const d=parseD(dayKey);return{y:d.getFullYear(),m:d.getMonth()};});
+  const MS=WV_DET_METRICS();
+  const tk=fmt(today);
+  const[calMode,setCalMode]=useState('week');
+  const[calAt,setCalAt]=useState(dayKey);
+  const[cvMode,setCvMode]=useState('month');
+  const[cvAt,setCvAt]=useState(dayKey);
   const[metric,setMetric]=useState('readiness');
   const M=MS.find(x=>x.id===metric)||MS[0];
-  const first=new Date(month.y,month.m,1),last=new Date(month.y,month.m+1,0);
-  const gridStart=sow(first);
-  const cells=Array.from({length:Math.ceil(((first.getDay()+6)%7+last.getDate())/7)*7},(_,i)=>addD(gridStart,i));
-  const mDays=Array.from({length:last.getDate()},(_,i)=>fmt(new Date(month.y,month.m,i+1)));
-  const byDay={};mDays.forEach(k=>{byDay[k]=wvDay(ath,k);});
-  const shiftM=d=>setMonth(({y,m})=>{const n=new Date(y,m+d,1);return{y:n.getFullYear(),m:n.getMonth()};});
-  const pastDays=mDays.filter(k=>k<=fmt(today));
-  const nIn=mDays.filter(k=>byDay[k]).length;
-  const comp=pastDays.length?Math.round(nIn/pastDays.length*100):null;
-  const mAvg=id=>wvMean(mDays.map(k=>byDay[k]&&byDay[k][id]));
-  const sel=wvDay(ath,dayKey);
+  const CP=wvPeriod(calMode,calAt),VP=wvPeriod(cvMode,cvAt);
+  const NH=usePolarNightHR(ath,teamId,CP.from<VP.from?CP.from:VP.from,CP.to>VP.to?CP.to:VP.to);
+  const dc={};const dOf=k=>(k in dc)?dc[k]:(dc[k]=wvDay(ath,k));
+  const val=(k,id)=>id==='nightHR'?(NH.by[k]!=null?NH.by[k]:null):(((dOf(k)||{})[id])??null);
+  const avgOf=(days,id)=>wvMean(days.map(k=>val(k,id)));
+  /* Başlık bandı takvimin dönemini okur. */
+  const cIn=CP.days.filter(k=>dOf(k)).length;
+  const cPast=CP.days.filter(k=>k<=tk).length;
+  const comp=cPast?Math.round(cIn/cPast*100):null;
+  const rdyAvg=avgOf(CP.days,'readiness');
+  const sel=dOf(dayKey);
+  const selNhr=val(dayKey,'nightHR');
   const night=(ath.nightLog||[]).find(n=>n&&n.date===dayKey)||null;
   const load=athDayLoad(ath,dayKey);
-  const series=mDays.map(k=>byDay[k]?byDay[k][metric]:null);
-  const rdyAvg=mAvg('readiness');
+  const inCal=k=>k>=CP.from&&k<=CP.to;
+  const cells=calMode==='week'?CP.days.map(parseD):(()=>{const first=parseD(CP.from),n=CP.days.length;const gs=sow(first);
+    return Array.from({length:Math.ceil(((first.getDay()+6)%7+n)/7)*7},(_,i)=>addD(gs,i));})();
+  const series=VP.days.map(k=>val(k,metric));
+  const cvLabels=cvMode==='week'?VP.days.map((k,i)=>`${DN[i]} ${parseD(k).getDate()}`):VP.days.map(k=>String(parseD(k).getDate()));
+  const cvAvg=avgOf(VP.days,metric);
+  const polarMsg=NH.off?L('Polar verisi için koç oturumu gerekiyor.','Polar data needs a coach session.')
+    :NH.err?L('Polar verisi alınamadı.','Polar data could not be loaded.')
+    :!NH.loaded?L('Polar verisi yükleniyor…','Loading Polar data…')
+    :!NH.linked?L('Sporcu Polar\'a bağlı değil.','The athlete is not connected to Polar.'):null;
+  const wkCal=calMode==='week';
   return(<div className="wv-detail">
     <WvHero onBack={onBack} name={ath.name} photo={ath.photo} title={ath.name}
-      sub={[ath.position&&posOf(ath.position),L(`${MN[month.m]} ${month.y} · ${nIn} check-in`,`${MN[month.m]} ${month.y} · ${nIn} check-ins`)].filter(Boolean).join(' · ')}
-      stats={[{v:wvFmt(rdyAvg,true),l:L('ay ort. hazır oluş','month avg readiness'),c:score5Color(rdyAvg)},
+      sub={[ath.position&&posOf(ath.position),`${wvPeriodLbl(calMode,CP)} · ${cIn} check-in`].filter(Boolean).join(' · ')}
+      stats={[{v:wvFmt(rdyAvg,true),l:wkCal?L('hafta ort. hazır oluş','week avg readiness'):L('ay ort. hazır oluş','month avg readiness'),c:score5Color(rdyAvg)},
         {v:comp==null?'—':comp+'%',l:L('katılım','compliance')}]}/>
     <div className="wv-cal-wrap">
-      <div className="panel wv-cal">
-        <div className="wv-ph">
-          <h2>{MN[month.m]} {month.y}</h2>
-          <div className="wv-cal-nav">
-            <button className="btn sm sec" onClick={()=>shiftM(-1)} aria-label={L('Önceki ay','Previous month')}>‹</button>
-            <button className="btn sm sec" onClick={()=>{setMonth({y:today.getFullYear(),m:today.getMonth()});setDayKey(fmt(today));}}>{L('Bugün','Today')}</button>
-            <button className="btn sm sec" onClick={()=>shiftM(1)} aria-label={L('Sonraki ay','Next month')}>›</button>
-          </div>
+      <div className={'panel wv-cal'+(wkCal?' wk':'')}>
+        <div className="wv-ph wv-ph-wrap">
+          <h2>{wvPeriodLbl(calMode,CP)}</h2>
+          <WvPeriodNav mode={calMode} setMode={m=>{setCalMode(m);setCalAt(dayKey);}} label={null}
+            onShift={d=>setCalAt(a=>wvShift(calMode,a,d))} showToday
+            onToday={()=>{setCalAt(tk);setDayKey(tk);}}/>
         </div>
         <div className="lb-seg wv-seg">{MS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.short}</button>)}</div>
-        <div className="wv-cal-grid" key={month.y+'-'+month.m}>
+        <div className={'wv-cal-grid'+(wkCal?' wk':'')} key={calMode+CP.from}>
           {[0,1,2,3,4,5,6].map(i=><div key={'h'+i} className="wv-cal-dn">{DN[i]}</div>)}
-          {cells.map((dt,i)=>{const k=fmt(dt),inM=dt.getMonth()===month.m;const d=inM?byDay[k]:null;
-            const v=d?d[metric]:null;
+          {cells.map((dt,i)=>{const k=fmt(dt),inM=inCal(k);const d=inM?dOf(k):null;
+            const v=inM?val(k,metric):null;
             const bg=v==null?null:(M.five?score5Color(v):null);
-            return<button key={k} className={'wv-cal-d'+(inM?'':' out')+(k===dayKey?' sel':'')+(k===fmt(today)?' today':'')+(d?' has':'')}
+            const others=wkCal&&inM?MS.filter(m=>m.id!==metric).map(m=>({m,v:val(k,m.id)})).filter(x=>x.v!=null):[];
+            return<button key={k} className={'wv-cal-d'+(inM?'':' out')+(k===dayKey?' sel':'')+(k===tk?' today':'')+((d||v!=null)?' has':'')}
               style={{animationDelay:(i*12)+'ms',...(bg?{'--wv-dc':bg}:{})}} onClick={()=>inM&&setDayKey(k)} disabled={!inM}>
               <span className="wv-cal-n">{dt.getDate()}</span>
-              {v!=null&&<span className="wv-cal-v">{wvFmt(v,M.five)}</span>}
-              {d&&<span className="wv-cal-dots">{MS.filter(m=>m.five&&m.id!=='readiness').map(m=><i key={m.id} style={{background:score5Color(d[m.id])||'var(--border2)'}}/>)}</span>}
+              {v!=null&&<span className="wv-cal-v">{wvFmt(v,M.five)}{!M.five&&wkCal?<small> bpm</small>:null}</span>}
+              {!wkCal&&d&&<span className="wv-cal-dots">{MS.filter(m=>m.five&&m.id!=='readiness').map(m=><i key={m.id} style={{background:score5Color(d[m.id])||'var(--border2)'}}/>)}</span>}
+              {others.length>0&&<span className="wv-cal-wk">{others.map(({m,v:x})=><span key={m.id}><em>{m.short}</em>
+                <b style={{color:m.five?(score5Color(x)||'var(--text)'):'var(--text)'}}>{wvFmt(x,m.five)}</b></span>)}</span>}
               {d&&(d.pain||d.note)&&<span className="wv-cal-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}/>}
             </button>;})}
         </div>
         <div className="wv-cal-leg">
           {M.five?SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)
-            :<span className="wv-cal-leg-t">{L('RHR değeri gün kutusunda bpm olarak','Resting HR shown in bpm on each day')}</span>}
+            :<span className="wv-cal-leg-t">{polarMsg||L('Polar gece nabzı gün kutusunda bpm olarak','Polar night HR shown in bpm on each day')}</span>}
           <span><i className="pain"/>{L('ağrı bildirimi','pain report')}</span>
         </div>
       </div>
@@ -288,7 +413,8 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
             <WvRing value={sel.readiness} max={5} color={score5Color(sel.readiness)||'var(--border2)'} size={112} stroke={9}>
               <b style={{color:score5Color(sel.readiness)||'var(--dim)'}}>{wvFmt(sel.readiness,true)}</b><span>{L('hazır oluş','readiness')}</span></WvRing>
             <div className="wv-dayp-side">
-              <div className="wv-dk"><span>RHR</span><b>{sel.RHR!=null?Math.round(sel.RHR):'—'}<small> bpm</small></b></div>
+              <div className="wv-dk"><span>{L('Gece nabzı','Night HR')}</span><b>{selNhr!=null?Math.round(selNhr):'—'}<small> bpm</small></b></div>
+              {sel.RHR!=null&&<div className="wv-dk"><span>RHR</span><b>{Math.round(sel.RHR)}<small> bpm</small></b></div>}
               <div className="wv-dk"><span>{L('sRPE yükü','sRPE load')}</span><b>{load?load:'—'}<small> AU</small></b></div>
               {night&&nightSleepMin(night)!=null&&<div className="wv-dk"><span>{L('Uyku süresi','Sleep time')}</span><b>{fmtSleep(nightSleepMin(night))}</b></div>}
               {night&&recNum(night.hrv)!=null&&<div className="wv-dk"><span>HRV</span><b>{Math.round(recNum(night.hrv))}<small> ms</small></b></div>}
@@ -304,20 +430,31 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
               <b style={{color:PAIN_SEV_COL[p.sev]}}>{PAIN_SEV_LABEL()[p.sev]}</b></div>)}
             {sel.note&&<div className="wv-pnote">“{sel.note}”</div>}
           </div>}
-        </>:<div className="empty-st">{L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
+        </>:<div className="empty-st">{selNhr!=null?L(`Bu gün check-in yok · Polar gece nabzı ${Math.round(selNhr)} bpm.`,`No check-in on this day · Polar night HR ${Math.round(selNhr)} bpm.`)
+          :L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
       </div>
     </div>
     <div className="panel wv-month">
-      <div className="wv-ph"><h2>{L('Ayın Eğrisi','Month Curve')} · {M.label}</h2>
-        <span>{L('ay ortalaması','month avg')} <b style={{color:M.five?(score5Color(mAvg(metric))||'var(--text)'):'var(--text)'}}>{wvFmt(mAvg(metric),M.five)}</b></span></div>
-      <WvArea key={metric+month.y+month.m} vals={series} labels={mDays.map(k=>String(parseD(k).getDate()))} color={M.five?'#3b82f6':'#06b6d4'}
-        lo={M.five?1:null} hi={M.five?5:null} five={M.five} h={190} team={mAvg(metric)}/>
-      <div className="wv-month-avgs">{MS.map((m,i)=>{const v=mAvg(m.id);
-        return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}>
-          <span>{m.label}</span><b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
+      <div className="wv-ph wv-ph-wrap"><h2>{L('Wellness Eğrisi','Wellness Curve')} · {M.label}</h2>
+        <WvPeriodNav mode={cvMode} setMode={m=>{setCvMode(m);setCvAt(dayKey);}} label={wvPeriodLbl(cvMode,VP)}
+          onShift={d=>setCvAt(a=>wvShift(cvMode,a,d))} onToday={()=>setCvAt(tk)} showToday={!(tk>=VP.from&&tk<=VP.to)}/>
+      </div>
+      <div className="wv-month-sub">{cvMode==='week'?L('hafta ortalaması','week avg'):L('ay ortalaması','month avg')}{' '}
+        <b style={{color:M.five?(score5Color(cvAvg)||'var(--text)'):'var(--text)'}}>{wvFmt(cvAvg,M.five)}{!M.five&&cvAvg!=null?' bpm':''}</b>
+        {M.polar&&<em className="wv-polar-tag">Polar</em>}</div>
+      {M.polar&&polarMsg&&!series.some(v=>v!=null)?<div className="wv-area none" style={{height:190}}>{polarMsg}</div>
+        :<WvArea key={metric+cvMode+VP.from} vals={series} labels={cvLabels} color={M.five?'#3b82f6':'#06b6d4'}
+          lo={M.five?1:null} hi={M.five?5:null} five={M.five} h={190} team={cvAvg}/>}
+      <div className="wv-month-avgs">{MS.map((m,i)=>{const v=avgOf(VP.days,m.id);
+        return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}
+          title={m.polar?(polarMsg||L('Polar Loop gece nabzı ortalaması','Polar Loop night HR average')):undefined}>
+          <span>{m.label}{m.polar&&<em className="wv-polar-tag">Polar</em>}</span>
+          <b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
+      <WvRecords ath={ath} updAth={updAth} P={VP} val={val} nh={NH} addDate={dayKey}
+        onAdded={k=>{if(!(k>=VP.from&&k<=VP.to))setCvAt(k);}}/>
     </div>
     <PolarAthleteCharts ath={ath} teamId={teamId}/>
-    <div className="wv-sec-h">{L('Kayıtlar, Uyku ve HRV','Records, Sleep & HRV')}</div>
+    <div className="wv-sec-h">{L('Uyku ve HRV','Sleep & HRV')}</div>
     <AthWellness ath={ath} updAth={updAth}/>
   </div>);
 }

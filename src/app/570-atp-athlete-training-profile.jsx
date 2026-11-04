@@ -499,10 +499,32 @@ const ATP_FAMILY_AXIS={'Split Squat Family':'knee','Lunge Family':'knee','Step-U
   'Trunk Flexion Family':'core','Carry Family':'carry','Olympic Lift Family':'full','Calf / Ankle Family':'ankle'};
 /* The coach's tag on the row (and the library's) names the axis before the name does. */
 const ATP_AXIS_OF={'Knee Dominant':'knee','Hip Dominant':'hip','Upper Body Push':'push','Upper Body Pull':'pull','Core':'core',
-  'Full Body':'full','Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip','Push':'push','Pull':'pull','Core / Brace':'core',
+  'Full Body':'full','Olympic Lift':'full','Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip','Push':'push','Pull':'pull','Core / Brace':'core',
   'Rotation':'core','Carry':'carry'};
 const ATP_AXIS_FAMILY={knee:'Knee Dominant (Other)',hip:'Hip Dominant (Other)',push:'Upper Body Push (Other)',
   pull:'Upper Body Pull (Other)',core:'Core (Other)',full:'Full Body (Other)',carry:'Carry Family',ankle:'Calf / Ankle Family'};
+/* Today's filing (185, Kategori · Tür): the family a category and type name outright. A family
+   read off the name is kept only where it belongs to the tagged category, so a row the coach
+   filed as a push is never counted as a pull because of a word in its name. */
+const ATP_MV_FAMILY={
+  'Knee Dominant':{Squat:'Squat Family','Split Squat':'Split Squat Family',Lunge:'Lunge Family','Step-up':'Step-Up Family','Step-down':'Step-Up Family'},
+  'Hip Dominant':{Deadlift:'Hinge Family',RDL:'Hinge Family','Good Morning':'Hinge Family','Pull-through':'Hinge Family',Swing:'Hinge Family',
+    'Hip Thrust':'Hip Thrust / Bridge Family','Glute Bridge':'Hip Thrust / Bridge Family'},
+  'Upper Body Push':{'Horizontal Push':'Horizontal Press Family','Vertical Push':'Vertical Press Family'},
+  'Upper Body Pull':{'Horizontal Pull':'Horizontal Pull Family','Vertical Pull':'Vertical Pull Family'},
+  'Core':{'Anti-Extension':'Anti-Extension Family','Anti-Rotation':'Anti-Rotation Family','Anti-Lateral Flexion':'Anti-Lateral Flexion Family',
+    'Rotation':'Rotation Family','Flexion':'Trunk Flexion Family'},
+  'Plyometric':{Jump:'Jump Family',Hop:'Hop / Bound Family',Bound:'Hop / Bound Family'},
+};
+const ATP_MV_CAT_FAMILY={'Carry':'Carry Family','Olympic Lift':'Olympic Lift Family','Medicine Ball':'Med Ball Throw Family','Mobility':'Mobility Family'};
+const ATP_MV_FAM_OK={
+  'Knee Dominant':['Split Squat Family','Lunge Family','Step-Up Family','Squat Family'],
+  'Hip Dominant':['Hinge Family','Hip Thrust / Bridge Family','Hamstring Curl Family'],
+  'Upper Body Push':['Vertical Press Family','Horizontal Press Family'],'Upper Body Pull':['Vertical Pull Family','Horizontal Pull Family'],
+  'Core':['Anti-Rotation Family','Anti-Lateral Flexion Family','Anti-Extension Family','Rotation Family','Trunk Flexion Family'],
+  'Plyometric':['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'],
+  'Medicine Ball':['Med Ball Throw Family'],'Olympic Lift':['Olympic Lift Family'],'Carry':['Carry Family'],'Mobility':['Mobility Family'],
+};
 function atpLibMap(exercises){
   const m={};
   (exercises||[]).forEach(e=>{const n=String((e&&e.name)||'').trim().toLowerCase();if(n&&!m[n])m[n]=e;});
@@ -518,14 +540,25 @@ function atpClassify(row,libMap){
   const S=String(row.plane||'').trim()||String(lib.exPlane||'').trim()||String(lib.subType||'').trim();
   const type=String(lib.type||'').trim(),sub=String(lib.subType||'').trim();
   const mp=String(lib.movePattern||'').trim()||(['Unilateral','Lunges','Step-Up'].includes(lib.pattern)?'Lunge / Unilateral':'');
-  const fam0=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
-  const plyo=type==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
+  /* The row's Kategori · Tür · Yön (185) — what the pattern table writes on every row — else
+     the library card's. The coach's own filing is read before anything the name suggests. */
+  const mk=MV_KEYS.includes(tagP)?tagP:mvLibCat(lib);
+  const mt=!mk?'':(mk===tagP?mvNormType(mk,row.plane,row.name):mvLibType(lib,mk));
+  const md=!mk?'':(mk===tagP?(mvDirs(mk).includes(row.dir)?row.dir:''):mvLibDir(lib,mk,mt));
+  const famName=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
+  const famTag=(ATP_MV_FAMILY[mk]||{})[mt]||ATP_MV_CAT_FAMILY[mk]||null;
+  const famOk=ATP_MV_FAM_OK[mk];
+  /* A depth jump or a landing tagged only "Jump" keeps the more specific family its name gives. */
+  const fam0=(famTag&&!(mk==='Plyometric'&&['Depth / Drop Jump Family','Landing Family'].includes(famName)))?famTag
+    :(famName&&(!famOk||famOk.includes(famName)))?famName:null;
+  const plyo=type==='Plyometric'||mk==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
   const run=type==='Multi Directional Speed'||mp==='Sprint / Locomotion'||['Sprint Family','Deceleration Family','COD / Agility Family'].includes(fam0);
-  const throwing=type==='Medicine Ball'||fam0==='Med Ball Throw Family';
-  let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||null;
+  const throwing=type==='Medicine Ball'||mk==='Medicine Ball'||fam0==='Med Ball Throw Family';
+  let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||ATP_AXIS_OF[mk]||(mk==='Accessory'&&(mt==='Calf'||mt==='Tibialis')?'ankle':null);
   if(!axis&&!plyo&&!run&&!throwing)axis=ATP_FAMILY_AXIS[fam0]||null;
   const uni=/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|split|lunge|step[- ]?(up|down)|bulgarian|pistol|skater|rfess|hamle|b[- ]?stance|kickstand|staggered|rear[- ]?foot/.test(n)
-    ||['Unilateral','Lunges','Step-Up'].includes(lib.pattern)||mp==='Lunge / Unilateral';
+    ||['Unilateral','Lunges','Step-Up'].includes(lib.pattern)||mp==='Lunge / Unilateral'
+    ||(mk==='Knee Dominant'&&['Split Squat','Lunge','Step-up','Step-down'].includes(mt));
   /* A jump's knee bend is not a squat set: the strength sub-patterns are only read on
      rows that are not jumps or runs. The axis itself still counts when it was tagged. */
   const lift=!plyo&&!run;
@@ -533,18 +566,20 @@ function atpClassify(row,libMap){
   if(axis==='knee'){pats.add('Knee Dominant');
     if(lift){
       if(uni){pats.add('Unilateral Knee Dominant');
-        if(/lunge|split|hamle|bulgarian|rfess|rear[- ]?foot/.test(n)||lib.pattern==='Lunges')pats.add('Lunge');}
-      else if(fam0==='Squat Family'||mp==='Squat'||/squat|leg press|hack/.test(n))pats.add('Squat');}}
+        if(/lunge|split|hamle|bulgarian|rfess|rear[- ]?foot/.test(n)||lib.pattern==='Lunges'||(mk==='Knee Dominant'&&(mt==='Lunge'||mt==='Split Squat')))pats.add('Lunge');}
+      else if(fam0==='Squat Family'||mp==='Squat'||(mk==='Knee Dominant'&&mt==='Squat')||/squat|leg press|hack/.test(n))pats.add('Squat');}}
   if(axis==='hip'){pats.add('Hip Dominant');
     if(lift){
-      if(fam0==='Hinge Family'||mp==='Hinge'||/deadlift|\brdl\b|romanian|hinge|good ?morning|swing/.test(n))pats.add('Hinge');
+      if(fam0==='Hinge Family'||mp==='Hinge'||(mk==='Hip Dominant'&&['Deadlift','RDL','Good Morning','Pull-through','Swing'].includes(mt))||/deadlift|\brdl\b|romanian|hinge|good ?morning|swing/.test(n))pats.add('Hinge');
       if(uni)pats.add('Unilateral Hip Dominant');}}
   if(axis==='push'||axis==='pull'){
-    const dir=(S==='Vertical'||S==='Horizontal'||S==='Rotational')?S:(/Vertical/.test(fam0||'')?'Vertical':'Horizontal');
+    /* The plane the pattern table names ("Vertical Push"), else the older one-word plane. */
+    const pl=/^(Horizontal|Vertical) (Push|Pull)$/.exec(mt||'');
+    const dir=pl?pl[1]:(S==='Vertical'||S==='Horizontal'||S==='Rotational')?S:(/Vertical/.test(fam0||'')?'Vertical':'Horizontal');
     pats.add(dir==='Rotational'?'Rotation':`${dir} ${axis==='push'?'Push':'Pull'}`);
   }
   if(axis==='core'){
-    const q=CORE_QUALITIES.has(S)?S:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
+    const q=CORE_QUALITIES.has(S)?S:CORE_QUALITIES.has(mt)?mt:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
       'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'})[fam0]
       ||(mp==='Rotation'?'Rotation':'Anti-Extension');
     pats.add(['Flexion','Extension','Lateral Flexion'].includes(q)?'Trunk Flexion / Extension':q);
@@ -554,8 +589,9 @@ function atpClassify(row,libMap){
   if(axis==='ankle'||fam0==='Calf / Ankle Family')pats.add('Ankle / Calf');
   if(plyo)pats.add('Plyometric');
   if(run)pats.add('Sprint / Locomotion');
-  if(type==='Mobility'||mp==='Mobility'||fam0==='Mobility Family'||(type==='Warm-Up'&&/Mobilisation|Dynamic Stretching/.test(sub)))pats.add('Mobility');
-  if(type==='Stability'||type==='Balance'||/balance|denge|stability|stabilite/.test(n))pats.add('Stability / Balance');
+  if(type==='Mobility'||mk==='Mobility'||mp==='Mobility'||fam0==='Mobility Family'||(type==='Warm-Up'&&/Mobilisation|Dynamic Stretching/.test(sub)))pats.add('Mobility');
+  if(type==='Stability'||type==='Balance'||(mk==='Motor Control'&&['Balance','Joint Stability','Proprioception'].includes(mt))
+    ||/balance|denge|stability|stabilite/.test(n))pats.add('Stability / Balance');
 
   const st=new Set();
   const maxV=/flying|max(imal)? velocity|top speed|maks(imum)? hız|wicket|\b(30|35|40|50|60) ?m\b|fly[- ]?in/.test(n);
@@ -566,7 +602,7 @@ function atpClassify(row,libMap){
     if(sub==='Deceleration'||fam0==='Deceleration Family'||/\bstop\b|5-0-5|\b505\b/.test(n))st.add('Deceleration');
     if(['COD','Non-Reactive Agility','Reactive Agility'].includes(sub)||fam0==='COD / Agility Family')st.add('Change of Direction');
   }
-  if((run||plyo)&&(/lateral|shuffle|carioca|skater|side ?step|slide|crossover|yanal/.test(n)||(type==='Plyometric'&&sub==='Lateral')))st.add('Lateral Movement');
+  if((run||plyo)&&(/lateral|shuffle|carioca|skater|side ?step|slide|crossover|yanal/.test(n)||(type==='Plyometric'&&sub==='Lateral')||(mk==='Plyometric'&&md==='Lateral')))st.add('Lateral Movement');
   if(plyo){
     if(fam0==='Jump Family'||fam0==='Depth / Drop Jump Family'||(!fam0&&type==='Plyometric'))st.add('Jumping');
     if(fam0==='Landing Family'||/landing|iniş|\bstick\b/.test(n))st.add('Landing');
@@ -574,6 +610,7 @@ function atpClassify(row,libMap){
     if(fam0==='Depth / Drop Jump Family'||/reactive|reaktif|pogo|rebound|continuous|repeated/.test(n))st.add('Reactive / Depth');
   }
   if(throwing)st.add('Throwing');
+  if(mk==='Motor Control'&&mt==='Landing Mechanics')st.add('Landing');
 
   const ld=new Set();
   const loadTxt=String(row.load||'').toLowerCase();
@@ -595,7 +632,7 @@ function atpClassify(row,libMap){
     ||/speed|velocity|explosive|patlayıcı|dynamic effort/.test(n))ld.add('High-Velocity');
   if(bal)ld.add('Ballistic');
 
-  const family=fam0||ATP_AXIS_FAMILY[axis]||(type?`${type} Family`:'Unclassified');
+  const family=fam0||ATP_AXIS_FAMILY[axis]||((type||mk)?`${type||mk} Family`:'Unclassified');
   /* The four strength attributes, on strength rows only (never a jump, a run or a throw).
      Bilateral or unilateral: a lower-body row is unilateral when the name or the library
      says so; an upper-body row only when the name says single-arm / one-arm / alternating,
@@ -610,7 +647,7 @@ function atpClassify(row,libMap){
      otherwise. */
   const rotCue=S==='Rotational'||/rotational|rotation|rotasyon|transverse|wood ?chop|\bchops?\b|twist|windmill/.test(n)
     ||pats.has('Rotation')||pats.has('Anti-Rotation');
-  const latCue=S==='Lateral Flexion'||/lateral|side ?(lunge|step|squat|plank|bend)|cossack|skater|curtsy|yan ?(hamle|adım)|frontal|copenhagen/.test(n)
+  const latCue=S==='Lateral Flexion'||mt==='Lateral Flexion'||md==='Lateral'||/lateral|side ?(lunge|step|squat|plank|bend)|cossack|skater|curtsy|yan ?(hamle|adım)|frontal|copenhagen/.test(n)
     ||pats.has('Anti-Lateral Flexion');
   const plane=strengthRow?(rotCue?'Transverse':latCue?'Frontal':'Sagittal'):'';
   /* Action: an upper-body push or pull is its axis; a hip or knee row takes the library's
@@ -629,7 +666,7 @@ function atpClassify(row,libMap){
   const pick=(v,list)=>{const s=String(v==null?'':v).trim();return list.includes(s)?s:'';};
   const CORE_FAM_Q={'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
     'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'};
-  const coreQ=axis==='core'?(CORE_QUALITIES.has(S)?S:(CORE_FAM_Q[fam0]||(mp==='Rotation'?'Rotation':''))):'';
+  const coreQ=axis==='core'?(CORE_QUALITIES.has(S)?S:CORE_QUALITIES.has(mt)?mt:(CORE_FAM_Q[fam0]||(mp==='Rotation'?'Rotation':''))):'';
   const cat=ATP_TAXONOMY.some(x=>x.type===type)?type
     :plyo?'Plyometric':run?'Multi Directional Speed':throwing?'Medicine Ball'
     :({knee:'Knee Dominant',hip:'Hip Dominant',push:'Upper Body Push',pull:'Upper Body Pull',core:'Core',full:'Full Body'})[axis]
@@ -646,7 +683,7 @@ function atpClassify(row,libMap){
       ?(knee&&fam0==='Step-Up Family'?'Step-Up':knee&&(fam0==='Lunge Family'||fam0==='Split Squat Family')?'Lunges':uni?'Unilateral':'Bilateral'):''));
     put('Equipment',eqIn('Equipment'));
   }else if(cat==='Upper Body Push'||cat==='Upper Body Pull'){
-    put('Movement',pick(S,V('Movement'))||(/Horizontal/.test(fam0||'')?'Horizontal':/Vertical/.test(fam0||'')?'Vertical':''));
+    put('Movement',pick(S,V('Movement'))||((/^(Horizontal|Vertical) /.exec(mt||'')||[])[1])||(/Horizontal/.test(fam0||'')?'Horizontal':/Vertical/.test(fam0||'')?'Vertical':''));
     put('Equipment',eqIn('Equipment'));
   }else if(cat==='Core'){
     put('Movement',coreQ);
@@ -656,23 +693,23 @@ function atpClassify(row,libMap){
   }else if(cat==='Multi Directional Speed'){
     put('Skill',pick(sub,V('Skill'))||(st.has('Change of Direction')?'COD':st.has('Deceleration')?'Deceleration':st.has('Acceleration')?'Acceleration':''));
   }else if(cat==='Plyometric'){
-    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist/.test(n)?'Rotational'
+    put('Direction',pick(sub,V('Direction'))||(mk==='Plyometric'&&({Vertical:'Vertical',Forward:'Horizontal',Backward:'Horizontal',Lateral:'Lateral','Multi-Directional':'Multi-Directional'})[md])||(/rotational|rotation|twist/.test(n)?'Rotational'
       :/lateral|skater|side ?(hop|jump|bound)|\byan\b/.test(n)?'Lateral'
       :/broad jump|horizontal|bounds?\b|standing long|hurdle hop/.test(n)?'Horizontal'
       :/box jump|vertical|cmj|counter ?movement|squat jump|jump squat|tuck|drop jump|depth jump|pogo|ankle hop/.test(n)?'Vertical':''));
-    const kind=pick(lib.exKind,V('Exercise Type'))||(fam0==='Depth / Drop Jump Family'?'Drop Jump':fam0==='Landing Family'?'Landing'
+    const kind=pick(lib.exKind,V('Exercise Type'))||(mk==='Plyometric'&&['Jump','Hop','Bound'].includes(mt)&&fam0!=='Depth / Drop Jump Family'&&fam0!=='Landing Family'?mt:'')||(fam0==='Depth / Drop Jump Family'?'Drop Jump':fam0==='Landing Family'?'Landing'
       :fam0==='Hop / Bound Family'?(/bound/.test(n)?'Bound':'Hop'):fam0==='Jump Family'?'Jump':'');
     put('Exercise Type',kind);
     put('Technique',pick(lib.technique,V('Technique'))
       ||(/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|skater|alternating/.test(n)?'Unilateral':(kind==='Hop'||kind==='Bound'||!kind)?'':'Bilateral'));
     put('Equipment',exMulti(lib.equipment).find(x=>V('Equipment').includes(x))||eqIn('Equipment')||(equipment==='Bodyweight'?'No Equipment':''));
   }else if(cat==='Medicine Ball'){
-    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
+    put('Direction',pick(sub,V('Direction'))||(mk==='Medicine Ball'&&({Up:'Vertical',Down:'Vertical',Forward:'Horizontal',Backward:'Horizontal',Rotational:'Rotational',Diagonal:'Multi-Directional',Lateral:'Rotational'})[md])||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
       :/overhead|slam|vertical|scoop/.test(n)?'Vertical':/chest pass|horizontal|push pass|wall throw/.test(n)?'Horizontal':''));
-    put('Exercise Type',pick(lib.exKind,V('Exercise Type'))||(/slam/.test(n)?'Slam':/catch/.test(n)?'Catch':/pass/.test(n)?'Pass'
+    put('Exercise Type',pick(lib.exKind,V('Exercise Type'))||(mk==='Medicine Ball'&&mt?(mt==='Slam'?'Slam':mt==='Chest Pass'?'Pass':'Throw'):'')||(/slam/.test(n)?'Slam':/catch/.test(n)?'Catch':/pass/.test(n)?'Pass'
       :/throw|toss|shot ?put|scoop/.test(n)?'Throw':''));
   }else if(cat==='Mobility'){
-    put('Region',pick(sub,V('Region'))||(/ankle|dorsiflexion|calf/.test(n)?'Ankle':/hip|90\/90|pigeon|adductor|groin/.test(n)?'Hip'
+    put('Region',pick(sub,V('Region'))||(mk==='Mobility'?pick(mt,V('Region')):'')||(/ankle|dorsiflexion|calf/.test(n)?'Ankle':/hip|90\/90|pigeon|adductor|groin/.test(n)?'Hip'
       :/thoracic|spine|t-spine|cat[- ]?cow|open book|thread the needle/.test(n)?'Spine':/shoulder|scap|wall slide/.test(n)?'Shoulder':/wrist|forearm/.test(n)?'Wrist':''));
     put('Position',pick(lib.position,V('Position')));
   }else if(cat==='Warm-Up'||cat==='Balance'){
@@ -683,7 +720,7 @@ function atpClassify(row,libMap){
     put('Type',pick(sub,V('Type')));
     put('Region',pick(lib.bodyRegion,V('Region')));
   }
-  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets};
+  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets,mvCat:mk,mvType:mt};
 }
 /* Every session on the athlete's calendar up to `to` that has at least one exercise
    row, oldest first; sessions of one day in the order they were run. A block or row the
@@ -714,7 +751,7 @@ function atpExposure(ath,end,opts){
   if(last&&!use.includes(last))use.push(last);
   const W=['last','d7','d14','d28'];
   const sessions={d7:0,d14:0,d28:0},rows={last:0,d7:0,d14:0,d28:0};
-  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},plane:{},action:{},focus:{},equipment:{},category:{},facet:{}};
+  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},plane:{},action:{},focus:{},equipment:{},category:{},facet:{},mvcat:{}};
   const bump=(layer,key,label,wins,sets,sess,date)=>{
     const t=layers[layer][key]||(layers[layer][key]={key,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
     wins.forEach(w=>{t.sets[w]+=sets;});
@@ -732,7 +769,9 @@ function atpExposure(ath,end,opts){
       const t=bump('exercise',diExName(name)||name.toLowerCase(),name,wins,sets,s.key,s.date);
       t.family=c.family;
       ['patterns','stimuli','loading'].forEach(k=>{t[k]=[...new Set([...(t[k]||[]),...c[k]])];});
-      ['laterality','plane','action','focus','equipment'].forEach(k=>{if(c[k])t[k]=c[k];});
+      ['laterality','plane','action','focus','equipment','mvCat','mvType'].forEach(k=>{if(c[k])t[k]=c[k];});
+      /* The pattern table's own category (Kategori), the coach's vocabulary on screen. */
+      bump('mvcat',c.mvCat||'',c.mvCat||'',wins,sets,s.key,s.date);
       bump('family',c.family,c.family,wins,sets,s.key,s.date);
       ['laterality','plane','action','focus','equipment'].forEach(k=>{
         if(c[k])bump(k,c[k],c[k],wins,sets,s.key,s.date);});
@@ -784,7 +823,9 @@ function atpExposure(ath,end,opts){
       return{type:tx.type,cat:fin(cat,'group'),facets};
     }).filter(Boolean),
     coverageMissing:ATP_TAXONOMY.filter(tx=>!layers.category[tx.type]).map(tx=>tx.type),
-    equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets)};
+    equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets),
+    /* Sets per Kategori (185) — '' holds the rows filed under none. */
+    categories:Object.values(layers.mvcat).map(t=>fin(t,'group')).sort(bySets)};
 }
 /* The profile as the individualization JSON carries it. The day being programmed is
    not exposure yet, so the window ends the day before it — the same rule the daily
@@ -802,7 +843,6 @@ function atpSnapshot(ath,ref,libMap,setup){
   const ordered=rated.map((x,i)=>({...x,i})).sort((a,b)=>(rank(a)-rank(b))||(a.i-b.i));
   const byPri=id=>rated.filter(x=>x.r.priority===id).map(x=>x.it.en);
   const unrated=ATP_QUALITIES.filter(it=>!tp.qualities[it.id]).map(it=>it.en);
-  const con=list=>list.map(c=>({constraint:atpConLabel(c),category:atpCatLabel(atpConCat(c))||null,value:c.value,note:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
   /* Every record is one name with its sets over the last 7 and 28 days — the two
@@ -824,40 +864,15 @@ function atpSnapshot(ath,ref,libMap,setup){
     (ATP_EQ_ID[v]?eqIds.has(ATP_EQ_ID[v]):(eqIds.has(EQ_CUSTOM+diExName(v))||eqNames.has(diExName(v))));
   const gapOf=f=>f.label==='Equipment'?(t=>inGym(t.label)):(()=>true);
   const cut=ATP_EXP_CUT;
-  /* Joints with a rated need, the strongest first, head to foot within one level. A
-     note alone is not a need and is not sent. */
-  const jRows=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:tp.joints[r.key]||{}})).filter(x=>x.j.level)
-    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
-  const jointNeeds=jRows.length?{
-    description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
-      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine (rated separately for extension and for rotation), neck, shoulder, wrist — need mobility. '+
-      'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
-      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
-      'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',
-    level_scale:Object.fromEntries(ATP_JOINT_LEVELS.map(l=>[l.en,l.dEn])),
-    use:'Joint-by-Joint priority: write the programme red zones first — every High (red) joint is addressed before any Medium or Low joint, '+
-      'in priority_order, and none of the Medium / Low work may crowd a High joint out of the session. '+
-      'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
-      'every High need gets targeted work in the session, Medium needs regular work in the preparation block, Low needs a short maintenance dose. '+
-      'Mobility need: give the joint its range (mobilisation, dynamic stretching, end-range control) before it is loaded. '+
-      'Stability need: train the joint for control (isometrics, anti-movement, balance, slow eccentrics) — no mobilisation for more range, '+
-      'and do not load it at an end range it cannot control. A joint need is not a diagnosis: pain is for the medical staff.',
-    /* Red (High) first: the order the programme is to be written in. */
-    priority_order:jRows.map((x,i)=>({rank:i+1,joint:atpJointName(x.r),level:en(ATP_JOINT_LEVELS,x.j.level),zone:atpJointZone(x.j.level)})),
-    joints:jRows.map(({r,j})=>({joint:atpJointName(r),...(r.side?{side:r.side}:{}),
-      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),zone:atpJointZone(j.level),
-      ...(j.note&&j.note.trim()?{note:j.note.trim()}:{})})),
-    /* The same, by need and level, the names alone; an empty level or need is left out. */
-    by_need:Object.fromEntries(ATP_JOINT_NEEDS.map(n=>[n.id,Object.fromEntries([...ATP_JOINT_LEVELS].reverse()
-      .map(l=>[l.id,jRows.filter(x=>x.r.joint.need===n.id&&x.j.level===l.id).map(x=>atpJointName(x.r))]).filter(([,v])=>v.length))])
-      .filter(([,v])=>Object.keys(v).length)),
-  }:null;
-  const filled=rated.length+tp.constraints.hard.length+tp.constraints.soft.length+jRows.length>0;
+  /* Joint by Joint and Constraints are no longer on the profile tab, so what an older
+     profile saved under them is not sent either: the JSON only carries what the coach can
+     see and change. */
+  const filled=rated.length>0;
   /* With no S&C session on the calendar in 28 days every list below would only say
      "none" at length, so the block is cut to the count and the scope that explains it. */
   const anyEx=ex.sessions.d28>0;
   return{filled,out:{
-    definition:'The athlete\'s training profile. athletic_profile, constraints and joint_needs are entered by the coach; '+
+    definition:'The athlete\'s training profile. athletic_profile is entered by the coach; '+
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
     last_updated:tp.updated,
     athletic_profile:rated.length?{
@@ -868,13 +883,6 @@ function atpSnapshot(ath,ref,libMap,setup){
       ...(unrated.length?{not_rated:unrated}:{}),
       qualities:ordered.map(({it,r})=>({quality:it.en,group:it.group,priority:en(ATP_PRIORITY,r.priority)})),
     }:null,
-    /* No constraint entered, no block: a description with nothing under it reads as
-       data that is missing rather than as "none". */
-    constraints:(tp.constraints.hard.length||tp.constraints.soft.length)?{
-      description:'hard: constraints that must be respected without exception · soft: not strict prohibitions, but preferences or situations to limit',
-      hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
-    /* No joint rated, no block: the key is left out rather than sent as null. */
-    ...(jointNeeds?{joint_needs:jointNeeds}:{}),
     exercise_exposure:!anyEx?{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,

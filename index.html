@@ -8415,6 +8415,41 @@ main .panel,main .ap-head{animation:none}
 .pl-err{margin-top:10px;font-size:13px;color:var(--high-t)}
 .pl-note{margin-top:10px;font-size:13px;color:var(--low-t)}
 .pl-help{margin-top:12px;font-size:12px;line-height:1.5;color:var(--dim)}
+
+/* ---- Egzersiz Maruziyeti v2: referans günü adımları, önceki döneme göre değişim, kategori
+   dağılım şeridi (Kategori · Tür, 185; tıklanınca egzersiz listesini süzer), egzersiz araması ---- */
+.atp-ref-step,.atp-ref-today{height:34px;min-width:34px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--elevated);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,color .15s}
+.atp-ref-step:hover,.atp-ref-today:hover{background:var(--hover);color:var(--text)}
+.atp-ref-today{font-size:12px;color:var(--accent)}
+.atp-xd{display:inline-flex;align-items:baseline;gap:4px;font-weight:700;color:var(--muted)}
+.atp-xd.up{color:var(--low-t)}.atp-xd.dn{color:var(--high-t)}
+.atp-xd small{font-weight:500;color:var(--dim)}
+.atp-xcat{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--elevated)}
+.atp-xcat-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.atp-xcat-h b{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text)}
+.atp-xcat-h span{font-size:11px;color:var(--dim)}
+.atp-xcat-clr{border:0;background:none;padding:0;color:var(--accent);font-size:11.5px;font-weight:700;cursor:pointer}
+.atp-xcat-bar{display:flex;gap:2px;height:14px;border-radius:4px;overflow:hidden}
+.atp-xcat-bar button{flex-basis:0;min-width:6px;height:100%;padding:0;border:0;cursor:pointer;transition:opacity .18s,filter .18s}
+.atp-xcat-bar button:hover{filter:brightness(1.15)}
+.atp-xcat-bar button.dim,.atp-xcat-leg button.dim{opacity:.32}
+.atp-xcat-leg{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.atp-xcat-leg button{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--border);border-radius:999px;
+  background:var(--panel);color:var(--text2);font-size:11.5px;cursor:pointer;transition:border-color .15s,opacity .18s}
+.atp-xcat-leg button:hover{border-color:var(--border2)}
+.atp-xcat-leg button.on{border-color:var(--accent);color:var(--text)}
+.atp-xcat-leg i{width:8px;height:8px;border-radius:50%;flex:none}
+.atp-xcat-leg b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text)}
+.atp-xcat-leg em{font-style:normal;font-size:10.5px;color:var(--dim)}
+.atp-xleg-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+.atp-xleg-row .k{font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.atp-xleg-row span{display:inline-flex;align-items:center;gap:6px}
+.atp-xsearch{flex:1 1 120px;max-width:200px;min-width:0;height:28px;padding:0 10px;font-size:12px;border-radius:var(--r-sm)}
+.atp-xf{display:inline-flex;align-items:center;gap:5px;margin-left:8px;font-size:10.5px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--text2)}
+.atp-xf i,.atp-ex-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
+.atp-ex-dot{margin-right:7px;vertical-align:1px}
+@media (prefers-reduced-motion:reduce){.atp-xcat-bar button,.atp-xcat-leg button{transition:none}}
 /* ---- The pattern table ---------------------------------------------------
    "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
    grid. Used by the calendar's block editor and by the individualization brief (PlanTable).
@@ -8815,7 +8850,7 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .wv,.wv-detail{display:flex;flex-direction:column;gap:18px}
 
 /* ═════ Başlık bandı ═════ */
-.wv-hero{position:relative;overflow:hidden;border-radius:var(--r-md);min-height:196px;color:#eef6f5;
+.wv-hero{position:relative;overflow:hidden;border-radius:var(--r-md);min-height:0;color:#eef6f5;
   background:#070d17;isolation:isolate;box-shadow:0 18px 40px -22px rgba(4,12,24,.75);animation:wvFade .6s var(--ease-out,ease) both}
 .wv-hero-bg{position:absolute;inset:0;z-index:-1;overflow:hidden}
 /* Sade zemin: iki yumuşak ışık çok yavaş yer değiştirir, sağda ince bir nokta deseni
@@ -8827,12 +8862,12 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
   animation:wvDrift2 30s ease-in-out infinite alternate}
 .wv-dots{position:absolute;inset:0;opacity:.7;background-image:none;background-size:18px 18px;
   animation:wvDots 40s linear infinite}
-.wv-hero-in{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:flex-end;gap:18px 24px;flex-wrap:wrap;padding:24px 26px 30px;min-height:196px}
+.wv-hero-in{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:flex-end;gap:18px 24px;flex-wrap:wrap;padding:16px 22px;min-height:0;align-items:center}
 .wv-hero-l{display:flex;flex-direction:column;gap:12px;min-width:0}
 .wv-hero-id{display:flex;align-items:center;gap:16px;min-width:0}
 .wv-hero-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#5eead4;
   animation:wvUp .6s var(--ease-out,ease) .05s both}
-.wv-hero-t{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:#fff;margin-top:4px;animation:wvUp .6s var(--ease-out,ease) .12s both}
+.wv-hero-t{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:#fff;margin-top:4px;animation:wvUp .6s var(--ease-out,ease) .12s both}
 .wv-hero-s{font-size:13px;color:rgba(226,240,240,.78);margin-top:6px;animation:wvUp .6s var(--ease-out,ease) .2s both}
 .wv-hero-av{width:74px;height:74px;border-radius:50%;flex:none;overflow:hidden;display:grid;place-items:center;background:#0f1d2a;
   box-shadow:0 0 0 3px rgba(94,234,212,.75),0 0 28px rgba(94,234,212,.45);animation:wvPop .7s var(--ease-out,ease) both}
@@ -9029,7 +9064,7 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 
 @media(max-width:1100px){.wv-team,.wv-cal-wrap{grid-template-columns:minmax(0,1fr)}.wv-month-avgs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){
-  .wv-hero-in{padding:18px 16px 26px}.wv-hero-t{font-size:24px}.wv-hero-r{justify-content:flex-start;width:100%}
+  .wv-hero-in{padding:14px 16px}.wv-hero-t{font-size:22px}.wv-hero-r{justify-content:flex-start;width:100%}
   .wv-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .wv-cal-grid{gap:4px}.wv-cal-d{min-height:44px;border-radius:var(--r-sm)}.wv-cal-v{font-size:13px}.wv-cal-dots i{width:4px;height:4px}
   .wv-db{grid-template-columns:96px 1fr 26px}.wv-month-avgs{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -9097,6 +9132,48 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .pw-ts{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .pw-leg{margin-left:auto;font-style:normal;font-size:11px;color:var(--dim)}
 .pw-cv{height:170px}
+
+/* ---- Sporcu sayfası v2: hafta / ay seçimi, haftalık takvim, eğri dönemi, kayıtlar ---- */
+.wv-ph.wv-ph-wrap{align-items:center}
+.wv-pnav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wv-pseg{margin:0}
+.wv-plbl{display:inline-flex;align-items:center;min-width:120px;justify-content:center;padding:0 4px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:11.5px;font-weight:600;color:var(--text2);white-space:nowrap}
+.wv-cal-grid.wk{gap:8px}
+.wv-cal-grid.wk .wv-cal-d{aspect-ratio:auto;min-height:150px;justify-content:flex-start;padding:24px 6px 8px}
+.wv-cal-grid.wk .wv-cal-v{font-size:22px;margin-top:4px}
+.wv-cal-grid.wk .wv-cal-v small{font-size:10px;font-weight:500;color:var(--dim)}
+.wv-cal-wk{display:flex;flex-direction:column;gap:2px;width:100%;margin-top:6px;padding-top:6px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.wv-cal-wk span{display:flex;justify-content:space-between;gap:4px;font-size:10px;line-height:1.35}
+.wv-cal-wk em{font-style:normal;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wv-cal-wk b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
+.wv-month-sub{margin:-6px 0 10px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+.wv-month-sub b{font-size:13px;margin-left:4px}
+.wv-polar-tag{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;border:1px solid var(--border2);font-style:normal;
+  font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);vertical-align:1px}
+.wv-rec{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.wv-rec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.wv-rec-h b{font-size:13px;color:var(--text)}
+.wv-rec-h span{margin-left:8px;font-size:11px;color:var(--dim)}
+.wv-rec-tools{display:flex;gap:6px}
+.wv-rec-w{overflow-x:auto}
+.wv-rec-t{width:100%;border-collapse:collapse}
+.wv-rec-t th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:600;text-align:center;padding:6px 8px;white-space:nowrap}
+.wv-rec-t th:first-child{text-align:left}
+.wv-rec-t td{padding:6px 8px;border-top:1px solid var(--border);text-align:center;white-space:nowrap}
+.wv-rec-t tr.sel td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.wv-rec-d{text-align:left!important;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;color:var(--muted)}
+.wv-rec-d b{color:var(--text2);margin-right:4px}
+.wv-rec-v b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700}
+.wv-rec-pain{display:inline-block;width:9px;height:9px;border-radius:50%}
+.wv-rec-t.ed td{text-align:left}
+.wv-rec-none{padding:14px;font-size:12px;color:var(--dim);border:1px dashed var(--border2);border-radius:var(--r-sm);text-align:center}
+.wv-rec-more{display:block;width:100%;margin-top:6px;padding:8px;border:0;border-top:1px solid var(--border);background:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer}
+.wv-rec-note{margin-top:8px;font-size:11.5px;color:var(--high-t)}
+@media(max-width:700px){
+  .wv-cal-grid.wk{gap:4px}.wv-cal-grid.wk .wv-cal-d{min-height:96px;padding:20px 3px 6px}.wv-cal-grid.wk .wv-cal-v{font-size:15px}
+  .wv-cal-wk{display:none}.wv-plbl{min-width:0}
+}
 /* ═══════════════════════════════════════════════════════════════════════════
    JOINT BY JOINT · TEST VE DEĞERLENDİRME · YÜK TAKİBİ — yumuşak geçişler
 
@@ -31787,10 +31864,11 @@ function ProfileTab({ath,updAth,setup}){
   </div>);
 }
 /* ═══ ATHLETE PROFILE (Athlete Training Profile) — the tab beside Profile ═══
-   Four sections on the same cards the scouting sheet uses, Joint by Joint first. It,
-   the Athletic Profile and the Constraints are the coach's and are written straight onto
-   `ath.trainingProfile`; Exercise Exposure is drawn from the calendar and cannot be
-   edited, only read. Nothing here selects an exercise
+   The latest tests, the F-V summary and two sections on the same cards the scouting sheet
+   uses: the Athletic Development Priorities, the coach's, written straight onto
+   `ath.trainingProfile`; and Exercise Exposure, drawn from the calendar and never edited,
+   only read. (Joint by Joint and Constraints were taken off the tab; a profile saved with
+   them keeps them on the record, unread.) Nothing here selects an exercise
    or builds a session — the profile reaches programming through the individualization
    JSON (atpSnapshot), as context.
 
@@ -31850,7 +31928,7 @@ function AtpProfile({q,onSet,onClear}){
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
-    <AtpSecHead n={2} title={atpT('Athletic Development Priorities')}
+    <AtpSecHead n={1} title={atpT('Athletic Development Priorities')}
       desc={L(`Her fiziksel kalite için bu dönemde ne kadar geliştirileceği. Test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir; öncelik verilmeyen kalite korunur.`,
         `How much this period develops every physical quality. Set from test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities; a quality left unrated is maintained.`)}>
       {ATP_PRIORITY.map(p=><span key={p.id} className={`atp-hc pr-${p.id}`}><i/>{atpT(p.en)}<b>{byPri(p.id).length}{p.id==='high'?`/${ATP_HIGH_MAX}`:''}</b></span>)}
@@ -31876,106 +31954,6 @@ function AtpProfile({q,onSet,onClear}){
     </div>
   </div>);
 }
-/* A constraint as the coach reads it: a catalogue entry in the app language, one the
-   coach typed exactly as it was typed. */
-const atpConShow=c=>atpConDef(c&&c.id)?atpT(atpConLabel(c)):atpConLabel(c);
-function AtpConPanel({kind,list,other,onList}){
-  const[open,setOpen]=useState(false);
-  const[cat,setCat]=useState('suggest');
-  const[custom,setCustom]=useState('');
-  const[customCat,setCustomCat]=useState('load');
-  const[msg,setMsg]=useState('');
-  const hard=kind==='hard';
-  const mine=new Set(list.map(c=>c.id)),theirs=new Set(other.map(c=>c.id));
-  const otherName=atpT(hard?'Soft':'Hard');
-  const add=id=>{if(!mine.has(id)&&!theirs.has(id))onList([...list,{id}]);};
-  const remove=id=>onList(list.filter(c=>c.id!==id));
-  const patch=(id,p)=>onList(list.map(c=>c.id===id?{...c,...p}:c));
-  const low=x=>String(x||'').trim().toLocaleLowerCase(REPORT_LANG==='tr'?'tr-TR':'en-US');
-  /* A typed constraint that names a catalogue entry IS that entry — in either language —
-     so the same rule can never sit on the list twice, or on both lists, just because it
-     was typed. */
-  const addCustom=()=>{
-    const t=custom.trim();if(!t)return;
-    const hit=ATP_CONSTRAINTS.find(c=>low(c.en)===low(t)||low(atpT(c.en))===low(t));
-    if(hit){
-      if(theirs.has(hit.id)){setMsg(L(`"${atpT(hit.en)}" zaten ${otherName} listesinde.`,`"${hit.en}" is already on the ${otherName} list.`));return;}
-      if(!atpConFits(hit,kind)){setMsg(L(`"${atpT(hit.en)}" yalnızca ${otherName} olabilir.`,`"${hit.en}" can only be ${otherName}.`));return;}
-      add(hit.id);
-    }else{
-      if([...list,...other].some(c=>low(atpConLabel(c))===low(t)||low(atpConShow(c))===low(t))){setMsg(L('Bu kısıt zaten ekli.','That constraint is already there.'));return;}
-      onList([...list,{id:'c_'+uid(),label:t,cat:customCat}]);
-    }
-    setCustom('');setMsg('');
-  };
-  const opts=(cat==='suggest'?ATP_CON_SUGGEST[kind].map(atpConDef):ATP_CONSTRAINTS.filter(c=>c.cat===cat)).filter(Boolean);
-  return(<div className={`atp-con ${kind}`}>
-    <div className="atp-con-h">
-      <span className="atp-con-badge">{atpT(hard?'Hard':'Soft')}</span>
-      <div className="atp-con-tx">
-        <div className="atp-con-t">{atpT(hard?'Hard Constraints':'Soft Constraints')}</div>
-        <div className="atp-con-d">{hard?L('Kesin olarak uyulması gereken kısıtlamalar.','Rules that must be followed, without exception.')
-          :L('Kesin yasak olmayan; tercih edilen veya sınırlandırılması gereken durumlar.','Not prohibitions — preferences, or things to keep limited.')}</div>
-      </div>
-      <span className="atp-con-n">{list.length}</span>
-    </div>
-    <div className="atp-con-list">
-      {list.length===0&&<div className="atp-con-none">{hard?L('Kesin kısıt yok.','No hard constraints.'):L('Esnek kısıt yok.','No soft constraints.')}</div>}
-      {list.map(c=>{const d=atpConDef(c.id);const withVal=!!(d&&d.ph);return(
-        <div key={c.id} className="atp-con-row">
-          <div className="atp-con-top">
-            {atpCatLabel(atpConCat(c))?<span className="atp-con-cat">{atpT(atpCatLabel(atpConCat(c)))}</span>
-              :<span className="atp-con-cat">{L('Diğer','Other')}</span>}
-            <span className="atp-con-l" title={d&&REPORT_LANG==='tr'?d.en:undefined}>{atpConShow(c)}</span>
-            <button className="atp-x" onClick={()=>remove(c.id)} title={L('Kısıtı kaldır','Remove constraint')} aria-label={L('Kısıtı kaldır','Remove constraint')}>✕</button>
-          </div>
-          <div className={`atp-con-in${withVal?' two':''}`}>
-            {withVal&&<input value={c.value||''} onChange={e=>patch(c.id,{value:e.target.value})} placeholder={L(d.ph[0],d.ph[1])}
-              aria-label={L('Değer','Value')}/>}
-            <input value={c.note||''} onChange={e=>patch(c.id,{note:e.target.value})}
-              placeholder={L('Not — bölge, süre, gerekçe…','Note — region, duration, reason…')} aria-label={L('Not','Note')}/>
-          </div>
-        </div>);})}
-    </div>
-    <button className="atp-con-add" onClick={()=>{setOpen(o=>!o);setMsg('');}}>{open?L('Kapat','Close'):L('+ Kısıt ekle','+ Add constraint')}</button>
-    {open&&<div className="atp-pick">
-      <div className="atp-pick-tabs">
-        <button className={cat==='suggest'?'on':''} onClick={()=>setCat('suggest')}>{L('Önerilen','Suggested')}</button>
-        {ATP_CON_CATS.map(k=><button key={k.id} className={cat===k.id?'on':''} onClick={()=>setCat(k.id)}>{atpT(k.en)}</button>)}
-      </div>
-      <div className="atp-pick-list">{opts.map(d=>{
-        const on=mine.has(d.id),elsewhere=theirs.has(d.id),fits=atpConFits(d,kind);
-        const why=elsewhere?L(`${otherName} listesinde — bir kısıt iki listede birden olamaz.`,`On the ${otherName} list — a constraint cannot be on both.`)
-          :!fits?L(`Bu kısıt yalnızca ${otherName} olabilir.`,`This constraint can only be ${otherName}.`):undefined;
-        return<button key={d.id} className={`atp-opt${on?' on':''}`} disabled={!on&&(elsewhere||!fits)} title={why}
-          onClick={()=>on?remove(d.id):add(d.id)}>{on?'✓':'+'} {atpT(d.en)}{elsewhere&&<i>{otherName}</i>}</button>;})}</div>
-      <div className="atp-pick-custom">
-        <select value={customCat} onChange={e=>setCustomCat(e.target.value)} aria-label={L('Kategori','Category')}>
-          {ATP_CON_CATS.map(k=><option key={k.id} value={k.id}>{atpT(k.en)}</option>)}</select>
-        <input value={custom} onChange={e=>{setCustom(e.target.value);setMsg('');}} onKeyDown={e=>{if(e.key==='Enter')addCustom();}}
-          placeholder={L('Özel kısıt yaz…','Write a custom constraint…')}/>
-        <button onClick={addCustom} disabled={!custom.trim()}>{L('Ekle','Add')}</button>
-      </div>
-      {msg&&<div className="atp-pick-msg">{msg}</div>}
-    </div>}
-  </div>);
-}
-function AtpConstraints({con,onChange}){
-  return(<div className="sc-sec" id="atp-s2">
-    <AtpSecHead n={3} title={atpT('Constraints')}
-      desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Kesin ve Esnek kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
-        'The limits and preferences training has to take into account. Hard and Soft are kept strictly apart — a constraint can sit on one list only.')}>
-      <span className="atp-hc cn-hard"><i/>{atpT('Hard')}<b>{con.hard.length}</b></span>
-      <span className="atp-hc cn-soft"><i/>{atpT('Soft')}<b>{con.soft.length}</b></span>
-    </AtpSecHead>
-    <div className="sc-sec-b">
-      <div className="atp-con2">
-        <AtpConPanel kind="hard" list={con.hard} other={con.soft} onList={l=>onChange({...con,hard:l})}/>
-        <AtpConPanel kind="soft" list={con.soft} other={con.hard} onList={l=>onChange({...con,soft:l})}/>
-      </div>
-    </div>
-  </div>);
-}
 /* The four ways a set is filed besides the exercise itself, one at a time on a tab. */
 const ATP_EXP_LAYERS=[
   {id:'patterns',en:'Movement Pattern',      dTr:'Hareketin çalıştırdığı patern',dEn:'What the movement trains',fixed:true},
@@ -31983,66 +31961,112 @@ const ATP_EXP_LAYERS=[
   {id:'loading', en:'Loading Characteristic',dTr:'Vücudun nasıl yüklendiği',dEn:'How the body was loaded',fixed:true},
   {id:'families',en:'Exercise Family',       dTr:'Birbiriyle ilişkili egzersiz grupları',dEn:'Groups of related exercises',fixed:false},
 ];
-function AtpExposure({exp,refDate,setRefDate}){
+/* Exercise Exposure on screen. Above the two lists, the window's sets spread over the
+   pattern table's own categories (Kategori, 185) as one bar — a category is a filter: a click
+   keeps only its exercises in the list. Each count is read beside the same window just
+   before it (the 7 days before these 7 …), so a jump or a drop in volume shows at once. */
+const atpAgo=(d,end)=>{if(!d)return'—';const n=Math.round((parseD(end)-parseD(d))/864e5);
+  return n<=0?L('bugün','today'):n===1?L('dün','yesterday'):L(`${n} gün önce`,`${n} days ago`);};
+const atpCatCol=k=>(mvCat(k)||{}).color||'var(--dim)';
+const atpCatName=k=>k?mvCatLabel(k):L('Kategorisiz','No category');
+function AtpExposure({exp,prev,refDate,setRefDate}){
   const[win,setWin]=useState('d7');
   const[all,setAll]=useState(false);
   const[lay,setLay]=useState('patterns');
+  const[cat,setCat]=useState(null);       // a Kategori picked on the bar: the exercise list keeps only it
+  const[q,setQ]=useState('');
   const lv=id=>ATP_EXP_LEVELS.find(x=>x.id===id)||ATP_EXP_LEVELS[0];
   const pill=id=><span className={`atp-lv x-${id}`} title={L(lv(id).dTr,lv(id).dEn)}>{atpAb(lv(id))}</span>;
   const byWin=list=>list.filter(t=>t.sets[win]>0)
     .sort((a,b)=>(b.sets[win]-a.sets[win])||String(b.lastUsed||'').localeCompare(String(a.lastUsed||'')));
-  const exRows=byWin(exp.exercises);
+  const exAll=byWin(exp.exercises);
+  const cats=byWin(exp.categories||[]);
+  const catOn=cat!=null&&cats.some(c=>c.key===cat)?cat:null;
+  const ql=q.trim().toLocaleLowerCase('tr');
+  const exRows=exAll.filter(t=>(catOn==null||(t.mvCat||'')===catOn)&&(!ql||String(t.label).toLocaleLowerCase('tr').includes(ql)));
   const shown=all?exRows:exRows.slice(0,10);
   const W=ATP_EXP_WINDOWS.find(w=>w.id===win);
-  const totalSets=exRows.reduce((n,t)=>n+t.sets[win],0);
-  /* One row: a name, a bar as long as its share of the busiest row, the set count and the
-     level. The bar is only there to be compared down the list; the level is the reading. */
+  const sum=list=>list.reduce((n,t)=>n+(t.sets[win]||0),0);
+  const totalSets=sum(exAll);
+  /* The same window just before this one; the last session has none. */
+  const pv=win!=='last'&&prev&&prev[win]?prev[win]:null;
+  const pvSets=pv?pv.exercises.reduce((n,t)=>n+(t.sets[win]||0),0):null;
+  const pvSess=pv?pv.sessions[win]:null;
+  const pvEx=pv?pv.exercises.filter(t=>t.sets[win]>0).length:null;
+  const delta=(v,p)=>{if(p==null)return null;const d=v-p;
+    return<span className={`atp-xd ${d>0?'up':d<0?'dn':''}`} title={L('Bir önceki aynı uzunluktaki döneme göre','Against the window of the same length just before')}>
+      {d>0?'▲ +':d<0?'▼ ':'= '}{d===0?'':d}<small>{L(` önceki: ${p}`,` prev: ${p}`)}</small></span>;};
   const bar=(t,max)=><span className={`atp-ly-bar x-${t.level[win]}`}><i style={{width:`${Math.max(6,Math.round(t.sets[win]/max*100))}%`}}/></span>;
   const L0=ATP_EXP_LAYERS.find(x=>x.id===lay);
   const lList=exp[lay]||[];
   const lOn=byWin(lList),lMax=Math.max(1,...lOn.map(t=>t.sets[win]));
   const lOff=L0.fixed?lList.filter(t=>!(t.sets[win]>0)):[];
-  const exMax=Math.max(1,...exRows.map(t=>t.sets[win]));
+  const exMax=Math.max(1,...exAll.map(t=>t.sets[win]));
   const stats=win==='last'
-    ?[[L('Seans','Session'),exp.last?fd(exp.last.date):'—',exp.last&&exp.last.name],
-      [L('Egzersiz','Exercises'),exRows.length],[L('Toplam set','Total sets'),totalSets]]
-    :[[L('Aralık','Window'),`${fd(exp.from[win])} – ${fd(exp.end)}`],[L('Seans','Sessions'),exp.sessions[win]],
-      [L('Egzersiz','Exercises'),exRows.length],[L('Toplam set','Total sets'),totalSets]];
-  return(<div className="sc-sec" id="atp-s3">
-    <AtpSecHead n={4} title={atpT('Exercise Exposure')}
-      desc={L('Sporcunun takvimindeki antrenman kayıtlarından otomatik oluşur: seçilen aralıkta hangi egzersize ve hangi kategoriye kaç set maruz kaldığı. Düzey set sayısından okunur.',
-        'Built automatically from the training records on the athlete’s calendar: how many sets of which exercise and which category the athlete did in the chosen window. The level is read from the set count.')}>
+    ?[{k:L('Seans','Session'),v:exp.last?fd(exp.last.date):'—',s:exp.last&&[exp.last.name,atpAgo(exp.last.date,exp.end)].filter(Boolean).join(' · ')},
+      {k:L('Egzersiz','Exercises'),v:exAll.length},{k:L('Toplam set','Total sets'),v:totalSets}]
+    :[{k:L('Aralık','Window'),v:`${fd(exp.from[win]).slice(0,5)} – ${fd(exp.end).slice(0,5)}`,s:L(`${W.days} gün`,`${W.days} days`)},
+      {k:L('Seans','Sessions'),v:exp.sessions[win],d:delta(exp.sessions[win],pvSess)},
+      {k:L('Egzersiz','Exercises'),v:exAll.length,d:delta(exAll.length,pvEx)},
+      {k:L('Toplam set','Total sets'),v:totalSets,d:delta(totalSets,pvSets),s:W.days>7?L(`haftada ≈ ${Math.round(totalSets*7/W.days)} set`,`≈ ${Math.round(totalSets*7/W.days)} sets / week`):null}];
+  const isToday=refDate===fmt(today);
+  return(<div className="sc-sec atp-xp" id="atp-s3">
+    <AtpSecHead n={2} title={atpT('Exercise Exposure')}
+      desc={L('Sporcunun takvimindeki antrenman kayıtlarından (takım seansları dahil) otomatik oluşur: seçilen aralıkta hangi kategoriye ve egzersize kaç set maruz kaldığı. Kategori, patern tablosundaki Kategori · Tür etiketinden okunur; düzey set sayısından.',
+        'Built automatically from the training records on the athlete’s calendar (team sessions included): how many sets of which category and exercise in the chosen window. The category is read from the pattern table’s Kategori · Tür tag; the level from the set count.')}>
       <span className="atp-hc atp-auto">{L('Otomatik','Automatic')}</span>
     </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-xbar">
         <div className="atp-wseg" role="tablist">{ATP_EXP_WINDOWS.map(w=>
           <button key={w.id} role="tab" aria-selected={win===w.id} className={win===w.id?'on':''} onClick={()=>setWin(w.id)}>{atpT(w.en)}</button>)}</div>
-        <label className="atp-ref"><span>{L('Referans günü','Reference day')}</span>
-          <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/></label>
+        <div className="atp-ref">
+          <span>{L('Referans günü','Reference day')}</span>
+          <button className="atp-ref-step" onClick={()=>setRefDate(fmt(addD(parseD(refDate),-7)))} title={L('Bir hafta geri','One week back')} aria-label={L('Bir hafta geri','One week back')}>‹</button>
+          <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/>
+          <button className="atp-ref-step" onClick={()=>setRefDate(fmt(addD(parseD(refDate),7)))} title={L('Bir hafta ileri','One week forward')} aria-label={L('Bir hafta ileri','One week forward')}>›</button>
+          {!isToday&&<button className="atp-ref-today" onClick={()=>setRefDate(fmt(today))}>{L('Bugün','Today')}</button>}
+        </div>
       </div>
       {!exp.last?<div className="atp-xempty">{L('Takvimde egzersiz kaydı yok. Egzersiz maruziyeti, sporcunun takvimine yazılan seanslardan — takım seansları dahil — kendiliğinden oluşur.',
           'No exercise on the calendar yet. Exercise Exposure builds itself from the sessions on the athlete’s calendar, team sessions included.')}</div>
       :<>
-        <div className="atp-xstats">{stats.map(([k,v,sub])=>
-          <div key={k} className={`atp-xstat${String(v).length>12?' wide':''}`}><div className="k">{k}</div><div className="v">{v}</div>{sub&&<div className="s">{sub}</div>}</div>)}
-          <div className="atp-xleg" title={L('Düzey, seçilen aralıktaki set sayısından okunur (gün aralıkları haftalık ortalamayla).','The level is read from the set count in the window (day windows as a weekly average).')}>
-            <div className="k">{L('Maruziyet düzeyi','Exposure level')}</div>
-            <div className="l">{ATP_EXP_LEVELS.slice(1).map(l=><span key={l.id}><i className={`atp-sw x-${l.id}`}/>{atpT(l.en)}</span>)}</div>
-          </div>
+        <div className="atp-xstats">{stats.map(x=>
+          <div key={x.k} className={`atp-xstat${String(x.v).length>12?' wide':''}`}><div className="k">{x.k}</div>
+            <div className="v">{x.v}</div>{x.d&&<div className="s">{x.d}</div>}{x.s&&<div className="s">{x.s}</div>}</div>)}
+        </div>
+        {cats.length>0&&<div className="atp-xcat">
+          <div className="atp-xcat-h"><b>{L('Kategori dağılımı','Spread by category')}</b>
+            <span>{catOn!=null?<button className="atp-xcat-clr" onClick={()=>setCat(null)}>{L('Filtreyi kaldır','Clear filter')} ✕</button>
+              :L('kategoriye tıkla → egzersiz listesi süzülür','click a category → filters the exercise list')}</span></div>
+          <div className="atp-xcat-bar" role="group" aria-label={L('Kategori dağılımı','Spread by category')}>{cats.map(c=>
+            <button key={c.key||'none'} className={catOn===c.key?'on':catOn!=null?'dim':''} style={{flexGrow:c.sets[win],background:atpCatCol(c.key)}}
+              onClick={()=>setCat(x=>x===c.key?null:c.key)} title={`${atpCatName(c.key)} · ${c.sets[win]} set · %${Math.round(c.sets[win]/Math.max(1,totalSets)*100)}`}
+              aria-pressed={catOn===c.key}/>)}</div>
+          <div className="atp-xcat-leg">{cats.map(c=>
+            <button key={c.key||'none'} className={catOn===c.key?'on':catOn!=null?'dim':''} onClick={()=>setCat(x=>x===c.key?null:c.key)} aria-pressed={catOn===c.key}>
+              <i style={{background:atpCatCol(c.key)}}/>{atpCatName(c.key)}<b>{c.sets[win]}</b><em>%{Math.round(c.sets[win]/Math.max(1,totalSets)*100)}</em></button>)}</div>
+        </div>}
+        <div className="atp-xleg-row" title={L('Düzey, seçilen aralıktaki set sayısından okunur (gün aralıkları haftalık ortalamayla).','The level is read from the set count in the window (day windows as a weekly average).')}>
+          <span className="k">{L('Maruziyet düzeyi','Exposure level')}</span>
+          {ATP_EXP_LEVELS.slice(1).map(l=><span key={l.id}><i className={`atp-sw x-${l.id}`}/>{atpT(l.en)}</span>)}
         </div>
         <div className="atp-xcols">
           <div className="atp-grp">
             <div className="atp-grp-h">
-              <div><div className="atp-grp-t">{atpT('Exercise')}</div><div className="atp-grp-s">{atpT(W.en)}</div></div>
+              <div><div className="atp-grp-t">{atpT('Exercise')}{catOn!=null&&<span className="atp-xf"><i style={{background:atpCatCol(catOn)}}/>{atpCatName(catOn)}</span>}</div>
+                <div className="atp-grp-s">{atpT(W.en)}</div></div>
+              <input className="atp-xsearch" value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercise…')} aria-label={L('Egzersiz ara','Search exercise')}/>
               <span className="atp-grp-c"><b>{exRows.length}</b></span>
             </div>
-            {exRows.length===0?<div className="atp-ly-empty">{L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
-            :shown.map(t=>{const l=t.level[win];return(
+            {exRows.length===0?<div className="atp-ly-empty">{exAll.length?L('Bu süzgeçle egzersiz yok.','No exercise matches this filter.'):L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
+            :shown.map(t=>{const l=t.level[win];const k=t.mvCat||'';return(
               <div key={t.key} className="atp-ex-r">
                 <div className="atp-ex-tx">
-                  <div className="atp-ex-n" title={t.label}>{t.label}</div>
-                  <div className="atp-ex-m">{atpT(t.family)} · {L('son','last')} {fd(t.lastUsed)} · <span title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}× / {L('28 gün','28 d')}</span></div>
+                  <div className="atp-ex-n" title={t.label}><i className="atp-ex-dot" style={{background:atpCatCol(k)}}/>{t.label}</div>
+                  <div className="atp-ex-m">{k?<>{mvCatLabel(k)}{t.mvType?` · ${mvTermOr(k,t.mvType)}`:''}</>:atpT(t.family)}
+                    {' · '}<span title={fd(t.lastUsed)}>{atpAgo(t.lastUsed,exp.end)}</span>
+                    {' · '}<span title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}× / {L('28 gün','28 d')}</span></div>
                 </div>
                 {bar(t,exMax)}
                 <span className="atp-ly-s">{t.sets[win]} set</span>
@@ -32067,168 +32091,6 @@ function AtpExposure({exp,refDate,setRefDate}){
           </div>
         </div>
       </>}
-    </div>
-  </div>);
-}
-/* ---- Joint by Joint: rated on the mannequin photograph ----
-   The coach's own joint map (joint-model.jpg, made from "Eklem Ağrısı Haritası.png"): the
-   athlete from the front and from the back, each joint marked where the photograph marks
-   it. The front shows the athlete's right on the left of the picture, the back the other
-   way round. Every joint is a marker drawn over the photograph's own dot: a ring in the
-   colour of its need (blue for a mobile joint, amber for a stable one), filled in the
-   colour of the level once it is rated (green Low, yellow Medium, red High). The
-   thoracic spine is one dot on the photograph and two motions in the record (extension
-   and rotation); its marker opens both. The photograph has no dot on the feet, so those
-   two markers are the only ones that sit on bare skin.
-
-   Beside the figures the chain itself, head to foot, alternating mobile and stable —
-   the approach read as a table, each side a cell that opens the same picker. */
-const ATP_JB_IMG={src:'joint-model.jpg',w:1000,h:951};
-const ATP_JB_MARKS=[
-  {id:'cervical',  keys:['cervical'],                    at:[744,131],    r:23},
-  {id:'scapula_l', keys:['scapula_l'],                   at:[689.1,209],  r:23},
-  {id:'scapula_r', keys:['scapula_r'],                   at:[799,208.8],  r:23},
-  {id:'thoracic',  keys:['thoracic_ext','thoracic_rot'], at:[744.2,262.3],r:23},
-  {id:'lumbar',    keys:['lumbar'],                      at:[743.6,357.6],r:23},
-  {id:'shoulder_r',keys:['shoulder_r'],                  at:[152.8,185.3],r:23},
-  {id:'shoulder_l',keys:['shoulder_l'],                  at:[347.4,185.2],r:23},
-  {id:'elbow_r',   keys:['elbow_r'],                     at:[119.6,319.7],r:23},
-  {id:'elbow_l',   keys:['elbow_l'],                     at:[377.8,321.1],r:23},
-  {id:'wrist_r',   keys:['wrist_r'],                     at:[72.1,421.3], r:21},
-  {id:'wrist_l',   keys:['wrist_l'],                     at:[420.9,422.7],r:21},
-  {id:'hip_r',     keys:['hip_r'],                       at:[186.7,427.4],r:23},
-  {id:'hip_l',     keys:['hip_l'],                       at:[313,427.7],  r:23},
-  {id:'knee_r',    keys:['knee_r'],                      at:[191.2,623.1],r:23},
-  {id:'knee_l',    keys:['knee_l'],                      at:[308.6,623.8],r:23},
-  {id:'ankle_r',   keys:['ankle_r'],                     at:[181.9,800.4],r:21},
-  {id:'ankle_l',   keys:['ankle_l'],                     at:[316.7,800.7],r:21},
-  {id:'foot_r',    keys:['foot_r'],                      at:[170,856],    r:19},
-  {id:'foot_l',    keys:['foot_l'],                      at:[329,856],    r:19},
-];
-const atpJbMarkOf=key=>ATP_JB_MARKS.find(m=>m.keys.includes(key))||null;
-const atpJbRow=key=>ATP_JOINT_ROWS.find(r=>r.key===key);
-/* A joint's name with its side, in the app language. */
-const atpJbLabel=r=>`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
-/* A marker's name: the joint and side, or just "Thoracic Spine" for the two motions. */
-const atpJbMarkLabel=m=>m.keys.length>1?atpT('Thoracic Spine'):atpJbLabel(atpJbRow(m.keys[0]));
-/* The level letter a rated marker carries, so a level is read without its colour too. */
-const atpJbLetter=id=>({low:L('D','L'),medium:L('O','M'),high:L('Y','H')}[id]||'');
-function AtpJbStage({joints,sel,onPick,children}){
-  const marker=m=>{
-    const rows=m.keys.map(atpJbRow);
-    const need=rows[0].joint.need;
-    /* A two-motion marker shows the stronger of its two levels. */
-    const lv=Math.max(0,...m.keys.map(k=>atpJointLv((joints[k]||{}).level)));
-    const lvId=lv?ATP_JOINT_LEVELS[lv-1].id:null;
-    const on=sel===m.id;
-    const[x,y]=m.at,R=m.r;
-    const tip=`${atpJbMarkLabel(m)} — ${atpT(ATP_JOINT_NEEDS.find(n=>n.id===need).en)}: ${m.keys.map(k=>{const v=(joints[k]||{}).level;
-      return(m.keys.length>1?`${atpT(atpJbRow(k).joint.en)} `:'')+(v?atpT(ATP_JOINT_LEVELS[atpJointLv(v)-1].en):'—');}).join(' · ')}`;
-    const pick=e=>{e.stopPropagation();onPick(m.id);};
-    return(<g key={m.id} className={`jb2-m jb-${need}${lvId?` jl-${lvId}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
-      role="button" tabIndex={0} aria-label={tip} aria-pressed={on} aria-haspopup="dialog"
-      onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}}}>
-      <title>{tip}</title>
-      <circle className="jb2-hit" r={R+8}/>
-      {on&&<circle className="jb2-halo" r={R+7}/>}
-      <circle className="jb2-disc" r={R-1.5}/>
-      <circle className="jb2-ring" r={R-2.5}/>
-      {lvId?<text className="jb2-lt" textAnchor="middle" dy="7">{atpJbLetter(lvId)}</text>:<circle className="jb2-core" r={5.5}/>}
-      {m.keys.length>1&&<text className="jb2-two" textAnchor="middle" y={-R-7}>E · R</text>}
-    </g>);
-  };
-  return(<div className="jb2-stage">
-    <img src={ATP_JB_IMG.src} alt="" width={ATP_JB_IMG.w} height={ATP_JB_IMG.h} draggable="false"/>
-    <svg viewBox={`0 0 ${ATP_JB_IMG.w} ${ATP_JB_IMG.h}`} className="jb2-svg" role="group" aria-label="Joint by Joint">
-      {ATP_JB_MARKS.map(marker)}
-    </svg>
-    <span className="jb2-cap" style={{left:'25%'}}>{atpT('Front')}</span>
-    <span className="jb2-cap" style={{left:'75%'}}>{atpT('Back')}</span>
-    <span className="jb2-side" style={{left:'3%'}}>{atpT('Right')}</span>
-    <span className="jb2-side" style={{left:'47%',transform:'translateX(-100%)'}}>{atpT('Left')}</span>
-    <span className="jb2-side" style={{left:'53%'}}>{atpT('Left')}</span>
-    <span className="jb2-side" style={{left:'97%',transform:'translateX(-100%)'}}>{atpT('Right')}</span>
-    {children}
-  </div>);
-}
-/* The picker that opens next to a marker: the need, the three levels and a note — once
-   per motion on the thoracic spine. It sits below the marker (above it for the lower
-   half of the picture) and is kept inside the picture at the edges. */
-function AtpJointPop({m,joints,onSet,onNote,onClose}){
-  const[x,y]=m.at;
-  const left=x/ATP_JB_IMG.w*100,top=y/ATP_JB_IMG.h*100;
-  const up=top>55;
-  const need=ATP_JOINT_NEEDS.find(n=>n.id===atpJbRow(m.keys[0]).joint.need);
-  const one=k=>{const r=atpJbRow(k),j=joints[k]||{};return(
-    <div key={k} className="jb2-pop-b">
-      {m.keys.length>1&&<div className="jb2-pop-k">{atpT(r.joint.en)}</div>}
-      <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
-        <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
-          title={L(l.dTr,l.dEn)} onClick={()=>{onSet(k,'level',l.id);if(m.keys.length===1)onClose();}}><i/>{atpT(l.en)}</button>)}</div>
-      <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(k,e.target.value)}
-        placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
-      {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
-    </div>);};
-  return(<div className={`atp-jb-pop jb2-pop${up?' up':''}`} role="dialog" aria-label={atpJbMarkLabel(m)}
-    style={{left:`clamp(118px, ${left}%, calc(100% - 118px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
-    <div className="atp-jb-pop-h">
-      <b>{atpJbMarkLabel(m)}</b>
-      <span className={`atp-jb-tag jb-${need.id}`}><i/>{atpT(need.en)}</span>
-      <button className="atp-x" onClick={onClose} aria-label={L('Kapat','Close')} title={L('Kapat','Close')}>✕</button>
-    </div>
-    {m.keys.map(one)}
-  </div>);
-}
-function AtpJoints({joints,onSet,onNote}){
-  const[sel,setSel]=useState(null);
-  const boxRef=useRef(null);
-  /* A click anywhere outside the figures and the chain, or Escape, closes the picker. */
-  useEffect(()=>{
-    if(!sel)return;
-    const down=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setSel(null);};
-    const key=e=>{if(e.key==='Escape')setSel(null);};
-    document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
-    return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
-  },[sel]);
-  const pick=id=>setSel(k=>k===id?null:id);
-  const rated=ATP_JOINT_ROWS.filter(r=>(joints[r.key]||{}).level);
-  const count=id=>rated.filter(r=>r.joint.need===id).length;
-  const selMark=sel&&ATP_JB_MARKS.find(m=>m.id===sel);
-  const cell=r=>{const j=joints[r.key]||{};const m=atpJbMarkOf(r.key);const on=m&&sel===m.id;
-    return(<button key={r.key} className={`jb2-cell${j.level?` jl-${j.level}`:''}${on?' on':''}`}
-      onClick={e=>{e.stopPropagation();if(m)pick(m.id);}} title={j.note||atpJbLabel(r)}
-      aria-label={`${atpJbLabel(r)}: ${j.level?atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en):'—'}`}>
-      {j.level?<><i/>{atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</>:<span className="jb2-none">—</span>}
-      {j.note&&<em className="jb2-note">{L('not','note')}</em>}
-    </button>);};
-  return(<div className="sc-sec" id="atp-s4">
-    <AtpSecHead n={1} title={<span lang="en">Joint by Joint</span>}
-      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç.',
-        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs.')}>
-      <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
-      <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
-    </AtpSecHead>
-    <div className="sc-sec-b">
-      <div className="jb2" ref={boxRef}>
-        <AtpJbStage joints={joints} sel={sel} onPick={pick}>
-          {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
-        </AtpJbStage>
-        {/* Only the chain table beside the mannequin, sized to sit next to it. */}
-        <div className="jb2-chain">
-          <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
-            <div className="jb2-tr jb2-th" role="row">
-              <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
-              <span role="columnheader">{atpT('Right')}</span><span role="columnheader">{atpT('Left')}</span>
-            </div>
-            {ATP_JOINTS.map(j=>{const rs=ATP_JOINT_ROWS.filter(r=>r.joint.id===j.id);return(
-              <div key={j.id} className={`jb2-tr jb-${j.need}`} role="row">
-                <span className="jb2-jn" role="cell">{atpT(j.en)}</span>
-                <span className="jb2-need" role="cell"><i/>{atpT(j.need==='mobility'?'Mobility':'Stability')}</span>
-                {j.bi?<>{cell(rs[0])}{cell(rs[1])}</>:<span className="jb2-mid" role="cell">{cell(rs[0])}</span>}
-              </div>);})}
-          </div>
-        </div>
-      </div>
     </div>
   </div>);
 }
@@ -32314,6 +32176,9 @@ function TrainingProfileTab({ath,updAth,exercises}){
   const[refDate,setRefDate]=useState(()=>fmt(today));
   const refOk=/^\d{4}-\d{2}-\d{2}$/.test(refDate||'')?refDate:fmt(today);
   const exp=useMemo(()=>atpExposure(ath,refOk,{libMap}),[ath.days,libMap,refOk]);
+  /* Each window read beside the one of the same length just before it. */
+  const prev=useMemo(()=>{const o={};ATP_EXP_WINDOWS.filter(w=>w.days).forEach(w=>{
+    o[w.id]=atpExposure(ath,fmt(addD(parseD(refOk),-w.days)),{libMap});});return o;},[ath.days,libMap,refOk]);
   /* Clicking the priority that is already on takes it off again. */
   const setQ=(id,field,v)=>{
     const cur={...(tp.qualities[id]||{})};
@@ -32331,22 +32196,11 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(!confirm(L('Atletik Gelişim Öncelikleri\'ndeki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Development Priorities?')))return;
     save({qualities:{}});
   };
-  /* A joint's level for one need; clicking the level that is on takes it off. A joint
-     left with neither need nor note is dropped from the record. */
-  const setJ=(key,field,v)=>{
-    const cur={...(tp.joints[key]||{})};
-    if(field==='note'?!v:cur[field]===v)delete cur[field];else cur[field]=v;
-    const nx={...tp.joints};
-    if(Object.keys(cur).length)nx[key]=cur;else delete nx[key];
-    save({joints:nx});
-  };
   return(<div className="atp-wrap">
     <AtpTestStrip ath={ath}/>
     <FvSummaryCard ath={ath}/>
-    <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
-    <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
-    <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
+    <AtpExposure exp={exp} prev={prev} refDate={refOk} setRefDate={setRefDate}/>
   </div>);
 }
 /* The athlete's tabs, as line icons: a figure for the profile, a pulse for the athletic
@@ -33181,10 +33035,10 @@ function InjurySurveillance({athletes,setup,title,compact}){
 /* ═══════════════════════════════════════════════════════════════════════════
    WELLNESS TAB — the morning check-in, the night's sleep and HRV
 
-   Left, the wellness log: the check-in's six answers over two weeks. Right, the night:
-   how long the athlete slept, when they fell asleep and woke, and HRV (RMSSD) read
+   The night: how long the athlete slept, when they fell asleep and woke, and HRV (RMSSD) read
    against the athlete's own reference, with a three-level alert. Under both, the four
    things HRV is read beside: sleeping heart rate, sleep duration, wellness and sRPE load.
+   (The check-in log that sat on the left now lives under the Wellness curve, 428 WvRecords.)
 
    The nights are typed in (Polar Loop gives RMSSD from the first four hours of sleep)
    and kept on `ath.nightLog` — [{id,date,bedTime,wakeTime,hrv,sleepHR}], one row per
@@ -33348,113 +33202,6 @@ function WlSpark({vals,color,colorOf,avg,five,h,bars,labels}){
         {pres.map((p,k)=><circle key={p.i} cx={X(p.i)} cy={Y(p.v)} r={k===pres.length-1?3.3:2.3} fill={colorOf?colorOf(p.v):color}/>)}</>}
       {labels&&pres.map(p=><text key={'t'+p.i} x={X(p.i)} y={Y(p.v)-6} textAnchor="middle" className="wl-sv" fill={colorOf?colorOf(p.v):'var(--text2)'}>{fmtV(p.v)}</text>)}
     </svg>
-  </div>);
-}
-/* ---- The wellness log: six answers over a two-week window ---- */
-function WellnessLog({ath,updAth}){
-  const[wlEnd,setWlEnd]=useState(()=>{const ds=(ath.wellness||[]).map(w=>w.date).filter(Boolean).sort();return ds.length?ds[ds.length-1]:fmt(today);});
-  const[tableOpen,setTableOpen]=useState(false);
-  const[lim,setLim]=useState(10);
-  const W=ath.wellness||[];
-  const METRICS=[
-    {id:'readiness',label:L('Hazır Oluş','Readiness'),color:'#10b981',unit:'/5',hi:true},
-    {id:'sleep',label:L('Uyku','Sleep'),color:'#3b82f6',unit:'/5',hi:true},
-    // The check-in's questions in the form's order — the same list as the heatmap.
-    {id:'mentalFatigue',label:L('Zihinsel Yorgunluk','Mental Fatigue'),color:'#8b5cf6',unit:'/5',hi:true},
-    {id:'physicalFatigue',label:L('Fiziksel Yorgunluk','Physical Fatigue'),color:'#f97316',unit:'/5',hi:true},
-    {id:'soreness',label:L('Kas Ağrısı','Muscle Soreness'),color:'#f43f5e',unit:'/5',hi:true},
-    {id:'RHR',label:L('İstirahat Nabzı','Resting HR'),color:'#06b6d4',unit:'bpm',hi:false},
-  ];
-  // 1-5 scores in the check-in form's own colours: 1 red … 5 blue.
-  const s5=v=>score5Color(v)||'var(--dim)';
-  const fmtN=(v,five)=>v==null?'—':(five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v)));
-  const start=fmt(addD(parseD(wlEnd),-13));
-  const days=Array.from({length:14},(_,i)=>fmt(addD(parseD(start),i)));
-  const byDay={};W.forEach(w=>{if(w.date&&w.date>=start&&w.date<=wlEnd)byDay[w.date]=w;});
-  const nIn=Object.keys(byDay).length;
-  return(<div className="panel wl2-log">
-    <div className="wl2-h">
-      <div><h2>{L('Wellness Kaydı','Wellness Log')}</h2>
-        <div className="wl2-s">{L(`Sabah check-in · ${fd(start).slice(0,5)} – ${fd(wlEnd).slice(0,5)} · ${nIn} kayıt`,`Morning check-in · ${fd(start).slice(0,5)} – ${fd(wlEnd).slice(0,5)} · ${nIn} entries`)}</div></div>
-      <div className="wl2-nav">
-        <button className="btn sm sec" onClick={()=>setWlEnd(w=>fmt(addD(parseD(w),-7)))} title={L('Önceki hafta','Previous week')}>‹</button>
-        <button className="btn sm sec" onClick={()=>setWlEnd(w=>fmt(addD(parseD(w),7)))} title={L('Sonraki hafta','Next week')}>›</button>
-        <button className="btn sm sec" onClick={()=>{const ds=W.map(x=>x.date).filter(Boolean).sort();setWlEnd(ds.length?ds[ds.length-1]:fmt(today));}}>{L('En son','Latest')}</button>
-        <button className="btn sm sec" onClick={()=>{const w={id:uid(),srcId:null,date:fmt(today),RHR:'',sleep:'',mentalFatigue:'',physicalFatigue:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...W,w]});setTableOpen(true);}}>+ {L('Elle','Manual')}</button>
-      </div>
-    </div>
-    {W.length===0&&<div className="empty-st">{L('Wellness verisi yok — check-in formundan gelir ya da elle eklenir','No wellness data — it comes from the check-in form or is added by hand')}</div>}
-    {W.length>0&&<div className="wl2-rows">
-      {METRICS.map(m=>{
-        const five=m.unit==='/5';
-        const series=days.map(d=>{const w=byDay[d];if(!w)return null;const v=recNum(w[m.id]);return v==null?null:v;});
-        const present=series.filter(v=>v!=null);
-        const latest=present.length?present[present.length-1]:null;
-        const prev=present.length>1?present[present.length-2]:null;
-        const avg=present.length?present.reduce((a,b)=>a+b,0)/present.length:null;
-        const delta=(latest!=null&&prev!=null)?latest-prev:null;
-        const good=delta==null?true:(m.hi?delta>=0:delta<=0);
-        return(<div key={m.id} className="wl2-row" style={{'--mc':m.color}}>
-          <div className="wl2-m">
-            <div className="wl2-ml">{m.label}</div>
-            <div className="wl2-mv"><b style={{color:latest==null?'var(--dim)':(five?s5(latest):'var(--text)')}}>{fmtN(latest,five)}</b><span>{m.unit}</span>
-              {delta!=null&&delta!==0&&<em className={good?'up':'dn'}>{delta>0?'+':''}{fmtN(delta,five)}</em>}</div>
-          </div>
-          <WlSpark vals={series} color={m.color} colorOf={five?s5:null} avg={avg} five={five} labels/>
-          <div className="wl2-avg"><b>{fmtN(avg,five)}</b><span>{L('ort.','avg')} · {present.length}</span></div>
-        </div>);
-      })}
-    </div>}
-    {W.length>0&&<>
-      <div className="row" style={{justifyContent:'space-between',marginTop:12,marginBottom:tableOpen?10:0}}>
-        <strong style={{fontSize:13,color:'var(--text2)'}}>{L('Ayrıntılı kayıtlar','Detailed records')} <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({W.length} {L('satır','rows')})</span></strong>
-        <button className="btn sec sm" onClick={()=>setTableOpen(o=>!o)}>{tableOpen?L('▲ Gizle','▲ Hide'):L('▼ Göster','▼ Show')}</button>
-      </div>
-      {tableOpen&&(()=>{const rev=[...W].reverse();const vis=rev.slice(0,lim);const hasMore=rev.length>lim;
-        return<div style={{overflowX:'auto'}}><table><thead><tr>
-          <th>{L('Tarih','Date')}</th><th>RHR</th><th>{L('Uyku','Sleep')}</th><th>{L('Zihinsel Yorg.','Mental Fat.')}</th><th>{L('Fiziksel Yorg.','Physical Fat.')}</th><th>{L('Kas Ağrısı','Soreness')}</th><th>{L('Hazır Oluş','Readiness')}</th><th style={{width:50}}></th>
-        </tr></thead><tbody>
-          {vis.map((w,idx)=>{const realIdx=W.length-1-idx;
-            /* A value the coach types here is theirs: the field is stamped on the
-               record so the next form sync writes around it instead of over it. */
-            const uw=(k,v)=>{const a=[...W];const cur=a[realIdx];
-              const next={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
-              // The single fatigue number other screens read follows its two halves.
-              if(k==='mentalFatigue'||k==='physicalFatigue')next.fatigue=wellFatigue(next)??'';
-              a[realIdx]=next;
-              updAth(ath.id,{wellness:a});};
-            /* A row written before fatigue was split has one fatigue score and no
-               halves; it shows in both boxes, greyed, until the coach types over it. */
-            const oldFat=recNum(w.mentalFatigue)==null&&recNum(w.physicalFatigue)==null&&recNum(w.fatigue)!=null?String(w.fatigue):undefined;
-            return<tr key={w.id||idx}>
-              <td><input type="date" value={w.date} onChange={e=>uw('date',e.target.value)} style={{width:130}}/><div className="help">{fd(w.date)}</div></td>
-              <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
-              <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw('sleep',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.mentalFatigue??''} placeholder={oldFat} onChange={e=>uw('mentalFatigue',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.physicalFatigue??''} placeholder={oldFat} onChange={e=>uw('physicalFatigue',e.target.value)} style={{width:55}}/></td>
-              <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw('soreness',e.target.value)} style={{width:55}}/></td>
-              {/* Area of Pain and Source have no column here: both stay on the record —
-                  the pain report and the heatmap read areaOfPain, and srcId decides what
-                  the next sync may overwrite. */}
-              <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
-              {/* Formdan gelen satırın silinmesi kaynağını da mezar taşına yazıyor: gönderim
-                  14 gün `checkins`'te duruyor ve taşı olmayan satırı gelen kutusu geri getirirdi. */}
-              <td><button className="btn xs danger" onClick={()=>{
-                const row=W[realIdx];
-                const src=row&&row.srcId;
-                const upd={wellness:W.filter((_,j)=>j!==realIdx)};
-                if(src)upd.deletedWellnessSrcIds=[...new Set([...(ath.deletedWellnessSrcIds||[]),src])];
-                updAth(ath.id,upd);
-              }}>✕</button></td>
-            </tr>;})}
-        </tbody></table>
-        <div className="row" style={{justifyContent:'center',marginTop:10,gap:6}}>
-          {hasMore&&<button className="btn sm sec" onClick={()=>setLim(n=>n+10)}>{L(`10 tane daha (${rev.length-lim} kaldı)`,`Show 10 more (${rev.length-lim} remaining)`)}</button>}
-          {lim>10&&<button className="btn sm sec" onClick={()=>setLim(10)}>{L('Daralt','Collapse')}</button>}
-          <span style={{fontSize:11,color:'var(--dim)',alignSelf:'center'}}>{L(`${rev.length} kayıttan ${vis.length} tanesi`,`Showing ${vis.length} of ${rev.length}`)}</span>
-        </div></div>;
-      })()}
-    </>}
   </div>);
 }
 /* ---- The HRV chart: daily RMSSD, its 7-day mean, the 28-day reference and the
@@ -33638,7 +33385,6 @@ function AthWellness({ath,updAth}){
   const M=useMemo(()=>hrvModel(ath),[ath.nightLog,ath.wellness]);
   return(<div className="wl2">
     <div className="wl2-grid">
-      <WellnessLog ath={ath} updAth={updAth}/>
       <AthSleepHrv ath={ath} updAth={updAth} M={M} days={days} setDays={setDays}/>
     </div>
     <div className="hrv-ctx-h">{L('Toparlanma göstergeleri','Recovery indicators')}<span>{L(`HRV ile birlikte okunur · son ${days} gün`,`read with HRV · last ${days} days`)}</span></div>
@@ -34142,8 +33888,9 @@ function PolarConnect({ath,teamId}){
         oluşun 1-5 dağılımı ve son 14 günün takım hazır oluş eğrisi.
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
-        takvimi açılır: ay görünümünde her gün kendi rengiyle, seçilen günün ayrıntısı,
-        ayın metrik eğrileri ve en altta sporcunun Wellness / Uyku / HRV kaydı.
+        takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
+        seçilen günün ayrıntısı, hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
+        kayıtları (check-in + Polar gece nabzı), en altta Uyku / HRV.
    Puanlar check-in formunun kendi renkleriyle boyanır (SCORE5_COLORS: 1 kırmızı … 5 mavi),
    formla ekran hiçbir zaman farklı renk söylemez. Haftalık RHR trendi (RHRMonitor) eski
    ısı haritasının son düğmesiydi; burada kendi paneli olarak duruyor.
@@ -34358,59 +34105,183 @@ function WvAthCard({a,d,i,onOpen}){
   </button>);
 }
 
-/* ---- Sporcunun takvimi: ay görünümü, gün ayrıntısı, ayın eğrileri ---- */
+/* ---- Sporcunun sayfası: takvim (hafta / ay), gün ayrıntısı, wellness eğrisi + kayıtlar ----
+   Sporcu sayfasının ölçüleri: check-in'in beş puanı ve check-in'deki istirahat nabzının yerine
+   Polar'ın gece nabzı (usePolarNightHR, 429). Takvim ve eğri birbirinden bağımsız olarak bir
+   haftayı (Pzt–Paz) ya da bir ayı gösterir; ‹ › o dönemi kaydırır. Takvim haftayla açılır. */
+const WV_DET_METRICS=()=>[...WV_METRICS().filter(m=>m.five),
+  {id:'nightHR',label:L('Gece Nabzı','Night HR'),short:L('Gece N.','Night HR'),five:false,polar:true}];
+function wvPeriod(mode,anchor){
+  const a=parseD(anchor);
+  if(mode==='week'){const st=sow(a);const days=Array.from({length:7},(_,i)=>fmt(addD(st,i)));return{from:days[0],to:days[6],days};}
+  const l=new Date(a.getFullYear(),a.getMonth()+1,0);
+  const days=Array.from({length:l.getDate()},(_,i)=>fmt(new Date(a.getFullYear(),a.getMonth(),i+1)));
+  return{from:days[0],to:days[days.length-1],days,y:a.getFullYear(),m:a.getMonth()};
+}
+const wvShift=(mode,anchor,d)=>{const a=parseD(anchor);return fmt(mode==='week'?addD(a,7*d):new Date(a.getFullYear(),a.getMonth()+d,1));};
+function wvPeriodLbl(mode,P){
+  if(mode==='month')return`${MN[P.m]} ${P.y}`;
+  const a=parseD(P.from),b=parseD(P.to);
+  return a.getMonth()===b.getMonth()?`${a.getDate()}–${b.getDate()} ${MN[b.getMonth()]} ${b.getFullYear()}`
+    :`${a.getDate()} ${MN[a.getMonth()]} – ${b.getDate()} ${MN[b.getMonth()]} ${b.getFullYear()}`;
+}
+/* Hafta / Ay seçimi ve dönemi kaydıran oklar — takvimde ve eğride aynı parça. */
+function WvPeriodNav({mode,setMode,label,onShift,onToday,showToday}){
+  const wk=mode==='week';
+  return(<div className="wv-pnav">
+    <div className="lb-seg wv-pseg" role="group" aria-label={L('Görünüm','View')}>
+      {[['week',L('Hafta','Week')],['month',L('Ay','Month')]].map(([id,t])=>
+        <button key={id} className={mode===id?'on':''} aria-pressed={mode===id} onClick={()=>setMode(id)}>{t}</button>)}</div>
+    <div className="wv-cal-nav">
+      <button className="btn sm sec" onClick={()=>onShift(-1)} aria-label={wk?L('Önceki hafta','Previous week'):L('Önceki ay','Previous month')}>‹</button>
+      {label&&<span className="wv-plbl">{label}</span>}
+      <button className="btn sm sec" onClick={()=>onShift(1)} aria-label={wk?L('Sonraki hafta','Next week'):L('Sonraki ay','Next month')}>›</button>
+      {showToday&&<button className="btn sm sec" onClick={onToday}>{L('Bugün','Today')}</button>}
+    </div>
+  </div>);
+}
+/* Seçili dönemin kayıtları — eski "Wellness Kaydı"nın tablosu buraya taşındı. Okuma görünümü
+   her günün check-in puanlarını ve Polar gece nabzını yan yana verir; "Düzenle" dönemin
+   check-in satırlarını düzenlenebilir yapar (elle yazılan alan kayda işlenir, sonraki form
+   senkronu üzerine yazmaz), "+ Elle" seçili güne boş bir satır açar. */
+function WvRecords({ath,updAth,P,val,nh,addDate,onAdded}){
+  const[edit,setEdit]=useState(false);
+  const[all,setAll]=useState(false);
+  const W=ath.wellness||[];
+  const MS=WV_DET_METRICS();
+  const tk=fmt(today);
+  const rows=P.days.filter(k=>wvDay(ath,k)||val(k,'nightHR')!=null).reverse();
+  const shown=all?rows:rows.slice(0,10);
+  const recs=W.map((w,i)=>({w,i})).filter(x=>x.w&&x.w.date>=P.from&&x.w.date<=P.to)
+    .sort((a,b)=>String(b.w.date).localeCompare(String(a.w.date))||b.i-a.i);
+  const addManual=()=>{
+    const w={id:uid(),srcId:null,date:addDate||tk,RHR:'',sleep:'',mentalFatigue:'',physicalFatigue:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};
+    updAth(ath.id,{wellness:[...W,w]});setEdit(true);if(onAdded)onAdded(w.date);
+  };
+  /* A value the coach types here is theirs: the field is stamped on the record so the next
+     form sync writes around it instead of over it. */
+  const uw=(i,k,v)=>{const a=[...W];const cur=a[i];
+    const next={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
+    if(k==='mentalFatigue'||k==='physicalFatigue')next.fatigue=wellFatigue(next)??'';
+    a[i]=next;updAth(ath.id,{wellness:a});};
+  /* Formdan gelen satırın silinmesi kaynağını da mezar taşına yazıyor: gönderim 14 gün
+     `checkins`'te duruyor ve taşı olmayan satırı gelen kutusu geri getirirdi. */
+  const del=i=>{const row=W[i];const src=row&&row.srcId;
+    const upd={wellness:W.filter((_,j)=>j!==i)};
+    if(src)upd.deletedWellnessSrcIds=[...new Set([...(ath.deletedWellnessSrcIds||[]),src])];
+    updAth(ath.id,upd);};
+  const cell=(m,v)=><td key={m.id} className="wv-rec-v"><b style={{color:v==null?'var(--dim)':m.five?(score5Color(v)||'var(--text)'):'var(--text)'}}>{wvFmt(v,m.five)}</b></td>;
+  return(<div className="wv-rec">
+    <div className="wv-rec-h">
+      <div><b>{L('Kayıtlar','Records')}</b><span>{L(`${rows.length} gün · sabah check-in ve Polar gece nabzı`,`${rows.length} days · morning check-in and Polar night HR`)}</span></div>
+      <div className="wv-rec-tools">
+        <button className="btn sm sec" onClick={addManual} title={L(`${fd(addDate||tk)} için boş bir check-in satırı`,`An empty check-in row for ${fd(addDate||tk)}`)}>+ {L('Elle','Manual')}</button>
+        <button className={'btn sm'+(edit?'':' sec')} onClick={()=>setEdit(e=>!e)} disabled={!edit&&!recs.length}>{edit?L('Bitti','Done'):L('Düzenle','Edit')}</button>
+      </div>
+    </div>
+    {!edit?(rows.length===0?<div className="wv-rec-none">{L('Bu dönemde kayıt yok.','No records in this period.')}</div>
+    :<div className="wv-rec-w"><table className="wv-rec-t">
+      <thead><tr><th>{L('Gün','Day')}</th>{MS.map(m=><th key={m.id}>{m.short}</th>)}<th>RHR</th><th/></tr></thead>
+      <tbody>{shown.map(k=>{const d=wvDay(ath,k);const dt=parseD(k);
+        return<tr key={k} className={k===addDate?'sel':''}>
+          <td className="wv-rec-d"><b>{DN[(dt.getDay()+6)%7]}</b> {fd(k).slice(0,5)}</td>
+          {MS.map(m=>cell(m,m.id==='nightHR'?val(k,'nightHR'):(d?d[m.id]:null)))}
+          <td className="wv-rec-v"><b style={{color:d&&d.RHR!=null?'var(--text2)':'var(--dim)'}}>{d&&d.RHR!=null?Math.round(d.RHR):'—'}</b></td>
+          <td>{d&&(d.pain||d.note)&&<i className="wv-rec-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}
+            title={d.pain?d.pain.list.map(p=>p.region+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}/>}</td>
+        </tr>;})}</tbody>
+    </table>
+      {rows.length>10&&<button className="wv-rec-more" onClick={()=>setAll(x=>!x)}>{all?L('Daralt','Collapse'):L(`Tümünü göster (${rows.length})`,`Show all (${rows.length})`)}</button>}
+    </div>)
+    :(recs.length===0?<div className="wv-rec-none">{L('Bu dönemde düzenlenecek check-in satırı yok. "+ Elle" ile ekle.','No check-in row to edit in this period. Add one with "+ Manual".')}</div>
+    :<div className="wv-rec-w"><table className="wv-rec-t ed"><thead><tr>
+      <th>{L('Tarih','Date')}</th><th>{L('Hazır Oluş','Readiness')}</th><th>{L('Uyku','Sleep')}</th><th>{L('Zihinsel Yorg.','Mental Fat.')}</th><th>{L('Fiziksel Yorg.','Physical Fat.')}</th><th>{L('Kas Ağrısı','Soreness')}</th><th>RHR</th><th style={{width:44}}/>
+    </tr></thead><tbody>
+      {recs.map(({w,i})=>{
+        /* A row written before fatigue was split has one fatigue score and no halves; it
+           shows in both boxes, greyed, until the coach types over it. */
+        const oldFat=recNum(w.mentalFatigue)==null&&recNum(w.physicalFatigue)==null&&recNum(w.fatigue)!=null?String(w.fatigue):undefined;
+        return<tr key={w.id||i}>
+          <td><input type="date" value={w.date||''} onChange={e=>uw(i,'date',e.target.value)} style={{width:136}}/></td>
+          <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw(i,'readiness',e.target.value)} style={{width:62}}/></td>
+          <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw(i,'sleep',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.mentalFatigue??''} placeholder={oldFat} onChange={e=>uw(i,'mentalFatigue',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.physicalFatigue??''} placeholder={oldFat} onChange={e=>uw(i,'physicalFatigue',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw(i,'soreness',e.target.value)} style={{width:56}}/></td>
+          <td><input type="number" value={w.RHR??''} onChange={e=>uw(i,'RHR',e.target.value)} style={{width:60}}/></td>
+          <td><button className="btn xs danger" onClick={()=>del(i)} aria-label={L('Satırı sil','Delete row')}>✕</button></td>
+        </tr>;})}
+    </tbody></table></div>)}
+    {nh&&!nh.off&&nh.err&&<div className="wv-rec-note">{L('Polar gece nabzı alınamadı: ','Polar night HR could not be loaded: ')}{nh.err}</div>}
+  </div>);
+}
 function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
-  const MS=WV_METRICS();
-  const[month,setMonth]=useState(()=>{const d=parseD(dayKey);return{y:d.getFullYear(),m:d.getMonth()};});
+  const MS=WV_DET_METRICS();
+  const tk=fmt(today);
+  const[calMode,setCalMode]=useState('week');
+  const[calAt,setCalAt]=useState(dayKey);
+  const[cvMode,setCvMode]=useState('month');
+  const[cvAt,setCvAt]=useState(dayKey);
   const[metric,setMetric]=useState('readiness');
   const M=MS.find(x=>x.id===metric)||MS[0];
-  const first=new Date(month.y,month.m,1),last=new Date(month.y,month.m+1,0);
-  const gridStart=sow(first);
-  const cells=Array.from({length:Math.ceil(((first.getDay()+6)%7+last.getDate())/7)*7},(_,i)=>addD(gridStart,i));
-  const mDays=Array.from({length:last.getDate()},(_,i)=>fmt(new Date(month.y,month.m,i+1)));
-  const byDay={};mDays.forEach(k=>{byDay[k]=wvDay(ath,k);});
-  const shiftM=d=>setMonth(({y,m})=>{const n=new Date(y,m+d,1);return{y:n.getFullYear(),m:n.getMonth()};});
-  const pastDays=mDays.filter(k=>k<=fmt(today));
-  const nIn=mDays.filter(k=>byDay[k]).length;
-  const comp=pastDays.length?Math.round(nIn/pastDays.length*100):null;
-  const mAvg=id=>wvMean(mDays.map(k=>byDay[k]&&byDay[k][id]));
-  const sel=wvDay(ath,dayKey);
+  const CP=wvPeriod(calMode,calAt),VP=wvPeriod(cvMode,cvAt);
+  const NH=usePolarNightHR(ath,teamId,CP.from<VP.from?CP.from:VP.from,CP.to>VP.to?CP.to:VP.to);
+  const dc={};const dOf=k=>(k in dc)?dc[k]:(dc[k]=wvDay(ath,k));
+  const val=(k,id)=>id==='nightHR'?(NH.by[k]!=null?NH.by[k]:null):(((dOf(k)||{})[id])??null);
+  const avgOf=(days,id)=>wvMean(days.map(k=>val(k,id)));
+  /* Başlık bandı takvimin dönemini okur. */
+  const cIn=CP.days.filter(k=>dOf(k)).length;
+  const cPast=CP.days.filter(k=>k<=tk).length;
+  const comp=cPast?Math.round(cIn/cPast*100):null;
+  const rdyAvg=avgOf(CP.days,'readiness');
+  const sel=dOf(dayKey);
+  const selNhr=val(dayKey,'nightHR');
   const night=(ath.nightLog||[]).find(n=>n&&n.date===dayKey)||null;
   const load=athDayLoad(ath,dayKey);
-  const series=mDays.map(k=>byDay[k]?byDay[k][metric]:null);
-  const rdyAvg=mAvg('readiness');
+  const inCal=k=>k>=CP.from&&k<=CP.to;
+  const cells=calMode==='week'?CP.days.map(parseD):(()=>{const first=parseD(CP.from),n=CP.days.length;const gs=sow(first);
+    return Array.from({length:Math.ceil(((first.getDay()+6)%7+n)/7)*7},(_,i)=>addD(gs,i));})();
+  const series=VP.days.map(k=>val(k,metric));
+  const cvLabels=cvMode==='week'?VP.days.map((k,i)=>`${DN[i]} ${parseD(k).getDate()}`):VP.days.map(k=>String(parseD(k).getDate()));
+  const cvAvg=avgOf(VP.days,metric);
+  const polarMsg=NH.off?L('Polar verisi için koç oturumu gerekiyor.','Polar data needs a coach session.')
+    :NH.err?L('Polar verisi alınamadı.','Polar data could not be loaded.')
+    :!NH.loaded?L('Polar verisi yükleniyor…','Loading Polar data…')
+    :!NH.linked?L('Sporcu Polar\'a bağlı değil.','The athlete is not connected to Polar.'):null;
+  const wkCal=calMode==='week';
   return(<div className="wv-detail">
     <WvHero onBack={onBack} name={ath.name} photo={ath.photo} title={ath.name}
-      sub={[ath.position&&posOf(ath.position),L(`${MN[month.m]} ${month.y} · ${nIn} check-in`,`${MN[month.m]} ${month.y} · ${nIn} check-ins`)].filter(Boolean).join(' · ')}
-      stats={[{v:wvFmt(rdyAvg,true),l:L('ay ort. hazır oluş','month avg readiness'),c:score5Color(rdyAvg)},
+      sub={[ath.position&&posOf(ath.position),`${wvPeriodLbl(calMode,CP)} · ${cIn} check-in`].filter(Boolean).join(' · ')}
+      stats={[{v:wvFmt(rdyAvg,true),l:wkCal?L('hafta ort. hazır oluş','week avg readiness'):L('ay ort. hazır oluş','month avg readiness'),c:score5Color(rdyAvg)},
         {v:comp==null?'—':comp+'%',l:L('katılım','compliance')}]}/>
     <div className="wv-cal-wrap">
-      <div className="panel wv-cal">
-        <div className="wv-ph">
-          <h2>{MN[month.m]} {month.y}</h2>
-          <div className="wv-cal-nav">
-            <button className="btn sm sec" onClick={()=>shiftM(-1)} aria-label={L('Önceki ay','Previous month')}>‹</button>
-            <button className="btn sm sec" onClick={()=>{setMonth({y:today.getFullYear(),m:today.getMonth()});setDayKey(fmt(today));}}>{L('Bugün','Today')}</button>
-            <button className="btn sm sec" onClick={()=>shiftM(1)} aria-label={L('Sonraki ay','Next month')}>›</button>
-          </div>
+      <div className={'panel wv-cal'+(wkCal?' wk':'')}>
+        <div className="wv-ph wv-ph-wrap">
+          <h2>{wvPeriodLbl(calMode,CP)}</h2>
+          <WvPeriodNav mode={calMode} setMode={m=>{setCalMode(m);setCalAt(dayKey);}} label={null}
+            onShift={d=>setCalAt(a=>wvShift(calMode,a,d))} showToday
+            onToday={()=>{setCalAt(tk);setDayKey(tk);}}/>
         </div>
         <div className="lb-seg wv-seg">{MS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.short}</button>)}</div>
-        <div className="wv-cal-grid" key={month.y+'-'+month.m}>
+        <div className={'wv-cal-grid'+(wkCal?' wk':'')} key={calMode+CP.from}>
           {[0,1,2,3,4,5,6].map(i=><div key={'h'+i} className="wv-cal-dn">{DN[i]}</div>)}
-          {cells.map((dt,i)=>{const k=fmt(dt),inM=dt.getMonth()===month.m;const d=inM?byDay[k]:null;
-            const v=d?d[metric]:null;
+          {cells.map((dt,i)=>{const k=fmt(dt),inM=inCal(k);const d=inM?dOf(k):null;
+            const v=inM?val(k,metric):null;
             const bg=v==null?null:(M.five?score5Color(v):null);
-            return<button key={k} className={'wv-cal-d'+(inM?'':' out')+(k===dayKey?' sel':'')+(k===fmt(today)?' today':'')+(d?' has':'')}
+            const others=wkCal&&inM?MS.filter(m=>m.id!==metric).map(m=>({m,v:val(k,m.id)})).filter(x=>x.v!=null):[];
+            return<button key={k} className={'wv-cal-d'+(inM?'':' out')+(k===dayKey?' sel':'')+(k===tk?' today':'')+((d||v!=null)?' has':'')}
               style={{animationDelay:(i*12)+'ms',...(bg?{'--wv-dc':bg}:{})}} onClick={()=>inM&&setDayKey(k)} disabled={!inM}>
               <span className="wv-cal-n">{dt.getDate()}</span>
-              {v!=null&&<span className="wv-cal-v">{wvFmt(v,M.five)}</span>}
-              {d&&<span className="wv-cal-dots">{MS.filter(m=>m.five&&m.id!=='readiness').map(m=><i key={m.id} style={{background:score5Color(d[m.id])||'var(--border2)'}}/>)}</span>}
+              {v!=null&&<span className="wv-cal-v">{wvFmt(v,M.five)}{!M.five&&wkCal?<small> bpm</small>:null}</span>}
+              {!wkCal&&d&&<span className="wv-cal-dots">{MS.filter(m=>m.five&&m.id!=='readiness').map(m=><i key={m.id} style={{background:score5Color(d[m.id])||'var(--border2)'}}/>)}</span>}
+              {others.length>0&&<span className="wv-cal-wk">{others.map(({m,v:x})=><span key={m.id}><em>{m.short}</em>
+                <b style={{color:m.five?(score5Color(x)||'var(--text)'):'var(--text)'}}>{wvFmt(x,m.five)}</b></span>)}</span>}
               {d&&(d.pain||d.note)&&<span className="wv-cal-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}/>}
             </button>;})}
         </div>
         <div className="wv-cal-leg">
           {M.five?SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)
-            :<span className="wv-cal-leg-t">{L('RHR değeri gün kutusunda bpm olarak','Resting HR shown in bpm on each day')}</span>}
+            :<span className="wv-cal-leg-t">{polarMsg||L('Polar gece nabzı gün kutusunda bpm olarak','Polar night HR shown in bpm on each day')}</span>}
           <span><i className="pain"/>{L('ağrı bildirimi','pain report')}</span>
         </div>
       </div>
@@ -34422,7 +34293,8 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
             <WvRing value={sel.readiness} max={5} color={score5Color(sel.readiness)||'var(--border2)'} size={112} stroke={9}>
               <b style={{color:score5Color(sel.readiness)||'var(--dim)'}}>{wvFmt(sel.readiness,true)}</b><span>{L('hazır oluş','readiness')}</span></WvRing>
             <div className="wv-dayp-side">
-              <div className="wv-dk"><span>RHR</span><b>{sel.RHR!=null?Math.round(sel.RHR):'—'}<small> bpm</small></b></div>
+              <div className="wv-dk"><span>{L('Gece nabzı','Night HR')}</span><b>{selNhr!=null?Math.round(selNhr):'—'}<small> bpm</small></b></div>
+              {sel.RHR!=null&&<div className="wv-dk"><span>RHR</span><b>{Math.round(sel.RHR)}<small> bpm</small></b></div>}
               <div className="wv-dk"><span>{L('sRPE yükü','sRPE load')}</span><b>{load?load:'—'}<small> AU</small></b></div>
               {night&&nightSleepMin(night)!=null&&<div className="wv-dk"><span>{L('Uyku süresi','Sleep time')}</span><b>{fmtSleep(nightSleepMin(night))}</b></div>}
               {night&&recNum(night.hrv)!=null&&<div className="wv-dk"><span>HRV</span><b>{Math.round(recNum(night.hrv))}<small> ms</small></b></div>}
@@ -34438,20 +34310,31 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
               <b style={{color:PAIN_SEV_COL[p.sev]}}>{PAIN_SEV_LABEL()[p.sev]}</b></div>)}
             {sel.note&&<div className="wv-pnote">“{sel.note}”</div>}
           </div>}
-        </>:<div className="empty-st">{L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
+        </>:<div className="empty-st">{selNhr!=null?L(`Bu gün check-in yok · Polar gece nabzı ${Math.round(selNhr)} bpm.`,`No check-in on this day · Polar night HR ${Math.round(selNhr)} bpm.`)
+          :L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
       </div>
     </div>
     <div className="panel wv-month">
-      <div className="wv-ph"><h2>{L('Ayın Eğrisi','Month Curve')} · {M.label}</h2>
-        <span>{L('ay ortalaması','month avg')} <b style={{color:M.five?(score5Color(mAvg(metric))||'var(--text)'):'var(--text)'}}>{wvFmt(mAvg(metric),M.five)}</b></span></div>
-      <WvArea key={metric+month.y+month.m} vals={series} labels={mDays.map(k=>String(parseD(k).getDate()))} color={M.five?'#3b82f6':'#06b6d4'}
-        lo={M.five?1:null} hi={M.five?5:null} five={M.five} h={190} team={mAvg(metric)}/>
-      <div className="wv-month-avgs">{MS.map((m,i)=>{const v=mAvg(m.id);
-        return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}>
-          <span>{m.label}</span><b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
+      <div className="wv-ph wv-ph-wrap"><h2>{L('Wellness Eğrisi','Wellness Curve')} · {M.label}</h2>
+        <WvPeriodNav mode={cvMode} setMode={m=>{setCvMode(m);setCvAt(dayKey);}} label={wvPeriodLbl(cvMode,VP)}
+          onShift={d=>setCvAt(a=>wvShift(cvMode,a,d))} onToday={()=>setCvAt(tk)} showToday={!(tk>=VP.from&&tk<=VP.to)}/>
+      </div>
+      <div className="wv-month-sub">{cvMode==='week'?L('hafta ortalaması','week avg'):L('ay ortalaması','month avg')}{' '}
+        <b style={{color:M.five?(score5Color(cvAvg)||'var(--text)'):'var(--text)'}}>{wvFmt(cvAvg,M.five)}{!M.five&&cvAvg!=null?' bpm':''}</b>
+        {M.polar&&<em className="wv-polar-tag">Polar</em>}</div>
+      {M.polar&&polarMsg&&!series.some(v=>v!=null)?<div className="wv-area none" style={{height:190}}>{polarMsg}</div>
+        :<WvArea key={metric+cvMode+VP.from} vals={series} labels={cvLabels} color={M.five?'#3b82f6':'#06b6d4'}
+          lo={M.five?1:null} hi={M.five?5:null} five={M.five} h={190} team={cvAvg}/>}
+      <div className="wv-month-avgs">{MS.map((m,i)=>{const v=avgOf(VP.days,m.id);
+        return<button key={m.id} className={'wv-ma'+(metric===m.id?' on':'')} onClick={()=>setMetric(m.id)} style={{animationDelay:(i*60)+'ms'}}
+          title={m.polar?(polarMsg||L('Polar Loop gece nabzı ortalaması','Polar Loop night HR average')):undefined}>
+          <span>{m.label}{m.polar&&<em className="wv-polar-tag">Polar</em>}</span>
+          <b style={{color:m.five?(score5Color(v)||'var(--dim)'):'var(--text)'}}>{wvFmt(v,m.five)}{!m.five&&v!=null?<small> bpm</small>:null}</b></button>;})}</div>
+      <WvRecords ath={ath} updAth={updAth} P={VP} val={val} nh={NH} addDate={dayKey}
+        onAdded={k=>{if(!(k>=VP.from&&k<=VP.to))setCvAt(k);}}/>
     </div>
     <PolarAthleteCharts ath={ath} teamId={teamId}/>
-    <div className="wv-sec-h">{L('Kayıtlar, Uyku ve HRV','Records, Sleep & HRV')}</div>
+    <div className="wv-sec-h">{L('Uyku ve HRV','Sleep & HRV')}</div>
     <AthWellness ath={ath} updAth={updAth}/>
   </div>);
 }
@@ -34681,6 +34564,50 @@ function PolarAthleteCharts({ath,teamId}){
   if(err)return<div className="panel pw-ath"><div className="pw-ath-h"><div className="pw-ath-id">{logo}<div><h2>{L('Polar verisi','Polar data')}</h2></div></div>{tools}</div><div className="pw-err">{err}</div></div>;
   if(data===undefined)return<div className="panel pw-ath"><div className="pw-ath-h"><div className="pw-ath-id">{logo}<div><h2>{L('Polar verisi','Polar data')}</h2><span className="pw-sub">{L('Yükleniyor…','Loading…')}</span></div></div>{tools}</div></div>;
   return<PwAthlete a={data.a} title={L(`Polar verisi · son ${days} gün`,`Polar data · last ${days} days`)} from={data.from} to={data.to} tools={tools}/>;
+}
+
+/* ── Wellness sporcu sayfası: Polar gece nabzı, ay ay ─────────────────────────
+   Takvim ve eğri hafta / ay arasında gezdikçe gereken aylar (/team-data, bu sporcu,
+   ayın 1'i → ayın sonu ya da bugün) bir kez istenir ve oturum boyunca saklanır; içinde
+   bulunulan ay 10 dakikada bir tazelenir. Dönen: {by:{'YYYY-MM-DD':bpm}, linked, loaded,
+   off, err}. Gece verisi uyanılan sabahın tarihini taşır — takvim günüyle aynı kural. */
+const PW_NHR_CACHE=new Map();
+function pwMonthsOf(from,to){
+  const out=[];if(!from||!to||from>to)return out;
+  let y=+from.slice(0,4),m=+from.slice(5,7);const ey=+to.slice(0,4),em=+to.slice(5,7);
+  while((y<ey||(y===ey&&m<=em))&&out.length<24){out.push(`${y}-${String(m).padStart(2,'0')}`);m++;if(m>12){m=1;y++;}}
+  return out;
+}
+function usePolarNightHR(ath,teamId,from,to){
+  const months=pwMonthsOf(from,to);
+  const id=ath&&ath.id?String(ath.id):'';
+  const[,setTick]=useState(0);
+  const[err,setErr]=useState('');
+  const key=m=>`${teamId}|${id}|${m}`;
+  const todayK=fmt(new Date());
+  const fresh=m=>{const c=PW_NHR_CACHE.get(key(m));return!!c&&(m<todayK.slice(0,7)||Date.now()-c.at<6e5);};
+  const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;
+  const off=!teamId||!id||!u||u.isAnonymous;
+  useEffect(()=>{
+    if(off)return;
+    let alive=true;
+    const need=months.filter(m=>!fresh(m)&&m+'-01'<=todayK);
+    if(!need.length)return;
+    Promise.all(need.map(m=>{
+      const last=`${m}-${String(new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate()).padStart(2,'0')}`;
+      return polarCall('/team-data',{teamId,athleteId:id,from:m+'-01',to:last>todayK?todayK:last}).then(j=>{
+        const a=(j.athletes||[])[0];const by={};
+        ((a&&a.recharge)||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))by[r.date]=r.hrAvg;});
+        PW_NHR_CACHE.set(key(m),{by,linked:!!a,at:Date.now()});
+      });}))
+      .then(()=>{if(alive){setErr('');setTick(t=>t+1);}})
+      .catch(e=>{if(alive)setErr(e.message||String(e));});
+    return()=>{alive=false;};
+  },[teamId,id,months.join(','),off]);
+  const by={};let linked=false,loaded=true;
+  months.forEach(m=>{const c=PW_NHR_CACHE.get(key(m));
+    if(c){Object.assign(by,c.by);linked=linked||c.linked;}else if(m+'-01'<=todayK)loaded=false;});
+  return{by,linked,loaded:off||loaded||!!err,off,err};
 }
 
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
@@ -42679,10 +42606,32 @@ const ATP_FAMILY_AXIS={'Split Squat Family':'knee','Lunge Family':'knee','Step-U
   'Trunk Flexion Family':'core','Carry Family':'carry','Olympic Lift Family':'full','Calf / Ankle Family':'ankle'};
 /* The coach's tag on the row (and the library's) names the axis before the name does. */
 const ATP_AXIS_OF={'Knee Dominant':'knee','Hip Dominant':'hip','Upper Body Push':'push','Upper Body Pull':'pull','Core':'core',
-  'Full Body':'full','Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip','Push':'push','Pull':'pull','Core / Brace':'core',
+  'Full Body':'full','Olympic Lift':'full','Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip','Push':'push','Pull':'pull','Core / Brace':'core',
   'Rotation':'core','Carry':'carry'};
 const ATP_AXIS_FAMILY={knee:'Knee Dominant (Other)',hip:'Hip Dominant (Other)',push:'Upper Body Push (Other)',
   pull:'Upper Body Pull (Other)',core:'Core (Other)',full:'Full Body (Other)',carry:'Carry Family',ankle:'Calf / Ankle Family'};
+/* Today's filing (185, Kategori · Tür): the family a category and type name outright. A family
+   read off the name is kept only where it belongs to the tagged category, so a row the coach
+   filed as a push is never counted as a pull because of a word in its name. */
+const ATP_MV_FAMILY={
+  'Knee Dominant':{Squat:'Squat Family','Split Squat':'Split Squat Family',Lunge:'Lunge Family','Step-up':'Step-Up Family','Step-down':'Step-Up Family'},
+  'Hip Dominant':{Deadlift:'Hinge Family',RDL:'Hinge Family','Good Morning':'Hinge Family','Pull-through':'Hinge Family',Swing:'Hinge Family',
+    'Hip Thrust':'Hip Thrust / Bridge Family','Glute Bridge':'Hip Thrust / Bridge Family'},
+  'Upper Body Push':{'Horizontal Push':'Horizontal Press Family','Vertical Push':'Vertical Press Family'},
+  'Upper Body Pull':{'Horizontal Pull':'Horizontal Pull Family','Vertical Pull':'Vertical Pull Family'},
+  'Core':{'Anti-Extension':'Anti-Extension Family','Anti-Rotation':'Anti-Rotation Family','Anti-Lateral Flexion':'Anti-Lateral Flexion Family',
+    'Rotation':'Rotation Family','Flexion':'Trunk Flexion Family'},
+  'Plyometric':{Jump:'Jump Family',Hop:'Hop / Bound Family',Bound:'Hop / Bound Family'},
+};
+const ATP_MV_CAT_FAMILY={'Carry':'Carry Family','Olympic Lift':'Olympic Lift Family','Medicine Ball':'Med Ball Throw Family','Mobility':'Mobility Family'};
+const ATP_MV_FAM_OK={
+  'Knee Dominant':['Split Squat Family','Lunge Family','Step-Up Family','Squat Family'],
+  'Hip Dominant':['Hinge Family','Hip Thrust / Bridge Family','Hamstring Curl Family'],
+  'Upper Body Push':['Vertical Press Family','Horizontal Press Family'],'Upper Body Pull':['Vertical Pull Family','Horizontal Pull Family'],
+  'Core':['Anti-Rotation Family','Anti-Lateral Flexion Family','Anti-Extension Family','Rotation Family','Trunk Flexion Family'],
+  'Plyometric':['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'],
+  'Medicine Ball':['Med Ball Throw Family'],'Olympic Lift':['Olympic Lift Family'],'Carry':['Carry Family'],'Mobility':['Mobility Family'],
+};
 function atpLibMap(exercises){
   const m={};
   (exercises||[]).forEach(e=>{const n=String((e&&e.name)||'').trim().toLowerCase();if(n&&!m[n])m[n]=e;});
@@ -42698,14 +42647,25 @@ function atpClassify(row,libMap){
   const S=String(row.plane||'').trim()||String(lib.exPlane||'').trim()||String(lib.subType||'').trim();
   const type=String(lib.type||'').trim(),sub=String(lib.subType||'').trim();
   const mp=String(lib.movePattern||'').trim()||(['Unilateral','Lunges','Step-Up'].includes(lib.pattern)?'Lunge / Unilateral':'');
-  const fam0=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
-  const plyo=type==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
+  /* The row's Kategori · Tür · Yön (185) — what the pattern table writes on every row — else
+     the library card's. The coach's own filing is read before anything the name suggests. */
+  const mk=MV_KEYS.includes(tagP)?tagP:mvLibCat(lib);
+  const mt=!mk?'':(mk===tagP?mvNormType(mk,row.plane,row.name):mvLibType(lib,mk));
+  const md=!mk?'':(mk===tagP?(mvDirs(mk).includes(row.dir)?row.dir:''):mvLibDir(lib,mk,mt));
+  const famName=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
+  const famTag=(ATP_MV_FAMILY[mk]||{})[mt]||ATP_MV_CAT_FAMILY[mk]||null;
+  const famOk=ATP_MV_FAM_OK[mk];
+  /* A depth jump or a landing tagged only "Jump" keeps the more specific family its name gives. */
+  const fam0=(famTag&&!(mk==='Plyometric'&&['Depth / Drop Jump Family','Landing Family'].includes(famName)))?famTag
+    :(famName&&(!famOk||famOk.includes(famName)))?famName:null;
+  const plyo=type==='Plyometric'||mk==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
   const run=type==='Multi Directional Speed'||mp==='Sprint / Locomotion'||['Sprint Family','Deceleration Family','COD / Agility Family'].includes(fam0);
-  const throwing=type==='Medicine Ball'||fam0==='Med Ball Throw Family';
-  let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||null;
+  const throwing=type==='Medicine Ball'||mk==='Medicine Ball'||fam0==='Med Ball Throw Family';
+  let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||ATP_AXIS_OF[mk]||(mk==='Accessory'&&(mt==='Calf'||mt==='Tibialis')?'ankle':null);
   if(!axis&&!plyo&&!run&&!throwing)axis=ATP_FAMILY_AXIS[fam0]||null;
   const uni=/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|split|lunge|step[- ]?(up|down)|bulgarian|pistol|skater|rfess|hamle|b[- ]?stance|kickstand|staggered|rear[- ]?foot/.test(n)
-    ||['Unilateral','Lunges','Step-Up'].includes(lib.pattern)||mp==='Lunge / Unilateral';
+    ||['Unilateral','Lunges','Step-Up'].includes(lib.pattern)||mp==='Lunge / Unilateral'
+    ||(mk==='Knee Dominant'&&['Split Squat','Lunge','Step-up','Step-down'].includes(mt));
   /* A jump's knee bend is not a squat set: the strength sub-patterns are only read on
      rows that are not jumps or runs. The axis itself still counts when it was tagged. */
   const lift=!plyo&&!run;
@@ -42713,18 +42673,20 @@ function atpClassify(row,libMap){
   if(axis==='knee'){pats.add('Knee Dominant');
     if(lift){
       if(uni){pats.add('Unilateral Knee Dominant');
-        if(/lunge|split|hamle|bulgarian|rfess|rear[- ]?foot/.test(n)||lib.pattern==='Lunges')pats.add('Lunge');}
-      else if(fam0==='Squat Family'||mp==='Squat'||/squat|leg press|hack/.test(n))pats.add('Squat');}}
+        if(/lunge|split|hamle|bulgarian|rfess|rear[- ]?foot/.test(n)||lib.pattern==='Lunges'||(mk==='Knee Dominant'&&(mt==='Lunge'||mt==='Split Squat')))pats.add('Lunge');}
+      else if(fam0==='Squat Family'||mp==='Squat'||(mk==='Knee Dominant'&&mt==='Squat')||/squat|leg press|hack/.test(n))pats.add('Squat');}}
   if(axis==='hip'){pats.add('Hip Dominant');
     if(lift){
-      if(fam0==='Hinge Family'||mp==='Hinge'||/deadlift|\brdl\b|romanian|hinge|good ?morning|swing/.test(n))pats.add('Hinge');
+      if(fam0==='Hinge Family'||mp==='Hinge'||(mk==='Hip Dominant'&&['Deadlift','RDL','Good Morning','Pull-through','Swing'].includes(mt))||/deadlift|\brdl\b|romanian|hinge|good ?morning|swing/.test(n))pats.add('Hinge');
       if(uni)pats.add('Unilateral Hip Dominant');}}
   if(axis==='push'||axis==='pull'){
-    const dir=(S==='Vertical'||S==='Horizontal'||S==='Rotational')?S:(/Vertical/.test(fam0||'')?'Vertical':'Horizontal');
+    /* The plane the pattern table names ("Vertical Push"), else the older one-word plane. */
+    const pl=/^(Horizontal|Vertical) (Push|Pull)$/.exec(mt||'');
+    const dir=pl?pl[1]:(S==='Vertical'||S==='Horizontal'||S==='Rotational')?S:(/Vertical/.test(fam0||'')?'Vertical':'Horizontal');
     pats.add(dir==='Rotational'?'Rotation':`${dir} ${axis==='push'?'Push':'Pull'}`);
   }
   if(axis==='core'){
-    const q=CORE_QUALITIES.has(S)?S:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
+    const q=CORE_QUALITIES.has(S)?S:CORE_QUALITIES.has(mt)?mt:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
       'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'})[fam0]
       ||(mp==='Rotation'?'Rotation':'Anti-Extension');
     pats.add(['Flexion','Extension','Lateral Flexion'].includes(q)?'Trunk Flexion / Extension':q);
@@ -42734,8 +42696,9 @@ function atpClassify(row,libMap){
   if(axis==='ankle'||fam0==='Calf / Ankle Family')pats.add('Ankle / Calf');
   if(plyo)pats.add('Plyometric');
   if(run)pats.add('Sprint / Locomotion');
-  if(type==='Mobility'||mp==='Mobility'||fam0==='Mobility Family'||(type==='Warm-Up'&&/Mobilisation|Dynamic Stretching/.test(sub)))pats.add('Mobility');
-  if(type==='Stability'||type==='Balance'||/balance|denge|stability|stabilite/.test(n))pats.add('Stability / Balance');
+  if(type==='Mobility'||mk==='Mobility'||mp==='Mobility'||fam0==='Mobility Family'||(type==='Warm-Up'&&/Mobilisation|Dynamic Stretching/.test(sub)))pats.add('Mobility');
+  if(type==='Stability'||type==='Balance'||(mk==='Motor Control'&&['Balance','Joint Stability','Proprioception'].includes(mt))
+    ||/balance|denge|stability|stabilite/.test(n))pats.add('Stability / Balance');
 
   const st=new Set();
   const maxV=/flying|max(imal)? velocity|top speed|maks(imum)? hız|wicket|\b(30|35|40|50|60) ?m\b|fly[- ]?in/.test(n);
@@ -42746,7 +42709,7 @@ function atpClassify(row,libMap){
     if(sub==='Deceleration'||fam0==='Deceleration Family'||/\bstop\b|5-0-5|\b505\b/.test(n))st.add('Deceleration');
     if(['COD','Non-Reactive Agility','Reactive Agility'].includes(sub)||fam0==='COD / Agility Family')st.add('Change of Direction');
   }
-  if((run||plyo)&&(/lateral|shuffle|carioca|skater|side ?step|slide|crossover|yanal/.test(n)||(type==='Plyometric'&&sub==='Lateral')))st.add('Lateral Movement');
+  if((run||plyo)&&(/lateral|shuffle|carioca|skater|side ?step|slide|crossover|yanal/.test(n)||(type==='Plyometric'&&sub==='Lateral')||(mk==='Plyometric'&&md==='Lateral')))st.add('Lateral Movement');
   if(plyo){
     if(fam0==='Jump Family'||fam0==='Depth / Drop Jump Family'||(!fam0&&type==='Plyometric'))st.add('Jumping');
     if(fam0==='Landing Family'||/landing|iniş|\bstick\b/.test(n))st.add('Landing');
@@ -42754,6 +42717,7 @@ function atpClassify(row,libMap){
     if(fam0==='Depth / Drop Jump Family'||/reactive|reaktif|pogo|rebound|continuous|repeated/.test(n))st.add('Reactive / Depth');
   }
   if(throwing)st.add('Throwing');
+  if(mk==='Motor Control'&&mt==='Landing Mechanics')st.add('Landing');
 
   const ld=new Set();
   const loadTxt=String(row.load||'').toLowerCase();
@@ -42775,7 +42739,7 @@ function atpClassify(row,libMap){
     ||/speed|velocity|explosive|patlayıcı|dynamic effort/.test(n))ld.add('High-Velocity');
   if(bal)ld.add('Ballistic');
 
-  const family=fam0||ATP_AXIS_FAMILY[axis]||(type?`${type} Family`:'Unclassified');
+  const family=fam0||ATP_AXIS_FAMILY[axis]||((type||mk)?`${type||mk} Family`:'Unclassified');
   /* The four strength attributes, on strength rows only (never a jump, a run or a throw).
      Bilateral or unilateral: a lower-body row is unilateral when the name or the library
      says so; an upper-body row only when the name says single-arm / one-arm / alternating,
@@ -42790,7 +42754,7 @@ function atpClassify(row,libMap){
      otherwise. */
   const rotCue=S==='Rotational'||/rotational|rotation|rotasyon|transverse|wood ?chop|\bchops?\b|twist|windmill/.test(n)
     ||pats.has('Rotation')||pats.has('Anti-Rotation');
-  const latCue=S==='Lateral Flexion'||/lateral|side ?(lunge|step|squat|plank|bend)|cossack|skater|curtsy|yan ?(hamle|adım)|frontal|copenhagen/.test(n)
+  const latCue=S==='Lateral Flexion'||mt==='Lateral Flexion'||md==='Lateral'||/lateral|side ?(lunge|step|squat|plank|bend)|cossack|skater|curtsy|yan ?(hamle|adım)|frontal|copenhagen/.test(n)
     ||pats.has('Anti-Lateral Flexion');
   const plane=strengthRow?(rotCue?'Transverse':latCue?'Frontal':'Sagittal'):'';
   /* Action: an upper-body push or pull is its axis; a hip or knee row takes the library's
@@ -42809,7 +42773,7 @@ function atpClassify(row,libMap){
   const pick=(v,list)=>{const s=String(v==null?'':v).trim();return list.includes(s)?s:'';};
   const CORE_FAM_Q={'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
     'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'};
-  const coreQ=axis==='core'?(CORE_QUALITIES.has(S)?S:(CORE_FAM_Q[fam0]||(mp==='Rotation'?'Rotation':''))):'';
+  const coreQ=axis==='core'?(CORE_QUALITIES.has(S)?S:CORE_QUALITIES.has(mt)?mt:(CORE_FAM_Q[fam0]||(mp==='Rotation'?'Rotation':''))):'';
   const cat=ATP_TAXONOMY.some(x=>x.type===type)?type
     :plyo?'Plyometric':run?'Multi Directional Speed':throwing?'Medicine Ball'
     :({knee:'Knee Dominant',hip:'Hip Dominant',push:'Upper Body Push',pull:'Upper Body Pull',core:'Core',full:'Full Body'})[axis]
@@ -42826,7 +42790,7 @@ function atpClassify(row,libMap){
       ?(knee&&fam0==='Step-Up Family'?'Step-Up':knee&&(fam0==='Lunge Family'||fam0==='Split Squat Family')?'Lunges':uni?'Unilateral':'Bilateral'):''));
     put('Equipment',eqIn('Equipment'));
   }else if(cat==='Upper Body Push'||cat==='Upper Body Pull'){
-    put('Movement',pick(S,V('Movement'))||(/Horizontal/.test(fam0||'')?'Horizontal':/Vertical/.test(fam0||'')?'Vertical':''));
+    put('Movement',pick(S,V('Movement'))||((/^(Horizontal|Vertical) /.exec(mt||'')||[])[1])||(/Horizontal/.test(fam0||'')?'Horizontal':/Vertical/.test(fam0||'')?'Vertical':''));
     put('Equipment',eqIn('Equipment'));
   }else if(cat==='Core'){
     put('Movement',coreQ);
@@ -42836,23 +42800,23 @@ function atpClassify(row,libMap){
   }else if(cat==='Multi Directional Speed'){
     put('Skill',pick(sub,V('Skill'))||(st.has('Change of Direction')?'COD':st.has('Deceleration')?'Deceleration':st.has('Acceleration')?'Acceleration':''));
   }else if(cat==='Plyometric'){
-    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist/.test(n)?'Rotational'
+    put('Direction',pick(sub,V('Direction'))||(mk==='Plyometric'&&({Vertical:'Vertical',Forward:'Horizontal',Backward:'Horizontal',Lateral:'Lateral','Multi-Directional':'Multi-Directional'})[md])||(/rotational|rotation|twist/.test(n)?'Rotational'
       :/lateral|skater|side ?(hop|jump|bound)|\byan\b/.test(n)?'Lateral'
       :/broad jump|horizontal|bounds?\b|standing long|hurdle hop/.test(n)?'Horizontal'
       :/box jump|vertical|cmj|counter ?movement|squat jump|jump squat|tuck|drop jump|depth jump|pogo|ankle hop/.test(n)?'Vertical':''));
-    const kind=pick(lib.exKind,V('Exercise Type'))||(fam0==='Depth / Drop Jump Family'?'Drop Jump':fam0==='Landing Family'?'Landing'
+    const kind=pick(lib.exKind,V('Exercise Type'))||(mk==='Plyometric'&&['Jump','Hop','Bound'].includes(mt)&&fam0!=='Depth / Drop Jump Family'&&fam0!=='Landing Family'?mt:'')||(fam0==='Depth / Drop Jump Family'?'Drop Jump':fam0==='Landing Family'?'Landing'
       :fam0==='Hop / Bound Family'?(/bound/.test(n)?'Bound':'Hop'):fam0==='Jump Family'?'Jump':'');
     put('Exercise Type',kind);
     put('Technique',pick(lib.technique,V('Technique'))
       ||(/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|skater|alternating/.test(n)?'Unilateral':(kind==='Hop'||kind==='Bound'||!kind)?'':'Bilateral'));
     put('Equipment',exMulti(lib.equipment).find(x=>V('Equipment').includes(x))||eqIn('Equipment')||(equipment==='Bodyweight'?'No Equipment':''));
   }else if(cat==='Medicine Ball'){
-    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
+    put('Direction',pick(sub,V('Direction'))||(mk==='Medicine Ball'&&({Up:'Vertical',Down:'Vertical',Forward:'Horizontal',Backward:'Horizontal',Rotational:'Rotational',Diagonal:'Multi-Directional',Lateral:'Rotational'})[md])||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
       :/overhead|slam|vertical|scoop/.test(n)?'Vertical':/chest pass|horizontal|push pass|wall throw/.test(n)?'Horizontal':''));
-    put('Exercise Type',pick(lib.exKind,V('Exercise Type'))||(/slam/.test(n)?'Slam':/catch/.test(n)?'Catch':/pass/.test(n)?'Pass'
+    put('Exercise Type',pick(lib.exKind,V('Exercise Type'))||(mk==='Medicine Ball'&&mt?(mt==='Slam'?'Slam':mt==='Chest Pass'?'Pass':'Throw'):'')||(/slam/.test(n)?'Slam':/catch/.test(n)?'Catch':/pass/.test(n)?'Pass'
       :/throw|toss|shot ?put|scoop/.test(n)?'Throw':''));
   }else if(cat==='Mobility'){
-    put('Region',pick(sub,V('Region'))||(/ankle|dorsiflexion|calf/.test(n)?'Ankle':/hip|90\/90|pigeon|adductor|groin/.test(n)?'Hip'
+    put('Region',pick(sub,V('Region'))||(mk==='Mobility'?pick(mt,V('Region')):'')||(/ankle|dorsiflexion|calf/.test(n)?'Ankle':/hip|90\/90|pigeon|adductor|groin/.test(n)?'Hip'
       :/thoracic|spine|t-spine|cat[- ]?cow|open book|thread the needle/.test(n)?'Spine':/shoulder|scap|wall slide/.test(n)?'Shoulder':/wrist|forearm/.test(n)?'Wrist':''));
     put('Position',pick(lib.position,V('Position')));
   }else if(cat==='Warm-Up'||cat==='Balance'){
@@ -42863,7 +42827,7 @@ function atpClassify(row,libMap){
     put('Type',pick(sub,V('Type')));
     put('Region',pick(lib.bodyRegion,V('Region')));
   }
-  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets};
+  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets,mvCat:mk,mvType:mt};
 }
 /* Every session on the athlete's calendar up to `to` that has at least one exercise
    row, oldest first; sessions of one day in the order they were run. A block or row the
@@ -42894,7 +42858,7 @@ function atpExposure(ath,end,opts){
   if(last&&!use.includes(last))use.push(last);
   const W=['last','d7','d14','d28'];
   const sessions={d7:0,d14:0,d28:0},rows={last:0,d7:0,d14:0,d28:0};
-  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},plane:{},action:{},focus:{},equipment:{},category:{},facet:{}};
+  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},plane:{},action:{},focus:{},equipment:{},category:{},facet:{},mvcat:{}};
   const bump=(layer,key,label,wins,sets,sess,date)=>{
     const t=layers[layer][key]||(layers[layer][key]={key,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
     wins.forEach(w=>{t.sets[w]+=sets;});
@@ -42912,7 +42876,9 @@ function atpExposure(ath,end,opts){
       const t=bump('exercise',diExName(name)||name.toLowerCase(),name,wins,sets,s.key,s.date);
       t.family=c.family;
       ['patterns','stimuli','loading'].forEach(k=>{t[k]=[...new Set([...(t[k]||[]),...c[k]])];});
-      ['laterality','plane','action','focus','equipment'].forEach(k=>{if(c[k])t[k]=c[k];});
+      ['laterality','plane','action','focus','equipment','mvCat','mvType'].forEach(k=>{if(c[k])t[k]=c[k];});
+      /* The pattern table's own category (Kategori), the coach's vocabulary on screen. */
+      bump('mvcat',c.mvCat||'',c.mvCat||'',wins,sets,s.key,s.date);
       bump('family',c.family,c.family,wins,sets,s.key,s.date);
       ['laterality','plane','action','focus','equipment'].forEach(k=>{
         if(c[k])bump(k,c[k],c[k],wins,sets,s.key,s.date);});
@@ -42964,7 +42930,9 @@ function atpExposure(ath,end,opts){
       return{type:tx.type,cat:fin(cat,'group'),facets};
     }).filter(Boolean),
     coverageMissing:ATP_TAXONOMY.filter(tx=>!layers.category[tx.type]).map(tx=>tx.type),
-    equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets)};
+    equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets),
+    /* Sets per Kategori (185) — '' holds the rows filed under none. */
+    categories:Object.values(layers.mvcat).map(t=>fin(t,'group')).sort(bySets)};
 }
 /* The profile as the individualization JSON carries it. The day being programmed is
    not exposure yet, so the window ends the day before it — the same rule the daily
@@ -42982,7 +42950,6 @@ function atpSnapshot(ath,ref,libMap,setup){
   const ordered=rated.map((x,i)=>({...x,i})).sort((a,b)=>(rank(a)-rank(b))||(a.i-b.i));
   const byPri=id=>rated.filter(x=>x.r.priority===id).map(x=>x.it.en);
   const unrated=ATP_QUALITIES.filter(it=>!tp.qualities[it.id]).map(it=>it.en);
-  const con=list=>list.map(c=>({constraint:atpConLabel(c),category:atpCatLabel(atpConCat(c))||null,value:c.value,note:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
   /* Every record is one name with its sets over the last 7 and 28 days — the two
@@ -43004,40 +42971,15 @@ function atpSnapshot(ath,ref,libMap,setup){
     (ATP_EQ_ID[v]?eqIds.has(ATP_EQ_ID[v]):(eqIds.has(EQ_CUSTOM+diExName(v))||eqNames.has(diExName(v))));
   const gapOf=f=>f.label==='Equipment'?(t=>inGym(t.label)):(()=>true);
   const cut=ATP_EXP_CUT;
-  /* Joints with a rated need, the strongest first, head to foot within one level. A
-     note alone is not a need and is not sent. */
-  const jRows=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:tp.joints[r.key]||{}})).filter(x=>x.j.level)
-    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
-  const jointNeeds=jRows.length?{
-    description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
-      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine (rated separately for extension and for rotation), neck, shoulder, wrist — need mobility. '+
-      'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
-      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
-      'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',
-    level_scale:Object.fromEntries(ATP_JOINT_LEVELS.map(l=>[l.en,l.dEn])),
-    use:'Joint-by-Joint priority: write the programme red zones first — every High (red) joint is addressed before any Medium or Low joint, '+
-      'in priority_order, and none of the Medium / Low work may crowd a High joint out of the session. '+
-      'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
-      'every High need gets targeted work in the session, Medium needs regular work in the preparation block, Low needs a short maintenance dose. '+
-      'Mobility need: give the joint its range (mobilisation, dynamic stretching, end-range control) before it is loaded. '+
-      'Stability need: train the joint for control (isometrics, anti-movement, balance, slow eccentrics) — no mobilisation for more range, '+
-      'and do not load it at an end range it cannot control. A joint need is not a diagnosis: pain is for the medical staff.',
-    /* Red (High) first: the order the programme is to be written in. */
-    priority_order:jRows.map((x,i)=>({rank:i+1,joint:atpJointName(x.r),level:en(ATP_JOINT_LEVELS,x.j.level),zone:atpJointZone(x.j.level)})),
-    joints:jRows.map(({r,j})=>({joint:atpJointName(r),...(r.side?{side:r.side}:{}),
-      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),zone:atpJointZone(j.level),
-      ...(j.note&&j.note.trim()?{note:j.note.trim()}:{})})),
-    /* The same, by need and level, the names alone; an empty level or need is left out. */
-    by_need:Object.fromEntries(ATP_JOINT_NEEDS.map(n=>[n.id,Object.fromEntries([...ATP_JOINT_LEVELS].reverse()
-      .map(l=>[l.id,jRows.filter(x=>x.r.joint.need===n.id&&x.j.level===l.id).map(x=>atpJointName(x.r))]).filter(([,v])=>v.length))])
-      .filter(([,v])=>Object.keys(v).length)),
-  }:null;
-  const filled=rated.length+tp.constraints.hard.length+tp.constraints.soft.length+jRows.length>0;
+  /* Joint by Joint and Constraints are no longer on the profile tab, so what an older
+     profile saved under them is not sent either: the JSON only carries what the coach can
+     see and change. */
+  const filled=rated.length>0;
   /* With no S&C session on the calendar in 28 days every list below would only say
      "none" at length, so the block is cut to the count and the scope that explains it. */
   const anyEx=ex.sessions.d28>0;
   return{filled,out:{
-    definition:'The athlete\'s training profile. athletic_profile, constraints and joint_needs are entered by the coach; '+
+    definition:'The athlete\'s training profile. athletic_profile is entered by the coach; '+
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
     last_updated:tp.updated,
     athletic_profile:rated.length?{
@@ -43048,13 +42990,6 @@ function atpSnapshot(ath,ref,libMap,setup){
       ...(unrated.length?{not_rated:unrated}:{}),
       qualities:ordered.map(({it,r})=>({quality:it.en,group:it.group,priority:en(ATP_PRIORITY,r.priority)})),
     }:null,
-    /* No constraint entered, no block: a description with nothing under it reads as
-       data that is missing rather than as "none". */
-    constraints:(tp.constraints.hard.length||tp.constraints.soft.length)?{
-      description:'hard: constraints that must be respected without exception · soft: not strict prohibitions, but preferences or situations to limit',
-      hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
-    /* No joint rated, no block: the key is left out rather than sent as null. */
-    ...(jointNeeds?{joint_needs:jointNeeds}:{}),
     exercise_exposure:!anyEx?{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
