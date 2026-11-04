@@ -119,20 +119,45 @@ function PtCat({value,color,options,onChange,label}){
       title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
   </span>);
 }
+/* An exercise of a program row, filed into the library the way the row has it: its name (a
+   card is added when the library has none), its Kategori · Tür · Yön, its link (only a card
+   with no link takes one) and its picture (only a card with no picture of its own takes it —
+   a picture already on the card is the coach's choice and stays). Giving a named row its
+   category is what calls this: the exercise is then a real one, filed with what it carries. */
+function ptFileExercise(name,{pattern,plane,dir,image,link}={}){
+  const nm=String(name||'').trim();
+  if(!nm)return;
+  const hit=exLibHit(nm);
+  if(!hit)addExerciseToLibrary(nm);
+  if(MV_KEYS.includes(pattern))rememberExerciseTags(nm,pattern,plane||'',dir||'');
+  if(safeURL(link))rememberExerciseLink(nm,link);
+  const img=String(image||'').trim();
+  if(img&&!(hit&&hit.pic))rememberExerciseImage(nm,img);
+}
 /* The exercise's picture, on the left of its card: the one put on the row itself, else the one
    the library carries for that name (its program image, else the video's thumbnail). The box
    takes a picture too: copy one and paste it in (Ctrl/Cmd+V, or click — the clipboard is read),
    or right-click for a file. `onImage(url)` gets the uploaded picture; '' takes it off. */
 function PtImg({name,image,onImage}){
   const hit=exLibHit(name);
-  const pic=image||(hit&&hit.image)||'';
-  const[bad,setBad]=useState(false);
+  /* The row's own picture first, the library's after it. A picture that does not load (an
+     address that has gone stale) falls through to the next one instead of leaving the box
+     empty, so a picture the library still holds is never hidden by a dead copy on the row.
+     A Storage picture is given a moment first: the page's error handler (160) drops a broken
+     copy the service worker kept and loads it again, and that second try must find the <img>
+     still there. */
+  const pics=[image,hit&&hit.image].filter((v,i,a)=>hasMedia(v)&&a.indexOf(v)===i);
+  const[failed,setFailed]=useState([]);
+  const pic=pics.find(p=>!failed.includes(p))||'';
+  const failT=useRef(null);
+  useEffect(()=>()=>clearTimeout(failT.current),[]);
+  const onErr=()=>{const p=pic;clearTimeout(failT.current);
+    failT.current=setTimeout(()=>setFailed(f=>f.includes(p)?f:[...f,p]),isStorageMediaUrl(mediaSrc(p))?4000:0);};
   const[busy,setBusy]=useState(false);
   const fileRef=useRef(null);
-  useEffect(()=>{setBad(false);},[pic]);
   const done=url=>{setBusy(false);if(url)onImage(url);};
   const save=f=>{if(f&&onImage){setBusy(true);handleImageUpload(f,'exercises',done);}};
-  return(<div className={'pt-img'+(pic&&!bad?' has':'')+(onImage?' paste':'')+(busy?' busy':'')}
+  return(<div className={'pt-img'+(pic?' has':'')+(onImage?' paste':'')+(busy?' busy':'')}
     tabIndex={onImage?0:undefined} role={onImage?'button':undefined}
     aria-label={onImage?L('Egzersiz görseli — kopyaladığın görseli yapıştır','Exercise image — paste a copied picture'):undefined}
     title={onImage?L('Görsel yapıştır: bir görseli kopyala, buraya tıkla ya da Ctrl/Cmd+V · Sağ tık: dosya seç',
@@ -140,8 +165,8 @@ function PtImg({name,image,onImage}){
     onClick={onImage?(()=>pasteImageFromClipboard('exercises',done)):undefined}
     onPaste={onImage?(e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}):undefined}
     onContextMenu={onImage?(e=>{e.preventDefault();fileRef.current&&fileRef.current.click();}):undefined}>
-    {pic&&!bad
-      ?<img src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={()=>setBad(true)}/>
+    {pic
+      ?<img key={pic} src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={onErr} onLoad={()=>clearTimeout(failT.current)}/>
       :<span className="pt-img-ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
         <em>{busy?L('Yükleniyor…','Uploading…'):String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em>
@@ -551,7 +576,9 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     if(!v){const{pattern,plane,dir,...rest}=ex;return{...rest,pattern:'',plane:'',dir:'',noPat:true};}
     const plane=mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
     const dir=mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
-    rememberExerciseTags(ex.name,v,plane,dir);
+    /* A named exercise given its category goes into the library with it — and with the
+       picture and link on its row, so a card the library did not have arrives complete. */
+    ptFileExercise(ex.name,{pattern:v,plane,dir,image:ex.image,link:ex.link});
     const{noPat,...rest}=ex;
     return{...rest,pattern:v,plane,dir};
   };

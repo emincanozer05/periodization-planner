@@ -22005,20 +22005,45 @@ function PtCat({value,color,options,onChange,label}){
       title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
   </span>);
 }
+/* An exercise of a program row, filed into the library the way the row has it: its name (a
+   card is added when the library has none), its Kategori · Tür · Yön, its link (only a card
+   with no link takes one) and its picture (only a card with no picture of its own takes it —
+   a picture already on the card is the coach's choice and stays). Giving a named row its
+   category is what calls this: the exercise is then a real one, filed with what it carries. */
+function ptFileExercise(name,{pattern,plane,dir,image,link}={}){
+  const nm=String(name||'').trim();
+  if(!nm)return;
+  const hit=exLibHit(nm);
+  if(!hit)addExerciseToLibrary(nm);
+  if(MV_KEYS.includes(pattern))rememberExerciseTags(nm,pattern,plane||'',dir||'');
+  if(safeURL(link))rememberExerciseLink(nm,link);
+  const img=String(image||'').trim();
+  if(img&&!(hit&&hit.pic))rememberExerciseImage(nm,img);
+}
 /* The exercise's picture, on the left of its card: the one put on the row itself, else the one
    the library carries for that name (its program image, else the video's thumbnail). The box
    takes a picture too: copy one and paste it in (Ctrl/Cmd+V, or click — the clipboard is read),
    or right-click for a file. `onImage(url)` gets the uploaded picture; '' takes it off. */
 function PtImg({name,image,onImage}){
   const hit=exLibHit(name);
-  const pic=image||(hit&&hit.image)||'';
-  const[bad,setBad]=useState(false);
+  /* The row's own picture first, the library's after it. A picture that does not load (an
+     address that has gone stale) falls through to the next one instead of leaving the box
+     empty, so a picture the library still holds is never hidden by a dead copy on the row.
+     A Storage picture is given a moment first: the page's error handler (160) drops a broken
+     copy the service worker kept and loads it again, and that second try must find the <img>
+     still there. */
+  const pics=[image,hit&&hit.image].filter((v,i,a)=>hasMedia(v)&&a.indexOf(v)===i);
+  const[failed,setFailed]=useState([]);
+  const pic=pics.find(p=>!failed.includes(p))||'';
+  const failT=useRef(null);
+  useEffect(()=>()=>clearTimeout(failT.current),[]);
+  const onErr=()=>{const p=pic;clearTimeout(failT.current);
+    failT.current=setTimeout(()=>setFailed(f=>f.includes(p)?f:[...f,p]),isStorageMediaUrl(mediaSrc(p))?4000:0);};
   const[busy,setBusy]=useState(false);
   const fileRef=useRef(null);
-  useEffect(()=>{setBad(false);},[pic]);
   const done=url=>{setBusy(false);if(url)onImage(url);};
   const save=f=>{if(f&&onImage){setBusy(true);handleImageUpload(f,'exercises',done);}};
-  return(<div className={'pt-img'+(pic&&!bad?' has':'')+(onImage?' paste':'')+(busy?' busy':'')}
+  return(<div className={'pt-img'+(pic?' has':'')+(onImage?' paste':'')+(busy?' busy':'')}
     tabIndex={onImage?0:undefined} role={onImage?'button':undefined}
     aria-label={onImage?L('Egzersiz görseli — kopyaladığın görseli yapıştır','Exercise image — paste a copied picture'):undefined}
     title={onImage?L('Görsel yapıştır: bir görseli kopyala, buraya tıkla ya da Ctrl/Cmd+V · Sağ tık: dosya seç',
@@ -22026,8 +22051,8 @@ function PtImg({name,image,onImage}){
     onClick={onImage?(()=>pasteImageFromClipboard('exercises',done)):undefined}
     onPaste={onImage?(e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}):undefined}
     onContextMenu={onImage?(e=>{e.preventDefault();fileRef.current&&fileRef.current.click();}):undefined}>
-    {pic&&!bad
-      ?<img src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={()=>setBad(true)}/>
+    {pic
+      ?<img key={pic} src={mediaSrc(pic)} alt={name||''} loading="lazy" onError={onErr} onLoad={()=>clearTimeout(failT.current)}/>
       :<span className="pt-img-ph" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
         <em>{busy?L('Yükleniyor…','Uploading…'):String(name||'').trim()?L('Görsel yok','No image'):L('Egzersiz seç','Pick an exercise')}</em>
@@ -22437,7 +22462,9 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     if(!v){const{pattern,plane,dir,...rest}=ex;return{...rest,pattern:'',plane:'',dir:'',noPat:true};}
     const plane=mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
     const dir=mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
-    rememberExerciseTags(ex.name,v,plane,dir);
+    /* A named exercise given its category goes into the library with it — and with the
+       picture and link on its row, so a card the library did not have arrives complete. */
+    ptFileExercise(ex.name,{pattern:v,plane,dir,image:ex.image,link:ex.link});
     const{noPat,...rest}=ex;
     return{...rest,pattern:v,plane,dir};
   };
@@ -45624,14 +45651,7 @@ function diFileToLibrary(instr){
   const t=v=>String(v==null?'':v).trim();
   diMovePatterns(instr&&instr.patterns).forEach(p=>{
     const row=diMoveRow(p.id);const cat=row?row.k:'';
-    const file=(nm,link,image)=>{
-      if(!nm)return;
-      const hit=exLibHit(nm);
-      if(!hit)addExerciseToLibrary(nm);
-      if(cat)rememberExerciseTags(nm,cat,(p.type||[])[0]||'',(p.direction||[])[0]||'');
-      if(t(link))rememberExerciseLink(nm,t(link));
-      if(t(image)&&!(hit&&hit.image))rememberExerciseImage(nm,t(image));
-    };
+    const file=(nm,link,image)=>ptFileExercise(nm,{pattern:cat,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',link:t(link),image:t(image)});
     file(t(p.exercise),p.link,p.image);
     if(p.alt)file(t(p.alt.name),p.alt.link,'');
   });
@@ -45789,6 +45809,16 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       const dr=(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
       return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
+    /* A named exercise given a category is filed into the library at once — with its
+       Kategori · Tür · Yön, its picture and its link — rather than waiting for the programme's
+       approval: choosing the category is no typo, the same as pasting a picture on the row.
+       Hands the row back unchanged. */
+    const fileCat=p=>{
+      const row=diMoveRow(p.id);
+      if(row&&String(p.exercise||'').trim())
+        ptFileExercise(p.exercise,{pattern:row.k,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',image:p.image,link:p.link});
+      return p;
+    };
     const handlers={
       /* The stepper of a run adds or drops rows at its end. */
       onCount:(gid,n)=>{
@@ -45829,21 +45859,31 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       /* Picking an exercise off the library brings its saved link, pattern and type along. */
       onPick:(k,it,isAlt)=>{
         if(isAlt){patch(k,p=>({...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}));return;}
-        patch(k,p=>({...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}));
+        /* The picture rides onto the row as well — the calendar's table has always done so — so
+           the row shows it from its own copy and not only while the library card carries it. A
+           different exercise picked over a row takes that exercise's picture, not the old one. */
+        patch(k,p=>{const nm=String(it&&it.name||'').slice(0,120);
+          const same=String(p.exercise||'').trim().toLowerCase()===nm.trim().toLowerCase();
+          return{...p,exercise:nm,link:(it&&it.link)||p.link||'',image:(it&&it.image)||(same?p.image:'')||''};});
         withLib(k,it,true);
       },
       /* A name the library has never seen was typed and the box left: if a card by that name
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
-        if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
+        /* The finished name (the box was left) the library has a picture for: a row with none
+           keeps a copy of it, so it does not go blank if the library card later loses it. Not
+           while typing — "Squat" on the way to "Squat Jump" would leave the wrong picture. */
+        const hit=exLibHit(nm);
+        if(p&&!String(p.image||'').trim()&&hit&&hit.image)patch(k,x=>({...x,image:hit.image}));
+        if(p&&p.id==='')withLib(k,hit||{name:nm},false);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
       /* A row with no category was given one: it stays where it is and folds into its neighbours. */
-      onRowCat:(k,nid)=>patch(k,p=>recat(p,nid)),
+      onRowCat:(k,nid)=>patch(k,p=>fileCat(recat(p,nid))),
       /* The group's category box: every row of the run takes it ('' takes it off, rows stay). */
       onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
-        setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
+        setList(latest.current.list.map((p,i)=>run.at.includes(i)?fileCat(recat(p,nid)):p));},
       onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
@@ -48922,9 +48962,14 @@ function App(){
   }));
   // Editing/clearing a name box: drop the old auto-added stub, add the new value.
   // Only bare stubs (no metadata) are removed, so real library entries are never lost.
+  /* A stub is a card that carries NOTHING but its name. The old test listed the fields it knew
+     and missed the ones added since — a picture pasted on a program row (`image` / `planImage`),
+     the row's tags (`exPattern`) — so renaming or re-picking the exercise on one calendar row
+     deleted an uncategorised card together with its picture, and every program showing that
+     picture off the library lost it. */
   registerLibReplace((oldNm,newNm)=>setData(prev=>{
     const exs=prev.exercises||[];
-    const isStub=e=>!e.type&&!e.subType&&!e.pattern&&!e.difficulty&&!(e.muscle&&e.muscle.length)&&!e.videoUrl&&!e.videoData&&!e.thumb&&!e.purpose;
+    const isStub=e=>Object.keys(e).every(k=>k==='id'||k==='name'||e[k]==null||e[k]===''||e[k]===false||(Array.isArray(e[k])&&!e[k].length));
     const lo=(oldNm||'').trim().toLowerCase();
     const nn=(newNm||'').trim();
     let next=lo?exs.filter(e=>!((e.name||'').trim().toLowerCase()===lo&&isStub(e))):exs;
@@ -49001,6 +49046,7 @@ function App(){
            the one put on a program row — both are written to it) first; the video's
            auto-thumbnail stands in when the exercise has never carried one. */
         image:exPicture(e)||videoThumb(e.videoData||e.videoUrl)||'',   // the picture on the library card (exPicture) → video's own thumbnail
+        pic:exPicture(e),   // the card's own picture only — '' when `image` above is the video's thumbnail
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
