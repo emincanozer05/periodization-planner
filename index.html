@@ -1748,8 +1748,6 @@ input.sk-score-n:focus{border-color:var(--accent)!important}
 .ex-vbadge{position:absolute;right:10px;bottom:10px;z-index:2;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#0a0b0d;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.45);transition:transform .2s ease,box-shadow .2s ease}
 .ex-card:hover .ex-vbadge{transform:scale(1.15);box-shadow:0 5px 20px rgba(0,148,255,.55)}
 .ex-thumb-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border:none;background:#000}
-/* Small "N× used" badge (top-right) — auto usage count across the season program */
-.ex-used{position:absolute;top:8px;right:8px;z-index:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:#bbf7d0;background:rgba(13,38,26,.8);border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:2px 7px;line-height:1.5;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,.35)}
 /* Category dropdown — sits in the toolbar, side by side with the search box */
 .ex-cat-dd{flex:0 0 auto;width:auto;min-width:220px;max-width:100%}
 @media(max-width:560px){.ex-cat-dd{flex:1 1 100%;width:100%}}
@@ -6895,7 +6893,6 @@ html,body{overscroll-behavior-y:none}
 :root[data-theme="light"] .ex-thumb{background:var(--elevated)}
 :root[data-theme="light"] .ex-vbadge{box-shadow:0 2px 10px rgba(15,23,42,0.16)}
 :root[data-theme="light"] .ex-thumb-vid{background:var(--bg)}
-:root[data-theme="light"] .ex-used{box-shadow:0 2px 8px rgba(15,23,42,0.12)}
 :root[data-theme="light"] .modal{box-shadow:0 20px 60px rgba(15,23,42,0.19)}
 :root[data-theme="light"] .ex-player-wrap{background:var(--bg)}
 :root[data-theme="light"] .ex-pic-x{color:var(--text)}
@@ -39127,7 +39124,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
   </div>);
 }
 
-function ExerciseCardRaw({ex,onOpen,used=0}){
+function ExerciseCardRaw({ex,onOpen}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   const shownName=useExerciseText(ex.name);
   const[hov,setHov]=useState(false);
@@ -39159,7 +39156,6 @@ function ExerciseCardRaw({ex,onOpen,used=0}){
         : <div className="ex-thumb-ph">{exLib(ex)==='ball'?'🏀':'🏋'}</div>
       )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
-      {used>0&&<span className="ex-used" title={L(`Sezon programında ${used} kez kullanıldı`,`Used ${used}× in the season program`)}>{L(`${used}× kullanıldı`,`${used}× used`)}</span>}
     </div>
     <div className="ex-cbody">
       <div className="ex-cname">{shownName||L('(isimsiz egzersiz)','(unnamed exercise)')}</div>
@@ -39283,12 +39279,6 @@ function ExercisesView({data,setData}){
   const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
   const goBack=()=>{setActiveType(null);setFilt({});setQ('');};
-  // How many times each exercise name is prescribed across the whole season program (all teams).
-  const usageCounts=useMemo(()=>{const m={};
-    (data.teams||[]).forEach(t=>Object.values(t.days||{}).forEach(day=>(day.sessions||[]).forEach(s=>(s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(ex=>{
-      const n=(ex.name||'').trim().toLowerCase();if(n)m[n]=(m[n]||0)+1;})))));
-    return m;},[data.teams]);
-  const usedOf=e=>usageCounts[(e.name||'').trim().toLowerCase()]||0;
   // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!TYPES.includes(e.type)).length;
@@ -39351,7 +39341,7 @@ function ExercisesView({data,setData}){
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
         ?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.')
         :L('Aramanla eşleşen sonuç yok.','Nothing matches your search.')}</div>}
-      <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
+      <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} onOpen={openCard}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
     </div>);
   }
@@ -39406,7 +39396,7 @@ function ExercisesView({data,setData}){
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
       :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
       {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
-    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
+    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={openCard}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
   </div>);
 }
