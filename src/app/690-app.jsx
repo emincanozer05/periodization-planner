@@ -22,9 +22,14 @@ function App(){
   }));
   // Editing/clearing a name box: drop the old auto-added stub, add the new value.
   // Only bare stubs (no metadata) are removed, so real library entries are never lost.
+  /* A stub is a card that carries NOTHING but its name. The old test listed the fields it knew
+     and missed the ones added since — a picture pasted on a program row (`image` / `planImage`),
+     the row's tags (`exPattern`) — so renaming or re-picking the exercise on one calendar row
+     deleted an uncategorised card together with its picture, and every program showing that
+     picture off the library lost it. */
   registerLibReplace((oldNm,newNm)=>setData(prev=>{
     const exs=prev.exercises||[];
-    const isStub=e=>!e.type&&!e.subType&&!e.pattern&&!e.difficulty&&!(e.muscle&&e.muscle.length)&&!e.videoUrl&&!e.videoData&&!e.thumb&&!e.purpose;
+    const isStub=e=>Object.keys(e).every(k=>k==='id'||k==='name'||e[k]==null||e[k]===''||e[k]===false||(Array.isArray(e[k])&&!e[k].length));
     const lo=(oldNm||'').trim().toLowerCase();
     const nn=(newNm||'').trim();
     let next=lo?exs.filter(e=>!((e.name||'').trim().toLowerCase()===lo&&isStub(e))):exs;
@@ -101,6 +106,7 @@ function App(){
            the one put on a program row — both are written to it) first; the video's
            auto-thumbnail stands in when the exercise has never carried one. */
         image:exPicture(e)||videoThumb(e.videoData||e.videoUrl)||'',   // the picture on the library card (exPicture) → video's own thumbnail
+        pic:exPicture(e),   // the card's own picture only — '' when `image` above is the video's thumbnail
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */

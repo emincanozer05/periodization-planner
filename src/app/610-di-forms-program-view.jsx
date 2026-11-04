@@ -28,14 +28,7 @@ function diFileToLibrary(instr){
   const t=v=>String(v==null?'':v).trim();
   diMovePatterns(instr&&instr.patterns).forEach(p=>{
     const row=diMoveRow(p.id);const cat=row?row.k:'';
-    const file=(nm,link,image)=>{
-      if(!nm)return;
-      const hit=exLibHit(nm);
-      if(!hit)addExerciseToLibrary(nm);
-      if(cat)rememberExerciseTags(nm,cat,(p.type||[])[0]||'',(p.direction||[])[0]||'');
-      if(t(link))rememberExerciseLink(nm,t(link));
-      if(t(image)&&!(hit&&hit.image))rememberExerciseImage(nm,t(image));
-    };
+    const file=(nm,link,image)=>ptFileExercise(nm,{pattern:cat,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',link:t(link),image:t(image)});
     file(t(p.exercise),p.link,p.image);
     if(p.alt)file(t(p.alt.name),p.alt.link,'');
   });
@@ -193,6 +186,16 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       const dr=(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
       return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
+    /* A named exercise given a category is filed into the library at once — with its
+       Kategori · Tür · Yön, its picture and its link — rather than waiting for the programme's
+       approval: choosing the category is no typo, the same as pasting a picture on the row.
+       Hands the row back unchanged. */
+    const fileCat=p=>{
+      const row=diMoveRow(p.id);
+      if(row&&String(p.exercise||'').trim())
+        ptFileExercise(p.exercise,{pattern:row.k,plane:(p.type||[])[0]||'',dir:(p.direction||[])[0]||'',image:p.image,link:p.link});
+      return p;
+    };
     const handlers={
       /* The stepper of a run adds or drops rows at its end. */
       onCount:(gid,n)=>{
@@ -233,21 +236,31 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       /* Picking an exercise off the library brings its saved link, pattern and type along. */
       onPick:(k,it,isAlt)=>{
         if(isAlt){patch(k,p=>({...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}));return;}
-        patch(k,p=>({...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}));
+        /* The picture rides onto the row as well — the calendar's table has always done so — so
+           the row shows it from its own copy and not only while the library card carries it. A
+           different exercise picked over a row takes that exercise's picture, not the old one. */
+        patch(k,p=>{const nm=String(it&&it.name||'').slice(0,120);
+          const same=String(p.exercise||'').trim().toLowerCase()===nm.trim().toLowerCase();
+          return{...p,exercise:nm,link:(it&&it.link)||p.link||'',image:(it&&it.image)||(same?p.image:'')||''};});
         withLib(k,it,true);
       },
       /* A name the library has never seen was typed and the box left: if a card by that name
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
-        if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
+        /* The finished name (the box was left) the library has a picture for: a row with none
+           keeps a copy of it, so it does not go blank if the library card later loses it. Not
+           while typing — "Squat" on the way to "Squat Jump" would leave the wrong picture. */
+        const hit=exLibHit(nm);
+        if(p&&!String(p.image||'').trim()&&hit&&hit.image)patch(k,x=>({...x,image:hit.image}));
+        if(p&&p.id==='')withLib(k,hit||{name:nm},false);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
       /* A row with no category was given one: it stays where it is and folds into its neighbours. */
-      onRowCat:(k,nid)=>patch(k,p=>recat(p,nid)),
+      onRowCat:(k,nid)=>patch(k,p=>fileCat(recat(p,nid))),
       /* The group's category box: every row of the run takes it ('' takes it off, rows stay). */
       onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
-        setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
+        setList(latest.current.list.map((p,i)=>run.at.includes(i)?fileCat(recat(p,nid)):p));},
       onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
