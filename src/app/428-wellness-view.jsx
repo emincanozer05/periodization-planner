@@ -344,6 +344,11 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const[cvAt,setCvAt]=useState(dayKey);
   const[metric,setMetric]=useState('readiness');
   const M=MS.find(x=>x.id===metric)||MS[0];
+  /* Takvimde Polar gece nabzı sekmesi yok: eğriden gece nabzı seçilse de takvim
+     hazır oluşu gösterir. */
+  const CMS=MS.filter(m=>!m.polar);
+  const calMetric=M.polar?'readiness':metric;
+  const CM=CMS.find(x=>x.id===calMetric)||CMS[0];
   const CP=wvPeriod(calMode,calAt),VP=wvPeriod(cvMode,cvAt);
   const NH=usePolarNightHR(ath,teamId,CP.from<VP.from?CP.from:VP.from,CP.to>VP.to?CP.to:VP.to);
   const dc={};const dOf=k=>(k in dc)?dc[k]:(dc[k]=wvDay(ath,k));
@@ -356,8 +361,6 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const rdyAvg=avgOf(CP.days,'readiness');
   const sel=dOf(dayKey);
   const selNhr=val(dayKey,'nightHR');
-  const night=(ath.nightLog||[]).find(n=>n&&n.date===dayKey)||null;
-  const load=athDayLoad(ath,dayKey);
   const inCal=k=>k>=CP.from&&k<=CP.to;
   const cells=calMode==='week'?CP.days.map(parseD):(()=>{const first=parseD(CP.from),n=CP.days.length;const gs=sow(first);
     return Array.from({length:Math.ceil(((first.getDay()+6)%7+n)/7)*7},(_,i)=>addD(gs,i));})();
@@ -382,17 +385,17 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
             onShift={d=>setCalAt(a=>wvShift(calMode,a,d))} showToday
             onToday={()=>{setCalAt(tk);setDayKey(tk);}}/>
         </div>
-        <div className="lb-seg wv-seg">{MS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.short}</button>)}</div>
+        <div className="lb-seg wv-seg">{CMS.map(m=><button key={m.id} className={calMetric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.short}</button>)}</div>
         <div className={'wv-cal-grid'+(wkCal?' wk':'')} key={calMode+CP.from}>
           {[0,1,2,3,4,5,6].map(i=><div key={'h'+i} className="wv-cal-dn">{DN[i]}</div>)}
           {cells.map((dt,i)=>{const k=fmt(dt),inM=inCal(k);const d=inM?dOf(k):null;
-            const v=inM?val(k,metric):null;
-            const bg=v==null?null:(M.five?score5Color(v):null);
-            const others=wkCal&&inM?MS.filter(m=>m.id!==metric).map(m=>({m,v:val(k,m.id)})).filter(x=>x.v!=null):[];
+            const v=inM?val(k,calMetric):null;
+            const bg=v==null?null:(CM.five?score5Color(v):null);
+            const others=wkCal&&inM?CMS.filter(m=>m.id!==calMetric).map(m=>({m,v:val(k,m.id)})).filter(x=>x.v!=null):[];
             return<button key={k} className={'wv-cal-d'+(inM?'':' out')+(k===dayKey?' sel':'')+(k===tk?' today':'')+((d||v!=null)?' has':'')}
               style={{animationDelay:(i*12)+'ms',...(bg?{'--wv-dc':bg}:{})}} onClick={()=>inM&&setDayKey(k)} disabled={!inM}>
               <span className="wv-cal-n">{dt.getDate()}</span>
-              {v!=null&&<span className="wv-cal-v">{wvFmt(v,M.five)}{!M.five&&wkCal?<small> bpm</small>:null}</span>}
+              {v!=null&&<span className="wv-cal-v">{wvFmt(v,CM.five)}{!CM.five&&wkCal?<small> bpm</small>:null}</span>}
               {!wkCal&&d&&<span className="wv-cal-dots">{MS.filter(m=>m.five&&m.id!=='readiness').map(m=><i key={m.id} style={{background:score5Color(d[m.id])||'var(--border2)'}}/>)}</span>}
               {others.length>0&&<span className="wv-cal-wk">{others.map(({m,v:x})=><span key={m.id}><em>{m.short}</em>
                 <b style={{color:m.five?(score5Color(x)||'var(--text)'):'var(--text)'}}>{wvFmt(x,m.five)}</b></span>)}</span>}
@@ -400,8 +403,7 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
             </button>;})}
         </div>
         <div className="wv-cal-leg">
-          {M.five?SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)
-            :<span className="wv-cal-leg-t">{polarMsg||L('Polar gece nabzı gün kutusunda bpm olarak','Polar night HR shown in bpm on each day')}</span>}
+          {CM.five&&SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)}
           <span><i className="pain"/>{L('ağrı bildirimi','pain report')}</span>
         </div>
       </div>
@@ -409,14 +411,6 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
         <div className="wv-ph"><h2>{DN[(parseD(dayKey).getDay()+6)%7]} · {fd(dayKey)}</h2>
           <span>{sel?L('sabah check-in','morning check-in'):L('kayıt yok','no entry')}</span></div>
         {sel?<>
-          {/* Hazır oluş takvimin gün kutusunda; burada yalnızca yan yana değer kutucukları. */}
-          <div className="wv-dayp-side">
-            <div className="wv-dk"><span>{L('Gece nabzı','Night HR')}</span><b>{selNhr!=null?Math.round(selNhr):'—'}<small> bpm</small></b></div>
-            {sel.RHR!=null&&<div className="wv-dk"><span>RHR</span><b>{Math.round(sel.RHR)}<small> bpm</small></b></div>}
-            <div className="wv-dk"><span>{L('sRPE yükü','sRPE load')}</span><b>{load?load:'—'}<small> AU</small></b></div>
-            {night&&nightSleepMin(night)!=null&&<div className="wv-dk"><span>{L('Uyku süresi','Sleep time')}</span><b>{fmtSleep(nightSleepMin(night))}</b></div>}
-            {night&&recNum(night.hrv)!=null&&<div className="wv-dk"><span>HRV</span><b>{Math.round(recNum(night.hrv))}<small> ms</small></b></div>}
-          </div>
           <div className="wv-dayp-bars">{MS.filter(m=>m.five&&m.id!=='readiness').map((m,i)=>{const v=sel[m.id];
             return<div key={m.id} className="wv-db"><span>{m.label}</span>
               <i><em style={{width:v==null?0:(v/5*100)+'%',background:score5Color(v)||'var(--dim)',animationDelay:(i*70)+'ms'}}/></i>
