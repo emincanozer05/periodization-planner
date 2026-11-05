@@ -794,6 +794,15 @@ const TI_HAS={
   ift3015:t=>tiNum(t.ift3015&&t.ift3015.vift),
 };
 const tiNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
+/* Bu kayıt bu testi aldı mı? Bataryası olan kayıtta yalnızca bataryadakiler sayılır:
+   bir test kayıttan çıkarılınca değerleri saklanıyor ("girilen değerler silinmez"),
+   ama hiçbir rapor onları artık göstermemeli. FMS hareketi, eski kayıtlardaki bütün
+   FMS ('fms') ile de alınmış sayılır. Bataryasız eski kayıtta karar değerlerin kendisi. */
+function testTook(t,id){
+  const bat=expandBattery(t&&t.battery);
+  if(!Array.isArray(bat))return true;
+  return bat.includes(id)||(/^fms_/.test(id)&&bat.includes('fms'));
+}
 function testInfoIds(test){
   const t=test||{};
   const bat=expandBattery(t.battery);

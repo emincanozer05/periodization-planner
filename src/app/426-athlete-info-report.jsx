@@ -106,10 +106,12 @@ function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
   ];
   const safe=(f,t)=>{try{const v=f(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}};
   /* A test's readings: the dates any of its rows was taken, and each row's value per date. */
-  const airSeries=d=>{const pts=datedTests.map(t=>({date:t.date,t,vs:d.rows.map(r=>safe(r[1],t))})).filter(p=>p.vs.some(v=>v!=null));
+  /* Yalnızca testi bataryasında olan kayıtlar (testTook): kayıttan çıkarılan testin
+     saklı değerleri çıktıya girmez. */
+  const airSeries=d=>{const pts=datedTests.filter(t=>testTook(t,d.id)).map(t=>({date:t.date,t,vs:d.rows.map(r=>safe(r[1],t))})).filter(p=>p.vs.some(v=>v!=null));
     return pts.length?{...d,pts}:null;};
   /* The athlete's own Deep Squat photos (front and side), off the newest test that has them. */
-  const dsPh=(()=>{for(let i=datedTests.length-1;i>=0;i--){const ph=(((datedTests[i].fms||{}).photos||{}).deepSquat)||{};
+  const dsPh=(()=>{for(let i=datedTests.length-1;i>=0;i--){if(!testTook(datedTests[i],'fms_deepSquat'))continue;const ph=(((datedTests[i].fms||{}).photos||{}).deepSquat)||{};
     if(hasMedia(ph.front)||hasMedia(ph.side))return ph;}return null;})();
   /* The stock pictures print from their small grey-scale copies, carried in the page itself
      (TEST_THUMB, 045): fetched from the site they came up as broken boxes wherever the fetch
@@ -171,7 +173,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
     :half?`<div class="tc ds half">${tcImg(d)}<div class="ds-r">${tcInfo(d)}</div><div class="tc-d">${tcTable(d,latest,true)}</div></div>`
     :`<div class="tc ds">${tcImg(d)}<div class="ds-r">${tcInfo(d)}<div class="tc-d">${tcTable(d,latest)}</div></div></div>`;
   const airGroups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),list:AIR_TESTS.filter(d=>d.g===g).map(airSeries).filter(Boolean)})).filter(x=>x.list.length);
-  const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
+  const lastFms=(()=>{for(let i=datedTests.length-1;i>=0;i--){if(!FMS_ITEMS.every(it=>testTook(datedTests[i],'fms_'+it.id)))continue;const r=fmsCalc(datedTests[i].fms);if(r.n===FMS_ITEMS.length)return{r,date:datedTests[i].date};}return null;})();
   const grpHead=x=>`${esc(L(x.meta.tr,x.meta.en))}${x.g==='move'&&lastFms?` <span class="hv">FMS ${L('toplam','total')} ${lastFms.r.total} / 21 · ${fd(lastFms.date)}</span>`
     :x.g==='move'?` <span class="hv">${L('son sonuçlar','latest results')}</span>`:` <span class="hv">${L('gelişim','progress')}</span>`}`;
   const testSec=airGroups.length?airGroups.map(x=>`<div class="tgs">${subH(grpHead(x))}
@@ -179,7 +181,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
     :`<div class="none">${L('Hareket Taraması, Sıçrama & Reaktivite ya da Hız & Çeviklik testi yok.','No Movement Screen, Jump & Reactivity or Speed & Agility test.')}</div>`;
   /* The latest static posture across the full width: its three photos and the coach's words under them. */
   const newestT=f=>[...(ath.tests||[])].filter(t=>t&&t.date&&f(t)).sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
-  const pT=newestT(t=>{const p=t.posture||{};return!!(p.frontPhoto||p.sidePhoto||p.backPhoto||String(p.observations||'').trim());});
+  const pT=newestT(t=>{if(!testTook(t,'posture'))return false;const p=t.posture||{};return!!(p.frontPhoto||p.sidePhoto||p.backPhoto||String(p.observations||'').trim());});
   const shot=(photo,lbl)=>`<figure class="sh">${photo?`<img src="${esc(mediaSrc(photo))}" alt=""/>`:'<div class="shx">—</div>'}<figcaption>${lbl}</figcaption></figure>`;
   const shots=o=>`<div class="shs">${shot(o.frontPhoto,L('Önden','Front'))}${shot(o.sidePhoto,L('Yandan','Side'))}${shot(o.backPhoto,L('Arkadan','Back'))}</div>`;
   const postureCard=`<div class="card pt wide">
@@ -194,7 +196,10 @@ function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
      the values straight underneath, each with its change from the reading before. A measure
      with more dates than fit a row continues on a second pair of rows. */
   const anthroSeries=k=>{const byDate={};
-    [...(ath.tests||[]),...(ath.measurements||[])].forEach(x=>{const v=x&&x[k];if(!x||!x.date||v===''||v==null||isNaN(Number(v)))return;byDate[x.date]=Number(v);});
+    /* Antropometri: bataryasında olmayan kaydın değerleri ve o kayıttan aynalanan ölçüm satırı girmez. */
+    const tById=new Map((ath.tests||[]).filter(t=>t&&t.id).map(t=>[t.id,t]));
+    const ok=x=>x.srcTest?(!tById.has(x.srcTest)||testTook(tById.get(x.srcTest),'anthro')):true;
+    [...(ath.tests||[]).filter(t=>t&&testTook(t,'anthro')),...(ath.measurements||[]).filter(m=>m&&ok(m))].forEach(x=>{const v=x&&x[k];if(!x||!x.date||v===''||v==null||isNaN(Number(v)))return;byDate[x.date]=Number(v);});
     return Object.keys(byDate).sort().map(d=>({date:d,v:byDate[d]}));};
   const ANTHRO=[{k:'height',tr:'Boy',en:'Height',u:'cm',c:'#0a6cdc'},{k:'weight',tr:'Kilo',en:'Weight',u:'kg',c:'#16a34a'},
     {k:'wingspan',tr:'Kulaç',en:'Wingspan',u:'cm',c:'#7c3aed'},{k:'bodyFat',tr:'Yağ Oranı',en:'Body Fat',u:'%',c:'#f97316'}];
