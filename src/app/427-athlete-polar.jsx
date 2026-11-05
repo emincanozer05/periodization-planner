@@ -176,6 +176,7 @@ function PolarConnect({ath,teamId}){
     <div className="pl-rows">
       <div className="pl-r"><span>{L('Bağlantı durumu','Connection status')}</span><b>{link===undefined?'—':stTxt}</b></div>
       {status==='active'&&<div className="pl-r"><span>{L('Bağlandı','Connected on')}</span><b>{polarWhen(link.connectedAt)}</b></div>}
+      {status==='active'&&link.polarAccount&&link.polarAccount.name&&<div className="pl-r"><span>{L('Polar hesabı','Polar account')}</span><b>{link.polarAccount.name}</b></div>}
       <div className="pl-r"><span>{L('Son senkronizasyon','Last sync')}</span><b>{link&&link.lastSyncAt?polarWhen(link.lastSyncAt):'—'}</b></div>
       {rl&&rl.ok.length>0&&<div className="pl-r"><span>{L('Son senkronda gelen','Last sync brought')}</span><b>{rl.ok.join(' · ')}</b></div>}
       {rl&&rl.off.length>0&&<div className="pl-r"><span>{L('Polar\'dan gelmeyen','Not provided by Polar')}</span><b>{rl.off.join(', ')}</b></div>}

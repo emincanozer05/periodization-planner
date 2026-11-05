@@ -74,6 +74,8 @@ async function loadTeamData(deps, opts) {
       athleteId: String(l.athleteId), athleteName: l.athleteName || '', status: l.status || 'none',
       connectedAt: l.connectedAt || null, lastSyncAt: l.lastSyncAt || null,
       lastSyncReport: reportOf(l.lastSyncReport),
+      polarAccount: l.polarAccount && typeof l.polarAccount === 'object'
+        ? { name: l.polarAccount.name || null, registeredAt: l.polarAccount.registeredAt || null } : null,
     };
     await Promise.all(Object.keys(PICK).map(async kind => {
       const q = await db.collection(DATA_COL[kind])

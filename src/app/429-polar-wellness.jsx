@@ -235,13 +235,24 @@ function pwNight(p,day){
 function pwNoSleepWhy(p,day){
   const rp=p.lastSyncReport&&p.lastSyncReport.sleep;
   const when=pwNum(p.lastSyncAt)?L(` · son senkron ${polarWhen(p.lastSyncAt)}`,` · last sync ${polarWhen(p.lastSyncAt)}`):'';
+  const pa=p.polarAccount;
+  const acct=pa&&(pa.name||pa.registeredAt)?L(` · bağlı Polar hesabı: ${pa.name||'adsız'}${pa.registeredAt?` (Polar'a kayıt ${fd(String(pa.registeredAt).slice(0,10))})`:''}`,
+    ` · linked Polar account: ${pa.name||'unnamed'}${pa.registeredAt?` (registered ${fd(String(pa.registeredAt).slice(0,10))})`:''}`):'';
   if(!rp)return L('Henüz senkron raporu yok: "Verileri al"a bas.','No sync report yet: press "Fetch data".')+when;
   if(rp.status==='unavailable')return L(`Polar uyku verisine erişim vermiyor (${rp.code||'—'}). Sporcunun Polar bağlantısını kesip yeniden bağla.`,
     `Polar refuses access to sleep data (${rp.code||'—'}). Disconnect and reconnect the athlete.`)+when;
   if(rp.status==='error')return L(`Son senkronda uyku alınamadı (${rp.code||'hata'}). Biraz sonra tekrar "Verileri al".`,
     `Sleep could not be fetched in the last sync (${rp.code||'error'}). Try "Fetch data" again later.`)+when;
-  if(!rp.count)return L('Polar son 28 günde bu sporcu için hiç uyku kaydı göndermedi: bileklik gece takılmamış, uyku algılanmamış ya da sporcu Polar Flow\'da uyku izlemeyi açmamış olabilir.',
-    'Polar sent no sleep record for this athlete in the last 28 days: the band may not be worn at night, sleep not detected, or sleep tracking is off in Polar Flow.')+when;
+  if(!rp.count){
+    /* Aynı hesaptan adım geliyorsa bileklik bu hesaba bağlı: uyku Polar'da hiç oluşmuyor.
+       Adım da yoksa bağlı hesap bilekliğin hesabı olmayabilir. */
+    const steps=(p.activity||[]).some(x=>pwNum(x.steps)&&x.steps>0);
+    return(steps
+      ?L('Polar son 28 günde bu hesapta hiç uyku kaydı göndermedi; aynı hesaptan adım geliyor, yani bileklik bu hesaba bağlı. Sporcu Polar Flow\'da dünkü uykusunu görüyor mu? Görmüyorsa uyku bileklikte kaydedilmiyor (gece takılı değil ya da kola gevşek).',
+        'Polar sent no sleep record on this account in the last 28 days; steps do arrive from it, so the band is paired with this account. Does the athlete see last night in Polar Flow? If not, the band is not recording sleep.')
+      :L('Polar son 28 günde bu hesapta ne uyku ne de son iki günde adım gönderdi: bağlanan Polar hesabı, bilekliğin bağlı olduğu hesap olmayabilir. Aşağıdaki hesap adı sporcunun kendisi mi, kontrol et; değilse bağlantıyı kesip bilekliğin hesabıyla yeniden bağla.',
+        'Polar sent no sleep in 28 days and no steps in the last two days on this account: the linked Polar account may not be the band\'s account. Check the account name below; if it is wrong, disconnect and reconnect with the band\'s account.'))+acct+when;
+  }
   if(rp.latest&&rp.latest<day)return L(`Polar'daki en yeni uyku kaydı ${fd(rp.latest)}: bu gecenin uykusu henüz Polar'a ulaşmamış. Sporcu Polar Flow'u açıp bilekliği eşitlesin.`,
     `Newest sleep record at Polar is ${fd(rp.latest)}: last night has not reached Polar yet. Ask the athlete to open Polar Flow and sync.`)+when;
   return L(`Polar son senkronda ${rp.count} gece gönderdi, bu güne ait uyku yok.`,`Polar sent ${rp.count} nights in the last sync, none for this day.`)+when;
