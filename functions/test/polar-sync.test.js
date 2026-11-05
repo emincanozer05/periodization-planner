@@ -118,6 +118,7 @@ function fakePolar(events, over) {
     'GET /users/777/activity-transactions/55/activities/1': () => ({ status: 200, body: SUMMARY_OLD }),
     'GET /users/777/activity-transactions/55/activities/2': () => ({ status: 200, body: SUMMARY_NEW }),
     'PUT /users/777/activity-transactions/55': () => ({ status: 200, body: null }),
+    'GET /users/777': () => ({ status: 200, body: { 'polar-user-id': 777, 'member-id': 'm', 'registration-date': '2026-11-01T10:00:00.000Z', 'first-name': 'Emir', 'last-name': 'Papur', birthdate: '2008-01-01', weight: 70 } }),
   }, over || {});
   const calls = [];
   const fetch = async (url, init) => {
@@ -443,6 +444,17 @@ ta('senkron sonrası takım verisi: bağlantı durumu + uyku/recharge/aktivite/a
   // "Uyku neden yok" açıklaması için son senkronun özeti: kaç gece, en yeni tarih.
   assert.deepStrictEqual(a.lastSyncReport.sleep, { status: 'ok', count: 1, latest: '2026-11-01', code: null });
   assert.strictEqual(a.lastSyncReport.cardioLoad, undefined);
+  // Bağlı Polar hesabının adı ve kayıt tarihi; doğum tarihi / kilo saklanmıyor.
+  assert.deepStrictEqual(a.polarAccount, { name: 'Emir Papur', registeredAt: '2026-11-01T10:00:00.000Z' });
+  const link = env.db.get('polar_links', 'coach1__ath1');
+  assert.ok(!JSON.stringify(link.polarAccount).includes('2008'), 'doğum tarihi saklanmamalı');
+});
+
+ta('hesap bilgisi alınamazsa senkron yine başarılı, alan yazılmıyor', async () => {
+  const env = setup({ routes: { 'GET /users/777': () => ({ status: 500 }) } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.json.ok, true);
+  assert.strictEqual(env.db.get('polar_links', 'coach1__ath1').polarAccount, undefined);
 });
 
 ta('senkron raporu: uyku uç noktası 403 → takım verisinde "unavailable / FORBIDDEN"', async () => {

@@ -150,6 +150,18 @@ async function syncActivity(ctx) {
   return out;
 }
 
+/* GET /v3/users/{id}: hesabın adı ve kayıt tarihi. Doğum tarihi, kilo gibi alanlar
+   SAKLANMIYOR — yalnızca hesabı tanımaya yetenler. */
+async function fetchAccount(ctx) {
+  const r = await ctx.client.get(`/users/${encodeURIComponent(ctx.polarUserId)}`);
+  if (r.status < 200 || r.status >= 300 || !r.json || typeof r.json !== 'object') return null;
+  const j = r.json;
+  const name = [j['first-name'], j['last-name']].map(x => (x == null ? '' : String(x).trim())).filter(Boolean).join(' ').slice(0, 120);
+  const reg = j['registration-date'] == null ? null : String(j['registration-date']).slice(0, 40);
+  if (!name && !reg) return null;
+  return { name: name || null, registeredAt: reg };
+}
+
 /* ── Kilit: aynı sporcu için tek senkron ──────────────────────────────────── */
 async function acquire(db, linkRef, now, manual) {
   return db.runTransaction(async tx => {
@@ -224,11 +236,19 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
     throw new LinkError('REVOKED');
   }
 
+  // Bağlı Polar hesabının sahibi (ad, Polar'a kayıt tarihi): koç doğru hesabın
+  // bağlandığını görebilsin. Yalnızca bilgi — alınamazsa senkron etkilenmez.
+  let account = null;
+  if (!Object.values(report).some(r => r && r.code === 'RATE_LIMITED')) {
+    try { account = await fetchAccount(ctx); } catch (e) { account = null; }
+  }
+
   const kinds = Object.keys(report);
   const failed = kinds.filter(k => report[k].status === 'error');
   const ok = failed.length === 0;
   const t = now();
   const fields = { lastSyncReport: report, lastSyncResult: { ok, at: t, failed } };
+  if (account) fields.polarAccount = account;
   if (ok) Object.assign(fields, { lastSyncAt: t, lastError: null });
   else fields.lastError = { code: 'SYNC_PARTIAL', at: t };
   await finish(fields);
