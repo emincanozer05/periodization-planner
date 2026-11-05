@@ -93,7 +93,7 @@ function loadApp() {
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
-    'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint',
+    'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint',
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
@@ -1396,68 +1396,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const jAth = athlete({ trainingProfile: { joints: { knee_l: { level: 'high' } } } });
   }
 
-  /* ─── Sporcu Profili: HRV izleme, uyku, haftalık monotoni, testler ─────────
-     HRV kuralları CoachOS_HRV_Monitoring v1.0'daki gibi: ln(RMSSD), 7 günlük ortalama
-     (≥ 5 gece, bugün dahil), 28 günlük referans (≥ 21 gece, bugün HARİÇ), örneklem SS,
-     LL1 = ref − 0.5·SS, LL2 = ref − SS; RED > YELLOW > DAILY_DROP > NORMAL. Beklenen
-     değerler burada ayrıca hesaplanıyor, uygulamanın koduna bakılmadan. */
+  /* ─── Sporcu Profili: uyku süresi, haftalık monotoni, testler ──────────────
+     (Eski HRV uyarı seviyeleri — RED / YELLOW / DAILY_DROP — Sporcu İzleme revizyonuyla
+     kaldırıldı; yerini alan hesaplar monitor-test.js'te sınanıyor.) */
   {
-    group('Sporcu Profili — HRV izleme, uyku, monotoni, son testler');
-    const PAT = [52, 58, 62, 68];
-    const nightsOf = (over, from) => {
-      const out = [];
-      for (let i = from || 40; i >= 0; i--) {
-        const d = back(i);
-        let v = PAT[i % 4];
-        if (over && Object.prototype.hasOwnProperty.call(over, d)) v = over[d];
-        if (v == null) continue;
-        out.push({ id: 'n' + i, date: d, hrv: v, bedTime: '23:30', wakeTime: '07:00', sleepHR: 50 });
-      }
-      return out;
-    };
-    const hAth = (nightLog, wellness) => ({ id: 'h', name: 'H', nightLog, wellness: wellness || [], srpeLog: [], days: {} });
-    // Bağımsız hesap: bugünden ÖNCEKİ 28 gün, ln, ortalama ve örneklem SS.
-    const ref = (nl, day) => {
-      const m = {}; nl.forEach(n => { m[n.date] = n.hrv; });
-      const xs = [];
-      for (let j = 1; j <= 28; j++) { const v = m[A.fmt(A.addD(A.parseD(day), -j))]; if (v > 0) xs.push(Math.log(v)); }
-      const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
-      const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / (xs.length - 1));
-      return { mean, sd, n: xs.length };
-    };
-    const near = (a, b) => a != null && b != null && Math.abs(a - b) < 1e-9;
-
-    const nNormal = nightsOf({ [back(0)]: 60, [back(1)]: 62 });
-    const mN = A.hrvModel(hAth(nNormal)), sN = mN.stat(back(0)), rN = ref(nNormal, back(0));
-    check('HRV: referans bugünü dışarıda bırakan 28 günlük ln ortalaması, örneklem SS ile',
-      near(sN.base, rN.mean) && near(sN.sd, rN.sd) && near(sN.ll1, rN.mean - 0.5 * rN.sd) && near(sN.ll2, rN.mean - rN.sd),
-      JSON.stringify({ base: sN.base, ref: rN.mean, sd: sN.sd, refSd: rN.sd }));
-    const nToday = nightsOf({ [back(0)]: 30, [back(1)]: 62 });
-    check('HRV: bugünün değeri referansı değiştirmiyor (yalnızca önceki günler)',
-      near(A.hrvModel(hAth(nToday)).stat(back(0)).base, sN.base));
-    const wk7 = [0, 1, 2, 3, 4, 5, 6].map(j => nNormal.find(n => n.date === back(j)).hrv);
-    const wMean = wk7.map(Math.log).reduce((a, b) => a + b, 0) / 7;
-    check('HRV: 7 günlük ortalama bugünü içeriyor, sapma % = (e^(hafta − ref) − 1)·100',
-      near(sN.weekly, wMean) && near(sN.dev, (Math.exp(wMean - rN.mean) - 1) * 100), `${sN.weekly} ${wMean} ${sN.dev}`);
-    check('HRV: referansa yakın hafta → NORMAL', mN.alertAt(back(0)) === 'NORMAL', mN.alertAt(back(0)));
-    const mD = A.hrvModel(hAth(nightsOf({ [back(0)]: 45, [back(1)]: 62 })));
-    check('HRV: tek gece LL2 altında → DAILY_DROP (1. seviye)', mD.alertAt(back(0)) === 'DAILY_DROP', mD.alertAt(back(0)));
-    const mY = A.hrvModel(hAth(nightsOf({ [back(0)]: 45, [back(1)]: 45, [back(2)]: 62 })));
-    check('HRV: iki gece üst üste LL2 altında → YELLOW (2. seviye)', mY.consec(back(0)) === 2 && mY.alertAt(back(0)) === 'YELLOW',
-      `${mY.consec(back(0))} ${mY.alertAt(back(0))}`);
-    const lowWeek = {}; for (let j = 0; j < 7; j++) lowWeek[back(j)] = 45;
-    const mR = A.hrvModel(hAth(nightsOf(lowWeek)));
-    check('HRV: 7 günlük ortalama LL2 altında → RED (3. seviye)', mR.alertAt(back(0)) === 'RED', mR.alertAt(back(0)));
-    const mGap = A.hrvModel(hAth(nightsOf({ [back(0)]: 45, [back(1)]: null, [back(2)]: 45 })));
-    check('HRV: eksik gece ardışık düşüş serisini kırıyor', mGap.consec(back(0)) === 1, String(mGap.consec(back(0))));
-    const mI = A.hrvModel(hAth(nightsOf(null, 15)));
-    check('HRV: 21 geçerli geceden az → INSUFFICIENT_DATA', mI.alertAt(back(0)) === 'INSUFFICIENT_DATA', mI.alertAt(back(0)));
-    // Kırmızı HRV + yüksek gece nabzı + düşük wellness → çoklu gösterge, 3. seviye inceleme.
-    const nMulti = nightsOf(lowWeek).map(n => n.date >= back(1) ? { ...n, sleepHR: 60 } : n);
-    const wl = []; for (let i = 40; i >= 0; i--) wl.push({ date: back(i), readiness: i <= 1 ? 2 : 4 });
-    const aM = A.hrvAssess(A.hrvModel(hAth(nMulti, wl)), back(0));
-    check('HRV: gece nabzı ve wellness da bozuksa MULTIPLE_INDICATORS, inceleme önceliği yüksek',
-      aM.id === 'RED' && aM.combined[0] === 'MULTIPLE_INDICATORS' && aM.level === 3 && aM.prio === 'high', JSON.stringify(aM.combined));
+    group('Sporcu Profili — uyku, monotoni, son testler');
     check('Uyku: süre gece yarısını aşıyor (23:40 → 06:22 = 6 sa 42 dk)',
       A.nightSleepMin({ bedTime: '23:40', wakeTime: '06:22' }) === 402 && A.nightSleepMin({ bedTime: '00:30', wakeTime: '08:00' }) === 450 &&
       A.nightSleepMin({ bedTime: '', wakeTime: '07:00' }) == null);
