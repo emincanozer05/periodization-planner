@@ -151,8 +151,14 @@
 .wv-rhr-panel{margin:0;animation:wvUp .6s var(--ease-out,ease) .2s both}
 
 /* ═════ Sporcu detayı: takvim ═════ */
-.wv-cal-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:start}
+/* Takvim ve seçili gün paneli aynı boyda: kısa olan uzar, altta boşluk kalmaz.
+   Haftalık görünümde gün kutuları kalan yüksekliği doldurur. */
+.wv-cal-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px;align-items:stretch}
 .wv-cal-wrap>.panel{margin:0}
+.wv-cal-wrap>.wv-cal{display:flex;flex-direction:column}
+.wv-cal-wrap>.wv-cal>.wv-seg{align-self:flex-start}
+.wv-cal-wrap>.wv-cal>.wv-cal-grid.wk{flex:1;grid-template-rows:auto;grid-auto-rows:1fr}
+.wv-cal-wrap>.wv-cal>.wv-cal-leg{margin-top:auto;padding-top:12px}
 .wv-cal-nav{display:flex;gap:6px}
 .wv-seg{margin-bottom:14px;flex-wrap:wrap}
 .wv-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
@@ -175,11 +181,10 @@
 .wv-cal-leg-t{font-size:10.5px}
 /* Seçilen gün */
 .wv-dayp{animation:wvSlide .45s var(--ease-out,ease) both}
-.wv-dayp-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.wv-dayp-top .wv-ring-in b{font-size:28px}
-.wv-dayp-side{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:150px}
-.wv-dk{padding:8px 10px;border-radius:var(--r-sm);background:var(--elevated);border:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
-.wv-dk span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+/* Değer kutucukları tek satırda, eşit genişlikte; dar ekranda alt satıra geçer. */
+.wv-dayp-side{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.wv-dk{padding:8px 10px;border-radius:var(--r-sm);background:var(--elevated);border:1px solid var(--border);display:flex;flex-direction:column;gap:3px;min-width:0}
+.wv-dk span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
 .wv-dk b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text)}
 .wv-dk b small{font-size:9.5px;color:var(--dim);font-weight:500}
 .wv-dayp-bars{display:flex;flex-direction:column;gap:10px;margin-top:18px}

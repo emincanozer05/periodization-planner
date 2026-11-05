@@ -409,16 +409,13 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
         <div className="wv-ph"><h2>{DN[(parseD(dayKey).getDay()+6)%7]} · {fd(dayKey)}</h2>
           <span>{sel?L('sabah check-in','morning check-in'):L('kayıt yok','no entry')}</span></div>
         {sel?<>
-          <div className="wv-dayp-top">
-            <WvRing value={sel.readiness} max={5} color={score5Color(sel.readiness)||'var(--border2)'} size={112} stroke={9}>
-              <b style={{color:score5Color(sel.readiness)||'var(--dim)'}}>{wvFmt(sel.readiness,true)}</b><span>{L('hazır oluş','readiness')}</span></WvRing>
-            <div className="wv-dayp-side">
-              <div className="wv-dk"><span>{L('Gece nabzı','Night HR')}</span><b>{selNhr!=null?Math.round(selNhr):'—'}<small> bpm</small></b></div>
-              {sel.RHR!=null&&<div className="wv-dk"><span>RHR</span><b>{Math.round(sel.RHR)}<small> bpm</small></b></div>}
-              <div className="wv-dk"><span>{L('sRPE yükü','sRPE load')}</span><b>{load?load:'—'}<small> AU</small></b></div>
-              {night&&nightSleepMin(night)!=null&&<div className="wv-dk"><span>{L('Uyku süresi','Sleep time')}</span><b>{fmtSleep(nightSleepMin(night))}</b></div>}
-              {night&&recNum(night.hrv)!=null&&<div className="wv-dk"><span>HRV</span><b>{Math.round(recNum(night.hrv))}<small> ms</small></b></div>}
-            </div>
+          {/* Hazır oluş takvimin gün kutusunda; burada yalnızca yan yana değer kutucukları. */}
+          <div className="wv-dayp-side">
+            <div className="wv-dk"><span>{L('Gece nabzı','Night HR')}</span><b>{selNhr!=null?Math.round(selNhr):'—'}<small> bpm</small></b></div>
+            {sel.RHR!=null&&<div className="wv-dk"><span>RHR</span><b>{Math.round(sel.RHR)}<small> bpm</small></b></div>}
+            <div className="wv-dk"><span>{L('sRPE yükü','sRPE load')}</span><b>{load?load:'—'}<small> AU</small></b></div>
+            {night&&nightSleepMin(night)!=null&&<div className="wv-dk"><span>{L('Uyku süresi','Sleep time')}</span><b>{fmtSleep(nightSleepMin(night))}</b></div>}
+            {night&&recNum(night.hrv)!=null&&<div className="wv-dk"><span>HRV</span><b>{Math.round(recNum(night.hrv))}<small> ms</small></b></div>}
           </div>
           <div className="wv-dayp-bars">{MS.filter(m=>m.five&&m.id!=='readiness').map((m,i)=>{const v=sel[m.id];
             return<div key={m.id} className="wv-db"><span>{m.label}</span>
