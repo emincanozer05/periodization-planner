@@ -10,7 +10,9 @@
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
         takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
         seçilen günün ayrıntısı, hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
-        kayıtları (check-in + Polar gece nabzı), en altta Uyku / HRV.
+        kayıtları (check-in + Polar gece nabzı), en altta Sporcu İzleme (428b: sağlık uyarıları,
+        yük ve toparlanma — kişisel referansa göre, risk skoru yok). Takım görünümünün en altında
+        Veri yeterliliği raporu (428b MonAdequacyPanel).
    Puanlar check-in formunun kendi renkleriyle boyanır (SCORE5_COLORS: 1 kırmızı … 5 mavi),
    formla ekran hiçbir zaman farklı renk söylemez. Haftalık RHR trendi (RHRMonitor) eski
    ısı haritasının son düğmesiydi; burada kendi paneli olarak duruyor.
@@ -445,8 +447,7 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
         onAdded={k=>{if(!(k>=VP.from&&k<=VP.to))setCvAt(k);}}/>
     </div>
     <PolarAthleteCharts ath={ath} teamId={teamId}/>
-    <div className="wv-sec-h">{L('Uyku ve HRV','Sleep & HRV')}</div>
-    <AthWellness ath={ath} updAth={updAth}/>
+    <AthMonitoring ath={ath} updAth={updAth} teamId={teamId} dayKey={dayKey}/>
   </div>);
 }
 
@@ -500,6 +501,7 @@ function WellnessView({team,updateTeam,focus}){
         <div className="lb-head"><div className="lb-title">{L('RHR Takibi','RHR Monitor')}<span className="lb-sub">{L('haftalık ortalama dinlenik nabız · Pzt–Paz','weekly average resting HR · Mon–Sun')}</span></div></div>
         <RHRMonitor athletes={athletes} weeks={rhrWks}/>
       </div>
+      <MonAdequacyPanel team={team}/>
     </>}
   </div>);
 }

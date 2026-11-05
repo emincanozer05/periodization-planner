@@ -175,7 +175,7 @@ function PolarAthleteCharts({ath,teamId}){
 /* ── Wellness sporcu sayfası: Polar gece nabzı, ay ay ─────────────────────────
    Takvim ve eğri hafta / ay arasında gezdikçe gereken aylar (/team-data, bu sporcu,
    ayın 1'i → ayın sonu ya da bugün) bir kez istenir ve oturum boyunca saklanır; içinde
-   bulunulan ay 10 dakikada bir tazelenir. Dönen: {by:{'YYYY-MM-DD':bpm}, linked, loaded,
+   bulunulan ay 10 dakikada bir tazelenir. Dönen: {by:{'YYYY-MM-DD':bpm}, sleep:{'YYYY-MM-DD':uyuma sn}, linked, loaded,
    off, err}. Gece verisi uyanılan sabahın tarihini taşır — takvim günüyle aynı kural. */
 const PW_NHR_CACHE=new Map();
 function pwMonthsOf(from,to){
@@ -202,18 +202,21 @@ function usePolarNightHR(ath,teamId,from,to){
     Promise.all(need.map(m=>{
       const last=`${m}-${String(new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate()).padStart(2,'0')}`;
       return polarCall('/team-data',{teamId,athleteId:id,from:m+'-01',to:last>todayK?todayK:last}).then(j=>{
-        const a=(j.athletes||[])[0];const by={};
+        const a=(j.athletes||[])[0];const by={},sl={};
         ((a&&a.recharge)||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))by[r.date]=r.hrAvg;});
-        PW_NHR_CACHE.set(key(m),{by,linked:!!a,at:Date.now()});
+        /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı) —
+           Wellness'taki Sporcu İzleme uyku süresini buradan okur. */
+        ((a&&a.sleep)||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.asleepSec))sl[k]=x.asleepSec;});
+        PW_NHR_CACHE.set(key(m),{by,sl,linked:!!a,at:Date.now()});
       });}))
       .then(()=>{if(alive){setErr('');setTick(t=>t+1);}})
       .catch(e=>{if(alive)setErr(e.message||String(e));});
     return()=>{alive=false;};
   },[teamId,id,months.join(','),off]);
-  const by={};let linked=false,loaded=true;
+  const by={},sleep={};let linked=false,loaded=true;
   months.forEach(m=>{const c=PW_NHR_CACHE.get(key(m));
-    if(c){Object.assign(by,c.by);linked=linked||c.linked;}else if(m+'-01'<=todayK)loaded=false;});
-  return{by,linked,loaded:off||loaded||!!err,off,err};
+    if(c){Object.assign(by,c.by);Object.assign(sleep,c.sl||{});linked=linked||c.linked;}else if(m+'-01'<=todayK)loaded=false;});
+  return{by,sleep,linked,loaded:off||loaded||!!err,off,err};
 }
 
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
