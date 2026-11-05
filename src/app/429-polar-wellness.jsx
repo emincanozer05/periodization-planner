@@ -222,6 +222,31 @@ function usePolarNightHR(ath,teamId,from,to){
    taşır — CoachOS'un gece kaydıyla aynı kural. Adım ve antrenman o güne ait;
    bugün seçiliyse gün içinde artar. Satıra tıklayınca sporcunun sayfası açılır;
    14/28 günlük grafikler orada. Başlığın solunda Polar Loop logosu (pwLogoSrc). */
+/* Seçili günün (uyanılan sabahın) gece kaydı: önce uyanış saati o güne düşen uyku,
+   yoksa tarihi o gün olan; recharge uykuyla aynı `date`'i taşır. */
+function pwNight(p,day){
+  const ss=p.sleep||[],rr=p.recharge||[];
+  const s=ss.find(x=>String(x.sleepEnd||'').slice(0,10)===day)||ss.find(x=>x.date===day&&!x.sleepEnd)||null;
+  const r=(s&&rr.find(x=>x.date===s.date))||rr.find(x=>x.date===day)||null;
+  return{s,r};
+}
+/* Uyku neden yok: son senkronda Polar'ın uyku uç noktası ne dedi. Tahmin yok —
+   raporda olanı düz yazıyla söyler. */
+function pwNoSleepWhy(p,day){
+  const rp=p.lastSyncReport&&p.lastSyncReport.sleep;
+  const when=pwNum(p.lastSyncAt)?L(` · son senkron ${polarWhen(p.lastSyncAt)}`,` · last sync ${polarWhen(p.lastSyncAt)}`):'';
+  if(!rp)return L('Henüz senkron raporu yok: "Verileri al"a bas.','No sync report yet: press "Fetch data".')+when;
+  if(rp.status==='unavailable')return L(`Polar uyku verisine erişim vermiyor (${rp.code||'—'}). Sporcunun Polar bağlantısını kesip yeniden bağla.`,
+    `Polar refuses access to sleep data (${rp.code||'—'}). Disconnect and reconnect the athlete.`)+when;
+  if(rp.status==='error')return L(`Son senkronda uyku alınamadı (${rp.code||'hata'}). Biraz sonra tekrar "Verileri al".`,
+    `Sleep could not be fetched in the last sync (${rp.code||'error'}). Try "Fetch data" again later.`)+when;
+  if(!rp.count)return L('Polar son 28 günde bu sporcu için hiç uyku kaydı göndermedi: bileklik gece takılmamış, uyku algılanmamış ya da sporcu Polar Flow\'da uyku izlemeyi açmamış olabilir.',
+    'Polar sent no sleep record for this athlete in the last 28 days: the band may not be worn at night, sleep not detected, or sleep tracking is off in Polar Flow.')+when;
+  if(rp.latest&&rp.latest<day)return L(`Polar'daki en yeni uyku kaydı ${fd(rp.latest)}: bu gecenin uykusu henüz Polar'a ulaşmamış. Sporcu Polar Flow'u açıp bilekliği eşitlesin.`,
+    `Newest sleep record at Polar is ${fd(rp.latest)}: last night has not reached Polar yet. Ask the athlete to open Polar Flow and sync.`)+when;
+  return L(`Polar son senkronda ${rp.count} gece gönderdi, bu güne ait uyku yok.`,`Polar sent ${rp.count} nights in the last sync, none for this day.`)+when;
+}
+
 function PolarWellness({team,dayKey,onOpen}){
   const theme=useAppTheme();
   const[data,setData]=useState(null);         // /team-data yanıtı (yalnızca seçili gün)
@@ -231,12 +256,16 @@ function PolarWellness({team,dayKey,onOpen}){
   const day=dayKey||fmt(new Date());
   useEffect(()=>{setData(null);setProg(null);setErr('');},[team.id]);
   const nameOf=id=>{const a=(team.athletes||[]).find(x=>x.id===id);return a?(a.name||''):'';};
-  const load=async d=>{const j=await polarCall('/team-data',{teamId:team.id,from:d,to:d});setData(j);return j;};
+  /* Seçili gün ve bir önceki gün istenir: gece kaydı uyanış saatine (sleepEnd) göre
+     eşleştiriliyor; Polar'ın `date` alanı geceyi başladığı güne yazsa da sabahki
+     uyku bulunur (pwNight). */
+  const ask=d=>polarCall('/team-data',{teamId:team.id,from:pwShift(d,-1),to:d});
+  const load=async d=>{const j=await ask(d);setData(j);return j;};
   /* Gün değişince (veri bir kez alındıysa) yalnızca o günü yeniden oku — senkron yok. */
   useEffect(()=>{
-    if(!data||data.from===day)return;
+    if(!data||data.to===day)return;
     let alive=true;setBusy(true);
-    polarCall('/team-data',{teamId:team.id,from:day,to:day}).then(j=>{if(alive)setData(j);})
+    ask(day).then(j=>{if(alive)setData(j);})
       .catch(e=>{if(alive)setErr(e.message||String(e));}).finally(()=>{if(alive)setBusy(false);});
     return()=>{alive=false;};
   },[day]);
@@ -269,6 +298,9 @@ function PolarWellness({team,dayKey,onOpen}){
     .sort((x,y)=>(!!y.p-!!x.p)||(x.a.name||'').localeCompare(y.a.name||'','tr'));
   const nLinked=rows.filter(r=>r.p&&r.p.status==='active').length;
   const pick=(arr)=>(arr||[]).find(x=>x.date===day)||null;
+  /* Bağlı ama bu sabahın uykusu olmayan sporcular ve nedeni (son senkronun raporundan). */
+  const noSleep=rows.filter(({p})=>p&&p.status==='active'&&!pwNight(p,day).s)
+    .map(({a,p})=>({name:a.name||p.athleteName||'—',why:pwNoSleepWhy(p,day)}));
 
   return(<div className="panel pw">
     <div className="pw-h">
@@ -295,7 +327,7 @@ function PolarWellness({team,dayKey,onOpen}){
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
           const[stTxt,stCls]=(PW_STATUS[(p&&p.status)||'none']||PW_STATUS.none)();
-          const s=p&&pick(p.sleep),r=p&&pick(p.recharge),act=p&&pick(p.activity);
+          const{s,r}=p?pwNight(p,day):{s:null,r:null};const act=p&&pick(p.activity);
           const ex=p?(p.exercises||[]).filter(e=>e.date===day):[];
           const exDur=ex.map(e=>e.durationSec).filter(pwNum),exLoad=ex.map(e=>e.trainingLoad).filter(pwNum);
           const canOpen=!!p&&typeof onOpen==='function';
@@ -315,6 +347,11 @@ function PolarWellness({team,dayKey,onOpen}){
             <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
+      {noSleep.length>0&&<div className="pw-why">
+        <b>{isToday?L(`Bu sabahın uyku verisi gelmeyen sporcular (${noSleep.length})`,`No sleep data for this morning (${noSleep.length})`)
+          :L(`${fd(day)} sabahı uyku verisi olmayan sporcular (${noSleep.length})`,`No sleep data for the morning of ${fd(day)} (${noSleep.length})`)}</b>
+        {noSleep.map(x=><div key={x.name}><span>{x.name}</span>{x.why}</div>)}
+      </div>}
       <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
         `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}

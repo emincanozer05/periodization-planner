@@ -29,6 +29,19 @@ const PICK = {
 };
 const pick = (o, keys) => keys.reduce((a, k) => (a[k] = o[k] == null ? null : o[k], a), {});
 
+/* Son senkronun özeti (ekranda "neden veri yok" açıklaması için): her veri türü
+   için Polar'ın yanıtı — durum, kaç kayıt geldi, en yeni kaydın tarihi, hata kodu. */
+function reportOf(rep) {
+  if (!rep || typeof rep !== 'object') return null;
+  const out = {};
+  for (const k of ['sleep', 'recharge', 'activity', 'exercises']) {
+    const r = rep[k];
+    if (!r || typeof r !== 'object') continue;
+    out[k] = { status: r.status || null, count: Number(r.count) || 0, latest: r.latest || null, code: r.code || null };
+  }
+  return out;
+}
+
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 92;
 
@@ -60,6 +73,7 @@ async function loadTeamData(deps, opts) {
     const out = {
       athleteId: String(l.athleteId), athleteName: l.athleteName || '', status: l.status || 'none',
       connectedAt: l.connectedAt || null, lastSyncAt: l.lastSyncAt || null,
+      lastSyncReport: reportOf(l.lastSyncReport),
     };
     await Promise.all(Object.keys(PICK).map(async kind => {
       const q = await db.collection(DATA_COL[kind])

@@ -440,6 +440,16 @@ ta('senkron sonrası takım verisi: bağlantı durumu + uyku/recharge/aktivite/a
   assert.strictEqual(a.exercises[0].trainingLoad, 95.5);
   assert.ok(!JSON.stringify(r.json).includes('hypnogram'), 'ham veri yanıta girmemeli');
   assert.ok(!JSON.stringify(r.json).includes('AT-777'));
+  // "Uyku neden yok" açıklaması için son senkronun özeti: kaç gece, en yeni tarih.
+  assert.deepStrictEqual(a.lastSyncReport.sleep, { status: 'ok', count: 1, latest: '2026-11-01', code: null });
+  assert.strictEqual(a.lastSyncReport.cardioLoad, undefined);
+});
+
+ta('senkron raporu: uyku uç noktası 403 → takım verisinde "unavailable / FORBIDDEN"', async () => {
+  const env = setup({ routes: { 'GET /users/sleep': () => ({ status: 403, body: {} }) } });
+  await syncReq(env);
+  const r = await teamReq(env, { teamId: 'team1', days: 28 });
+  assert.deepStrictEqual(r.json.athletes[0].lastSyncReport.sleep, { status: 'unavailable', count: 0, latest: null, code: 'FORBIDDEN' });
 });
 
 ta('tarih aralığı dışındaki kayıtlar gelmiyor; başka takımın ve başka koçun verisi gelmiyor', async () => {

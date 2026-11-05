@@ -96,7 +96,12 @@ async function syncList(ctx, kind, path, listKeys, normFn, keyFn) {
     docs.push(docFor(ctx, kind, raw, norm, key));
   }
   const w = await writeChanged(ctx.db, DATA_COL[kind], docs);
-  return { status: 'ok', count: docs.length, written: w.written, missing: missingSummary(norms) };
+  // Polar'ın gönderdiği en yeni kaydın tarihi: takım tablosu "bu gecenin verisi
+  // henüz gelmedi / son uyku 03.11" diyebilsin. Kayıt yoksa alan hiç yazılmaz.
+  const out = { status: 'ok', count: docs.length, written: w.written, missing: missingSummary(norms) };
+  const latest = norms.map(n => n.date).filter(Boolean).sort().pop();
+  if (latest) out.latest = latest;
+  return out;
 }
 
 /* Günlük aktivite: transaction → yaz → doğrula → commit. */
