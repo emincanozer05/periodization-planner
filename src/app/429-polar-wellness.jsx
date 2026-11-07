@@ -358,8 +358,8 @@ function WvHrZones({ex,dayKey,msg,bare}){
 }
 
 /* ── Yük Takibi → Takım Yük Trendi: takımın ortalama HR Zone'u ────────────────
-   Yük grafiğinin İÇİNDE (280): her günün yük çubuğunun yanında o günün bölge çubuğu,
-   sağdaki "dk" ekseninde. Her gün, o gün Polar'da antrenmanı (bölge verisiyle) olan BÜTÜN
+   Yük grafiğinin İÇİNDE (280): her günün yük çubuğu, o günün bölge dağılımına göre
+   bölünüp boyanır (tek çubuk; ayrı bölge çubuğu ve sağ eksen yok). Her gün, o gün Polar'da antrenmanı (bölge verisiyle) olan BÜTÜN
    sporcuların bölge sürelerinin ortalaması: önce sporcunun o günkü antrenmanları toplanır
    (iki seans = günün toplamı), sonra sporcular arasında ortalama. Antrenmana katılmayan
    sporcu ortalamayı sıfırla aşağı çekmez. */
@@ -378,13 +378,30 @@ function useTeamHrZones(teamId,days){
   const nAD=all.reduce((s,p)=>s+p.n,0);
   return{R,per,any:all.length>0,tot,nAD,sum:tot.reduce((a,b)=>a+b,0)};
 }
-/* Yük grafiğine eklenen beş yığılmış bölge çubuğu (ayrı yığın, sağ eksen `yz`, dk); order 0: akut
-   çizginin dolgusu bölge renklerini boyamasın diye en üstte çizilir. */
-function pwZoneDatasets(Z){
+/* Günün yük çubuğunun İÇİNDEKİ bölge dilimleri: yükü (AU) o günün bölge sürelerinin
+   payına göre böler, Z1 altta Z5 üstte — çubuğun boyu yine günün yükü, renkleri
+   bölge dağılımı. Yükün yığınında (`load`, sol eksen) durur; order 0: akut çizginin
+   dolgusu bölge renklerini boyamasın diye en üstte çizilir. Her dilim kendi dakikasını
+   (`zmin`) ve yüzdesini (`zpct`) taşır; ipucu bunları yazar. Yükü 0 olan günün çubuğu
+   olmadığı için bölgesi de çizilmez (alt satırdaki özet ve ipucu yine sayar).
+   `zday(i)`: o gün bölgelere bölünecek mi — yük çubuğunun kendisi o gün boş bırakılır. */
+function pwZoneDay(Z,daily,i){
+  const p=Z&&Z.per[i];if(!p||!p.avg||!(daily[i]>0))return null;
+  const sum=p.avg.reduce((a,b)=>a+b,0);return sum>0?{p,sum}:null;
+}
+function pwZoneDatasets(Z,daily){
   if(!Z||!Z.any)return[];
-  return PW_ZONE_COL.map((c,i)=>({type:'bar',label:'Z'+(i+1),
-    data:Z.per.map(p=>p.avg?Math.round(p.avg[i]/6)/10:null),backgroundColor:c,borderRadius:2,borderSkipped:false,
-    stack:'z',yAxisID:'yz',order:0,categoryPercentage:.82,barPercentage:.9}));
+  const days=(daily||[]).map((_,i)=>pwZoneDay(Z,daily,i));
+  /* Yalnızca en üstteki ve en alttaki dolu dilimin köşeleri yuvarlak: tek çubuk gibi dursun. */
+  const edge=(i,top)=>{const d=days[i];if(!d)return-1;const ix=[0,1,2,3,4].filter(z=>d.p.avg[z]>0);return top?ix[ix.length-1]:ix[0];};
+  return PW_ZONE_COL.map((c,z)=>({type:'bar',label:'Z'+(z+1),
+    data:days.map((d,i)=>d&&d.p.avg[z]>0?daily[i]*d.p.avg[z]/d.sum:null),
+    zmin:days.map(d=>d?Math.round(d.p.avg[z]/6)/10:null),
+    zpct:days.map(d=>d?Math.round(d.p.avg[z]/d.sum*100):null),
+    backgroundColor:c,borderSkipped:false,
+    borderRadius:ctx=>{const t=edge(ctx.dataIndex,true)===z?7:0,b=edge(ctx.dataIndex,false)===z?7:0;
+      return{topLeft:t,topRight:t,bottomLeft:b,bottomRight:b};},
+    stack:'load',yAxisID:'y',order:0,categoryPercentage:.82,barPercentage:.9}));
 }
 /* Grafiğin altındaki satır: bölge özeti ya da Polar durumu. */
 function TeamHrZoneSummary({Z}){
@@ -440,28 +457,40 @@ function pwNoSleepWhy(p,day){
   return L(`Polar son senkronda ${rp.count} gece gönderdi, bu güne ait uyku yok.`,`Polar sent ${rp.count} nights in the last sync, none for this day.`)+when;
 }
 
+/* Takım tablosunun son okunan hali (takım|gün → /team-data yanıtı), oturum boyunca.
+   Sekme değiştirip geri gelince tablo hemen bu kopyadan çizilir; arkada aynı gün
+   sessizce yeniden okunur. */
+const PW_DAY_CACHE=new Map();
 function PolarWellness({team,dayKey,onOpen,onSynced}){
   const theme=useAppTheme();
-  const[data,setData]=useState(null);         // /team-data yanıtı (yalnızca seçili gün)
+  const day=dayKey||fmt(new Date());
+  const ck=`${team.id}|${day}`;
+  const[data,setData]=useState(()=>PW_DAY_CACHE.get(ck)||null);   // /team-data yanıtı (yalnızca seçili gün)
   const[busy,setBusy]=useState(false);
+  const[reading,setReading]=useState(false); // sessiz okuma (senkron yok) sürüyor
   const[prog,setProg]=useState(null);         // {done,total,fails:[{name,msg}]}
   const[err,setErr]=useState('');
-  const day=dayKey||fmt(new Date());
-  useEffect(()=>{setData(null);setProg(null);setErr('');},[team.id]);
+  useEffect(()=>{setProg(null);setErr('');},[team.id]);
   const nameOf=id=>{const a=(team.athletes||[]).find(x=>x.id===id);return a?(a.name||''):'';};
   /* Seçili gün ve bir önceki gün istenir: gece kaydı uyanış saatine (sleepEnd) göre
      eşleştiriliyor; Polar'ın `date` alanı geceyi başladığı güne yazsa da sabahki
      uyku bulunur (pwNight). */
-  const ask=d=>polarCall('/team-data',{teamId:team.id,from:pwShift(d,-1),to:d});
+  const ask=d=>polarCall('/team-data',{teamId:team.id,from:pwShift(d,-1),to:d})
+    .then(j=>{PW_DAY_CACHE.set(`${team.id}|${d}`,j);return j;});
   const load=async d=>{const j=await ask(d);setData(j);return j;};
-  /* Gün değişince (veri bir kez alındıysa) yalnızca o günü yeniden oku — senkron yok. */
+  /* Sekmeye girince, takım ya da gün değişince: son alınan veri sunucudan okunur
+     (Polar'la senkron YOK — o yalnızca "Verileri güncelle"de). Önbellekte varsa tablo
+     hemen ondan çizilir. Sessiz okumanın hatası gösterilmez (oturum yok, Polar
+     kurulmamış…): boş durum metni kalır, düğme hatayı yine söyler. */
   useEffect(()=>{
-    if(!data||data.to===day)return;
-    let alive=true;setBusy(true);
-    ask(day).then(j=>{if(alive)setData(j);})
-      .catch(e=>{if(alive)setErr(e.message||String(e));}).finally(()=>{if(alive)setBusy(false);});
+    const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;
+    setData(PW_DAY_CACHE.get(ck)||null);
+    if(!u||u.isAnonymous)return;
+    let alive=true;setReading(true);
+    ask(day).then(j=>{if(alive)setData(j);}).catch(()=>{})
+      .finally(()=>{if(alive)setReading(false);});
     return()=>{alive=false;};
-  },[day]);
+  },[ck]);
 
   const fetchAll=async()=>{
     setErr('');setBusy(true);setProg(null);
@@ -502,7 +531,7 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
         ?L(`${nLinked} sporcu bağlı · ${fd(day)}${isToday?' (bugün)':''}`,`${nLinked} athletes connected · ${fd(day)}${isToday?' (today)':''}`)
         :L('Polar\'a bağlı sporcuların günlük uyku, toparlanma, aktivite ve antrenman verisi','Daily sleep, recovery, activity and training data of Polar-connected athletes')}</span></div></div>
       <div className="pw-tools">
-        <button className="btn sm" disabled={busy} onClick={fetchAll}>{busy?L('Veriler alınıyor…','Fetching…'):L('Verileri al','Fetch data')}</button>
+        <button className="btn sm" disabled={busy} onClick={fetchAll} title={L('Polar\'a bağlı bütün sporcuların verisini Polar\'dan yeniden çeker','Pulls fresh data from Polar for every connected athlete')}>{busy?L('Veriler alınıyor…','Fetching…'):data?L('Verileri güncelle','Update data'):L('Verileri al','Fetch data')}</button>
       </div>
     </div>
     {prog&&prog.total>0&&<div className="pw-prog" role="status">
@@ -511,7 +540,7 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
       {prog.fails.map(f=><div key={f.name} className="pw-fail">{f.name}: {f.msg}</div>)}
     </div>}
     {err&&<div className="pw-err" role="alert">{err}</div>}
-    {!data?<div className="pw-empty">{L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
+    {!data?<div className="pw-empty">{reading?L('Son alınan veriler yükleniyor…','Loading the last fetched data…'):L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
