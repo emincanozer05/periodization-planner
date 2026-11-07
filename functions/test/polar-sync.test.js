@@ -499,3 +499,60 @@ ta('takım verisi: tek gün (from = to) ve tek sporcu süzgeci', async () => {
   const bad = await teamReq(env, { teamId: 'team1', from: '2026-01-01', to: '2026-11-01' });   // 92 günden uzun → days'e düşer
   assert.strictEqual(bad.json.days, 28);
 });
+
+/* ═══ Sürekli nabız → günün en düşük nabzı (RHR) ═══════════════════════════ */
+section('Polar · sürekli nabız: günün en düşük nabzı (RHR)');
+
+const HR_DAY = { polar_user: API + '/users/777', date: '2026-11-01', heart_rate_samples: [
+  { heart_rate: 61, sample_time: '00:02:08' }, { heart_rate: 49, sample_time: '04:12:00' },
+  { heart_rate: 0, sample_time: '04:17:00' }, { heart_rate: 132, sample_time: '18:30:00' }] };
+
+t('günlük özet: en düşük (0 sayılmaz) + saati, en yüksek, ortalama; "türetilmiş" işaretli', () => {
+  const h = N.hrDaily(HR_DAY);
+  assert.deepStrictEqual([h.date, h.hrMin, h.hrMinAt, h.hrMax, h.samples], ['2026-11-01', 49, '04:12:00', 132, 3]);
+  assert.strictEqual(h.hrAvg, 80.7);
+  assert.ok(h.derived.includes('hrMin'));
+  const none = N.hrDaily({ date: '2026-11-01', heart_rate_samples: [] });
+  assert.strictEqual(none.hrMin, null);
+  assert.ok(none.missing.includes('hrMin'));
+});
+
+t('uyku kaydındaki nabız örneklerinden en düşük nabız; örnek yoksa null', () => {
+  const s = N.sleep(Object.assign({}, NIGHT, { heart_rate_samples: { '23:50': 58, '03:10': 47, '06:40': 0 } }));
+  assert.strictEqual(s.hrMin, 47);
+  assert.deepStrictEqual(s.derived, ['asleepSec', 'hrMin']);
+  assert.strictEqual(N.sleep(NIGHT).hrMin, null);
+});
+
+ta('senkron: aralık ucu → polar_hr_daily, takım verisinde `hr`; kinds süzgeci', async () => {
+  const env = setup({ routes: { 'GET /users/continuous-heart-rate?from=2026-10-07&to=2026-11-03': () => ({ status: 200, body: { heart_rates: [HR_DAY] } }) } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.json.ok, true);
+  const d = env.db.get('polar_hr_daily', 'coach1__ath1__2026-11-01');
+  assert.strictEqual(d.hrMin, 49);
+  assert.strictEqual(env.db.get('polar_links', 'coach1__ath1').lastSyncReport.hr.count, 1);
+  const all = await teamReq(env, { teamId: 'team1', from: '2026-11-01', to: '2026-11-01' });
+  assert.deepStrictEqual(all.json.athletes[0].hr, [{ date: '2026-11-01', hrMin: 49, hrMinAt: '04:12:00', hrMax: 132, hrAvg: 80.7, samples: 3 }]);
+  assert.ok(Array.isArray(all.json.athletes[0].exercises));
+  const only = await teamReq(env, { teamId: 'team1', from: '2026-11-01', to: '2026-11-01', kinds: ['hr', 'sleep'] });
+  assert.deepStrictEqual(Object.keys(only.json.athletes[0]).filter(k => ['sleep', 'recharge', 'activity', 'exercises', 'hr'].includes(k)).sort(), ['hr', 'sleep']);
+});
+
+ta('aralık ucu yoksa gün gün; hiç veri yoksa senkron yine başarılı', async () => {
+  const env = setup({ routes: { 'GET /users/continuous-heart-rate/2026-11-01': () => ({ status: 200, body: { heart_rate_samples: HR_DAY.heart_rate_samples } }) } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.json.ok, true);
+  assert.strictEqual(env.db.get('polar_hr_daily', 'coach1__ath1__2026-11-01').hrMin, 49);
+  const bare = setup();
+  const r2 = await syncReq(bare);
+  assert.strictEqual(r2.json.ok, true);
+  assert.strictEqual(bare.db.ids('polar_hr_daily').length, 0);
+});
+
+ta('eski uyku dokümanı (hrMin alanı yok): takım verisi ham örneklerden tamamlıyor, ham veri dönmüyor', async () => {
+  const env = setup();
+  env.db.put('polar_sleep', 'coach1__ath1__2026-11-01', { coachUid: 'coach1', date: '2026-11-01', sleepScore: 70, raw: { heart_rate_samples: { '02:00': 51, '03:00': 48 } } });
+  const r = await teamReq(env, { teamId: 'team1', from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r.json.athletes[0].sleep[0].hrMin, 48);
+  assert.ok(!JSON.stringify(r.json).includes('heart_rate_samples'));
+});

@@ -11,7 +11,7 @@
      POST /invite       { teamId, athleteId }  → { url, expiresAt }
      POST /disconnect   { athleteId }          → { remote }
      POST /sync         { athleteId }          → { ok, report, lastSyncAt }   (Aşama 2)
-     POST /team-data    { teamId, from?, to?, days?, athleteId? } → takımın / sporcunun Polar verisi
+     POST /team-data    { teamId, from?, to?, days?, athleteId?, kinds? } → takımın / sporcunun Polar verisi
 
    Neden callback'te Firebase oturumu yok: Polar dönüşü tarayıcının düz bir
    yönlendirmesi, ID token taşıyamaz; üstelik izni veren kişi sporcu ve onun CoachOS
@@ -138,7 +138,7 @@ async function jsonRoute(route, req, res, deps) {
       });
     }
     if (route === '/team-data') {
-      const r = await teamdata.loadTeamData(deps, { coachUid, teamId: body.teamId, athleteId: body.athleteId, from: body.from, to: body.to, days: body.days });
+      const r = await teamdata.loadTeamData(deps, { coachUid, teamId: body.teamId, athleteId: body.athleteId, from: body.from, to: body.to, days: body.days, kinds: body.kinds });
       return sendJson(res, 200, r);
     }
     if (route === '/sync') {

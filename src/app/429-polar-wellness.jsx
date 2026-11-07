@@ -3,7 +3,8 @@
 
    "Verileri al": takımın Polar'a bağlı her sporcusu için sunucuda senkron
    (functions/polar → /sync, aynı anda 3 sporcu), ardından Wellness'ta SEÇİLİ
-   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir. Senkron
+   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tabloda RHR
+   (günün en düşük nabzı, pwRhrMap) RHR Takibi'yle aynı kuralla. Senkron
    az önce yapıldıysa (TOO_SOON) sporcu "güncel" sayılır. 14/28 günlük
    grafikler sporcunun kendi sayfasında (PolarAthleteCharts); aralık bugünle
    biten tam 14 / 28 gün (yerel takvim), istekte açık from/to olarak gidiyor.
@@ -175,8 +176,8 @@ function PolarAthleteCharts({ath,teamId}){
 /* ── Wellness sporcu sayfası: Polar gece nabzı, ay ay ─────────────────────────
    Takvim ve eğri hafta / ay arasında gezdikçe gereken aylar (/team-data, bu sporcu,
    ayın 1'i → ayın sonu ya da bugün) bir kez istenir ve oturum boyunca saklanır; içinde
-   bulunulan ay 10 dakikada bir tazelenir. Dönen: {by:{'YYYY-MM-DD':bpm}, sleep:{'YYYY-MM-DD':uyuma sn}, linked, loaded,
-   off, err}. Gece verisi uyanılan sabahın tarihini taşır — takvim günüyle aynı kural. */
+   bulunulan ay 10 dakikada bir tazelenir. Dönen: {by:{'YYYY-MM-DD':bpm}, sleep:{'YYYY-MM-DD':uyuma sn},
+   ex:[antrenman (spor, süre, HR bölgeleri)], linked, loaded, off, err}. Gece verisi uyanılan sabahın tarihini taşır — takvim günüyle aynı kural. */
 const PW_NHR_CACHE=new Map();
 function pwMonthsOf(from,to){
   const out=[];if(!from||!to||from>to)return out;
@@ -207,16 +208,201 @@ function usePolarNightHR(ath,teamId,from,to){
         /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı) —
            Wellness'taki Sporcu İzleme uyku süresini buradan okur. */
         ((a&&a.sleep)||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.asleepSec))sl[k]=x.asleepSec;});
-        PW_NHR_CACHE.set(key(m),{by,sl,linked:!!a,at:Date.now()});
+        /* Antrenmanlar (spor, süre, HR bölgeleri): Wellness gün ayrıntısındaki HR Zone bölümü. */
+        const ex=((a&&a.exercises)||[]).filter(e=>e&&e.date);
+        PW_NHR_CACHE.set(key(m),{by,sl,ex,linked:!!a,at:Date.now()});
       });}))
       .then(()=>{if(alive){setErr('');setTick(t=>t+1);}})
       .catch(e=>{if(alive)setErr(e.message||String(e));});
     return()=>{alive=false;};
   },[teamId,id,months.join(','),off]);
-  const by={},sleep={};let linked=false,loaded=true;
+  const by={},sleep={},exById=new Map();let linked=false,loaded=true;
   months.forEach(m=>{const c=PW_NHR_CACHE.get(key(m));
-    if(c){Object.assign(by,c.by);Object.assign(sleep,c.sl||{});linked=linked||c.linked;}else if(m+'-01'<=todayK)loaded=false;});
-  return{by,sleep,linked,loaded:off||loaded||!!err,off,err};
+    if(c){Object.assign(by,c.by);Object.assign(sleep,c.sl||{});(c.ex||[]).forEach(e=>exById.set(e.exerciseId||(e.date+'|'+e.startTime),e));linked=linked||c.linked;}
+    else if(m+'-01'<=todayK)loaded=false;});
+  const ex=[...exById.values()].sort((x,y)=>String(x.startTime||x.date).localeCompare(String(y.startTime||y.date)));
+  return{by,sleep,ex,linked,loaded:off||loaded||!!err,off,err};
+}
+
+/* ── Takımın bir tarih aralığındaki Polar verisi (yalnızca istenen türler) ─────
+   RHR Takibi (12 hafta, `hr` + `sleep`) ve Yük Takibi'ndeki takım HR Zone grafiği
+   (`exercises`) için. Yanıt oturum boyunca saklanır; aralık bugünü içeriyorsa 10
+   dakikada bir, ayrıca `ver` değişince ("Verileri al" bitince) yeniden istenir.
+   Eski sunucu `kinds`'ı bilmiyorsa bütün türleri döndürür — sonuç aynı. */
+const PW_RANGE_CACHE=new Map();
+const PW_NONE=[];
+function usePolarTeamRange(teamId,from,to,kinds,ver){
+  const[,setTick]=useState(0);
+  const[err,setErr]=useState('');
+  const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;
+  const todayK=fmt(new Date());
+  const off=!teamId||!from||!to||from>to||from>todayK||!u||u.isAnonymous;
+  const end=to>todayK?todayK:to;
+  const key=`${teamId}|${from}|${end}|${(kinds||[]).join(',')}|${ver||0}`;
+  const c=PW_RANGE_CACHE.get(key);
+  const fresh=!!c&&(end<todayK||Date.now()-c.at<6e5);
+  useEffect(()=>{
+    if(off||fresh)return;
+    let alive=true;setErr('');
+    polarCall('/team-data',{teamId,from,to:end,kinds})
+      .then(j=>{PW_RANGE_CACHE.set(key,{athletes:j.athletes||[],at:Date.now()});if(alive)setTick(t=>t+1);})
+      .catch(e=>{if(alive)setErr(e.message||String(e));});
+    return()=>{alive=false;};
+  },[key,off]);
+  return{athletes:c?c.athletes:PW_NONE,loaded:off||!!c||!!err,off,err};
+}
+
+/* Polar'dan dinlenik nabız (RHR) = günün EN DÜŞÜK nabzı: sürekli nabzın o günkü en
+   küçük örneği (`hr`); o gün sürekli nabız yoksa o sabah biten uykudaki en düşük nabız.
+   Döner: {'YYYY-MM-DD': bpm}. Wellness'taki Polar tablosu, takım ortalaması ve RHR
+   Takibi aynı kuralı buradan okur. */
+function pwRhrMap(p){
+  const out={};if(!p)return out;
+  (p.sleep||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.hrMin))out[k]=x.hrMin;});
+  (p.hr||[]).forEach(x=>{if(x&&x.date&&pwNum(x.hrMin))out[x.date]=x.hrMin;});
+  return out;
+}
+/* Takımın bütün sporcuları: {athleteId: {'YYYY-MM-DD': bpm}} */
+function pwTeamRhr(athletes){
+  const out={};(athletes||[]).forEach(a=>{const m=pwRhrMap(a);if(Object.keys(m).length)out[a.athleteId]=m;});
+  return out;
+}
+
+/* ── Antrenmanın kalp atım bölgeleri (Polar HR Zone 1-5) ─────────────────────
+   Polar her antrenmanda beş bölgenin alt/üst sınırını ve bölgede geçen süreyi
+   gönderiyor. Renkler Polar Flow'un bölge renkleri: gri, mavi, yeşil, sarı, kırmızı. */
+const PW_ZONE_COL=['#9ca3af','#3b82f6','#22c55e','#eab308','#ef4444'];
+const PW_ZONE_PCT=['50–60%','60–70%','70–80%','80–90%','90–100%'];
+/* Bir antrenmanın bölge süreleri: [Z1…Z5] saniye; bölge verisi yoksa null. Polar
+   indeksi 1'den başlıyor; 0'dan başlayan bir yanıt da doğru bölgeye düşer. */
+function pwZoneSec(e){
+  const zs=(e&&Array.isArray(e.zones))?e.zones:null;if(!zs||!zs.length)return null;
+  const zero=zs.some(z=>z&&z.index===0);
+  const out=[0,0,0,0,0];
+  zs.forEach((z,i)=>{if(!z||!pwNum(z.inZoneSec))return;
+    const ix=pwNum(z.index)?z.index+(zero?1:0):i+1;
+    if(ix>=1&&ix<=5)out[ix-1]+=z.inZoneSec;});
+  return out.some(v=>v>0)?out:null;
+}
+/* Bölge dizilerinin ortalaması (her bölge ayrı): [Z1…Z5] saniye. */
+function pwZoneMean(list){
+  const v=(list||[]).filter(Boolean);if(!v.length)return null;
+  return[0,1,2,3,4].map(i=>v.reduce((s,z)=>s+z[i],0)/v.length);
+}
+const PW_SPORT={
+  STRENGTH_TRAINING:['Kuvvet antrenmanı','Strength training'],BASKETBALL:['Basketbol','Basketball'],
+  RUNNING:['Koşu','Running'],TREADMILL_RUNNING:['Koşu bandı','Treadmill'],INDOOR_RUNNING:['Kapalı alan koşu','Indoor running'],
+  CYCLING:['Bisiklet','Cycling'],INDOOR_CYCLING:['Kapalı alan bisiklet','Indoor cycling'],
+  CIRCUIT_TRAINING:['Devre antrenmanı','Circuit training'],FUNCTIONAL_TRAINING:['Fonksiyonel antrenman','Functional training'],
+  CORE:['Core','Core'],MOBILITY:['Mobilite','Mobility'],MOBILITY_DYNAMIC:['Dinamik mobilite','Dynamic mobility'],
+  MOBILITY_STATIC:['Statik mobilite','Static mobility'],STRETCHING:['Esneme','Stretching'],YOGA:['Yoga','Yoga'],PILATES:['Pilates','Pilates'],
+  WALKING:['Yürüyüş','Walking'],SWIMMING:['Yüzme','Swimming'],HIIT:['HIIT','HIIT'],
+  OTHER_INDOOR:['Diğer (kapalı alan)','Other indoor'],OTHER_OUTDOOR:['Diğer (açık alan)','Other outdoor'],OTHER:['Diğer','Other'],
+};
+function pwSportLbl(e){
+  const pickK=v=>{const k=String(v||'').toUpperCase().replace(/[\s-]+/g,'_');return PW_SPORT[k]?k:null;};
+  const k=pickK(e&&e.detailedSport)||pickK(e&&e.sport);
+  if(k)return L(PW_SPORT[k][0],PW_SPORT[k][1]);
+  const raw=String((e&&(e.detailedSport||e.sport))||'').replace(/_/g,' ').toLocaleLowerCase('tr');
+  return raw?raw.charAt(0).toLocaleUpperCase('tr')+raw.slice(1):L('Antrenman','Training');
+}
+const pwMin=sec=>pwNum(sec)?Math.round(sec/60):null;
+const pwPct=n=>L(`%${n}`,`${n}%`);
+/* Tek satır: başlık + yığılmış bölge çubuğu + bölge başına dakika. */
+function PwZoneRow({title,sub,sec,delay}){
+  const tot=sec?sec.reduce((a,b)=>a+b,0):0;
+  return(<div className="pwz-row">
+    <div className="pwz-h"><b>{title}</b>{sub&&<span>{sub}</span>}</div>
+    {tot>0?<>
+      <div className="pwz-bar" role="img" aria-label={sec.map((v,i)=>`Z${i+1} ${pwMin(v)} ${L('dk','min')}`).join(', ')}>
+        {sec.map((v,i)=>v>0?<i key={i} style={{flexGrow:v,background:PW_ZONE_COL[i],animationDelay:((delay||0)+i*60)+'ms'}}
+          title={`Z${i+1} · ${pwMin(v)} ${L('dk','min')} · ${pwPct(Math.round(v/tot*100))}`}/>:null)}</div>
+      <div className="pwz-leg">{sec.map((v,i)=><span key={i} className={v>0?'':'z0'}><i style={{background:PW_ZONE_COL[i]}}/>Z{i+1}
+        <b>{pwMin(v)}</b><small>{L('dk','m')} · {pwPct(Math.round(v/tot*100))}</small></span>)}</div>
+    </>:<div className="pwz-none">{L('Polar bu antrenman için bölge verisi göndermedi.','Polar sent no zone data for this session.')}</div>}
+  </div>);
+}
+
+/* ── Wellness sporcu sayfası → gün ayrıntısı: HR Zone ─────────────────────────
+   Üstte seçili günün haftasının (Pzt–Paz) ortalaması: o haftaki Polar antrenmanlarının
+   bölge sürelerinin seans başına ortalaması; haftada birden çok spor varsa her spor ayrı
+   (kuvvet antrenmanının, basketbolun ortalaması). Altında o gün kaydedilen her antrenman
+   kendi bölgeleriyle ayrı ayrı. */
+function WvHrZones({ex,dayKey,msg}){
+  const wS=fmt(sow(parseD(dayKey))),wE=fmt(addD(sow(parseD(dayKey)),6));
+  const wk=(ex||[]).filter(e=>e.date>=wS&&e.date<=wE).map(e=>({e,z:pwZoneSec(e)})).filter(x=>x.z);
+  const day=(ex||[]).filter(e=>e.date===dayKey);
+  const groups=new Map();wk.forEach(x=>{const k=pwSportLbl(x.e);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x.z);});
+  const sports=[...groups.entries()].sort((a,b)=>b[1].length-a[1].length);
+  const nTxt=n=>L(`${n} antrenman`,`${n} session${n===1?'':'s'}`);
+  const tm=e=>{const m=/T(\d{2}:\d{2})/.exec(String(e.startTime||''));return m?m[1]:'';};
+  const a=parseD(wS),b=parseD(wE);
+  const wLbl=a.getMonth()===b.getMonth()?`${a.getDate()}–${b.getDate()} ${MN[b.getMonth()]}`:`${a.getDate()} ${MN[a.getMonth()]} – ${b.getDate()} ${MN[b.getMonth()]}`;
+  const none=!wk.length&&!day.length;
+  return(<div className="pwz">
+    <div className="pwz-k">{L('Kalp atım bölgeleri','Heart rate zones')}<em className="wv-polar-tag">Polar</em></div>
+    {none?<div className="pwz-none">{msg||L(`${wLbl} haftasında Polar antrenman kaydı yok.`,`No Polar sessions in the week of ${wLbl}.`)}</div>:<>
+      <div className="pwz-sec">{L('Hafta ortalaması','Week average')} · {wLbl}</div>
+      {wk.length?<>
+        <PwZoneRow title={L('Bütün antrenmanlar','All sessions')} sub={L(`seans başına ort. · ${nTxt(wk.length)}`,`avg per session · ${nTxt(wk.length)}`)} sec={pwZoneMean(wk.map(x=>x.z))}/>
+        {sports.length>1&&sports.map(([k,zs],i)=><PwZoneRow key={k} title={k} sub={L(`ort. · ${nTxt(zs.length)}`,`avg · ${nTxt(zs.length)}`)} sec={pwZoneMean(zs)} delay={(i+1)*80}/>)}
+      </>:<div className="pwz-none">{L('Bu haftanın antrenmanlarında bölge verisi yok.','No zone data in this week\'s sessions.')}</div>}
+      <div className="pwz-sec">{L('Bu gün','This day')} · {fd(dayKey)}</div>
+      {day.length?day.map((e,i)=><PwZoneRow key={e.exerciseId||i} title={pwSportLbl(e)} delay={i*80}
+        sub={[tm(e),pwNum(e.durationSec)?pwDur(e.durationSec):null,pwNum(e.hrAvg)?L(`ort. ${Math.round(e.hrAvg)} bpm`,`avg ${Math.round(e.hrAvg)} bpm`):null].filter(Boolean).join(' · ')}
+        sec={pwZoneSec(e)}/>)
+        :<div className="pwz-none">{L('Bu gün Polar antrenman kaydı yok.','No Polar session on this day.')}</div>}
+    </>}
+    <div className="pwz-scale"><em>{L('Polar varsayılanı, maks. nabzın:','Polar default, of max HR:')}</em>{PW_ZONE_PCT.map((p,i)=><span key={i}><i style={{background:PW_ZONE_COL[i]}}/>Z{i+1} <small>{p}</small></span>)}</div>
+  </div>);
+}
+
+/* ── Yük Takibi → Takım Yük Trendi: takımın ortalama HR Zone'u ────────────────
+   Grafiğin günleriyle aynı günler. Her gün, o gün Polar'da antrenmanı (bölge verisiyle)
+   olan BÜTÜN sporcuların bölge sürelerinin ortalaması: önce sporcunun o günkü
+   antrenmanları toplanır (iki seans = günün toplamı), sonra sporcular arasında ortalama.
+   Antrenmana katılmayan sporcu ortalamayı sıfırla aşağı çekmez. */
+function TeamHrZones({teamId,days,labels}){
+  const from=days[0],to=days[days.length-1];
+  const R=usePolarTeamRange(teamId,from,to,['exercises']);
+  if(R.off)return null;
+  const per=days.map(k=>{
+    const ath=[];
+    R.athletes.forEach(a=>{const zs=(a.exercises||[]).filter(e=>e.date===k).map(pwZoneSec).filter(Boolean);
+      if(zs.length)ath.push([0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)));});
+    return{k,n:ath.length,avg:pwZoneMean(ath)};
+  });
+  const any=per.some(p=>p.n);
+  /* Aralığın özeti: sporcu-gün başına ortalama dakika ve yüzde. */
+  const all=per.filter(p=>p.n);
+  const tot=[0,1,2,3,4].map(i=>all.reduce((s,p)=>s+p.avg[i]*p.n,0));
+  const nAD=all.reduce((s,p)=>s+p.n,0);
+  const sum=tot.reduce((a,b)=>a+b,0);
+  return(<div className="pwz-team">
+    <div className="lm-th"><div><h3 style={{display:'inline'}}>{L('Takım Ortalama HR Zone','Team Average HR Zones')}</h3>
+      <span className="lm-th-sub">{L('antrenmana katılan sporcuların ortalaması · dk · Polar','mean of athletes who trained · min · Polar')}</span></div></div>
+    {R.err?<div className="pwz-none">{L('Polar verisi alınamadı: ','Polar data could not be loaded: ')}{R.err}</div>
+    :!R.loaded?<div className="pwz-none">{L('Polar verisi yükleniyor…','Loading Polar data…')}</div>
+    :!any?<div className="pwz-none">{L('Bu aralıkta bölge verili Polar antrenmanı yok.','No Polar sessions with zone data in this range.')}</div>
+    :<>
+      <div className="chart-box" style={{height:200}}>
+        <ChartC type="bar" chartData={{labels,datasets:PW_ZONE_COL.map((c,i)=>({label:'Z'+(i+1),
+          data:per.map(p=>p.avg?Math.round(p.avg[i]/6)/10:null),backgroundColor:c,borderRadius:2,borderSkipped:false,
+          stack:'z',categoryPercentage:.82,barPercentage:.9}))}}
+          options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
+            interaction:{mode:'index',intersect:false},
+            scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},
+              y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:L('dk','min'),color:'#94a3b8',font:{size:10}}}},
+            plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'Archivo','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:12}},
+              tooltip:{mode:'index',intersect:false,callbacks:{
+                title:items=>{const p=per[items[0].dataIndex];if(!p)return'';return`${fd(p.k)} · ${p.n} ${L('sporcu','athletes')}`;},
+                label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${i.parsed.y} ${L('dk','min')}`}}}}}/>
+      </div>
+      <div className="pwz-leg pwz-sum">{tot.map((v,i)=><span key={i} className={v>0?'':'z0'}><i style={{background:PW_ZONE_COL[i]}}/>Z{i+1}
+        <b>{Math.round(v/nAD/60)}</b><small>{L('dk','m')} · {pwPct(sum?Math.round(v/sum*100):0)}</small></span>)}
+        <em>{L(`sporcu-gün başına ort. · ${nAD} sporcu-gün`,`avg per athlete-day · ${nAD} athlete-days`)}</em></div>
+    </>}
+  </div>);
 }
 
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
@@ -261,7 +447,7 @@ function pwNoSleepWhy(p,day){
   return L(`Polar son senkronda ${rp.count} gece gönderdi, bu güne ait uyku yok.`,`Polar sent ${rp.count} nights in the last sync, none for this day.`)+when;
 }
 
-function PolarWellness({team,dayKey,onOpen}){
+function PolarWellness({team,dayKey,onOpen,onSynced}){
   const theme=useAppTheme();
   const[data,setData]=useState(null);         // /team-data yanıtı (yalnızca seçili gün)
   const[busy,setBusy]=useState(false);
@@ -302,6 +488,7 @@ function PolarWellness({team,dayKey,onOpen}){
       };
       await Promise.all([worker(),worker(),worker()]);
       await load(day);
+      if(typeof onSynced==='function')onSynced();
     }catch(e){setErr(e.message||String(e));}
     finally{setBusy(false);}
   };
@@ -336,12 +523,14 @@ function PolarWellness({team,dayKey,onOpen}){
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
           <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Yatış','Bedtime')}</th><th>{L('Uyanış','Wake')}</th><th>{L('Uyku skoru','Sleep score')}</th>
-          <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th><th>ANS</th>
+          <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th>
+          <th title={L('Dinlenik nabız: Polar\'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız)','Resting HR: Polar\'s lowest heart rate of the day (continuous HR; else the lowest HR during sleep)')}>RHR</th><th>ANS</th>
           <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
           const[stTxt,stCls]=(PW_STATUS[(p&&p.status)||'none']||PW_STATUS.none)();
           const{s,r}=p?pwNight(p,day):{s:null,r:null};const act=p&&pick(p.activity);
+          const rhr=p?pwRhrMap(p)[day]:null;
           const ex=p?(p.exercises||[]).filter(e=>e.date===day):[];
           const exDur=ex.map(e=>e.durationSec).filter(pwNum),exLoad=ex.map(e=>e.trainingLoad).filter(pwNum);
           const canOpen=!!p&&typeof onOpen==='function';
@@ -355,6 +544,7 @@ function PolarWellness({team,dayKey,onOpen}){
             <td>{s?pwR(s.sleepScore):'—'}</td>
             <td>{r?pwR(r.hrvMs):'—'}</td>
             <td>{r?pwR(r.hrAvg):'—'}</td>
+            <td className="pw-rhr">{pwNum(rhr)?pwR(rhr):'—'}</td>
             <td>{r?pwR(r.ansCharge,1):'—'}</td>
             <td>{act&&pwNum(act.steps)?Math.round(act.steps).toLocaleString('tr-TR'):'—'}</td>
             <td>{ex.length?`${ex.length} · ${exDur.length?pwDur(exDur.reduce((x,y)=>x+y,0)):'—'}`:'—'}</td>
@@ -366,8 +556,8 @@ function PolarWellness({team,dayKey,onOpen}){
           :L(`${fd(day)} sabahı uyku verisi olmayan sporcular (${noSleep.length})`,`No sleep data for the morning of ${fd(day)} (${noSleep.length})`)}</b>
         {noSleep.map(x=><div key={x.name}><span>{x.name}</span>{x.why}</div>)}
       </div>}
-      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
-        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
+      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. RHR: Polar'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız); aşağıdaki RHR Takibi aynı değeri kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
+        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. RHR: Polar's lowest heart rate of the day (continuous HR; else the lowest during sleep); the RHR Monitor below uses the same value. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}
   </div>);
 }

@@ -63,7 +63,53 @@ function sleep(r) {
   // biri bile yoksa toplam da yok (eksik toplam, tam ölçüm gibi görünmesin).
   const parts = [f.lightSec, f.deepSec, f.remSec];
   f.asleepSec = parts.every(v => v != null) ? parts.reduce((s, v) => s + v, 0) + (f.unrecognizedSec || 0) : null;
-  return finish(f, SLEEP_EXPECTED, f.asleepSec != null ? ['asleepSec'] : []);
+  // Uykudaki en düşük nabız: Polar'ın uyku kaydındaki nabız örneklerinin en küçüğü
+  // (Polar ayrı bir "min" alanı göndermiyor). Örnek yoksa null.
+  f.hrMin = sleepHrMin(r);
+  const derived = [];
+  if (f.asleepSec != null) derived.push('asleepSec');
+  if (f.hrMin != null) derived.push('hrMin');
+  return finish(f, SLEEP_EXPECTED, derived);
+}
+
+/* Fizyolojik olarak anlamlı nabız (bpm): 0, eksik ölçüm ya da bozuk örnek sayılmaz. */
+const okBpm = v => { const n = num(v); return n != null && n >= 25 && n <= 230 ? n : null; };
+
+/* Nabız örnekleri iki biçimde gelebiliyor: { "00:41": 56, … } (uyku) ya da
+   [{ heart_rate, sample_time }, …] (sürekli nabız). Döner: [{ t, bpm }]. */
+function hrSamples(v) {
+  if (Array.isArray(v)) {
+    return v.map(x => (x && typeof x === 'object' ? { t: str(x.sample_time != null ? x.sample_time : x.time), bpm: okBpm(x.heart_rate != null ? x.heart_rate : x.value) } : null))
+      .filter(x => x && x.bpm != null);
+  }
+  if (v && typeof v === 'object') return Object.keys(v).map(k => ({ t: k, bpm: okBpm(v[k]) })).filter(x => x.bpm != null);
+  return [];
+}
+
+/* Ham uyku kaydından en düşük nabız (eski dokümanlar için okuma anında da kullanılıyor). */
+function sleepHrMin(raw) {
+  const s = hrSamples(raw && raw.heart_rate_samples);
+  return s.length ? Math.min(...s.map(x => x.bpm)) : null;
+}
+
+/* ── Sürekli nabız (/v3/users/continuous-heart-rate) — günün özeti ───────
+   Polar gün boyunca birkaç dakikada bir nabız örneği gönderiyor. Saklanan:
+   günün EN DÜŞÜK nabzı (CoachOS'ta dinlenik nabız, RHR) ve saati, en yüksek ve
+   ortalama nabız, örnek sayısı. Hepsi örneklerden hesaplanıyor (derived). */
+const HR_DAILY_EXPECTED = ['hrMin', 'hrMax', 'hrAvg'];
+function hrDaily(r) {
+  const s = hrSamples(r && r.heart_rate_samples);
+  let lo = null;
+  for (const x of s) if (!lo || x.bpm < lo.bpm) lo = x;
+  const f = {
+    date: dateOf(r && r.date),
+    hrMin: lo ? lo.bpm : null,
+    hrMinAt: lo ? lo.t : null,
+    hrMax: s.length ? Math.max(...s.map(x => x.bpm)) : null,
+    hrAvg: s.length ? Math.round(s.reduce((a, x) => a + x.bpm, 0) / s.length * 10) / 10 : null,
+    samples: s.length,
+  };
+  return finish(f, HR_DAILY_EXPECTED, s.length ? ['hrMin', 'hrMinAt', 'hrMax', 'hrAvg'] : []);
 }
 
 /* ── Nightly Recharge (/v3/users/nightly-recharge) ─────────────────────── */
@@ -149,4 +195,4 @@ function listOf(j, keys) {
   return arr || [];
 }
 
-module.exports = { isoDurationSec, stable, hashOf, listOf, sleep, recharge, exercise, activity, cardioLoad };
+module.exports = { isoDurationSec, stable, hashOf, listOf, sleep, recharge, exercise, activity, cardioLoad, hrDaily, sleepHrMin, hrSamples };

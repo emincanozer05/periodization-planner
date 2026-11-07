@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1953**, yinelenen: **0**
+- Üst düzey ad sayısı: **1974**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -16,7 +16,7 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 |---|---:|---:|
 | `dates-language-factories` | 85 | 2 |
 | `prelude` | 68 | 1 |
-| `constants-session-focus` | 43 | 1 |
+| `constants-session-focus` | 44 | 1 |
 | `photo-local-media-store` | 37 | 2 |
 | `periods-weeks-load-monotony` | 29 | 7 |
 | `test-metadata-fms` | 20 | 5 |
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **113** / toplam bağ 621
+- Geriye bağ sayısı: **114** / toplam bağ 623
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 58 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -77,7 +77,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 29 | `ball-practice` | 47 | `prelude`, `dates-language-factories`, `rhr-team-sync-picker`, `print-session-html`, `print-week`, `photo-local-media-store`, `block-editor-session-details`, `pattern-plan-table`, `sync-infra-chunking-merge`↑, `exercise-video-picker`↑, `coach-assistant`↑ |
 | 30 | `session-editor-planner` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `rhr-team-sync-picker`, `print-week`, `pdf-share-coach-report`, `session-kinds`, `block-editor-session-details`, `pattern-plan-table`, `ball-practice`, `exercise-taxonomy-text`↑, `program-bank`↑ |
 | 31 | `interval-timer` | 15 | `prelude`, `dates-language-factories`, `setup-all-teams-calendar` |
-| 32 | `reports-photo-cell` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `periods-weeks-load-monotony`, `chart-wrapper`, `photo-local-media-store`, `setup-all-teams-calendar`, `exercise-taxonomy-text`↑ |
+| 32 | `reports-photo-cell` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `periods-weeks-load-monotony`, `chart-wrapper`, `photo-local-media-store`, `setup-all-teams-calendar`, `polar-wellness`↑, `exercise-taxonomy-text`↑ |
 | 33 | `test-pdf` | 5 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `print-week`, `photo-local-media-store`, `drive-embed-body-model`↑, `testing-session`↑, `fv-profile`↑ |
 | 34 | `athletic-dev-report` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `print-week`, `photo-local-media-store`, `athlete-detail-snapshot`↑, `night-sleep-helpers`↑ |
 | 35 | `dev-report-page` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `photo-local-media-store`, `athletic-dev-report`, `night-sleep-helpers`↑ |
@@ -103,9 +103,9 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 55 | `night-sleep-helpers` | 4 | `prelude`, `dates-language-factories` |
 | 56 | `athlete-info-report` | 1 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `scouting-notes`, `profile-tab`, `atp-profile-ui`, `athlete-detail`, `polar-wellness`↑, `athlete-context-readiness`↑ |
 | 57 | `athlete-polar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`↑ |
-| 58 | `wellness-view` | 19 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `night-sleep-helpers`, `428b-athlete-monitoring`↑, `polar-wellness`↑ |
+| 58 | `wellness-view` | 24 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `night-sleep-helpers`, `428b-athlete-monitoring`↑, `polar-wellness`↑ |
 | 59 | `428b-athlete-monitoring` | 36 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `monitor-config`, `monitor-engine`, `night-sleep-helpers`, `athlete-polar`, `polar-wellness`↑, `sync-infra-chunking-merge`↑ |
-| 60 | `polar-wellness` | 40 | `prelude`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
+| 60 | `polar-wellness` | 56 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
 | 61 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 62 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
 | 63 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `indiv-plan-descriptions`↑ |

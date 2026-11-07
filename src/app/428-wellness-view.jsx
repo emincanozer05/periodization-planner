@@ -4,12 +4,14 @@
    Yük Takibi'ndeki Wellness Isı Haritası'nın yerini aldı. Üç katman:
      1. Başlık bandı — sade koyu zemin: yavaşça kayan iki hafif ışık ve sağa doğru
         silikleşen ince nokta deseni; seçili gün ve kaç sporcunun o gün form doldurduğu.
-     2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, RHR bpm, hazır
-        oluşun 1-5 dağılımı ve son 14 günün takım hazır oluş eğrisi.
+     2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, RHR bpm (Polar'a
+        bağlı sporcuda Polar'ın günün en düşük nabzı), hazır oluşun 1-5 dağılımı ve takımın
+        haftalık hazır oluşu (hafta şeridi + seçili haftanın günleri çubuk grafik).
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
         takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
-        seçilen günün ayrıntısı, hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
+        seçilen günün ayrıntısı (check-in + o haftanın ortalama ve o günün antrenman başına
+        Polar HR bölgeleri), hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
         kayıtları (check-in + Polar gece nabzı), en altta Sporcu İzleme (428b: sağlık uyarıları,
         yük ve toparlanma — kişisel referansa göre, risk skoru yok). Takım görünümünün en altında
         Veri yeterliliği raporu (428b MonAdequacyPanel).
@@ -150,21 +152,18 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name}){
 }
 
 /* ---- Takımın o günkü ortalaması ---- */
-function WvTeamPanel({athletes,dayKey,rows}){
+function WvTeamPanel({athletes,dayKey,setDayKey,rows,prhr}){
   const MS=WV_METRICS();
   const avg=id=>wvMean(rows.map(r=>r.d&&r.d[id]));
   const rdy=avg('readiness');
   const rdyN=useWvCount(rdy);
-  const rhr=avg('RHR');
+  /* Ortalama RHR: Polar'a bağlı sporcuda Polar'ın günün en düşük nabzı, değilse check-in. */
+  const rhr=wvMean(rows.map(r=>wvRhr(r.a,r.d,dayKey,prhr)));
   const rhrN=useWvCount(rhr);
   /* Hazır oluşun 1-5 dağılımı: kaç sporcu hangi renkte uyandı. */
   const dist=[0,0,0,0,0];rows.forEach(r=>{const v=r.d&&r.d.readiness;if(v!=null)dist[Math.min(5,Math.max(1,Math.round(v)))-1]++;});
   const distN=dist.reduce((a,b)=>a+b,0);
   const painN=rows.filter(r=>r.d&&(r.d.pain||r.d.note)).length;
-  /* Son 14 günün takım hazır oluşu: her gün, o gün form dolduranların ortalaması. */
-  const days14=Array.from({length:14},(_,i)=>fmt(addD(parseD(dayKey),i-13)));
-  const trend=days14.map(k=>wvMean(athletes.map(a=>{const d=wvDay(a,k);return d?d.readiness:null;})));
-  const lbl=days14.map(k=>fd(k).slice(0,5));
   return(<div className="wv-team">
     <div className="panel wv-team-main">
       <div className="wv-ph"><h2>{L('Takım Ortalaması','Team Average')}</h2>
@@ -195,15 +194,100 @@ function WvTeamPanel({athletes,dayKey,rows}){
         <div className="wv-dist-leg">{SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)}</div>
       </div>
     </div>
-    <div className="panel wv-team-trend">
-      <div className="wv-ph"><h2>{L('Takım Hazır Oluş Trendi','Team Readiness Trend')}</h2><span>{L('son 14 gün','last 14 days')}</span></div>
-      <WvArea vals={trend} labels={lbl} color="#10b981" lo={1} hi={5} five h={210}/>
-    </div>
+    <WvWeekTrend athletes={athletes} dayKey={dayKey} setDayKey={setDayKey}/>
   </div>);
 }
 
+/* ---- Takım Hazır Oluş Trendi: hafta hafta ----
+   Üstte son haftaların şeridi (her hafta: tarih aralığı + takımın haftalık hazır oluş
+   ortalaması, küçük bir çubukla); bir haftaya tıklanınca ya da ‹ › ile o hafta seçilir.
+   Altta seçili haftanın yedi günü çubuk grafik: her gün, o gün form dolduranların
+   ortalaması (check-in renginde), kaç sporcunun doldurduğu ve haftanın ortalama çizgisi.
+   Bir güne tıklamak sayfanın gününü seçer. Haftalık ortalama = günlük takım
+   ortalamalarının ortalaması (yalnızca verisi olan günler). */
+const WV_WK_STRIP=8;
+const wvWkLbl=(ws)=>{const a=parseD(ws),b=addD(a,6);
+  return a.getMonth()===b.getMonth()?`${a.getDate()}–${b.getDate()} ${MN[b.getMonth()]}`:`${a.getDate()} ${MN[a.getMonth()]} – ${b.getDate()} ${MN[b.getMonth()]}`;};
+function WvWeekTrend({athletes,dayKey,setDayKey}){
+  const tk=fmt(today);
+  const thisWk=fmt(sow(today));
+  const[wk,setWk]=useState(()=>fmt(sow(parseD(dayKey))));
+  useEffect(()=>{setWk(fmt(sow(parseD(dayKey))));},[dayKey]);
+  const memo=useMemo(()=>new Map(),[athletes]);
+  const dayOf=k=>{if(memo.has(k))return memo.get(k);
+    const vs=athletes.map(a=>{const d=wvDay(a,k);return d?d.readiness:null;}).filter(v=>v!=null);
+    const o={k,v:vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null,n:vs.length};memo.set(k,o);return o;};
+  const weekOf=ws=>{const days=Array.from({length:7},(_,i)=>dayOf(fmt(addD(parseD(ws),i))));return{ws,days,avg:wvMean(days.map(d=>d.v))};};
+  /* Şerit seçili haftayı her zaman içerir: bu haftayla biter, seçili hafta daha eskiyse
+     en fazla 7 hafta ilerisine kadar uzanır. */
+  const wkD=parseD(wk);
+  const endCand=fmt(addD(wkD,7*(WV_WK_STRIP-1)));
+  const stripEnd=wk>thisWk?wk:(endCand<thisWk?endCand:thisWk);
+  const strip=Array.from({length:WV_WK_STRIP},(_,i)=>weekOf(fmt(addD(parseD(stripEnd),7*(i-(WV_WK_STRIP-1))))));
+  const W=weekOf(wk);
+  const shift=d=>setWk(fmt(addD(wkD,7*d)));
+  return(<div className="panel wv-team-trend">
+    <div className="wv-ph wv-ph-wrap"><h2>{L('Takım Hazır Oluş Trendi','Team Readiness Trend')}</h2>
+      <div className="wv-cal-nav">
+        <button className="btn sm sec" onClick={()=>shift(-1)} aria-label={L('Önceki hafta','Previous week')}>‹</button>
+        <span className="wv-plbl">{wvWkLbl(wk)}</span>
+        <button className="btn sm sec" onClick={()=>shift(1)} aria-label={L('Sonraki hafta','Next week')}>›</button>
+        {wk!==thisWk&&<button className="btn sm sec" onClick={()=>setWk(thisWk)}>{L('Bu hafta','This week')}</button>}
+      </div>
+    </div>
+    <div className="wv-wks" role="tablist" aria-label={L('Haftalar','Weeks')}>
+      {strip.map((x,i)=><button key={x.ws} role="tab" aria-selected={x.ws===wk} className={'wv-wk'+(x.ws===wk?' on':'')+(x.ws>thisWk?' fut':'')}
+        onClick={()=>setWk(x.ws)} style={{animationDelay:(i*40)+'ms'}}
+        title={L(`${wvWkLbl(x.ws)} · haftalık ort. ${wvFmt(x.avg,true)}`,`${wvWkLbl(x.ws)} · week avg ${wvFmt(x.avg,true)}`)}>
+        <span className="wv-wk-d">{parseD(x.ws).getDate()} {MN[parseD(x.ws).getMonth()]}</span>
+        <b style={{color:x.avg!=null?score5Color(x.avg):'var(--dim)'}}>{x.avg==null?'—':x.avg.toFixed(1)}</b>
+        <i className="wv-wk-bar"><em style={{width:x.avg==null?0:(x.avg/5*100)+'%',background:score5Color(x.avg)||'var(--dim)'}}/></i>
+      </button>)}
+    </div>
+    <div className="wv-wk-sub">{L('haftalık ort.','week avg')} <b style={{color:W.avg!=null?score5Color(W.avg):'var(--dim)'}}>{wvFmt(W.avg,true)}</b>
+      <span>{L(`${W.days.filter(d=>d.n).length}/7 gün veri`,`${W.days.filter(d=>d.n).length}/7 days with data`)}</span></div>
+    <WvWeekBars key={wk} days={W.days} avg={W.avg} total={athletes.length} dayKey={dayKey} tk={tk} onPick={setDayKey}/>
+  </div>);
+}
+/* Haftanın yedi günü, çubuk: 0–5 ekseni, değer çubuğun üstünde, altında gün + tarih + doldurma. */
+function WvWeekBars({days,avg,total,dayKey,tk,onPick}){
+  const ref=useRef(null);const w=useElW(ref,520);
+  const H=226,pl=26,pr=50,pt=22,pb=46;
+  const cw=(w-pl-pr)/7,bw=Math.min(46,cw*.56);
+  const Y=v=>pt+(1-v/5)*(H-pt-pb);
+  const base=Y(0);
+  return(<div ref={ref} className="wv-wkbars" style={{height:H}}>
+    <svg width={w} height={H} role="img" aria-label={L('Haftanın günlük takım hazır oluşu','Daily team readiness of the week')}>
+      {[1,2,3,4,5].map(t=><g key={t}><line x1={pl} x2={w-pr} y1={Y(t)} y2={Y(t)} className="wv-gl"/>
+        <text x={pl-7} y={Y(t)+3.5} textAnchor="end" className="wv-ax">{t}</text></g>)}
+      <line x1={pl} x2={w-pr} y1={base} y2={base} className="wv-gl"/>
+      {days.map((d,i)=>{const cx=pl+cw*(i+.5),x=cx-bw/2,fut=d.k>tk,sel=d.k===dayKey;
+        const c=score5Color(d.v)||'var(--dim)';const y=d.v!=null?Y(d.v):base;
+        return<g key={d.k} className={'wv-wkb'+(sel?' sel':'')+(fut?' fut':'')} onClick={()=>onPick&&onPick(d.k)} style={{cursor:onPick?'pointer':'default'}}>
+          <title>{`${DN[i]} ${fd(d.k)} · ${d.v==null?'—':d.v.toFixed(1)} · ${d.n}/${total} ${L('sporcu','athletes')}`}</title>
+          <rect x={pl+cw*i+2} y={pt-14} width={cw-4} height={H-pt-pb+14+40} className="wv-wkb-hit" rx="4"/>
+          {d.v!=null?<rect x={x} y={y} width={bw} height={Math.max(2,base-y)} rx="4" fill={c} className="wv-wkb-r" style={{animationDelay:(i*55)+'ms'}}/>
+            :<rect x={x} y={base-3} width={bw} height={3} rx="1.5" className="wv-wkb-none"/>}
+          <text x={cx} y={(d.v!=null?y:base-3)-6} textAnchor="middle" className="wv-wkb-v" style={{fill:d.v!=null?c:undefined}}>{d.v==null?(fut?'':'—'):d.v.toFixed(1)}</text>
+          <text x={cx} y={H-pb+15} textAnchor="middle" className={'wv-wkb-dn'+(d.k===tk?' today':'')}>{DN[i]}</text>
+          <text x={cx} y={H-pb+28} textAnchor="middle" className="wv-ax">{fd(d.k).slice(0,5)}</text>
+          {d.n>0&&<text x={cx} y={H-pb+40} textAnchor="middle" className="wv-ax wv-wkb-n">{d.n}/{total}</text>}
+        </g>;})}
+      {avg!=null&&<g><line x1={pl} x2={w-pr} y1={Y(avg)} y2={Y(avg)} className="wv-teamline"/>
+        <text x={w-pr+6} y={Y(avg)+3.5} textAnchor="start" className="wv-ax">{L('ort.','avg')} {avg.toFixed(1)}</text></g>}
+    </svg>
+  </div>);
+}
+/* Bir sporcunun o günkü RHR'ı: Polar'a bağlıysa Polar'ın günün en düşük nabzı (pwRhrMap),
+   değilse check-in'deki RHR. */
+function wvRhr(a,d,dk,prhr){
+  const p=prhr&&prhr[String(a.id)];const v=p?p[dk]:null;
+  if(typeof v==='number'&&isFinite(v)&&v>0)return v;
+  return d?d.RHR:null;
+}
+
 /* ---- Sporcu kutusu: fotoğraf + o günün değerleri ---- */
-function WvAthCard({a,d,i,onOpen}){
+function WvAthCard({a,d,i,onOpen,rhr}){
   const MS=WV_METRICS();
   const r=d?d.readiness:null,c=score5Color(r);
   return(<button className={'wv-card'+(d?'':' off')} onClick={onOpen} style={{animationDelay:Math.min(i,24)*45+'ms','--wv-rc':c||'var(--border2)'}}>
@@ -222,7 +306,7 @@ function WvAthCard({a,d,i,onOpen}){
         return<div key={m.id} className="wv-cv"><span>{m.short}</span>
           <i className="wv-cv-bar"><em style={{width:v==null?0:(v/5*100)+'%',background:score5Color(v)||'var(--dim)'}}/></i>
           <b>{wvFmt(v,true)}</b></div>;})}
-      <div className="wv-cv rhr"><span>RHR</span><b>{d.RHR!=null?Math.round(d.RHR):'—'}<small> bpm</small></b></div>
+      <div className="wv-cv rhr"><span>RHR</span><b>{rhr!=null?Math.round(rhr):'—'}<small> bpm</small></b></div>
     </div>:<div className="wv-card-none">{L('Bu gün check-in yok','No check-in this day')}</div>}
   </button>);
 }
@@ -352,7 +436,10 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const calMetric=M.polar?'readiness':metric;
   const CM=CMS.find(x=>x.id===calMetric)||CMS[0];
   const CP=wvPeriod(calMode,calAt),VP=wvPeriod(cvMode,cvAt);
-  const NH=usePolarNightHR(ath,teamId,CP.from<VP.from?CP.from:VP.from,CP.to>VP.to?CP.to:VP.to);
+  /* Gün ayrıntısının HR Zone bölümü seçili günün haftasını da ister. */
+  const DW=wvPeriod('week',dayKey);
+  const nhFrom=[CP.from,VP.from,DW.from].sort()[0],nhTo=[CP.to,VP.to,DW.to].sort()[2];
+  const NH=usePolarNightHR(ath,teamId,nhFrom,nhTo);
   const dc={};const dOf=k=>(k in dc)?dc[k]:(dc[k]=wvDay(ath,k));
   const val=(k,id)=>id==='nightHR'?(NH.by[k]!=null?NH.by[k]:null):(((dOf(k)||{})[id])??null);
   const avgOf=(days,id)=>wvMean(days.map(k=>val(k,id)));
@@ -425,6 +512,7 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
           </div>}
         </>:<div className="empty-st">{selNhr!=null?L(`Bu gün check-in yok · Polar gece nabzı ${Math.round(selNhr)} bpm.`,`No check-in on this day · Polar night HR ${Math.round(selNhr)} bpm.`)
           :L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
+        {!NH.off&&<WvHrZones ex={NH.ex} dayKey={dayKey} msg={(!NH.ex||!NH.ex.length)?polarMsg:null}/>}
       </div>
     </div>
     <div className="panel wv-month">
@@ -463,6 +551,12 @@ function WellnessView({team,updateTeam,focus}){
   const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
   const rows=useMemo(()=>athletes.map(a=>({a,d:wvDay(a,dayKey)})),[athletes,dayKey]);
   const rhrWks=useMemo(()=>rhrWeeks(dayKey,RHR_WEEKS),[dayKey]);
+  /* Polar'ın günün en düşük nabzı (RHR) — RHR Takibi'nin 12 haftası tek istekte (sürekli
+     nabız + uyku). "Verileri al" bitince `pver` artar, aralık yeniden istenir. Takım
+     ortalamasındaki ve sporcu kutularındaki RHR de buradan. */
+  const[pver,setPver]=useState(0);
+  const PR=usePolarTeamRange(team.id,rhrWks[0].start,rhrWks[rhrWks.length-1].end,['hr','sleep'],pver);
+  const prhr=useMemo(()=>pwTeamRhr(PR.athletes),[PR.athletes]);
   const sel=selId&&athletes.find(a=>a.id===selId);
   useEffect(()=>{try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}},[selId]);
   if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)} teamId={team.id}/>;
@@ -481,8 +575,8 @@ function WellnessView({team,updateTeam,focus}){
         {v:wvFmt(rdy,true),l:L('takım hazır oluş','team readiness'),c:score5Color(rdy)},
         {v:low,l:L('düşük (<3)','low (<3)'),c:low?'#f97316':undefined}]}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
-      <WvTeamPanel athletes={athletes} dayKey={dayKey} rows={rows}/>
-      <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)}/>
+      <WvTeamPanel athletes={athletes} dayKey={dayKey} setDayKey={setDayKey} rows={rows} prhr={prhr}/>
+      <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)} onSynced={()=>setPver(v=>v+1)}/>
       <div className="wv-ath-h">
         <h2>{L('Sporcular','Athletes')}<span>{L('profile tıkla → takvim ve ayrıntılı veriler','click a profile → calendar & detailed data')}</span></h2>
         <div className="wv-ath-tools">
@@ -495,11 +589,11 @@ function WellnessView({team,updateTeam,focus}){
         </div>
       </div>
       <div className="wv-grid" key={dayKey+sort}>
-        {shown.map((r,i)=><WvAthCard key={r.a.id} a={r.a} d={r.d} i={i} onOpen={()=>setSelId(r.a.id)}/>)}
+        {shown.map((r,i)=><WvAthCard key={r.a.id} a={r.a} d={r.d} i={i} rhr={wvRhr(r.a,r.d,dayKey,prhr)} onOpen={()=>setSelId(r.a.id)}/>)}
       </div>
       <div className="panel lb-wrap wv-rhr-panel">
-        <div className="lb-head"><div className="lb-title">{L('RHR Takibi','RHR Monitor')}<span className="lb-sub">{L('haftalık ortalama dinlenik nabız · Pzt–Paz','weekly average resting HR · Mon–Sun')}</span></div></div>
-        <RHRMonitor athletes={athletes} weeks={rhrWks}/>
+        <div className="lb-head"><div className="lb-title">{L('RHR Takibi','RHR Monitor')}<span className="lb-sub">{L('haftalık ortalama dinlenik nabız · Pzt–Paz · Polar: günün en düşük nabzı, yoksa check-in','weekly average resting HR · Mon–Sun · Polar: lowest HR of the day, else check-in')}</span></div></div>
+        <RHRMonitor athletes={athletes} weeks={rhrWks} polarRhr={prhr}/>
       </div>
       <MonAdequacyPanel team={team}/>
     </>}

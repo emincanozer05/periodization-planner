@@ -2,7 +2,9 @@
    POLAR — takımın Polar verisi (Wellness sekmesi → "Verileri al")
 
    Koçun bir takımındaki bütün Polar bağlantılarını ve son N günün verisini tek
-   yanıtta döndürür: uyku, Nightly Recharge, günlük aktivite, antrenman.
+   yanıtta döndürür: uyku, Nightly Recharge, günlük aktivite, antrenman, sürekli
+   nabzın günlük özeti (`hr`: günün en düşük nabzı = RHR). `kinds` verilirse
+   yalnızca o türler okunur (ör. RHR Takibi: ['hr','sleep'], 12 hafta).
 
    Sorgu yolu: doküman adları `coachUid__athleteId__YYYY-MM-DD…` biçiminde olduğu
    için her sporcu için ad ARALIĞI sorgusu yapılıyor (documentId >= … <= …). Bu
@@ -17,16 +19,23 @@
 const { COL } = require('./config');
 const { linkIdOf, LinkError, cleanAthleteId } = require('./links');
 const { DATA_COL } = require('./sync');
+const N = require('./normalize');
 
 const DAY = 86400000;
 const iso = ms => new Date(ms).toISOString().slice(0, 10);
 
 const PICK = {
-  sleep: ['date', 'sleepStart', 'sleepEnd', 'asleepSec', 'lightSec', 'deepSec', 'remSec', 'interruptionSec', 'sleepScore', 'continuity', 'sleepCharge'],
+  sleep: ['date', 'sleepStart', 'sleepEnd', 'asleepSec', 'lightSec', 'deepSec', 'remSec', 'interruptionSec', 'sleepScore', 'continuity', 'sleepCharge', 'hrMin'],
   recharge: ['date', 'hrvMs', 'hrAvg', 'beatToBeatMs', 'breathingRate', 'ansCharge', 'nightlyRechargeStatus'],
   activity: ['date', 'steps', 'calories', 'activeCalories', 'durationSec'],
-  exercises: ['exerciseId', 'date', 'startTime', 'durationSec', 'hrAvg', 'hrMax', 'calories', 'sport', 'trainingLoad', 'cardioLoad', 'zones'],
+  exercises: ['exerciseId', 'date', 'startTime', 'durationSec', 'hrAvg', 'hrMax', 'calories', 'sport', 'detailedSport', 'trainingLoad', 'cardioLoad', 'zones'],
+  hr: ['date', 'hrMin', 'hrMinAt', 'hrMax', 'hrAvg', 'samples'],
 };
+/* Okuma anında tamamlanan alan: bu alan eklenmeden önce yazılmış uyku dokümanlarında
+   `hrMin` yok; ham kayıttaki nabız örneklerinden hesaplanır (içerik özeti değişmediği
+   için senkron o dokümanı yeniden yazmıyor). */
+const FILL = { sleep: x => (x.hrMin == null ? Object.assign({}, x, { hrMin: N.sleepHrMin(x.raw) }) : x) };
+const KINDS = Object.keys(PICK);
 const pick = (o, keys) => keys.reduce((a, k) => (a[k] = o[k] == null ? null : o[k], a), {});
 
 /* Son senkronun özeti (ekranda "neden veri yok" açıklaması için): her veri türü
@@ -34,7 +43,7 @@ const pick = (o, keys) => keys.reduce((a, k) => (a[k] = o[k] == null ? null : o[
 function reportOf(rep) {
   if (!rep || typeof rep !== 'object') return null;
   const out = {};
-  for (const k of ['sleep', 'recharge', 'activity', 'exercises']) {
+  for (const k of ['sleep', 'recharge', 'activity', 'exercises', 'hr']) {
     const r = rep[k];
     if (!r || typeof r !== 'object') continue;
     out[k] = { status: r.status || null, count: Number(r.count) || 0, latest: r.latest || null, code: r.code || null };
@@ -58,13 +67,15 @@ function rangeOf({ from, to, days }, now) {
 }
 
 /* deps: { db, docIdField, now } — docIdField: admin.firestore.FieldPath.documentId()
-   opts: { coachUid, teamId, athleteId?, from?, to?, days? } */
+   opts: { coachUid, teamId, athleteId?, from?, to?, days?, kinds? } */
 async function loadTeamData(deps, opts) {
   const { db, docIdField, now } = deps;
   const uid = cleanAthleteId(opts.coachUid);
   const tId = cleanAthleteId(opts.teamId);
   const onlyAth = opts.athleteId != null && opts.athleteId !== '' ? cleanAthleteId(opts.athleteId) : null;
   const { from, to, days: n } = rangeOf(opts, now);
+  const want = Array.isArray(opts.kinds) ? KINDS.filter(k => opts.kinds.includes(k)) : [];
+  const kinds = want.length ? want : KINDS;
   const ls = await db.collection(COL.LINKS).where('coachUid', '==', uid).get();
   const linkDocs = ls.docs.map(d => d.data() || {})
     .filter(l => l.coachUid === uid && l.teamId === tId && l.athleteId && (!onlyAth || String(l.athleteId) === onlyAth));
@@ -77,14 +88,14 @@ async function loadTeamData(deps, opts) {
       polarAccount: l.polarAccount && typeof l.polarAccount === 'object'
         ? { name: l.polarAccount.name || null, registeredAt: l.polarAccount.registeredAt || null } : null,
     };
-    await Promise.all(Object.keys(PICK).map(async kind => {
+    await Promise.all(kinds.map(async kind => {
       const q = await db.collection(DATA_COL[kind])
         .where(docIdField, '>=', `${linkId}__${from}`)
         .where(docIdField, '<=', `${linkId}__${to}`)
         .get();
       out[kind] = q.docs.map(d => d.data() || {})
         .filter(x => x.coachUid === uid && x.date && x.date >= from && x.date <= to)
-        .map(x => pick(x, PICK[kind]))
+        .map(x => pick(FILL[kind] ? FILL[kind](x) : x, PICK[kind]))
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     }));
     return out;

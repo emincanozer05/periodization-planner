@@ -305,6 +305,8 @@ function TeamReports({team,weeks,selected,setSelected}){
                   title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
                   label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
         </div>
+        {/* Aynı günlerde takımın ortalama HR bölgeleri (Polar; antrenmana katılan sporcular) — 429 */}
+        <TeamHrZones teamId={team.id} days={lmTrend.map(d=>d.k)} labels={lmTrend.map(d=>lmWin===7?DN[(parseD(d.k).getDay()+6)%7]:fd(d.k).slice(0,5))}/>
       </div>
     </div>
 
