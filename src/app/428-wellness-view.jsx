@@ -10,8 +10,8 @@
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
         takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
-        seçilen günün ayrıntısı (check-in + o haftanın ortalama ve o günün antrenman başına
-        Polar HR bölgeleri), hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
+        hafta görünümünde gün kutusunun altında o günün ağrı bölgeleri, yanında gün paneli
+        (o haftanın ortalama ve o günün antrenman başına Polar HR bölgeleri), hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
         kayıtları (check-in + Polar gece nabzı), en altta Sporcu İzleme (428b: sağlık uyarıları,
         yük ve toparlanma — kişisel referansa göre, risk skoru yok). Takım görünümünün en altında
         Veri yeterliliği raporu (428b MonAdequacyPanel).
@@ -448,8 +448,6 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
   const cPast=CP.days.filter(k=>k<=tk).length;
   const comp=cPast?Math.round(cIn/cPast*100):null;
   const rdyAvg=avgOf(CP.days,'readiness');
-  const sel=dOf(dayKey);
-  const selNhr=val(dayKey,'nightHR');
   const inCal=k=>k>=CP.from&&k<=CP.to;
   const cells=calMode==='week'?CP.days.map(parseD):(()=>{const first=parseD(CP.from),n=CP.days.length;const gs=sow(first);
     return Array.from({length:Math.ceil(((first.getDay()+6)%7+n)/7)*7},(_,i)=>addD(gs,i));})();
@@ -489,6 +487,11 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
               {others.length>0&&<span className="wv-cal-wk">{others.map(({m,v:x})=><span key={m.id}><em>{m.short}</em>
                 <b style={{color:m.five?(score5Color(x)||'var(--text)'):'var(--text)'}}>{wvFmt(x,m.five)}</b></span>)}</span>}
               {d&&(d.pain||d.note)&&<span className="wv-cal-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}/>}
+              {wkCal&&d&&(d.pain||d.note)&&<span className="wv-cal-pains">
+                {d.pain&&d.pain.list.map(p=><span key={p.region} title={`${p.region} · ${PAIN_SEV_LABEL()[p.sev]}`}>
+                  <i style={{background:PAIN_SEV_COL[p.sev]}}/><em>{p.region}</em></span>)}
+                {d.note&&<q title={d.note}>{d.note}</q>}
+              </span>}
             </button>;})}
         </div>
         <div className="wv-cal-leg">
@@ -496,23 +499,13 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
           <span><i className="pain"/>{L('ağrı bildirimi','pain report')}</span>
         </div>
       </div>
+      {/* Gün paneli yalnızca Polar HR bölgeleri: check-in puanları ve ağrı bölgeleri takvimin
+          gün kutusunda (hafta görünümünde ağrı bölgeleri kutunun altında, şiddet renginde). */}
       <div className="panel wv-dayp" key={dayKey}>
         <div className="wv-ph"><h2>{DN[(parseD(dayKey).getDay()+6)%7]} · {fd(dayKey)}</h2>
-          <span>{sel?L('sabah check-in','morning check-in'):L('kayıt yok','no entry')}</span></div>
-        {sel?<>
-          <div className="wv-dayp-bars">{MS.filter(m=>m.five&&m.id!=='readiness').map((m,i)=>{const v=sel[m.id];
-            return<div key={m.id} className="wv-db"><span>{m.label}</span>
-              <i><em style={{width:v==null?0:(v/5*100)+'%',background:score5Color(v)||'var(--dim)',animationDelay:(i*70)+'ms'}}/></i>
-              <b style={{color:score5Color(v)||'var(--dim)'}}>{wvFmt(v,true)}</b></div>;})}</div>
-          {(sel.pain||sel.note)&&<div className="wv-dayp-pain">
-            <div className="wv-dayp-pk">{L('Ağrı bildirimi','Pain report')}</div>
-            {sel.pain&&sel.pain.list.map(p=><div key={p.region} className="wv-pr"><i style={{background:PAIN_SEV_COL[p.sev]}}/>{p.region}
-              <b style={{color:PAIN_SEV_COL[p.sev]}}>{PAIN_SEV_LABEL()[p.sev]}</b></div>)}
-            {sel.note&&<div className="wv-pnote">“{sel.note}”</div>}
-          </div>}
-        </>:<div className="empty-st">{selNhr!=null?L(`Bu gün check-in yok · Polar gece nabzı ${Math.round(selNhr)} bpm.`,`No check-in on this day · Polar night HR ${Math.round(selNhr)} bpm.`)
-          :L('Bu gün için check-in yok. Takvimden renkli bir gün seç.','No check-in on this day. Pick a coloured day on the calendar.')}</div>}
-        {!NH.off&&<WvHrZones ex={NH.ex} dayKey={dayKey} msg={(!NH.ex||!NH.ex.length)?polarMsg:null}/>}
+          <span>{L('Polar antrenmanları','Polar sessions')}</span></div>
+        {NH.off?<div className="empty-st">{polarMsg}</div>
+          :<WvHrZones ex={NH.ex} dayKey={dayKey} msg={(!NH.ex||!NH.ex.length)?polarMsg:null} bare/>}
       </div>
     </div>
     <div className="panel wv-month">

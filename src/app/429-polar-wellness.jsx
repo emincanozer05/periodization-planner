@@ -328,7 +328,7 @@ function PwZoneRow({title,sub,sec,delay}){
    bölge sürelerinin seans başına ortalaması; haftada birden çok spor varsa her spor ayrı
    (kuvvet antrenmanının, basketbolun ortalaması). Altında o gün kaydedilen her antrenman
    kendi bölgeleriyle ayrı ayrı. */
-function WvHrZones({ex,dayKey,msg}){
+function WvHrZones({ex,dayKey,msg,bare}){
   const wS=fmt(sow(parseD(dayKey))),wE=fmt(addD(sow(parseD(dayKey)),6));
   const wk=(ex||[]).filter(e=>e.date>=wS&&e.date<=wE).map(e=>({e,z:pwZoneSec(e)})).filter(x=>x.z);
   const day=(ex||[]).filter(e=>e.date===dayKey);
@@ -339,7 +339,7 @@ function WvHrZones({ex,dayKey,msg}){
   const a=parseD(wS),b=parseD(wE);
   const wLbl=a.getMonth()===b.getMonth()?`${a.getDate()}–${b.getDate()} ${MN[b.getMonth()]}`:`${a.getDate()} ${MN[a.getMonth()]} – ${b.getDate()} ${MN[b.getMonth()]}`;
   const none=!wk.length&&!day.length;
-  return(<div className="pwz">
+  return(<div className={'pwz'+(bare?' bare':'')}>
     <div className="pwz-k">{L('Kalp atım bölgeleri','Heart rate zones')}<em className="wv-polar-tag">Polar</em></div>
     {none?<div className="pwz-none">{msg||L(`${wLbl} haftasında Polar antrenman kaydı yok.`,`No Polar sessions in the week of ${wLbl}.`)}</div>:<>
       <div className="pwz-sec">{L('Hafta ortalaması','Week average')} · {wLbl}</div>
@@ -358,51 +358,44 @@ function WvHrZones({ex,dayKey,msg}){
 }
 
 /* ── Yük Takibi → Takım Yük Trendi: takımın ortalama HR Zone'u ────────────────
-   Grafiğin günleriyle aynı günler. Her gün, o gün Polar'da antrenmanı (bölge verisiyle)
-   olan BÜTÜN sporcuların bölge sürelerinin ortalaması: önce sporcunun o günkü
-   antrenmanları toplanır (iki seans = günün toplamı), sonra sporcular arasında ortalama.
-   Antrenmana katılmayan sporcu ortalamayı sıfırla aşağı çekmez. */
-function TeamHrZones({teamId,days,labels}){
+   Yük grafiğinin İÇİNDE (280): her günün yük çubuğunun yanında o günün bölge çubuğu,
+   sağdaki "dk" ekseninde. Her gün, o gün Polar'da antrenmanı (bölge verisiyle) olan BÜTÜN
+   sporcuların bölge sürelerinin ortalaması: önce sporcunun o günkü antrenmanları toplanır
+   (iki seans = günün toplamı), sonra sporcular arasında ortalama. Antrenmana katılmayan
+   sporcu ortalamayı sıfırla aşağı çekmez. */
+function useTeamHrZones(teamId,days){
   const from=days[0],to=days[days.length-1];
   const R=usePolarTeamRange(teamId,from,to,['exercises']);
-  if(R.off)return null;
   const per=days.map(k=>{
     const ath=[];
     R.athletes.forEach(a=>{const zs=(a.exercises||[]).filter(e=>e.date===k).map(pwZoneSec).filter(Boolean);
       if(zs.length)ath.push([0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)));});
     return{k,n:ath.length,avg:pwZoneMean(ath)};
   });
-  const any=per.some(p=>p.n);
   /* Aralığın özeti: sporcu-gün başına ortalama dakika ve yüzde. */
   const all=per.filter(p=>p.n);
   const tot=[0,1,2,3,4].map(i=>all.reduce((s,p)=>s+p.avg[i]*p.n,0));
   const nAD=all.reduce((s,p)=>s+p.n,0);
-  const sum=tot.reduce((a,b)=>a+b,0);
-  return(<div className="pwz-team">
-    <div className="lm-th"><div><h3 style={{display:'inline'}}>{L('Takım Ortalama HR Zone','Team Average HR Zones')}</h3>
-      <span className="lm-th-sub">{L('antrenmana katılan sporcuların ortalaması · dk · Polar','mean of athletes who trained · min · Polar')}</span></div></div>
-    {R.err?<div className="pwz-none">{L('Polar verisi alınamadı: ','Polar data could not be loaded: ')}{R.err}</div>
-    :!R.loaded?<div className="pwz-none">{L('Polar verisi yükleniyor…','Loading Polar data…')}</div>
-    :!any?<div className="pwz-none">{L('Bu aralıkta bölge verili Polar antrenmanı yok.','No Polar sessions with zone data in this range.')}</div>
-    :<>
-      <div className="chart-box" style={{height:200}}>
-        <ChartC type="bar" chartData={{labels,datasets:PW_ZONE_COL.map((c,i)=>({label:'Z'+(i+1),
-          data:per.map(p=>p.avg?Math.round(p.avg[i]/6)/10:null),backgroundColor:c,borderRadius:2,borderSkipped:false,
-          stack:'z',categoryPercentage:.82,barPercentage:.9}))}}
-          options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
-            interaction:{mode:'index',intersect:false},
-            scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},
-              y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:L('dk','min'),color:'#94a3b8',font:{size:10}}}},
-            plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'Archivo','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:12}},
-              tooltip:{mode:'index',intersect:false,callbacks:{
-                title:items=>{const p=per[items[0].dataIndex];if(!p)return'';return`${fd(p.k)} · ${p.n} ${L('sporcu','athletes')}`;},
-                label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${i.parsed.y} ${L('dk','min')}`}}}}}/>
-      </div>
-      <div className="pwz-leg pwz-sum">{tot.map((v,i)=><span key={i} className={v>0?'':'z0'}><i style={{background:PW_ZONE_COL[i]}}/>Z{i+1}
-        <b>{Math.round(v/nAD/60)}</b><small>{L('dk','m')} · {pwPct(sum?Math.round(v/sum*100):0)}</small></span>)}
-        <em>{L(`sporcu-gün başına ort. · ${nAD} sporcu-gün`,`avg per athlete-day · ${nAD} athlete-days`)}</em></div>
-    </>}
-  </div>);
+  return{R,per,any:all.length>0,tot,nAD,sum:tot.reduce((a,b)=>a+b,0)};
+}
+/* Yük grafiğine eklenen beş yığılmış bölge çubuğu (ayrı yığın, sağ eksen `yz`, dk); order 0: akut
+   çizginin dolgusu bölge renklerini boyamasın diye en üstte çizilir. */
+function pwZoneDatasets(Z){
+  if(!Z||!Z.any)return[];
+  return PW_ZONE_COL.map((c,i)=>({type:'bar',label:'Z'+(i+1),
+    data:Z.per.map(p=>p.avg?Math.round(p.avg[i]/6)/10:null),backgroundColor:c,borderRadius:2,borderSkipped:false,
+    stack:'z',yAxisID:'yz',order:0,categoryPercentage:.82,barPercentage:.9}));
+}
+/* Grafiğin altındaki satır: bölge özeti ya da Polar durumu. */
+function TeamHrZoneSummary({Z}){
+  const R=Z.R;
+  if(R.off)return null;
+  if(R.err)return<div className="pwz-none">{L('Polar HR Zone verisi alınamadı: ','Polar HR zone data could not be loaded: ')}{R.err}</div>;
+  if(!R.loaded)return<div className="pwz-none">{L('Polar HR Zone verisi yükleniyor…','Loading Polar HR zone data…')}</div>;
+  if(!Z.any)return<div className="pwz-none">{L('Bu aralıkta bölge verili Polar antrenmanı yok.','No Polar sessions with zone data in this range.')}</div>;
+  return(<div className="pwz-leg pwz-sum"><b className="pwz-sum-k">{L('HR Zone','HR Zone')}</b>{Z.tot.map((v,i)=><span key={i} className={v>0?'':'z0'}><i style={{background:PW_ZONE_COL[i]}}/>Z{i+1}
+    <b>{Math.round(v/Z.nAD/60)}</b><small>{L('dk','m')} · {pwPct(Z.sum?Math.round(v/Z.sum*100):0)}</small></span>)}
+    <em>{L(`antrenmana katılan sporcuların ortalaması · sporcu-gün başına · ${Z.nAD} sporcu-gün · Polar`,`mean of athletes who trained · per athlete-day · ${Z.nAD} athlete-days · Polar`)}</em></div>);
 }
 
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────

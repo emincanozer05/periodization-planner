@@ -182,6 +182,9 @@ function TeamReports({team,weeks,selected,setSelected}){
       const w=loadWindows(dayAvg,k,teamFirst);const a=w.ac/7,c=w.ch/(w.weeks*7);
       out.push({k,daily,acute:Math.round(a),chronic:Math.round(c)});}
     return out;},[teamDaily,teamFirst,lmEnd,lmWin]);
+  // Aynı günlerin takım ortalaması HR bölgeleri (Polar) — yük grafiğinin içinde, sağ eksende (429).
+  const lmZ=useTeamHrZones(team.id,lmTrend.map(d=>d.k));
+  const lmZs=pwZoneDatasets(lmZ);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -288,25 +291,30 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
       <div className="lm-trend-card">
         <div className="lm-th">
-          <div><h3 style={{display:'inline'}}>{L('Takım Yük Trendi','Team Load Trend')}</h3><span className="lm-th-sub">{L(`sporcu başına ort. AU · akut ve kronik · ${lmWin} gün · Pzt–Paz`,`avg AU / athlete · acute & chronic · ${lmWin} days · Mon–Sun`)}</span></div>
+          <div><h3 style={{display:'inline'}}>{L('Takım Yük Trendi','Team Load Trend')}</h3><span className="lm-th-sub">{L(`sporcu başına ort. AU · akut ve kronik${lmZs.length?' · HR Zone (dk, sağ eksen)':''} · ${lmWin} gün · Pzt–Paz`,`avg AU / athlete · acute & chronic${lmZs.length?' · HR zones (min, right axis)':''} · ${lmWin} days · Mon–Sun`)}</span></div>
         </div>
         <div className="chart-box" style={{flex:1,minHeight:240}}>
           {/* One week fits weekday names; longer windows would crowd, so those stay dd/mm. */}
           <ChartC type="bar" chartData={{labels:lmTrend.map(d=>lmWin===7?DN[(parseD(d.k).getDay()+6)%7]:fd(d.k).slice(0,5)),datasets:[
-            {type:'bar',label:L('Günlük','Daily'),data:lmTrend.map(d=>d.daily),backgroundColor:vGrad('rgba(99,140,255,.95)','rgba(59,110,245,.12)'),hoverBackgroundColor:vGrad('rgba(130,165,255,1)','rgba(59,110,245,.3)'),borderRadius:7,borderSkipped:false,order:3,categoryPercentage:.82,barPercentage:.9},
+            {type:'bar',label:L('Günlük','Daily'),data:lmTrend.map(d=>d.daily),stack:'load',yAxisID:'y',backgroundColor:vGrad('rgba(99,140,255,.95)','rgba(59,110,245,.12)'),hoverBackgroundColor:vGrad('rgba(130,165,255,1)','rgba(59,110,245,.3)'),borderRadius:7,borderSkipped:false,order:3,categoryPercentage:.82,barPercentage:.9},
             {type:'line',label:L('Akut 7g','Acute 7d'),data:lmTrend.map(d=>d.acute),borderColor:'#f59e0b',backgroundColor:vGrad('rgba(245,158,11,.28)','rgba(245,158,11,0)'),tension:.4,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:'#f59e0b',fill:true,order:1},
-            {type:'line',label:L('Kronik 28g','Chronic 28d'),data:lmTrend.map(d=>d.chronic),borderColor:'#a78bfa',backgroundColor:'#a78bfa',borderDash:[6,5],tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,order:2}
+            {type:'line',label:L('Kronik 28g','Chronic 28d'),data:lmTrend.map(d=>d.chronic),borderColor:'#a78bfa',backgroundColor:'#a78bfa',borderDash:[6,5],tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,order:2},
+            ...lmZs
           ]}}
             options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
               interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
-              scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},y:{...CHART_DARK.scales.y}},
-              plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'Archivo','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
+              // Bölge çubukları varsa: x yığınlı (yük ve bölge iki ayrı yığın, yan yana), yük ekseni
+              // yığınsız (akut/kronik çizgileri üst üste toplanmasın), bölgeler sağdaki dk ekseninde yığınlı.
+              scales:{x:{...CHART_DARK.scales.x,stacked:lmZs.length>0,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},y:{...CHART_DARK.scales.y,stacked:false},
+                ...(lmZs.length?{yz:{...CHART_DARK.scales.y,position:'right',stacked:true,beginAtZero:true,grid:{drawOnChartArea:false},
+                  title:{display:true,text:L('HR Zone · dk','HR zone · min'),color:'#94a3b8',font:{size:10}}}}:{})},
+              plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'Archivo','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14,sort:(a,b)=>a.datasetIndex-b.datasetIndex}},
                 tooltip:{mode:'index',intersect:false,callbacks:{
                   title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
-                  label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
+                  label:i=>i.parsed.y==null?'':i.dataset.yAxisID==='yz'?`${i.dataset.label}: ${i.parsed.y} ${L('dk','min')}`:`${i.dataset.label}: ${Math.round(i.parsed.y)}`,
+                  footer:items=>{const p=lmZ.per[items[0]&&items[0].dataIndex];return p&&p.n?L(`HR Zone: ${p.n} sporcunun ortalaması`,`HR zones: mean of ${p.n} athletes`):'';}}}}}}/>
         </div>
-        {/* Aynı günlerde takımın ortalama HR bölgeleri (Polar; antrenmana katılan sporcular) — 429 */}
-        <TeamHrZones teamId={team.id} days={lmTrend.map(d=>d.k)} labels={lmTrend.map(d=>lmWin===7?DN[(parseD(d.k).getDay()+6)%7]:fd(d.k).slice(0,5))}/>
+        <TeamHrZoneSummary Z={lmZ}/>
       </div>
     </div>
 
