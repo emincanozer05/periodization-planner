@@ -8,6 +8,8 @@
      polar_exercises/{link}__{tarih}__{id}  antrenman (süre, nabız, bölgeler, enerji, yük)
      polar_activity/{link}__{tarih}     günlük aktivite (adım, kalori)
      polar_cardio_load/{link}__{tarih}  kardiyo yükü (cihaz destekliyorsa)
+     polar_hr_daily/{link}__{tarih}     sürekli nabzın günlük özeti: günün en düşük
+                                        nabzı (RHR), en yüksek ve ortalama nabız
 
    Tekrar önleme: doküman adı deterministik, içerik özeti (hash) aynıysa hiç
    yazılmıyor. Aynı senkron iki kez çalışırsa ikincisi sıfır yazım yapar.
@@ -31,8 +33,10 @@ const { safe } = require('../ids');
 
 const DATA_COL = {
   sleep: 'polar_sleep', recharge: 'polar_recharge', exercises: 'polar_exercises',
-  activity: 'polar_activity', cardioLoad: 'polar_cardio_load',
+  activity: 'polar_activity', cardioLoad: 'polar_cardio_load', hr: 'polar_hr_daily',
 };
+const HR_RANGE_DAYS = 28;   // sürekli nabız: tek istekte en çok 28 gün (Polar'ın sınırı)
+const HR_FALLBACK_DAYS = 7; // aralık ucu yoksa gün gün en çok bu kadar gün
 const LOCK_MS = 90 * 1000;              // aynı sporcu için eşzamanlı ikinci senkron yok
 const MANUAL_MIN_GAP_MS = 2 * 60 * 1000; // düğmeye art arda basılırsa Polar'ı yormayalım
 const BATCH = 400;
@@ -98,6 +102,52 @@ async function syncList(ctx, kind, path, listKeys, normFn, keyFn) {
   const w = await writeChanged(ctx.db, DATA_COL[kind], docs);
   // Polar'ın gönderdiği en yeni kaydın tarihi: takım tablosu "bu gecenin verisi
   // henüz gelmedi / son uyku 03.11" diyebilsin. Kayıt yoksa alan hiç yazılmaz.
+  const out = { status: 'ok', count: docs.length, written: w.written, missing: missingSummary(norms) };
+  const latest = norms.map(n => n.date).filter(Boolean).sort().pop();
+  if (latest) out.latest = latest;
+  return out;
+}
+
+/* Sürekli nabız → günlük özet (en düşük / en yüksek / ortalama nabız).
+   Önce aralık ucu (son 28 gün, tek istek); Polar onu kabul etmezse gün gün son 7 gün.
+   Transaction'sız: aynı gün yeniden çekilebilir, içerik değişmediyse yazılmaz. Bugünün
+   kaydı gün içinde büyür; özeti her senkronda yeniden hesaplanır. */
+const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+async function syncContinuousHr(ctx) {
+  // Polar tarihleri sporcunun yerel günü; UTC'ye göre bir gün ileri pay (Türkiye UTC+3).
+  const to = isoDay(ctx.now + 86400000);
+  const from = isoDay(ctx.now - (HR_RANGE_DAYS - 2) * 86400000);
+  let items = null;
+  const r = await ctx.client.get(`/users/continuous-heart-rate?from=${from}&to=${to}`);
+  if (r.status === 403) return unavailable('FORBIDDEN');
+  if (r.status === 204) items = [];
+  else if (r.status >= 200 && r.status < 300 && r.json != null) {
+    items = r.json && Array.isArray(r.json.heart_rate_samples) ? [r.json] : N.listOf(r.json, ['heart_rates', 'heart-rates', 'days']);
+  }
+  if (items == null) {
+    // Aralık ucu yok / reddedildi: gün gün (bugün dahil son N gün).
+    items = [];
+    let errors = 0, forbidden = false;
+    for (let i = 0; i < HR_FALLBACK_DAYS; i++) {
+      const d = isoDay(ctx.now - i * 86400000);
+      const g = await ctx.client.get(`/users/continuous-heart-rate/${d}`);
+      if (g.status === 403) { forbidden = true; break; }
+      if (g.status === 204 || g.status === 404) continue;
+      if (g.status < 200 || g.status >= 300 || !g.json) { errors++; continue; }
+      items.push(Object.assign({ date: d }, g.json));
+    }
+    if (forbidden) return unavailable('FORBIDDEN');
+    if (errors && !items.length) return { status: 'error', code: 'HR_FETCH', count: 0, written: 0 };
+  }
+  const docs = [], norms = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const norm = N.hrDaily(raw);
+    if (!norm.date || !norm.samples) continue;
+    norms.push(norm);
+    docs.push(docFor(ctx, 'hr', raw, norm, norm.date));
+  }
+  const w = await writeChanged(ctx.db, DATA_COL.hr, docs);
   const out = { status: 'ok', count: docs.length, written: w.written, missing: missingSummary(norms) };
   const latest = norms.map(n => n.date).filter(Boolean).sort().pop();
   if (latest) out.latest = latest;
@@ -214,6 +264,7 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
     ['exercises', () => syncList(ctx, 'exercises', '/exercises?zones=true', ['exercises'], N.exercise, n => (n.date && n.exerciseId ? `${n.date}__${n.exerciseId}` : null))],
     ['cardioLoad', () => syncList(ctx, 'cardioLoad', '/users/cardio-load/', ['cardio_load', 'cardio-load'], N.cardioLoad, n => n.date)],
     ['activity', () => syncActivity(ctx)],
+    ['hr', () => syncContinuousHr(ctx)],
   ];
   try {
     for (const [kind, run] of steps) {

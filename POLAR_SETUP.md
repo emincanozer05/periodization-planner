@@ -148,6 +148,7 @@ reddedilir.
 | Antrenman | `GET /exercises?zones=true` | `polar_exercises/{link}__{tarih}__{id}` | transaction'sız |
 | Kardiyo yükü | `GET /users/cardio-load/` | `polar_cardio_load/{link}__{tarih}` | transaction'sız, cihaz destekliyorsa |
 | Günlük aktivite | `POST /users/{id}/activity-transactions` → özetler → `PUT` commit | `polar_activity/{link}__{tarih}` | **transaction** |
+| Sürekli nabız (günlük özet: en düşük = RHR, en yüksek, ortalama) | `GET /users/continuous-heart-rate?from&to` (28 gün; yoksa gün gün `/{tarih}`, 7 gün) | `polar_hr_daily/{link}__{tarih}` | transaction'sız |
 
 `{link}` = `coachUid__athleteId`. Her doküman `coachUid`, `athleteId`, normalleştirilmiş alanlar,
 `missing` (Polar'ın göndermediği alanlar), `derived` (başka alanlardan hesaplananlar), ham kayıt

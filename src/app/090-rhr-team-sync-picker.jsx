@@ -24,7 +24,11 @@ const RHR_WEEKS=12;         /* three months of weeks on screen at a time */
 /* One athlete's week → {avg,days}, or null when the week carries no reading.
    Two check-ins on the same day count as one day, the later one winning, exactly
    as the Wellness tab's day resolves them (wvDay) — a double entry can't weigh a week twice. */
-function rhrWeekAvg(ath,wkStart,wkEnd){
+/* `pol` ({'YYYY-MM-DD': bpm}, Polar'ın günün en düşük nabzı — pwRhrMap, 429): Polar'a
+   bağlı sporcuda o günün değeri Polar'dan gelir, check-in'deki elle yazılan RHR yalnızca
+   Polar ölçümü olmayan günleri doldurur. Wellness'taki Polar tablosunun RHR sütunu ile bu
+   grafik böylece aynı sayıyı söyler. */
+function rhrWeekAvg(ath,wkStart,wkEnd,pol){
   const byDay=new Map();
   (ath.wellness||[]).forEach(e=>{
     if(!e||!e.date||e.date<wkStart||e.date>wkEnd)return;
@@ -33,6 +37,7 @@ function rhrWeekAvg(ath,wkStart,wkEnd){
     if(!isFinite(v)||v<=0)return;
     byDay.set(e.date,v);
   });
+  if(pol)Object.keys(pol).forEach(k=>{const v=Number(pol[k]);if(k>=wkStart&&k<=wkEnd&&isFinite(v)&&v>0)byDay.set(k,v);});
   const vals=[...byDay.values()];
   if(!vals.length)return null;
   return{avg:vals.reduce((a,b)=>a+b,0)/vals.length,days:vals.length};
@@ -51,7 +56,7 @@ function rhrWeeks(endKey,n){
   });
 }
 
-function RHRMonitor({athletes,weeks}){
+function RHRMonitor({athletes,weeks,polarRhr}){
   const wrapRef=useRef(null);
   const[w,setW]=useState(900);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;
@@ -63,13 +68,14 @@ function RHRMonitor({athletes,weeks}){
   const[hov,setHov]=useState(null);      // hovered week index → crosshair + card
   const[sel,setSel]=useState([]);        // [{id,slot}] — the slot IS the colour
   const rows=useMemo(()=>(athletes||[]).map(a=>{
-    const pts=weeks.map(wk=>rhrWeekAvg(a,wk.start,wk.end));
+    const pol=polarRhr&&polarRhr[String(a.id)];
+    const pts=weeks.map(wk=>rhrWeekAvg(a,wk.start,wk.end,pol));
     const got=pts.filter(Boolean);
     return{a,pts,n:got.length,
       avg:got.length?got.reduce((s,p)=>s+p.avg,0)/got.length:null,
       last:got.length?got[got.length-1].avg:null,
       prev:got.length>1?got[got.length-2].avg:null};
-  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks]);
+  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks,polarRhr]);
   /* The chart opens on the first few athletes rather than empty or on all of them —
      twenty lines through one 300px band is not a trend anyone can read. After that
      the selection is the coach's: navigating weeks only drops athletes who left the
