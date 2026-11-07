@@ -3,7 +3,7 @@
    dynamic visual (stopwatch, jump bars, course maps, body-angle
    models …) instead of a generic form.
    ========================================================= */
-const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',laneAgility:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
+const TEST_THEME={anthro:'#0094ff',circ:'#0094ff',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',lateralCmj:'#c084fc',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',laneAgility:'#f472b6',fiveZeroFive:'#fb7185',curvedRun:'#f97316',shuttleRun:'#22d3ee'};
 
 function TField({label,unit,value,onChange,step,placeholder,hint,text}){
   return(<div><label className="tf-l">{label}</label>
@@ -266,11 +266,11 @@ function CustomStage({theme}){
 }
 
 /* ---- Mockup-style test card helpers ---- */
-const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
+const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',curvedRun:'Curved Run Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
   accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Seated)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
   benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
 const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',laneAgility:'sec',shuttleRun:'vo2max'};
-const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',laneAgility:'LANE',shuttleRun:'SHUTTLE',
+const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',curvedRun:'CURVED',laneAgility:'LANE',shuttleRun:'SHUTTLE',
   accel:'5-10M',hipRot:'HIP IR/ER',thomas:'THOMAS',tSpine:'T-SPINE',benchPress:'BP',trapBarDL:'TBDL',pullUp:'PULL-UP',copenhagen:'CPH',sidePlank:'SIDE PLANK',backSquat:'SQUAT',ift3015:'30-15 IFT'};
 const BADGE_COLS=['#0094ff','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#0094ff','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#0094ff','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
@@ -859,6 +859,23 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
         <MkStat k={L('Yavaş taraf','Slower side')} v={c.slow?(c.slow==='right'?L('Sağ','Right'):L('Sol','Left')):null}/>
       </div>
       {obs(L('Dönüş tekniği, yavaşlama, taraf tercihi…','Turn technique, deceleration, side preference…'))}
+    </>);
+  }
+
+  if(id==='curvedRun'){
+    const c=curvedRunCalc(test);
+    const set=(s,v)=>uN('curvedRun',s,v);
+    return card(<>
+      <div className="mk-pair">
+        <div className="mk-field"><div className="mk-flbl">{L('Sağdan','From the right')}</div><MkInput value={test.curvedRun?.right} onChange={v=>set('right',v)} unit="s" step="0.01"/></div>
+        <div className="mk-field"><div className="mk-flbl">{L('Soldan','From the left')}</div><MkInput value={test.curvedRun?.left} onChange={v=>set('left',v)} unit="s" step="0.01"/></div>
+      </div>
+      <div className="mk-stats">
+        <MkStat k={L('En iyi','Best')} v={c.best} u="s"/>
+        <MkStat k={L('Sağ-sol fark','R/L difference')} v={c.pct!=null?pctTxt(c.pct):null} tone={asymLevel(c.pct)}/>
+        <MkStat k={L('Yavaş taraf','Slower side')} v={c.slow?(c.slow==='right'?L('Sağ','Right'):L('Sol','Left')):null}/>
+      </div>
+      {obs(L('Yaya yatış, adım ritmi, çizgiye yakınlık…','Lean into the arc, stride rhythm, distance to the line…'))}
     </>);
   }
 

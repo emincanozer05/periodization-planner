@@ -355,6 +355,9 @@ const makeTest=(period='pre')=>({
   /* 505 per turning side (s). `fiveZeroFive` keeps the better of the two, so every report
      that reads the single number goes on reading it. */
   cod505:{right:'',left:''},
+  /* Curved Run (s): yay şeklindeki ~18 m parkurun sağdan ve soldan başlanarak alınan süreleri.
+     Sağ-sol yüzde farkı otomatik hesaplanır (curvedRunCalc, 040). */
+  curvedRun:{right:'',left:''},
   // Hareket taraması: aktif kalça IR/ER (oturarak, °), Thomas testi (taraf başına), T-spine rotasyonu (°)
   hipRot:{irR:'',irL:'',erR:'',erL:''},
   thomas:{right:{},left:{}},
@@ -411,6 +414,7 @@ const TEST_CATALOG=[
   {id:'tTest',         name:'T-Agility',                  short:'T-Test'},
   {id:'fiveZeroFive',  name:'505 COD',                    short:'505'},
   {id:'laneAgility',   name:'Lane Agility',               short:'Lane'},
+  {id:'curvedRun',     name:'Curved Run',                 short:'Curved'},
   {id:'benchPress',    name:'Bench Press',                short:'BP'},
   {id:'trapBarDL',     name:'Trap Bar Deadlift',          short:'TBDL'},
   {id:'pullUp',        name:'Pull-Up',                    short:'Pull-Up'},

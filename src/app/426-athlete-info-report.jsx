@@ -103,6 +103,7 @@ function printAthleteInfo(ath,setup,exercises,teamDays,teamId){
     {g:'speed',id:'tTest',tr:'T-Çeviklik Testi',en:'T-Agility Test',u:'s',dir:'lo',rows:one(t=>cmpN(t.tTest))},
     {g:'speed',id:'fiveZeroFive',tr:'505 Yön Değiştirme',en:'505 Change of Direction',u:'s',dir:'lo',rows:[[RS[0],t=>cod505Calc(t).r],[RS[1],t=>cod505Calc(t).l]]},
     {g:'speed',id:'laneAgility',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',rows:one(t=>cmpN(t.laneAgility))},
+    {g:'speed',id:'curvedRun',tr:'Curved Run (Kavisli Koşu)',en:'Curved Run',u:'s',dir:'lo',rows:[[RS[0],t=>curvedRunCalc(t).r],[RS[1],t=>curvedRunCalc(t).l]]},
   ];
   const safe=(f,t)=>{try{const v=f(t);return v==null||!isFinite(v)?null:+v;}catch(e){return null;}};
   /* A test's readings: the dates any of its rows was taken, and each row's value per date. */
