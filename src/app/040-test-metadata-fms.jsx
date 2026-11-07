@@ -73,6 +73,7 @@ const TEST_META={
   tTest:         {g:'speed',   ic:'cone',    tr:'Çeviklik',                      en:'Agility'},
   fiveZeroFive:  {g:'speed',   ic:'uturn',   tr:'Yön değiştirme, sağ-sol asimetri',en:'Change of direction, R/L asymmetry'},
   laneAgility:   {g:'speed',   ic:'cone',    tr:'Çok yönlü çeviklik',            en:'Multi-directional agility'},
+  curvedRun:     {g:'speed',   ic:'uturn',   tr:'Kavisli koşu hızı, sağ-sol fark',en:'Curved sprint speed, R/L difference'},
   benchPress:    {g:'str',     ic:'up',      tr:'Üst vücut itiş kuvveti (e1RM)', en:'Upper-body push strength (e1RM)'},
   trapBarDL:     {g:'str',     ic:'up',      tr:'Alt vücut maksimal kuvvet (e1RM)',en:'Lower-body maximal strength (e1RM)'},
   pullUp:        {g:'str',     ic:'up',      tr:'Üst vücut çekiş kuvveti',       en:'Upper-body pull strength'},
@@ -562,6 +563,14 @@ function cod505Calc(t){
   const best=r!=null&&l!=null?Math.min(r,l):(r!=null?r:l!=null?l:tN(t&&t.fiveZeroFive));
   return{r,l,best,pct:asymPct(r,l,'lo'),slow:r!=null&&l!=null&&r!==l?(r>l?'right':'left'):null};
 }
+/* Curved Run (Kavisli Koşu): the ~18 m arc run once started from the right and once from the
+   left. The quicker of the two is the athlete's time; the right–left gap is a percentage of the
+   quicker side, like the 505. */
+function curvedRunCalc(t){
+  const o=(t&&t.curvedRun)||{};const r=tN(o.right),l=tN(o.left);
+  const best=r!=null&&l!=null?Math.min(r,l):(r!=null?r:l);
+  return{r,l,best,pct:asymPct(r,l,'lo'),slow:r!=null&&l!=null&&r!==l?(r>l?'right':'left'):null};
+}
 /* 5-10 m acceleration: the 5 m and 10 m gates (shared with the sprint's split times, so a run
    timed once feeds both the acceleration test and the sprint F-V profile). */
 function accelCalc(t){
@@ -645,7 +654,7 @@ const TEST_IMG={
   ohs:'tests/deep-squat.jpg',ankleDF:'tests/ankle-df.jpg',aslr:'tests/aslr.jpg',hipRot:'tests/hip-rotation.jpg',thomas:'tests/thomas.jpg',tSpine:'tests/t-spine-rotation.jpg',
   cmj:'tests/cmj.jpg',lateralCmj:'tests/lateral-cmj.jpg',squatJump:'tests/squat-jump.jpg',horizontalJump:'tests/broad-jump.jpg',dropJump:'tests/drop-jump.jpg',
   accel:'tests/accel-5-10.jpg',tTest:'tests/t-test.jpg',fiveZeroFive:'tests/cod-505.jpg',
-  laneAgility:'tests/lane-agility.jpg',
+  laneAgility:'tests/lane-agility.jpg',curvedRun:'tests/curved-run.jpg',
 };
 
 /* =========================================================
@@ -716,6 +725,9 @@ const TEST_INFO={
   laneAgility:{n:'Lane Agility',
     tr:{w:'Sporcu, köşelerine koni konan dikdörtgen parkurda başlangıç konisinden ileri sprint eder, yana kayar (defansif adım), geri koşar ve yine yana kayarak başladığı yere döner; ardından aynı parkuru ters yönde tamamlar. Toplam süre kaydedilir.',p:'İleri, geri ve yanal hareketler arasında hızlı geçişi, yavaşlama-yeniden hızlanmayı ve çok yönlü çeviklik kapasitesini değerlendirmek için kullanılır.'},
     en:{w:'On a rectangle marked with cones at its corners, the athlete sprints forward from the start cone, shuffles sideways (defensive slide), backpedals and shuffles back to the start, then runs the same course in the opposite direction. The total time is recorded.',p:'Used to assess fast transitions between forward, backward and lateral movement, deceleration and re-acceleration, and multi-directional agility.'}},
+  curvedRun:{n:'Curved Run',
+    tr:{w:'Sporcu, yan çizgi ile üç sayı çizgisinin kesiştiği noktadan başlar ve üç sayı çizgisini izleyen yaklaşık 18 metrelik yayı karşı köşedeki bitiş noktasına kadar mümkün olduğunca hızlı koşar. Test bir kez sağdan, bir kez soldan başlanarak yapılır; süreler saniye cinsinden kaydedilir.',p:'Kavisli (eğrisel) sprint hızını, yayın içine yatarak hızı koruma becerisini ve sağ-sol yön arasındaki farkı (yüzde fark) değerlendirmek için kullanılır.'},
+    en:{w:'The athlete starts where the sideline meets the three-point line and runs the roughly 18-metre arc that follows the three-point line to the finish in the opposite corner as fast as possible. It is run once starting from the right and once from the left; times are recorded in seconds.',p:'Used to assess curved sprint speed, the ability to hold speed while leaning into the bend, and the right–left difference (percentage gap).'}},
   accel:{n:'5-10m Acceleration',
     tr:{w:'Sporcu duruştan çıkış yapar; 5 m ve 10 m kapılarından geçiş süreleri alınır.',p:'İlk adım ivmelenmesini ve 5-10 m arasındaki hız kazanımını değerlendirmek için kullanılır.'},
     en:{w:'From a standing start, the athlete sprints through gates at 5 m and 10 m.',p:'Used to assess first-step acceleration and the speed gained between 5 and 10 m.'}},
@@ -786,6 +798,7 @@ const TI_HAS={
   tTest:t=>tiNum(t.tTest),
   fiveZeroFive:t=>cod505Calc(t).best!=null,
   laneAgility:t=>tiNum(t.laneAgility),
+  curvedRun:t=>curvedRunCalc(t).best!=null,
   shuttleRun:t=>tiNum(t.shuttleRun),
   ...Object.fromEntries(STR_LIFTS.map(id=>[id,t=>!!(t[id]&&(tiNum(t[id].load)||tiNum(t[id].reps)))])),
   pullUp:t=>!!(t.pullUp&&(tiNum(t.pullUp.reps)||tiNum(t.pullUp.load))),
@@ -818,6 +831,7 @@ const CMP_METRIC_TEST={height:'anthro',weight:'anthro',bodyFat:'anthro',wingspan
   sp20:'sprint',spv5:'sprint',spv10:'sprint',spv20:'sprint',tTest:'tTest',f505:'fiveZeroFive',lane:'laneAgility',shut:'shuttleRun',
   hirR:'hipRot',hirL:'hipRot',herR:'hipRot',herL:'hipRot',htD:'hipRot',tspR:'tSpine',tspL:'tSpine',tspD:'tSpine',
   acc5:'accel',acc10:'accel',f505R:'fiveZeroFive',f505L:'fiveZeroFive',f505D:'fiveZeroFive',
+  crun:'curvedRun',crunR:'curvedRun',crunL:'curvedRun',crunD:'curvedRun',
   bp:'benchPress',tbdl:'trapBarDL',sq:'backSquat',bpRel:'benchPress',tbdlRel:'trapBarDL',sqRel:'backSquat',pu:'pullUp',
   cphR:'copenhagen',cphL:'copenhagen',cphD:'copenhagen',spkR:'sidePlank',spkL:'sidePlank',spkD:'sidePlank',vift:'ift3015'};
 /* The block itself — one row per test, in catalog order, in the report language. */
@@ -924,6 +938,10 @@ const CMP_METRICS=[
   {id:'f505L',g:'spd',tr:'505 Sol',   en:'505 L',     u:'s',dir:'lo',st:'505 L',se:'505 L',get:t=>cod505Calc(t).l},
   {id:'f505D',g:'spd',tr:'505 Asimetri',en:'505 Asymmetry',u:'%',dir:'lo',st:'505 Δ',se:'505 Δ',get:t=>cod505Calc(t).pct},
   {id:'lane', g:'spd',tr:'Lane Agility',en:'Lane Agility',u:'s',dir:'lo',st:'Lane',se:'Lane',get:t=>cmpN(t.laneAgility)},
+  {id:'crun', g:'spd',tr:'Curved Run',en:'Curved Run',u:'s',dir:'lo',st:'Curved',se:'Curved',get:t=>curvedRunCalc(t).best},
+  {id:'crunR',g:'spd',tr:'Curved Run Sağ',en:'Curved Run R',u:'s',dir:'lo',st:'Curved R',se:'Curved R',get:t=>curvedRunCalc(t).r},
+  {id:'crunL',g:'spd',tr:'Curved Run Sol',en:'Curved Run L',u:'s',dir:'lo',st:'Curved L',se:'Curved L',get:t=>curvedRunCalc(t).l},
+  {id:'crunD',g:'spd',tr:'Curved Run Fark',en:'Curved Run Gap',u:'%',dir:'lo',st:'Curved Δ',se:'Curved Δ',get:t=>curvedRunCalc(t).pct},
   {id:'bp',   g:'str',tr:'Bench Press e1RM',en:'Bench Press e1RM',u:'kg',dir:'hi',st:'BP',se:'BP',get:t=>strCalc(t,'benchPress').e1},
   {id:'tbdl', g:'str',tr:'Trap Bar DL e1RM',en:'Trap Bar DL e1RM',u:'kg',dir:'hi',st:'TBDL',se:'TBDL',get:t=>strCalc(t,'trapBarDL').e1},
   {id:'sq',   g:'str',tr:'Squat e1RM',en:'Squat e1RM',u:'kg',dir:'hi',st:'Squat',se:'Squat',get:t=>strCalc(t,'backSquat').e1},

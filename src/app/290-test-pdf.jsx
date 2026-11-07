@@ -492,6 +492,9 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
     fiveZeroFive:()=>{const c=cod505Calc(t);const s=v=>v!=null?v+' <small>s</small>':'—';
       return card('fiveZeroFive',kv([[L('Sağ dönüş','Right turn'),s(c.r)],[L('Sol dönüş','Left turn'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Asimetri','Asymmetry'),pct(c.pct),colAsym(c.pct)]])
         +foot(L('Asimetri = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Asymmetry = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')),{half:true});},
+    curvedRun:()=>{const c=curvedRunCalc(t);const s=v=>v!=null?v+' <small>s</small>':'—';
+      return card('curvedRun',kv([[L('Sağdan','From the right'),s(c.r)],[L('Soldan','From the left'),s(c.l)],[L('En iyi','Best'),`<b>${s(c.best)}</b>`],[L('Sağ-sol fark','R/L difference'),pct(c.pct),colAsym(c.pct)]])
+        +foot(L('Fark = |sağ − sol| / hızlı taraf × 100. %10 altı dengeli, %10-15 izlenmeli, %15 ve üzeri belirgin.','Difference = |right − left| / quicker side × 100. Under 10% balanced, 10-15% watch, 15% and above clear.')),{half:true});},
     ift3015:()=>{const c=iftCalc(t,ath,bw);
       return card('ift3015',kv([['VIFT',c.vift!=null?`<b>${c.vift}</b> <small>km/h</small>`:'—'],['VIFT (m/s)',c.ms!=null?c.ms:'—'],[L('Tahmini VO2max','Est. VO2max'),c.vo2!=null?c.vo2+` <small>${L('ml/kg/dk','ml/kg/min')}</small>`:'—']])
         +foot(L('VO2max tahmini Buchheit (2008): yaş, cinsiyet, kilo ve VIFT’ten.','VO2max estimate after Buchheit (2008): from age, sex, body mass and VIFT.')));},
