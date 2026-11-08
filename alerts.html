@@ -41,8 +41,8 @@
     var page=u('alerts.html');
     var mf={name:'CoachOS Wellness',short_name:'CoachOS Wellness',description:'Takımının wellness uyarıları.',
       lang:'tr',dir:'ltr',id:new URL(page).pathname,start_url:page+'#k='+encodeURIComponent(k),scope:page,
-      display:'standalone',display_override:['standalone','minimal-ui'],background_color:'#0b0d0f',
-      theme_color:'#0b0d0f',orientation:'any',categories:['health','sports'],
+      display:'standalone',display_override:['standalone','minimal-ui'],background_color:'#161616',
+      theme_color:'#161616',orientation:'any',categories:['health','sports'],
       icons:[{src:u('icon-192.png'),sizes:'192x192',type:'image/png',purpose:'any'},
              {src:u('icon-512.png'),sizes:'512x512',type:'image/png',purpose:'any'},
              {src:u('icon-maskable-512.png'),sizes:'512x512',type:'image/png',purpose:'maskable'}]};
@@ -60,7 +60,7 @@
 <meta name="application-name" content="CoachOS Wellness"/>
 <!-- iOS ana ekran simgesi manifestten okunmuyor; Safari yalnızca bu etiketi görüyor. -->
 <link rel="apple-touch-icon" href="icon-192.png"/>
-<meta name="theme-color" content="#0b0d0f"/>
+<meta name="theme-color" content="#161616"/>
 <!--
   EKİP ÜYESİNİN SAYFASI.
 
@@ -102,173 +102,187 @@
   Kapalıyken tek satır; dokununca eksik ve dolduran isimler açılıyor.
 -->
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   KINEXON TARZI — CoachOS'un koyu Kinexon katmanıyla (src/19z-kinexon.css) aynı dil:
+   kömür grisi zemin, siyaha yakın üst bant, köşesiz düz paneller (zeminden yalnız tonla
+   ayrılır), mavi büyük harfli bölüm başlıkları, küçük büyük harfli gri etiketler, alt
+   çizgili sekmeler, düz mavi ana düğme, gri ikincil düğme. Gradyan, parlama, ışık lekesi
+   yok. Renkler aşağıdaki değişkenlerde; JS'teki skor/RPE renkleri de bu aileden.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@font-face{font-family:'Archivo';src:url('fonts/Archivo-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('fonts/Archivo-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('fonts/Archivo-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+:root{
+  --k-chrome:#101010;--k-bg:#161616;--k-panel:#232323;--k-tile:#2a2a2a;--k-sunk:#1c1c1c;
+  --k-line:#2e2e2e;--k-line2:#454545;
+  --k-text:#f2f2f2;--k-text2:#d0d0d0;--k-muted:#a6a6a6;--k-dim:#8f8f8f;
+  --k-blue:#3aa0e6;--k-blue-d:#1f7cc2;--k-red:#e5322d;--k-amber:#f2c230;--k-green:#4caf50;
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;min-height:100%;background:#0b0d0f;color:#eef2f5;
-  font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.5}
-/* Sağ üstteki ince ışık — görseldeki zemin. Tek bir radyal geçiş; hiçbir şeyin
-   okunurluğunu düşürmeyecek kadar sönük ve sabit (kaydırmayla oynamıyor). */
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(120% 60% at 85% -10%,rgba(34,167,240,.10),transparent 60%)}
-.wrap{position:relative;z-index:1;max-width:430px;margin:0 auto;padding:22px 16px 56px}
+html,body{margin:0;min-height:100%;background:var(--k-bg);color:var(--k-text);
+  font-family:'Archivo','Inter','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.wrap{position:relative;max-width:430px;margin:0 auto;padding:22px 16px 56px}
 /* Masaüstünde de MOBİL görünüm: sayfa telefon genişliğinde (430px) ortalanmış tek sütun olarak
-   kalıyor, bir telefon ekranı gibi ince bir çerçeveyle. Sayfa telefon için kuruldu — geniş ekranda
-   yayılmasının bir kazancı yok, dar sütun okunaklı kalıyor. Telefonda (<700px) hiçbir şey değişmiyor. */
+   kalıyor, köşesiz ince bir çerçeveyle. Sayfa telefon için kuruldu — geniş ekranda yayılmasının
+   bir kazancı yok, dar sütun okunaklı kalıyor. Telefonda (<700px) hiçbir şey değişmiyor. */
 @media (min-width:700px){
+  html,body{background:var(--k-chrome)}
   body{padding:24px 0}
-  .wrap{min-height:calc(100vh - 48px);padding:22px 20px 56px;border:1px solid #1c2227;border-radius:30px;
-    background:#0d1013;box-shadow:0 30px 80px -30px rgba(0,0,0,.75)}
+  .wrap{min-height:calc(100vh - 48px);padding:22px 20px 56px;border:1px solid var(--k-line);background:var(--k-bg)}
 }
 
 /* ── Başlık ─────────────────────────────────────────────────────────────── */
-header{display:flex;align-items:center;gap:16px;padding:6px 0 22px}
-header .mark{flex:none;display:block;height:30px;width:auto;max-width:52%;object-fit:contain;object-position:left}
-header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
-  background:linear-gradient(180deg,transparent,#2c3237 22%,#2c3237 78%,transparent)}
+header{display:flex;align-items:center;gap:16px;padding:6px 0 18px;margin-bottom:4px;border-bottom:1px solid var(--k-line)}
+header .mark{flex:none;display:block;height:28px;width:auto;max-width:52%;object-fit:contain;object-position:left}
+header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;background:var(--k-line2)}
 .who{flex:1;min-width:0}
 /* Takım adı kısaltılmıyor, sarıyor: "Tofaş Ba…" diye kesilen bir kadro adı, o
    satırın tek işini yapmıyor. Yerini iki satıra kadar açabiliyor. */
-.who .n{font-weight:700;font-size:15.5px;letter-spacing:.01em;line-height:1.25;
+.who .n{font-weight:700;font-size:15px;letter-spacing:.01em;line-height:1.25;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.who .r{color:#7d8894;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who .r{color:var(--k-muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ── Dil ve sekme seçicileri — aynı kalıp: yuvarlak bir kap, içinde düğmeler ── */
-.seg{display:inline-flex;background:#131619;border:1px solid #232a30;border-radius:999px;padding:3px}
-.seg button{border:0;background:none;color:#7d8894;font:inherit;font-weight:700;cursor:pointer;
-  border-radius:999px;padding:5px 11px;font-size:12.5px;letter-spacing:.04em}
-.seg button.on{background:#0094ff;color:#fff}
+/* ── Dil seçici: küçük kutulu anahtar. Sekmeler: Kinexon'un alt çizgili üst sekmeleri ── */
+.seg{display:inline-flex;background:var(--k-sunk);border:1px solid var(--k-line2);border-radius:2px;padding:2px}
+.seg button{border:0;background:none;color:var(--k-muted);font:inherit;font-weight:600;cursor:pointer;
+  border-radius:2px;padding:5px 11px;font-size:12.5px;letter-spacing:.04em}
+.seg button.on{background:var(--k-blue-d);color:#fff}
 .topbar{display:flex;justify-content:flex-end;margin:-8px 0 4px}
 .seg.lang button{padding:4px 10px;font-size:11.5px}
-.tabs{display:flex;margin:12px 0 0}
-.tabs button{flex:1;padding:10px 12px;font-size:15px;letter-spacing:.02em}
-.tabs button .n{display:inline-block;min-width:20px;margin-left:7px;padding:0 6px;border-radius:999px;
-  background:rgba(255,255,255,.08);font-size:12px;font-variant-numeric:tabular-nums}
-.tabs button.on .n{background:rgba(255,255,255,.22)}
-.tabs{width:100%}
+.tabs{display:flex;width:100%;margin:12px 0 0;background:transparent;border:0;border-bottom:1px solid var(--k-line2);
+  border-radius:0;padding:0;gap:2px}
+.tabs button{flex:1;padding:10px 12px 9px;font-size:13.5px;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--k-muted)}
+.tabs button.on{background:transparent;color:#fff;border-bottom-color:var(--k-blue)}
+.tabs button .n{display:inline-block;min-width:20px;margin-left:7px;padding:0 6px;border-radius:2px;
+  background:var(--k-tile);color:var(--k-text2);font-size:11.5px;letter-spacing:0;font-variant-numeric:tabular-nums}
+.tabs button.on .n{background:var(--k-blue-d);color:#fff}
 
 /* ── Gün seçici ─────────────────────────────────────────────────────────── */
-.daynav{display:flex;align-items:center;gap:8px;margin:20px 0 0}
-.daynav .arr{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid #232a30;background:#131619;
-  color:#c6d0d8;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.daynav{display:flex;align-items:center;gap:6px;margin:18px 0 0}
+.daynav .arr{flex:none;width:38px;height:38px;border-radius:2px;border:1px solid var(--k-line2);background:var(--k-panel);
+  color:var(--k-text2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .daynav .arr:disabled{opacity:.3;cursor:default}
 .daynav .arr.back svg{transform:rotate(180deg)}
 /* Ortadaki etiket: üstüne şeffaf bir tarih alanı biniyor, dokununca telefonun
    kendi takvimi açılıyor — uzak bir güne ok ok gitmek gerekmesin. */
-.daynav .day{position:relative;flex:1;min-width:0;height:38px;border-radius:999px;border:1px solid #232a30;
-  background:#131619;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;
+.daynav .day{position:relative;flex:1;min-width:0;height:38px;border-radius:2px;border:1px solid var(--k-line2);
+  background:var(--k-panel);display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;
   white-space:nowrap;overflow:hidden}
 .daynav .day b{font-weight:700}
-.daynav .day span{color:#7d8894}
-.daynav .day.past{border-color:rgba(0,148,255,.55)}
+.daynav .day span{color:var(--k-muted)}
+.daynav .day.past{border-color:var(--k-blue);box-shadow:inset 0 -2px 0 var(--k-blue)}
 .daynav .day input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;
   cursor:pointer;-webkit-appearance:none;appearance:none}
 /* "Bugüne dön": geçmiş bir gün açıkken bölüm başlığının sağında. */
-.go-today{flex:none;margin-left:auto;align-self:center;border:0;background:none;color:#0094ff;font:inherit;
-  font-weight:700;font-size:13px;letter-spacing:0;text-transform:none;cursor:pointer;padding:4px 2px}
+.go-today{flex:none;margin-left:auto;align-self:center;border:0;background:none;color:var(--k-blue);font:inherit;
+  font-weight:600;font-size:13px;letter-spacing:0;text-transform:none;cursor:pointer;padding:4px 2px}
 .go-today[hidden]{display:none}
 
 /* ── Kim doldurdu şeridi ─────────────────────────────────────────────────────
    Kapalıyken TEK satır: ince bir doluluk çubuğu ve "12/15 · 3 eksik". Dokununca
    isimler açılıyor. Alan kaplamaması isteğin kendisiydi: liste hâlâ ekranın işi. */
-.fill{margin:14px 0 0;background:#131619;border:1px solid #1e2429;border-radius:12px;overflow:hidden}
+.fill{margin:14px 0 0;background:var(--k-panel);border:1px solid var(--k-line);border-radius:0;overflow:hidden}
 .fill[hidden]{display:none}
 .fill .hd{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;background:none;
   color:inherit;font:inherit;cursor:pointer;text-align:left}
-.fill .meter{flex:1;min-width:40px;height:6px;border-radius:999px;background:#242a30;overflow:hidden}
-.fill .meter i{display:block;height:100%;border-radius:999px;background:#2fe0a8;transition:width .25s ease}
+.fill .meter{flex:1;min-width:40px;height:4px;border-radius:0;background:var(--k-line2);overflow:hidden}
+.fill .meter i{display:block;height:100%;border-radius:0;background:var(--k-green);transition:width .25s ease}
 .fill .lbl{flex:none;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .fill .lbl b{font-weight:700}
-.fill .lbl .miss{color:#fcd34d;font-weight:600}
-.fill .lbl .all{color:#2fe0a8;font-weight:600}
-.fill .chev{flex:none;color:#6c7681;display:inline-flex;transition:transform .18s ease}
+.fill .lbl .miss{color:var(--k-amber);font-weight:600}
+.fill .lbl .all{color:var(--k-green);font-weight:600}
+.fill .chev{flex:none;color:var(--k-dim);display:inline-flex;transition:transform .18s ease}
 .fill.open .chev{transform:rotate(90deg)}
-.fill .ls{display:none;padding:2px 12px 12px;border-top:1px solid #1e2429}
+.fill .ls{display:none;padding:2px 12px 12px;border-top:1px solid var(--k-line)}
 .fill.open .ls{display:block}
-.fill .gh{margin:10px 0 6px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#7d8894}
+.fill .gh{margin:10px 0 6px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--k-muted)}
 .fill .nm{display:flex;flex-wrap:wrap;gap:6px}
-.fill .p{font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid;line-height:1.35}
-.fill .p.no{color:#fcd34d;border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.06)}
-.fill .p.yes{color:#8fe9cd;border-color:rgba(47,224,168,.3);background:rgba(47,224,168,.05)}
-.fill .src{margin-top:10px;font-size:11.5px;line-height:1.4;color:#7d8894}
+.fill .p{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:2px;border:1px solid;line-height:1.35}
+.fill .p.no{color:var(--k-amber);border-color:rgba(242,194,48,.45);background:rgba(242,194,48,.08)}
+.fill .p.yes{color:#8fd392;border-color:rgba(76,175,80,.4);background:rgba(76,175,80,.08)}
+.fill .src{margin-top:10px;font-size:11.5px;line-height:1.4;color:var(--k-dim)}
 
 /* ── Kurulum kartı ──────────────────────────────────────────────────────── */
-.card{position:relative;overflow:hidden;border-radius:16px;padding:20px 18px;margin-bottom:14px;
-  background:linear-gradient(135deg,rgba(21,58,54,.55),rgba(14,22,26,.75));
-  border:1px solid #1e4a45}
-.card.plain{background:#131619;border-color:#232a30}
+.card{position:relative;overflow:hidden;border-radius:0;padding:20px 18px;margin-bottom:14px;
+  background:var(--k-panel);border:1px solid var(--k-line);box-shadow:inset 3px 0 0 var(--k-blue)}
+.card.plain{background:var(--k-panel);border-color:var(--k-line);box-shadow:none}
 .card .body{position:relative;z-index:1}
-.card h2{margin:0 0 6px;font-size:19px;font-weight:700;line-height:1.25;letter-spacing:-.01em}
-.card p{margin:0;color:#8d9aa4;font-size:14px}
+.card h2{margin:0 0 6px;font-size:17px;font-weight:700;line-height:1.25;letter-spacing:-.005em}
+.card p{margin:0;color:var(--k-muted);font-size:14px}
 
 /* Bildirim kartının ince hâli. Kart her açılışta ekranın en üstünde duruyor ve iş
    bir kez yapılıp bitiyor (izin bir kez veriliyor) — büyük bir kart, asıl içeriği,
    yani sporcuları, ekranın altına itiyordu. Artık tek satır: zil, başlık, düğme.
    Açıklama satırı yalnızca bildirimler henüz kapalıyken görünüyor. */
-.card.compact{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-radius:14px}
-.card.compact .bell{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;background:rgba(47,224,168,.12);color:#2fe0a8}
+.card.compact{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px}
+.card.compact .bell{flex:none;width:34px;height:34px;border-radius:2px;display:flex;align-items:center;
+  justify-content:center;background:rgba(58,160,230,.14);color:var(--k-blue)}
 .card.compact .body{flex:1;min-width:0;max-width:none}
 .card.compact h2{margin:0;font-size:14.5px;line-height:1.3}
 .card.compact p{font-size:12.5px;line-height:1.35;margin-top:2px}
 .card.compact .btn{flex:none;margin-top:0;padding:7px 14px;font-size:13px}
-.card.compact .btn.on{border-color:rgba(47,224,168,.45);opacity:1}
+.card.compact .btn.on{background:transparent;border-color:rgba(76,175,80,.55);color:var(--k-green);opacity:1}
 .card.compact + .msgbox .msg{margin:-6px 0 14px}
 .card[hidden]{display:none}
 
+/* Düğmeler: düz mavi ana düğme (varsayılan ve .fill), gri ikincil (.sec). */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  margin-top:16px;padding:12px 22px;border-radius:999px;border:1.5px solid #2fe0a8;
-  background:transparent;color:#2fe0a8;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+  margin-top:16px;padding:11px 20px;border-radius:2px;border:1px solid var(--k-blue-d);
+  background:var(--k-blue-d);color:#fff;font:inherit;font-weight:600;font-size:14.5px;cursor:pointer}
+.btn:hover{background:#2a8fd8;border-color:#2a8fd8}
 .btn:disabled{opacity:.5;cursor:default}
-.btn.fill{background:#0094ff;border-color:#0094ff;color:#fff}
-.btn.sec{border-color:#2c3237;color:#eef2f5}
+.btn.fill{background:var(--k-blue-d);border-color:var(--k-blue-d);color:#fff}
+.btn.sec{background:#383838;border-color:var(--k-line2);color:var(--k-text)}
 .btn.full{display:flex;width:100%}
-input.paste{display:block;width:100%;box-sizing:border-box;margin-top:12px;padding:13px 14px;border-radius:12px;
-  border:1.5px solid #2c3237;background:#11161a;color:#eef2f5;font:inherit;font-size:16px}
-input.paste:focus{outline:none;border-color:#0094ff}
-.msg{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:13.5px}
-.msg.ok{background:rgba(47,224,168,.10);border:1px solid rgba(47,224,168,.5);color:#2fe0a8}
-.msg.warn{background:rgba(252,211,77,.10);border:1px solid rgba(252,211,77,.45);color:#fcd34d}
-.msg.bad{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);color:#ef4444}
-ol{margin:10px 0 0;padding-left:20px;color:#a8b3bd;font-size:13.5px}
+input.paste{display:block;width:100%;box-sizing:border-box;margin-top:12px;padding:12px 14px;border-radius:2px;
+  border:1px solid #424242;background:var(--k-sunk);color:var(--k-text);font:inherit;font-size:16px}
+input.paste:focus{outline:none;border-color:var(--k-blue);box-shadow:0 0 0 2px rgba(58,160,230,.25)}
+.msg{margin-top:14px;padding:10px 13px;border-radius:2px;font-size:13.5px}
+.msg.ok{background:rgba(76,175,80,.10);border:1px solid rgba(76,175,80,.5);color:#8fd392}
+.msg.warn{background:rgba(242,194,48,.10);border:1px solid rgba(242,194,48,.45);color:var(--k-amber)}
+.msg.bad{background:rgba(229,50,45,.12);border:1px solid rgba(229,50,45,.5);color:#ff6f6b}
+ol{margin:10px 0 0;padding-left:20px;color:var(--k-text2);font-size:13.5px}
 ol li{margin-bottom:5px}
-code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px}
+code{font-family:ui-monospace,monospace;font-size:11.5px;background:var(--k-sunk);padding:1px 5px;border-radius:2px}
 
-/* ── Bölüm başlığı ──────────────────────────────────────────────────────── */
-.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;margin:22px 2px 14px}
-.sec-h .t{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.sec-h .c{font-size:14px;color:#6c7681}
+/* ── Bölüm başlığı: Kinexon'un mavi büyük harfli panel başlığı ─────────────── */
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;margin:22px 0 12px;
+  padding-bottom:8px;border-bottom:1px solid var(--k-line)}
+.sec-h .t{font-size:13.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--k-blue)}
+.sec-h .c{font-size:13px;color:var(--k-muted)}
 
-/* ── Uyarı kartı ────────────────────────────────────────────────────────── */
-.al{position:relative;overflow:hidden;background:#131619;border:1px solid #1e2429;
-  border-radius:14px;padding:15px 14px 15px 18px;margin-bottom:12px}
-/* Soldaki renk şeridi kendi katmanı (aşağıda .bar): kenarlıkla çizmek köşe
-   yarıçapında şeridi inceltiyor, ayrı katman kartın tam boyunu alıyor. Rengi
+/* ── Uyarı kartı: Kinexon oyuncu kartı ──────────────────────────────────── */
+.al{position:relative;overflow:hidden;background:var(--k-panel);border:1px solid var(--k-line);
+  border-radius:0;padding:14px 14px 14px 17px;margin-bottom:10px}
+/* Soldaki renk şeridi kendi katmanı (aşağıda .bar): kartın tam boyunu alıyor. Rengi
    satır satır değiştiği için stil sayfasında değil, kartı kuran kodda. */
-.al .bar{position:absolute;left:0;top:0;bottom:0;width:5px}
-.al.quiet{opacity:.86}
+.al .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.al.quiet{opacity:.9}
 .al .top{display:flex;align-items:center;gap:10px}
-.al .nm{font-weight:700;font-size:17px;letter-spacing:.01em;text-transform:uppercase;
+.al .nm{font-weight:700;font-size:16px;letter-spacing:.02em;text-transform:uppercase;
   flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sc{flex:none;display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:700;
   font-variant-numeric:tabular-nums}
-.sc i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
-.al .sep{flex:none;width:1px;height:16px;background:#2c3237}
-.al .dt{flex:none;font-size:12.5px;color:#6c7681;font-variant-numeric:tabular-nums}
-.al .chev{flex:none;width:22px;height:22px;padding:0;border:0;background:none;color:#6c7681;
+.sc i{width:8px;height:8px;border-radius:0;display:inline-block;flex:none}
+.al .sep{flex:none;width:1px;height:16px;background:var(--k-line2)}
+.al .dt{flex:none;font-size:12.5px;color:var(--k-dim);font-variant-numeric:tabular-nums}
+.al .chev{flex:none;width:22px;height:22px;padding:0;border:0;background:none;color:var(--k-dim);
   cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
   transition:transform .18s ease}
 .al.open .chev{transform:rotate(90deg)}
-.al .why{margin-top:8px;font-size:14px;color:#8d9aa4}
-.al .pn{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
-.tag{font-size:13px;font-weight:600;padding:5px 14px;border-radius:999px;border:1.5px solid;line-height:1.35}
-.tag.h{color:#ef4444;border-color:rgba(239,68,68,.65);background:rgba(239,68,68,.10)}
-.tag.m{color:#fcd34d;border-color:rgba(252,211,77,.55);background:rgba(252,211,77,.07)}
-.tag.l{color:#7d8894;border-color:#2c3237;background:transparent}
+.al .why{margin-top:6px;font-size:13.5px;color:var(--k-muted)}
+.al .pn{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:2px;border:1px solid;line-height:1.35}
+.tag.h{color:#ff6f6b;border-color:rgba(229,50,45,.6);background:rgba(229,50,45,.12)}
+.tag.m{color:var(--k-amber);border-color:rgba(242,194,48,.5);background:rgba(242,194,48,.08)}
+.tag.l{color:var(--k-muted);border-color:var(--k-line2);background:transparent}
 
 /* Ölçüm şeridi — sabah formunun dört sorusu, HER ZAMAN aynı 2×2 ızgarada:
 
-       Uyku               │ Kas ağrısı
+       UYKU               │ KAS AĞRISI
        ───────────────────┼───────────────────
-       Zihinsel yorgunluk │ Fiziksel yorgunluk
+       ZİHİNSEL YORGUNLUK │ FİZİKSEL YORGUNLUK
        ───────────────────┴───────────────────
        ♡ KAH 65 bpm          (yalnızca ölçüldüyse, tam genişlik)
 
@@ -276,48 +290,49 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
    Kutu sayısı kayda göre değişmiyor — eskiden eski formdan gelen kayıtta tek bir
    "Yorgunluk" kutusu çıkıyor ve ızgara 2+2 yerine düzensiz diziliyordu.
 
-   Kutular arasındaki 1 piksellik boşluk kabın rengini gösteriyor ve ayraç çizgisi o. */
-.sub{margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
-  background:#242a30;border-radius:11px;overflow:hidden}
-.mt{min-width:0;padding:10px 12px;background:#181c20}
-.mt svg{flex:none;color:#93a7b6}
-.mt .k{font-size:12px;color:#7d8894;line-height:1.2;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis}
-.mt .row{display:flex;align-items:center;gap:7px;margin-top:4px}
-.mt .v{font-size:19px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
-.mt .v small{font-size:11px;font-weight:600;color:#7d8894;margin-left:2px}
-.mt .v.na{color:#5f646d}
+   Kutular Kinexon istatistik kutusu: panelden bir ton açık, köşesiz; aralarındaki
+   1 piksellik boşluk kabın koyu rengini gösteriyor ve ayraç çizgisi o. */
+.sub{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
+  background:var(--k-sunk);border:1px solid var(--k-sunk);border-radius:0;overflow:hidden}
+.mt{min-width:0;padding:9px 12px 10px;background:var(--k-tile)}
+.mt svg{flex:none;color:var(--k-dim)}
+.mt .k{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--k-muted);
+  line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mt .row{display:flex;align-items:center;gap:7px;margin-top:5px}
+.mt .v{font-size:20px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mt .v small{font-size:11px;font-weight:600;color:var(--k-muted);margin-left:2px}
+.mt .v.na{color:#5f5f5f}
 /* Tam genişlikteki alt satırlar (KAH, eski form notu): etiket ve değer tek satırda. */
 .mt.wide{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:9px 12px}
 .mt.wide .k{flex:1}
 .mt.wide .row{margin-top:0}
-.mt.note{font-size:12px;color:#7d8894;line-height:1.35}
+.mt.note{font-size:12px;color:var(--k-muted);line-height:1.35;text-transform:none;letter-spacing:0}
 
 /* Polar Loop uyku kutusu — 2×2 ızgaranın hemen altında, aynı dilde ikinci bir 2×2:
 
-       ☾ Yattı 23:40        │ ☀ Kalktı 07:10
-       ◷ Uyudu 7 sa 20 dk   │ ☆ Uyku skoru 81/100
+       ☾ YATTI 23:40        │ ☀ KALKTI 07:10
+       ◷ UYUDU 7 sa 20 dk   │ ☆ UYKU SKORU 81/100
 
    Uyku skoru Polar'ın (1–100); formdaki "Uyku" sporcunun kendi 1–5 puanı.
    Sporcu Polar'a bağlı değilse kutu hiç yok; bağlı ama o gece veri yoksa tek satırlık
    bir not. Veri sunucudan (polarApi /staff-sleep) gün değişince ve "Polar Verilerini
    Al"dan sonra geliyor; kartlar yeniden kurulmadan yalnızca bu kutu doluyor. */
-.slp{margin-top:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
-  background:#242a30;border-radius:11px;overflow:hidden}
+.slp{margin-top:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
+  background:var(--k-sunk);border:1px solid var(--k-sunk);border-radius:0;overflow:hidden}
 .slp[hidden]{display:none}
 .slp .mt{padding:9px 12px}
 .slp .mt .v{font-size:17px}
 @media (max-width:399px){.slp .mt svg{display:none}.slp .mt{padding:9px 10px}.slp .mt .v{font-size:16px}}
-.slp .nd{grid-column:1/-1;padding:9px 12px;background:#181c20;font-size:12.5px;color:#7d8894}
+.slp .nd{grid-column:1/-1;padding:9px 12px;background:var(--k-tile);font-size:12.5px;color:var(--k-muted)}
 
 /* Polar şeridi: listenin üstünde tek satır — logo, durum, "Polar Verilerini Al". */
 .pol{margin:12px 0 0;display:flex;align-items:center;gap:12px;padding:9px 10px 9px 14px;
-  background:#131619;border:1px solid #1e2429;border-radius:12px}
+  background:var(--k-panel);border:1px solid var(--k-line);border-radius:0}
 .pol[hidden]{display:none}
 .pol img{flex:none;height:26px;width:auto;display:block}
-.pol .st{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:#8d9aa4}
-.pol .st b{display:block;color:#eef2f5;font-weight:700;font-size:13px}
-.pol .st.bad{color:#ef4444}
+.pol .st{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--k-muted)}
+.pol .st b{display:block;color:var(--k-text);font-weight:700;font-size:13px}
+.pol .st.bad{color:#ff6f6b}
 .pol .btn{flex:none;margin-top:0;padding:8px 14px;font-size:13px;white-space:nowrap}
 @media (max-width:419px){.pol{flex-wrap:wrap;row-gap:10px}.pol .btn{flex:1 1 100%}}
 @media (max-width:379px){
@@ -328,26 +343,28 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 }
 
 /* Kartın açılan kısmı: bildirim durumu ve kalan ayrıntı. */
-.more{display:none;margin-top:13px;padding-top:12px;border-top:1px solid #1e2429;
-  font-size:13px;color:#8d9aa4}
+.more{display:none;margin-top:12px;padding-top:11px;border-top:1px solid var(--k-line);
+  font-size:13px;color:var(--k-muted)}
 .al.open .more{display:block}
 .more div+div{margin-top:5px}
-.more b{color:#c6d0d8;font-weight:600}
+.more b{color:var(--k-text2);font-weight:600}
 
-/* RPE kartı: bölüm başına bir satır — bölümün adı, zorluk rozeti, süre, yük. */
-.ss{margin-top:12px;background:#181c20;border-radius:11px;padding:4px 12px}
-.ss .s{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px}
-.ss .s+.s{border-top:1px solid #242a30}
-.ss .s .l{flex:1;min-width:0;color:#a8b3bd;line-height:1.3}
-.ss .s .d{flex:none;color:#7d8894;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+/* RPE kartı: bölüm başına bir satır — bölümün adı, zorluk rozeti, süre, yük. Kinexon
+   tablosu gibi: çizgili satırlar, koyu ayraç. */
+.ss{margin-top:12px;background:var(--k-tile);border-radius:0;padding:0}
+.ss .s{display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:14px}
+.ss .s:nth-child(even){background:#2e2e2e}
+.ss .s+.s{border-top:1px solid var(--k-sunk)}
+.ss .s .l{flex:1;min-width:0;color:var(--k-text2);line-height:1.3}
+.ss .s .d{flex:none;color:var(--k-muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 .ss .s .au{flex:none;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:58px;text-align:right}
-.ss .s .au small{font-size:11px;font-weight:600;color:#7d8894;margin-left:2px}
+.ss .s .au small{font-size:11px;font-weight:600;color:var(--k-muted);margin-left:2px}
 .rpe{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;
-  padding:0 7px;border-radius:7px;font-size:13px;font-weight:700;color:#0b0d0f;font-variant-numeric:tabular-nums}
+  padding:0 7px;border-radius:2px;font-size:13px;font-weight:700;color:#101010;font-variant-numeric:tabular-nums}
 .pane[hidden]{display:none}
 
-.none,.load{text-align:center;color:#6c7681;padding:30px 12px;font-size:14px}
-.foot{margin-top:28px;text-align:center;color:#3f434a;font-size:11px}
+.none,.load{text-align:center;color:var(--k-dim);padding:30px 12px;font-size:14px}
+.foot{margin-top:28px;text-align:center;color:#4a4a4a;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -663,8 +680,9 @@ function dayLabel(key){
 }
 
 /* Uygulamanın kendi 1-5 renk skalası — checkin.html'deki SCORE_COLORS ile aynı
-   sıra ve aynı yön: 1 kırmızı (kötü) … 5 mavi (iyi). */
-var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
+   sıra ve aynı yön: 1 kırmızı (kötü) … 5 mavi (iyi). Tonlar CoachOS'un Kinexon
+   katmanından (kırmızı #e5322d, yeşil #4caf50, mavi #3aa0e6). */
+var SCORE_COLORS=['#e5322d','#f0812e','#f2c230','#4caf50','#3aa0e6'];
 function scoreColor(v){
   if(v==null)return '#5f646d';
   var step=Math.min(5,Math.max(1,Math.round(Number(v))));
@@ -1290,7 +1308,7 @@ function alertCard(a){
   /* Şerit rengi skorun rengi; uyarı vermeyen gönderimde sönük bir gri duruyor.
      Sebebi: iyi skorun mavisi, listenin en dikkat çeken rengi olurdu — oysa o
      satır tam olarak "burada yapılacak bir şey yok" diyen satır. */
-  card.appendChild(el('span',{class:'bar',style:'background:'+(flagged?color:'#2c3237')}));
+  card.appendChild(el('span',{class:'bar',style:'background:'+(flagged?color:'#454545')}));
 
   var sc=el('span',{class:'sc',style:'color:'+color});
   sc.appendChild(el('i',{style:'background:'+color}));
@@ -1394,7 +1412,7 @@ function rpeCard(r){
     el('span',{class:'dt',text:prettyDate(r.date)})
   ]));
   var total=el('div',{class:'why'},[el('span',{text:T('total')+': '}),
-    el('b',{style:'color:#eef2f5',text:r.totalLoad==null?'—':String(Math.round(r.totalLoad))+' AU'})]);
+    el('b',{style:'color:#f2f2f2',text:r.totalLoad==null?'—':String(Math.round(r.totalLoad))+' AU'})]);
   card.appendChild(total);
   var list=el('div',{class:'ss'});
   (r.sessions||[]).forEach(function(x){
