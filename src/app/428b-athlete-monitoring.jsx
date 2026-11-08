@@ -199,7 +199,7 @@ function MonPanelA({M,S,n,growth,cfg}){
     :P.bolgeler.length===0?<div className="mon-empty ok">{L('Ağrısız gün — check-in gönderildi, bölge işaretlenmedi (5 · hiç ağrı yok).','Pain-free day — check-in sent, no region marked (5 · no pain).')}</div>
     :<div className="mon-pain">{P.bolgeler.map(b=><div key={b.bolge} className={'mon-pr'+(b.uyari?' al':'')}>
       {b.uyari?<i className="mon-pr-i" aria-hidden="true">!</i>:<i className="mon-pr-i n" aria-hidden="true"/>}
-      <div className="mon-pr-t"><b>{b.bolge===PAIN_REGION_UNKNOWN?L('Bölge adı gelmedi','Region not named'):(REPORT_LANG==='tr'?b.bolge:painRegionEn(b.bolge))}</b>
+      <div className="mon-pr-t"><b>{b.bolge===PAIN_REGION_UNKNOWN?L('Bölge adı gelmedi','Region not named'):painRegionShort(b.bolge)}</b>
         <span>{txt(b)}{b.bugun!==monPainFree(cfg)&&b.bugun!=null?` · ${L('bugün','today')} ${b.bugun==='unk'?sev.unk:`${b.bugun} (${sev[b.bugun]})`}`:''}</span>
         {b.sureGun!=null&&b.bugun!==monPainFree(cfg)&&<small>{L(`İlk bildirim ${fd(b.ilkBildirim)} · ${b.sureGun} gün`,`First reported ${fd(b.ilkBildirim)} · ${b.sureGun} d`)}</small>}
         {b.uyari&&<small className="mon-pr-adv">{L('Sağlık profesyoneli değerlendirmesi önerilir.','A health professional’s assessment is advised.')}{apo(b.bolge)?L(' Büyüme dönemiyle ilişkili olabilen bölge; sağlık profesyoneli değerlendirmesi önerilir.',' A region that can relate to growth; a health professional’s assessment is advised.'):''}</small>}
@@ -210,7 +210,7 @@ function MonPanelA({M,S,n,growth,cfg}){
     {tl.satirlar.length>0&&<div className="mon-tl">
       <div className="mon-tl-k">{L(`Son ${cfg.AGRI_ZAMAN_CIZELGESI_GUN} gün · bölge zaman çizelgesi (5 hiç ağrı yok … 1 çok şiddetli; boş = kayıt yok)`,`Last ${cfg.AGRI_ZAMAN_CIZELGESI_GUN} days · region timeline (5 no pain … 1 very severe; blank = no record)`)}</div>
       <div className="mon-tl-w"><table className="mon-tl-t"><thead><tr><th/>{tl.gunler.map(k=><th key={k} className={k===monKey(n)?'on':''}>{parseD(k).getDate()}</th>)}</tr></thead>
-        <tbody>{tl.satirlar.map(s=><tr key={s.bolge}><td className="rg">{REPORT_LANG==='tr'?s.bolge:painRegionEn(s.bolge)}</td>
+        <tbody>{tl.satirlar.map(s=><tr key={s.bolge}><td className="rg">{painRegionShort(s.bolge)}</td>
           {s.degerler.map((v,j)=><td key={j} className={'c'+(v==null?' na':v===monPainFree(cfg)?' free':v==='G'?' g':' p'+(v==='unk'?'u':v))}
             title={`${fd(tl.gunler[j])} · ${v==null?L('kayıt yok','no record'):v==='G'?L('geçersiz (doğrulama bekliyor)','invalid (awaiting verification)'):v==='unk'?sev.unk:`${v} · ${sev[v]}`}`}>
             {v==null?'':v==='unk'?'?':v===monPainFree(cfg)?'·':v}</td>)}</tr>)}</tbody></table></div>
@@ -510,7 +510,7 @@ function AthMonitoring({ath,updAth,teamId,dayKey}){
     </div>
     <div className="mon-sum">
       <div className="mon-sc a" data-on={S.A.length?'1':'0'}><em>{L('A · Sağlık uyarıları','A · Health alerts')}</em><b>{S.A.length}</b>
-        <small>{S.A.length?S.A.map(x=>x.tur==='agri'?(REPORT_LANG==='tr'?x.bolge:painRegionEn(x.bolge)):L('aktif sakatlık','active injury')).join(' · '):S.pain.kayit?L('ağrı ya da aktif sakatlık bildirimi yok','no pain or active injury report'):L('check-in yok — ağrı bilinmiyor','no check-in — pain unknown')}</small></div>
+        <small>{S.A.length?S.A.map(x=>x.tur==='agri'?painRegionShort(x.bolge):L('aktif sakatlık','active injury')).join(' · '):S.pain.kayit?L('ağrı ya da aktif sakatlık bildirimi yok','no pain or active injury report'):L('check-in yok — ağrı bilinmiyor','no check-in — pain unknown')}</small></div>
       <div className="mon-sc"><em>{L('B · Yük ve performans','B · Load and performance')}</em><b>{S.birlikteB.sapan}<span>/{S.birlikteB.yeterli}</span></b>
         <small>{L('kişisel aralığın dışında','outside personal range')}{S.birlikteB.degerlendirilemedi?L(` · ${S.birlikteB.degerlendirilemedi} değerlendirilemedi`,` · ${S.birlikteB.degerlendirilemedi} not assessed`):''}</small></div>
       <div className="mon-sc"><em>{L('C · Toparlanma','C · Recovery')}</em><b>{S.birlikteC.sapan}<span>/{S.birlikteC.yeterli}</span></b>

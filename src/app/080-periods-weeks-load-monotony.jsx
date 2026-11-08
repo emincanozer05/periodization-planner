@@ -679,6 +679,18 @@ function painRegionEn(k){
   if(r===PAIN_REGION_UNKNOWN)return'Region not given';
   return r;   // a name outside the catalog is passed through as the athlete sent it
 }
+/* The thigh regions as a coach names them: the muscle, with its side. "Sağ arka uyluk
+   (Hamstring)" says "back thigh" and "Hamstring" twice over and wraps onto two lines in a
+   day box; "Sağ Hamstring" is the same region. Display only — the stored key (and so
+   every count, map and report keyed on it) stays the catalog name. */
+const PAIN_REGION_SHORT={'ön uyluk (Quadriceps)':'Quadriceps','arka uyluk (Hamstring)':'Hamstring'};
+function painRegionShort(k){
+  const r=String(k||'');
+  const m=r.match(/^(Sağ|Sol) (.+)$/);
+  if(m&&PAIN_REGION_SHORT[m[2]])return REPORT_LANG==='tr'?`${m[1]} ${PAIN_REGION_SHORT[m[2]]}`
+    :`${m[1]==='Sağ'?'Right':'Left'} ${PAIN_REGION_SHORT[m[2]]}`;
+  return REPORT_LANG==='tr'?r:painRegionEn(r);
+}
 /* The grid as a list to show — worst first, then alphabetical so equal severities
    keep a stable order instead of following object insertion. */
 function painEntries(map){

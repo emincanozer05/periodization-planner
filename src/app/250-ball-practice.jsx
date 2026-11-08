@@ -712,8 +712,12 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
    carries at the top of its body, and `athUpd` writes THIS block's participant list —
    see SessionDetails above. The assignment button in the header is the block's too: it
    assigns the players ticked on this block, not on the session. */
+/* `bank` / `bankAth`: on an athlete's own calendar, the phases saved for that athlete
+   (`ath.phaseBank`, 527) — the same list the Individualization table offers — and whose they
+   are. The phase bar lists them beside each ready-made phase; picking one adds its exercises
+   to that phase of this block. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd,setColor,ses,sesMoves}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,setColor,ses,sesMoves,bank,bankAth}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -834,6 +838,31 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     setExs([...cur.slice(0,at),...add,...cur.slice(at)]);
   };
   const removeIdx=idxs=>{const gone=new Set(idxs);setExs(liveRef.current.exs.filter((_,j)=>!gone.has(j)));};
+  /* A phase saved in the bank, into this block: the ready-made section is opened first if it
+     is not open yet (in its own place, the way addPhase opens it), and the saved exercises go
+     at its end. An empty row standing in that section or unplaced — a new block's first,
+     untouched row — makes way for them rather than sitting above them. One write. */
+  const addSaved=(kind,sid)=>{
+    const bk=PHB_OF_BLK[kind];
+    const e=bk&&phbList(bank,bk).find(x=>x.id===sid);if(!e)return;
+    const{block:b,onUpdate:up}=liveRef.current;
+    const had=blkPhases(b);
+    let next=had,cur=liveRef.current.exs;
+    if(!had.includes(kind)){
+      if(kind==='hazirlik')next=[kind,...had];
+      else if(kind==='ana'&&had.includes('soguma')){const i=had.indexOf('soguma');next=[...had.slice(0,i),kind,...had.slice(i)];}
+      else next=[...had,kind];
+      if(!had.length&&kind==='ana')cur=cur.map(x=>({...x,phase:kind}));
+    }
+    const blank=x=>!['name','sets','reps','duration','tempo','rpe','load','rest','description','image','link'].some(f=>String(x[f]||'').trim())
+      &&!(x.alt&&String(x.alt.name||'').trim());
+    cur=cur.filter(x=>!(blank(x)&&(exPhase(x)===kind||!next.includes(exPhase(x)))));
+    const rows=sortExsByPhase([...cur,...phbRows(e.rows).map(p=>phbRowToEx(p,kind))],next);
+    up({...b,phases:next,exercises:rows});
+    setShutPh(m=>m[kind]?{...m,[kind]:false}:m);
+    setOpen(true);
+  };
+  const bankView=!isBall&&bankAth&&bank?phbView(bank,k=>PHB_BLK[k]):null;
   /* The rows as they are read: one group per open section, in running order, with
      whatever is not placed yet collected at the end. No sections open means one group
      holding everything, which is the block as it has always been drawn. */
@@ -924,7 +953,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           between what the block IS and what it holds, which is where the coach decides
           how the session is shaped. */}
       <PlanPhaseBar presets={BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>({id:p,label:L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}))}
-        onAdd={id=>addPhase(id)}/>
+        onAdd={id=>addPhase(id)} bank={bankView||undefined} onPickSaved={bankView?addSaved:undefined}
+        onForgetSaved={bankView?((kind,id)=>phbForget(bankAth,PHB_OF_BLK[kind],id)):undefined}/>
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
       {/* A ball-practice block runs its drills one to a row: each carries a court diagram

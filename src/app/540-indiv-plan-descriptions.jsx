@@ -221,6 +221,18 @@ function indivSigRaw(ses){
    over it would throw those edits away — the sheet must ask first, and must never do it
    on its own. Sessions written before fingerprints existed report false: there is nothing
    to compare them against, and guessing would block writing for good. */
+/* A session on one athlete's own calendar, offered to the Individualization sheet as a
+   source (640). Its key names the day, the athlete and the session; once the sheet has
+   written over it, the session as the coach first wrote it is kept on the written copy as
+   `indiv.base` — the sheet keeps building on that, and "undo" puts it back. The athlete's
+   own feedback (sRPE, AU, notes) always comes from the live session. */
+const indivAthSrcKey=(date,athId,sesId)=>`ath:${date}:${athId}:${sesId}`;
+function indivAthBase(s){
+  if(!s)return s;
+  const b=s.indiv&&s.indiv.base&&typeof s.indiv.base==='object'?s.indiv.base:null;
+  const{indiv,...rest}=b||s;
+  return{...rest,id:s.id,sRPE:s.sRPE||'',au:s.au||'',notes:s.notes||''};
+}
 function indivHandEdited(ses){
   const sig=ses&&ses.indiv&&ses.indiv.sig;
   if(!sig)return false;

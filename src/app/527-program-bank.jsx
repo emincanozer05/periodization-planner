@@ -329,6 +329,57 @@ function phbAutoSave(athId,date,instr,src){
     return changed?{phaseBank:bank}:{};
   });
 }
+/* ---- FAZ BANKASI ↔ TAKVİM -----------------------------------------------------------
+   Aynı banka sporcunun kendi takviminde (Kadro → sporcu → Takvim, ve Bireyselleştirme kartındaki
+   takvim) seans yazılırken de açık: faz çubuğundaki Hazırlık Bölümü / Ana Bölüm / Soğuma'nın
+   yanında kayıtlı fazların listesi; seçilen faz bloğun o bölümüne eklenir. Ters yönde de: takvimde
+   bir hazır faza yazılanlar bankaya aynı kuralla (`phbAutoSave`: gün + seans/blok başına tek kayıt,
+   birebir aynısı ikinci kez tutulmaz) kaydedilir — iki yerde yazılan fazlar tek listede durur.
+   Takvim bloğunun faz kimlikleri hazirlik / ana / soguma; bankanınki prep / main / cool. */
+const PHB_BLK={prep:'hazirlik',main:'ana',cool:'soguma'};
+const PHB_OF_BLK={hazirlik:'prep',ana:'main',soguma:'cool'};
+/* Bankadaki bir satır → takvim egzersizi (`pbToPatterns`'ın tersi). */
+function phbRowToEx(p,phase){
+  const t=v=>String(v==null?'':v);
+  const cat=p&&!p.noCat&&p.id?mvCatById(p.id):null;
+  const a=(p&&p.alt&&typeof p.alt==='object')?p.alt:{};
+  const altF=['name','sets','reps','duration','tempo','rpe','load','rest','link'];
+  const alt=altF.some(f=>t(a[f]).trim())?altF.reduce((o,f)=>{if(t(a[f]).trim())o[f]=t(a[f]);return o;},{}):null;
+  return{...EX(),name:t(p.exercise),sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),tempo:t(p.tempo),
+    rpe:t(p.rpe),load:t(p.load),rest:t(p.rest),description:t(p.note),superset:t(p.superset).toUpperCase(),
+    image:t(p.image),link:t(p.link),phase:phase||'',
+    ...(cat?{pattern:cat.k,plane:t((p.type||[])[0]),dir:t((p.direction||[])[0])}:(p&&p.noCat?{noPat:true}:{})),
+    ...(alt?{alt}:{})};
+}
+/* Faz çubuğunun listesi: hazır faz başına kayıtlar (en yenisi başta), her biri başlık, egzersiz
+   sayısı, ilk adlar ve üzerine gelince gösterilen tam döküm. `idOf` fazın çubuktaki kimliği:
+   Bireyselleştirme'de bankanınki, takvimde bloğunki (PHB_BLK). */
+function phbView(bank,idOf){
+  const io=idOf||(k=>k);
+  return DI_PHASE_PRESETS.map(pr=>({id:io(pr.id),label:L(pr.label[0],pr.label[1]),
+    items:phbList(bank,pr.id).map(e=>{const rows=e.rows.filter(phbNamed);
+      const names=rows.map(p=>String(p.exercise||'').trim()).filter(Boolean);
+      /* What the hover preview lists: each exercise with its tag (A1, A2 … or 1, 2), category,
+         dose and alternative — the way the table and the printout number them. */
+      const cnt={};let plain=0;
+      const detail=rows.map(p=>{const row=diMoveRow(p.id);const ss=String(p.superset||'').toUpperCase();
+        const a=p.alt||{};
+        return{tag:ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain),name:String(p.exercise||'').trim()||'—',
+          cat:row?L(row.label[0],row.label[1]):'',color:row?(ML_PIE_COLS[row.k]||''):'',dose:diAltDose(p),
+          note:String(p.note||'').trim(),alt:String(a.name||'').trim(),altDose:String(a.name||'').trim()?diAltDose(a):''};});
+      return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,detail,
+        names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
+}
+/* Takvimde yazılan bir seansın hazır fazları bankaya: S&C bloğu başına, `pbToPatterns` ile
+   Bireyselleştirme tablosunun biçimine çevrilip. Kayıt anahtarı seans + blok. */
+function phbFromSession(athId,date,session){
+  if(!_pbWrite||!athId||!date||!session)return;
+  ((session.blocks)||[]).forEach(b=>{
+    if(blkKind(b)==='ball'||!blkPhases(b).some(p=>PHB_OF_BLK[p]))return;
+    const r=pbToPatterns([b],null);
+    phbAutoSave(athId,date,{patterns:r.patterns,phases:r.phases},`cal:${session.id}:${b.id}`);
+  });
+}
 function phbForget(athId,kind,id){
   if(!_pbWrite||!athId)return;
   _pbWrite(athId,a=>{
