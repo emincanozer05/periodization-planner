@@ -424,8 +424,6 @@ var I18N={
     sc_q:'Kuvvet & Kondisyon ne kadar yorucuydu?',sc_dur:'Kuvvet & Kondisyon süresi (dk)',
     game_q:'Müsabaka ne kadar yorucuydu?',game_dur:'Kaç dakika süre aldın?',
     srpe_hint:'O gün yapmadığın bölümü boş bırak — en az bir bölümü doldurman yeterli.',
-    rhr_q:'Dinlenik KAH nedir? (atım/dk)',rhr_ph:'örn. 58',
-    rhr_hint:'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.',
     sleep_q:'Uyku kaliten nasıldı?',
     mental_q:'Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun?',mental_s:'Zihinsel Yorgunluk',
     physical_q:'Fiziksel olarak ne kadar yorgun hissediyorsun?',physical_s:'Fiziksel Yorgunluk',
@@ -486,8 +484,6 @@ var I18N={
     sc_q:'How hard was Strength & Conditioning?',sc_dur:'Strength & Conditioning duration (min)',
     game_q:'How hard was the competition?',game_dur:'How many minutes did you play?',
     srpe_hint:'Leave out any part you didn\'t do that day — filling in one is enough.',
-    rhr_q:'What is your resting HR? (bpm)',rhr_ph:'e.g. 58',
-    rhr_hint:'Enter it if you measured it before getting out of bed; otherwise leave it empty.',
     sleep_q:'How was your sleep quality?',
     mental_q:'How would you rate your mental stress/fatigue?',mental_s:'Mental Fatigue',
     physical_q:'How physically tired do you feel?',physical_s:'Physical Fatigue',
@@ -1232,13 +1228,10 @@ function buildSrpe(){
   });
   return [box];
 }
+/* Dinlenik KAH sorusu kaldırıldı: istirahat nabzı artık Polar Loop'tan (günün en düşük
+   nabzı) geliyor. Eski kayıtlardaki RHR alanı okunmaya devam ediyor. */
 function buildWellness(){
-  var rhr=el('input',{type:'number',inputmode:'numeric',min:'25',max:'150',placeholder:T('rhr_ph'),
-    oninput:function(){var n=parseInt(rhr.value,10);A.RHR=isNaN(n)?null:n;refreshAll();}});
-  if(A.RHR!=null)rhr.value=String(A.RHR);   // dil değişince yeniden çizilen formda kalsın
   return [
-    question(T('rhr_q'),false,rhr,T('rhr_hint'),
-      function(){return A.RHR!=null;}),
     // Skalanın yönünü rozetlerin rengi, her basamağın ne demek olduğunu da
     // altındaki etiket anlatıyor; eski "1 … → 5 …" satırına gerek kalmıyor.
     question(T('sleep_q'),true,
@@ -1305,7 +1298,7 @@ function payload(){
     var v=A.painMap[k];
     if(validPainKey(k)&&(v===1||v===2||v===3))pm[k]=v;
   });
-  return {RHR:A.RHR??null,sleep:A.sleep??null,
+  return {sleep:A.sleep??null,
           mentalFatigue:A.mentalFatigue??null,physicalFatigue:A.physicalFatigue??null,
           soreness:A.soreness??null,painMap:pm};
 }

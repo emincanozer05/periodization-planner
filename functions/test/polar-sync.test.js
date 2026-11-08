@@ -147,7 +147,8 @@ function setup(over) {
   const deps = {
     db, fetch: polar.fetch, cfg: C.settings({ POLAR_CLIENT_SECRET: 'x', POLAR_TOKEN_KEY: KEY }), docIdField: '__docid__',
     now: () => clock, log: () => {}, sleep: async ms => { waits.push(ms); },
-    verifyIdToken: async tok => ({ 'tok-coach1': { uid: 'coach1', firebase: {} }, 'tok-coach2': { uid: 'coach2', firebase: {} } })[tok] || Promise.reject(new Error('x')),
+    verifyIdToken: async tok => ({ 'tok-coach1': { uid: 'coach1', firebase: {} }, 'tok-coach2': { uid: 'coach2', firebase: {} },
+      'tok-staff': { uid: 'anonS', firebase: { sign_in_provider: 'anonymous' } } })[tok] || Promise.reject(new Error('x')),
   };
   return { db, deps, polar, events, waits, tick: ms => { clock += ms; } };
 }
@@ -555,4 +556,82 @@ ta('eski uyku dokümanı (hrMin alanı yok): takım verisi ham örneklerden tama
   const r = await teamReq(env, { teamId: 'team1', from: '2026-11-01', to: '2026-11-01' });
   assert.strictEqual(r.json.athletes[0].sleep[0].hrMin, 48);
   assert.ok(!JSON.stringify(r.json).includes('heart_rate_samples'));
+});
+
+/* ═══ Ekip üyesinin telefon sayfası (alerts.html) ═════════════════════════ */
+section('Polar · ekip üyesi: uyku saatleri ve "Polar Verilerini Al"');
+
+function staffSetup(member) {
+  const env = setup();
+  env.db.put('staff_links', 'STK1', { coachUid: 'coach1', teamId: 'team1', staffId: 's1' });
+  env.db.put('staff_members', 'anonS', Object.assign({ coachUid: 'coach1', teamId: 'team1', staffId: 's1', token: 'STK1' }, member || {}));
+  return env;
+}
+async function staffReq(env, route, body, tok = 'tok-staff') {
+  const res = fakeRes();
+  await handle({ method: 'POST', path: route, query: {}, body, headers: { authorization: 'Bearer ' + tok } }, res, env.deps);
+  return { status: res.statusCode, json: JSON.parse(res.body) };
+}
+
+ta('eşleşmiş ekip üyesi: yalnızca yattı / kalktı / süre gelir, HRV / hesap / ham veri gelmez', async () => {
+  const env = staffSetup();
+  await syncReq(env);
+  const r = await staffReq(env, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.athletes.length, 1);
+  const a = r.json.athletes[0];
+  assert.strictEqual(a.athleteId, 'ath1');
+  assert.strictEqual(a.status, 'active');
+  assert.deepStrictEqual(a.sleep, [{ date: '2026-11-01', sleepStart: '2026-10-31T23:40:00+03:00', sleepEnd: '2026-11-01T07:10:00+03:00', asleepSec: 26000 }]);
+  const txt = JSON.stringify(r.json);
+  for (const k of ['recharge', 'hrvMs', 'sleepScore', 'polarAccount', 'Papur', 'hypnogram', 'exercises']) assert.ok(!txt.includes(k), k + ' ekip üyesine gitmemeli');
+});
+
+ta('ekip linki silinmiş ya da başka takımı gösteriyorsa: 403, veri yok', async () => {
+  const gone = staffSetup();
+  gone.db.data.delete('staff_links/STK1');
+  const r1 = await staffReq(gone, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r1.status, 403);
+  assert.strictEqual(r1.json.error.code, 'NOT_STAFF');
+  const forged = staffSetup({ teamId: 'team2' });   // eşleşme kaydı linkle uyuşmuyor
+  const r2 = await staffReq(forged, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r2.status, 403);
+  const none = setup();                              // hiç eşleşmemiş anonim oturum
+  const r3 = await staffReq(none, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r3.status, 403);
+  const r4 = await staffReq(none, '/staff-sleep', {}, 'yok');
+  assert.strictEqual(r4.status, 401);
+});
+
+ta('başka takımın ekip üyesi bu takımın sporcusunu ne görür ne senkronlar', async () => {
+  const env = staffSetup();
+  env.db.put('staff_links', 'STK2', { coachUid: 'coach1', teamId: 'team2', staffId: 's2' });
+  env.db.put('staff_members', 'anonS', { coachUid: 'coach1', teamId: 'team2', staffId: 's2', token: 'STK2' });
+  await syncReq(env);
+  env.tick(5 * 60 * 1000);
+  const r = await staffReq(env, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.athletes.length, 0);
+  const s = await staffReq(env, '/staff-sync', { athleteId: 'ath1' });
+  assert.strictEqual(s.status, 404);
+});
+
+ta('"Polar Verilerini Al": ekip üyesi kendi takımının sporcusunu senkronlar, iki dakika kuralı geçerli', async () => {
+  const env = staffSetup();
+  const s = await staffReq(env, '/staff-sync', { athleteId: 'ath1' });
+  assert.strictEqual(s.status, 200);
+  assert.strictEqual(s.json.ok, true);
+  assert.ok(!('report' in s.json));
+  assert.strictEqual(env.db.get('polar_sleep', 'coach1__ath1__2026-11-01').sleepScore, 81);
+  const again = await staffReq(env, '/staff-sync', { athleteId: 'ath1' });
+  assert.strictEqual(again.status, 429);
+  assert.strictEqual(again.json.error.code, 'TOO_SOON');
+});
+
+ta('koçun uçları anonim (ekip üyesi) oturumu hâlâ reddeder', async () => {
+  const env = staffSetup();
+  for (const route of ['/sync', '/team-data', '/invite', '/disconnect']) {
+    const r = await staffReq(env, route, { teamId: 'team1', athleteId: 'ath1' });
+    assert.strictEqual(r.status, 401, route);
+  }
 });

@@ -13,6 +13,11 @@
      POST /sync         { athleteId }          → { ok, report, lastSyncAt }   (Aşama 2)
      POST /team-data    { teamId, from?, to?, days?, athleteId?, kinds? } → takımın / sporcunun Polar verisi
 
+   Ekip üyesinin telefon sayfası (alerts.html; anonim oturum, staff_members eşleşmesi —
+   bkz. staff.js). Kapsam eşleşme kaydından, istekten değil:
+     POST /staff-sleep  { from, to }   → takımın bağlı sporcularının uyku saatleri ve süresi
+     POST /staff-sync   { athleteId }  → "Polar Verilerini Al": o sporcunun manuel senkronu
+
    Neden callback'te Firebase oturumu yok: Polar dönüşü tarayıcının düz bir
    yönlendirmesi, ID token taşıyamaz; üstelik izni veren kişi sporcu ve onun CoachOS
    hesabı yok. Kimlik, daveti üreten istekte (ID token) doğrulanıyor; state ve çerez
@@ -24,6 +29,7 @@ const api = require('./api');
 const links = require('./links');
 const sync = require('./sync');
 const teamdata = require('./teamdata');
+const staff = require('./staff');
 const pages = require('./pages');
 
 /* form-action YOK, bilerek: "Polar ile bağlan" formu bize POST ediyor, biz Polar'a 303
@@ -83,15 +89,17 @@ function configured(cfg) {
   try { parseKey(cfg.tokenKey); return true; } catch (e) { return false; }
 }
 
-/* ── Koçun kimliği ──────────────────────────────────────────────────────── */
-async function authenticate(req, deps) {
+/* ── Kimlik ──────────────────────────────────────────────────────────────
+   Koçun uçları anonim oturumu reddediyor (`staffOk` yok); ekip üyesinin uçları
+   anonim oturumu da kabul ediyor, kapsamı staff_members eşleşmesinden kuruyor. */
+async function authenticate(req, deps, staffOk) {
   const h = String((req.headers && (req.headers.authorization || req.headers.Authorization)) || '');
   const m = /^Bearer\s+(.+)$/i.exec(h);
   if (!m) return null;
   try {
     const d = await deps.verifyIdToken(m[1].trim());
     if (!d || !d.uid) return null;
-    if (d.firebase && d.firebase.sign_in_provider === 'anonymous') return null;   // ekip üyesi oturumu
+    if (!staffOk && d.firebase && d.firebase.sign_in_provider === 'anonymous') return null;   // ekip üyesi oturumu
     return d.uid;
   } catch (e) { return null; }
 }
@@ -119,16 +127,31 @@ const INVITE_MSG = {
   TOO_SOON: [429, 'Son senkron az önce yapıldı. İki dakika sonra tekrar dene.'],
   TOKEN_UNAVAILABLE: [409, 'Polar erişim bilgisi okunamadı. Bağlantıyı kesip sporcuyu yeniden bağla.'],
   REVOKED: [409, 'Sporcu Polar iznini kaldırmış. Yeniden bağlamak için yeni bir davet linki gönder.'],
+  NOT_STAFF: [403, 'Bu cihaz bir takıma eşleşmemiş ya da ekip linki geçersiz. Kişisel linki yeniden aç.'],
 };
+const STAFF_ROUTES = ['/staff-sleep', '/staff-sync'];
+const JSON_ROUTES = ['/invite', '/disconnect', '/sync', '/team-data'].concat(STAFF_ROUTES);
 
 async function jsonRoute(route, req, res, deps) {
   cors(req, res);
   if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
   if (req.method !== 'POST') return jsonError(res, 405, 'METHOD', 'Yalnızca POST.');
-  const coachUid = await authenticate(req, deps);
+  const isStaff = STAFF_ROUTES.includes(route);
+  const coachUid = await authenticate(req, deps, isStaff);
   if (!coachUid) return jsonError(res, 401, 'UNAUTHENTICATED', 'Oturum doğrulanamadı. Sayfayı yenileyip yeniden dene.');
   const body = (req.body && typeof req.body === 'object') ? req.body : {};
   try {
+    if (route === '/staff-sleep') {
+      // Burada `coachUid` çağıranın kendi kimliği; koçun kimliği eşleşme kaydından geliyor.
+      const r = await staff.loadSleep(deps, { uid: coachUid, from: body.from, to: body.to });
+      return sendJson(res, 200, r);
+    }
+    if (route === '/staff-sync') {
+      const sc = await staff.staffScope(deps.db, coachUid);
+      const athleteId = await staff.checkAthlete(deps.db, sc, body.athleteId);
+      const r = await sync.syncLink(deps, { coachUid: sc.coachUid, athleteId, manual: true });
+      return sendJson(res, 200, { ok: r.ok, lastSyncAt: r.lastSyncAt });
+    }
     if (route === '/invite') {
       const r = await links.createInvite({ db: deps.db, coachUid, teamId: body.teamId, athleteId: body.athleteId, now: deps.now });
       deps.log('info', 'invite_created', { linkId: r.linkId });
@@ -284,7 +307,7 @@ async function handle(req, res, deps) {
   baseHeaders(res);
   const route = routeOf(req);
   try {
-    if (route === '/invite' || route === '/disconnect' || route === '/sync' || route === '/team-data') return await jsonRoute(route, req, res, deps);
+    if (JSON_ROUTES.includes(route)) return await jsonRoute(route, req, res, deps);
     if (route === '/start') return await startRoute(req, res, deps);
     if (route === '/callback') return await callbackRoute(req, res, deps);
     res.status(404).set('Content-Type', 'text/plain; charset=utf-8').send('not found');

@@ -291,6 +291,32 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 .mt.wide .k{flex:1}
 .mt.wide .row{margin-top:0}
 .mt.note{font-size:12px;color:#7d8894;line-height:1.35}
+
+/* Polar Loop uyku satırı — 2×2 ızgaranın hemen altında, aynı dilde üç kutu:
+
+       ☾ Yattı 23:40 │ Kalktı 07:10 │ Uyudu 7 sa 20 dk
+
+   Sporcu Polar'a bağlı değilse satır hiç yok; bağlı ama o gece veri yoksa tek satırlık
+   bir not. Veri sunucudan (polarApi /staff-sleep) gün değişince ve "Polar Verilerini
+   Al"dan sonra geliyor; kartlar yeniden kurulmadan yalnızca bu satır doluyor. */
+.slp{margin-top:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;
+  background:#242a30;border-radius:11px;overflow:hidden}
+.slp[hidden]{display:none}
+.slp .mt{padding:9px 12px}
+.slp .mt .v{font-size:17px}
+@media (max-width:399px){.slp .mt svg{display:none}.slp .mt{padding:9px 10px}.slp .mt .v{font-size:16px}}
+.slp .nd{grid-column:1/-1;padding:9px 12px;background:#181c20;font-size:12.5px;color:#7d8894}
+
+/* Polar şeridi: listenin üstünde tek satır — logo, durum, "Polar Verilerini Al". */
+.pol{margin:12px 0 0;display:flex;align-items:center;gap:12px;padding:9px 10px 9px 14px;
+  background:#131619;border:1px solid #1e2429;border-radius:12px}
+.pol[hidden]{display:none}
+.pol img{flex:none;height:26px;width:auto;display:block}
+.pol .st{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:#8d9aa4}
+.pol .st b{display:block;color:#eef2f5;font-weight:700;font-size:13px}
+.pol .st.bad{color:#ef4444}
+.pol .btn{flex:none;margin-top:0;padding:8px 14px;font-size:13px;white-space:nowrap}
+@media (max-width:419px){.pol{flex-wrap:wrap;row-gap:10px}.pol .btn{flex:1 1 100%}}
 @media (max-width:379px){
   /* Dar ekranda satırdaki tarih kalkıyor: liste zaten tek bir günü gösteriyor ve
      o gün bölüm başlığında yazıyor. Yerini isme bırakıyor — "KERE…" diye kesilen
@@ -438,6 +464,12 @@ var I18N={
     read_fail:'Kayıtlar yüklenemedi: ',
     s_tp:'Top antrenmanı',s_sc:'Kuvvet & Kondisyon',s_game:'Müsabaka',
     min:'dk',total:'Günün yükü',max_rpe:'en yüksek RPE',
+    s_bed:'Yattı',s_wake:'Kalktı',s_slept:'Uyudu',h:'sa',
+    s_none:'Polar Loop: bu gece için uyku verisi yok',
+    pol_btn:'Polar Verilerini Al',pol_busy:'Alınıyor… {n}/{t}',
+    pol_linked:'{n} sporcu bağlı',pol_slept:'{n} uyku verisi',
+    pol_none:'Polar\'a bağlı sporcu yok',pol_last:'son alım {t}',
+    pol_done:'Güncellendi',pol_fail:'Polar verisi alınamadı',
     months:['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
   },
   en:{
@@ -518,6 +550,12 @@ var I18N={
     read_fail:'Records could not be loaded: ',
     s_tp:'Team training',s_sc:'Strength & Conditioning',s_game:'Competition',
     min:'min',total:'Day\'s load',max_rpe:'highest RPE',
+    s_bed:'Bed',s_wake:'Woke',s_slept:'Slept',h:'h',
+    s_none:'Polar Loop: no sleep data for this night',
+    pol_btn:'Get Polar Data',pol_busy:'Fetching… {n}/{t}',
+    pol_linked:'{n} athletes linked',pol_slept:'{n} nights in',
+    pol_none:'No athlete is linked to Polar',pol_last:'last fetch {t}',
+    pol_done:'Updated',pol_fail:'Could not get Polar data',
     months:['January','February','March','April','May','June','July','August','September','October','November','December'],
   }
 };
@@ -553,6 +591,10 @@ function icon(d,size){
   return s;
 }
 var ICON={
+  // Polar uyku satırı: yattı (ay), kalktı (güneş), uyudu (saat).
+  moon:'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+  sun:'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   sleep:'M3 18v-5a2 2 0 0 1 2-2h11a4 4 0 0 1 4 4v3M3 9v9M3 13h18M7.5 8.5h2',
   fatigue:'M4 8h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM21 11v2M5.5 11v2',
   /* Kas ağrısı: kasılmış bir kol (pazı) ve üstünde iki küçük sızı çizgisi — eski
@@ -1294,6 +1336,12 @@ function alertCard(a){
   }
   card.appendChild(el('div',{class:'sub'},boxes));
 
+  // Polar Loop uyku satırı: veri geldiğinde POLAR.paint() dolduruyor.
+  var slp=el('div',{class:'slp',hidden:''});
+  slp.setAttribute('data-ath',String(a.athleteId||''));
+  card.appendChild(slp);
+  paintSleep(slp);
+
   /* Açılan kısım: bildirimin ne olduğu ve kime ulaştığı. Ekip üyesi "bana neden
      gelmedi" diye sorduğunda cevap bu satırda duruyor — kayıt zaten taşıyor,
      ekranda görünmüyordu. */
@@ -1385,6 +1433,160 @@ function sweepPending(){
   }).catch(function(e){console.warn('processCheckins',e);});
 }
 
+/* ── Polar Loop: uyku saatleri ve "Polar Verilerini Al" ──────────────────────
+   Polar koleksiyonları istemciye yalnızca koçun kendi hesabına açık; ekip üyesi
+   veriyi Polar sunucu fonksiyonundan (polarApi) alıyor. Sunucu kapsamı bu oturumun
+   eşleşme kaydından (staff_members) kuruyor ve yalnızca uyku SAATLERİNİ ve süresini
+   döndürüyor (functions/polar/staff.js):
+     /staff-sleep { from, to }  → takımın bağlı sporcuları + o günün gecesi
+     /staff-sync  { athleteId } → o sporcunun verisini Polar'dan şimdi çek
+   Polar'ın uyku kaydının tarihi UYANILAN gün: sabah formuyla aynı gün, yani kartın
+   gününe ait gece doğrudan o tarihli kayıt.
+
+   Sunucuya ulaşılamazsa (fonksiyon henüz yayında değil, eski eşleşme) kartlar
+   eskisi gibi kalır; şerit yalnızca hata satırı gösterir. */
+var POLAR={day:null,map:{},linked:0,active:[],lastSyncAt:0,state:'idle',err:'',busy:null};
+function polarBase(){
+  return 'https://europe-west1-'+((CFG&&CFG.firebase&&CFG.firebase.projectId)||'periodization-planner')
+    +'.cloudfunctions.net/polarApi';
+}
+function polarPost(path,body){
+  if(!USER)return Promise.reject(new Error('no session'));
+  return USER.getIdToken().then(function(tok){
+    return fetch(polarBase()+path,{method:'POST',
+      headers:{'content-type':'application/json',authorization:'Bearer '+tok},
+      body:JSON.stringify(body||{})});
+  }).then(function(r){
+    return r.json().catch(function(){return {};}).then(function(j){
+      if(!r.ok){var e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
+        e.code=(j&&j.error&&j.error.code)||String(r.status);throw e;}
+      return j;
+    });
+  });
+}
+/* Polar zaman damgası "2026-10-31T23:40:00+03:00": duvar saati metnin kendisinde.
+   Date'e çevrilmiyor — telefonun saat dilimi sporcunun uyuduğu yerinkinden farklı olabilir. */
+function polarClock(v){var m=/T(\d{2}):(\d{2})/.exec(String(v||''));return m?m[1]+':'+m[2]:null;}
+function polarDur(n){
+  var sec=numv(n.asleepSec);
+  if(sec==null){
+    var a=Date.parse(n.sleepStart||''),b=Date.parse(n.sleepEnd||'');
+    if(!isNaN(a)&&!isNaN(b)&&b>a)sec=(b-a)/1000;
+  }
+  if(sec==null||sec<=0)return null;
+  var m=Math.round(sec/60);
+  return Math.floor(m/60)+' '+T('h')+' '+(m%60)+' '+T('min');
+}
+function paintSleep(box){
+  var id=box.getAttribute('data-ath');
+  var e=id&&POLAR.map[id];
+  box.innerHTML='';
+  if(!e){box.hidden=true;return;}           // Polar'a bağlı değil (ya da veri henüz gelmedi)
+  box.hidden=false;
+  var n=e.night;
+  if(!n){box.appendChild(el('div',{class:'nd',text:T('s_none')}));return;}
+  var dur=polarDur(n);
+  box.appendChild(metric(ICON.moon,T('s_bed'),polarClock(n.sleepStart)||'—'));
+  box.appendChild(metric(ICON.sun,T('s_wake'),polarClock(n.sleepEnd)||'—'));
+  box.appendChild(metric(ICON.clock,T('s_slept'),dur||'—'));
+}
+function paintAllSleep(){
+  var list=document.querySelectorAll('.slp[data-ath]');
+  for(var i=0;i<list.length;i++)paintSleep(list[i]);
+  if(POLAR.onChange)POLAR.onChange();
+}
+function hhmmOf(ms){var d=new Date(ms);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+function loadSleep(day){
+  POLAR.day=day;
+  return polarPost('/staff-sleep',{from:day,to:day}).then(function(j){
+    if(POLAR.day!==day)return;             // gün değişti; eski cevap yazılmasın
+    var map={},active=[],last=0,linked=0;
+    (j.athletes||[]).forEach(function(a){
+      if(!a||!a.athleteId||a.status!=='active')return;
+      linked++;
+      active.push(a.athleteId);
+      if(Number(a.lastSyncAt)>last)last=Number(a.lastSyncAt);
+      var night=(a.sleep||[]).filter(function(x){return x&&x.date===day;}).pop()||null;
+      map[a.athleteId]={night:night};
+    });
+    POLAR.map=map;POLAR.active=active;POLAR.linked=linked;POLAR.lastSyncAt=last;
+    POLAR.state='ok';POLAR.err='';
+    paintAllSleep();
+  },function(e){
+    if(POLAR.day!==day)return;
+    console.warn('polar staff-sleep',(e&&e.code)||e);
+    POLAR.map={};POLAR.state='err';POLAR.err=(e&&e.message)||'';
+    paintAllSleep();
+  });
+}
+/* "Polar Verilerini Al": takımın Polar'a bağlı her sporcusu için Polar'dan senkron
+   (aynı anda 3), sonra görünen günün uykusu yeniden okunur. Son iki dakikada zaten
+   alınmış sporcu (TOO_SOON) güncel sayılır. */
+function polarFetchAll(onStep){
+  if(POLAR.busy)return POLAR.busy;
+  var ids=POLAR.active.slice(),done=0,fails=0,i=0;
+  function next(){
+    if(i>=ids.length)return Promise.resolve();
+    var id=ids[i++];
+    return polarPost('/staff-sync',{athleteId:id}).catch(function(e){
+      if((e&&e.code)!=='TOO_SOON'&&(e&&e.code)!=='SYNC_IN_PROGRESS'){fails++;console.warn('polar staff-sync',id,(e&&e.code)||e);}
+    }).then(function(){done++;if(onStep)onStep(done,ids.length);return next();});
+  }
+  var lanes=[];for(var k=0;k<Math.min(3,ids.length);k++)lanes.push(next());
+  POLAR.busy=Promise.all(lanes).then(function(){
+    return loadSleep(POLAR.day);
+  }).then(function(){
+    POLAR.busy=null;return {total:ids.length,fails:fails};
+  },function(e){POLAR.busy=null;throw e;});
+  return POLAR.busy;
+}
+function polarBar(){
+  var logo=el('img',{src:'polar-loop-logo.png',alt:'Polar Loop'});
+  var st=el('div',{class:'st'});
+  var btn=el('button',{type:'button',class:'btn fill',text:T('pol_btn')});
+  var box=el('div',{class:'pol',hidden:''},[logo,st,btn]);
+  var note='';
+  function draw(){
+    if(POLAR.busy)return;
+    if(POLAR.state==='idle'){box.hidden=true;return;}
+    box.hidden=false;
+    st.className='st';st.innerHTML='';
+    if(POLAR.state==='err'){
+      st.className='st bad';
+      st.textContent=T('pol_fail')+(POLAR.err?': '+POLAR.err:'');
+      btn.disabled=false;
+      return;
+    }
+    if(!POLAR.linked){st.textContent=T('pol_none');btn.disabled=true;return;}
+    btn.disabled=false;
+    var got=0;Object.keys(POLAR.map).forEach(function(k){if(POLAR.map[k].night)got++;});
+    st.appendChild(el('b',{text:T('pol_linked').replace('{n}',POLAR.linked)}));
+    var bits=[T('pol_slept').replace('{n}',got)];
+    if(note)bits.push(note);
+    else if(POLAR.lastSyncAt)bits.push(T('pol_last').replace('{t}',hhmmOf(POLAR.lastSyncAt)));
+    st.appendChild(document.createTextNode(bits.join(' · ')));
+  }
+  btn.onclick=function(){
+    if(POLAR.busy)return;
+    note='';
+    // Hata durumundan basılırsa önce bağlı sporcular yeniden okunur.
+    var first=POLAR.state==='ok'?Promise.resolve():loadSleep(POLAR.day||todayKey());
+    btn.disabled=true;
+    first.then(function(){
+      if(POLAR.state!=='ok'){draw();return;}
+      if(!POLAR.active.length){draw();return;}
+      btn.textContent=T('pol_busy').replace('{n}',0).replace('{t}',POLAR.active.length);
+      return polarFetchAll(function(n,t){btn.textContent=T('pol_busy').replace('{n}',n).replace('{t}',t);})
+        .then(function(r){
+          note=r.fails?T('pol_fail')+' ('+r.fails+'/'+r.total+')':T('pol_done');
+        },function(e){note=T('pol_fail');console.warn('polar',e);})
+        .then(function(){btn.textContent=T('pol_btn');draw();});
+    });
+  };
+  POLAR.onChange=draw;
+  return box;
+}
+
 var LS_TAB='coachos.alerts.tab';
 function watchFeed(){
   feedBox.innerHTML='';
@@ -1436,6 +1638,7 @@ function watchFeed(){
     F.rows=null;
     F.pane=el('div',{class:'pane',role:'tabpanel'},[
       F.fill.box,
+      F.id==='wellness'?polarBar():null,
       F.head_=el('div',{class:'sec-h'},[el('span',{class:'t',text:F.head}),F.c]),
       F.list
     ]);
@@ -1705,6 +1908,7 @@ function watchFeed(){
       subscribe(F,day);
     });
     subscribeForms(day);
+    loadSleep(day);
   }
   // Gelecek gün yok: seçici bugünden ileri gitmiyor (takvim de max ile sınırlı).
   function go(day){
