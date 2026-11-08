@@ -451,6 +451,32 @@ function TeamHrZoneSummary({Z}){
     <em>{L(`antrenmana katılan sporcuların ortalaması · sporcu-gün başına · ${Z.nAD} sporcu-gün · Polar`,`mean of athletes who trained · per athlete-day · ${Z.nAD} athlete-days · Polar`)}</em></div>);
 }
 
+/* ── Yük Takibi → Sporcu Yük Panosu: sporcunun haftalık HR Zone şeridi ──────────
+   Pzt–Paz her gün bir küçük kutu: içinde o gün kaydedilen bütün Polar antrenmanlarının
+   bölge süreleri (toplam) Z1 altta Z5 üstte yığılmış. Kutunun dolu yüksekliği günün toplam
+   bölge dakikası, panodaki en uzun güne göre; renkler dağılım. Polar kaydı olmayan gün
+   kesik çizgili boş kutu. `pwAthZoneWeek` sporcunun Polar kaydından yedi günün dizisini
+   çıkarır: [Z1…Z5] saniye ya da null. */
+function pwAthZoneWeek(p,days){
+  return days.map(k=>{const zs=((p&&p.exercises)||[]).filter(e=>e&&e.date===k).map(pwZoneSec).filter(Boolean);
+    return zs.length?[0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)):null;});
+}
+function PwZoneWeekStrip({week,days,max}){
+  return(<div className="lb-rpe-row lb-hrz-row">
+    {days.map((dk,i)=>{const z=week&&week[i];const tot=z?z.reduce((a,b)=>a+b,0):0;
+      const dn=`${DN[(parseD(dk).getDay()+6)%7]} · ${fd(dk)}`;
+      if(!tot)return<span key={dk} className="lb-hrz-cell empty" title={`${dn} · ${L('Polar antrenman kaydı yok','No Polar session')}`}/>;
+      const h=Math.max(22,Math.min(100,tot/(max||tot)*100));
+      return<span key={dk} className="lb-hrz-cell" role="img"
+        aria-label={`${dn}: ${z.map((v,j)=>`Z${j+1} ${pwMin(v)} ${L('dk','min')}`).join(', ')}`}
+        title={`${dn} · ${L('toplam','total')} ${pwMin(tot)} ${L('dk','min')}\n`+z.map((v,j)=>`Z${j+1}  ${pwMin(v)} ${L('dk','min')} · ${pwPct(Math.round(v/tot*100))}`).join('\n')}>
+        <span className="lb-hrz-fill" style={{height:`${h}%`}}>
+          {z.map((v,j)=>v>0?<i key={j} style={{flexGrow:v,background:PW_ZONE_COL[j]}}/>:null)}
+        </span>
+      </span>;})}
+  </div>);
+}
+
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
    Wellness'ın üstündeki tarih seçicide hangi gün seçiliyse o günün verisi.
    Gece verisi (uyku, yatış/uyanış saati, HRV, gece nabzı, ANS) uyanılan SABAHIN tarihini

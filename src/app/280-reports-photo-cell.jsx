@@ -162,12 +162,11 @@ function TeamReports({team,weeks,selected,setSelected}){
   const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
   // Acute (7d) / chronic (28d) / ACWR averaged per athlete, like the monotony below.
   const lmLoad=teamLoadStats(team.athletes,dayAvg,lmRef,teamFirst);
-  const lmAcwrZone=lmLoad.acwr===0?{c:'var(--text)'}:lmLoad.acwr>1.5?{c:'#ef4444'}
-    :(lmLoad.acwr>=0.8&&lmLoad.acwr<=1.3)?{c:'#10b981'}:{c:'#f59e0b'};
   // Monotony / SD / strain come from the selected Mon–Sun week via the shared helper, so
   // this card and the calendar's chip report the identical number for the same week.
   const mWk=teamWeekMono(team.days,team.athletes,lmWeek);
-  const lmMonoZone=monoZoneOf(mWk.monotony);   // gauge card shows monotony, not ACWR
+  const lmMonoZone=monoZoneOf(mWk.monotony);   // monotony sits in a small tile under the ACWR
+  const lmAcwrZ=acwrZoneOf(lmLoad.acwr,lmLoad.acwr>0);
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means, over the trend window.
   // The window always ENDS on the selected week's Sunday (not on `lmRef`, which is clamped
@@ -275,19 +274,21 @@ function TeamReports({team,weeks,selected,setSelected}){
     </div>
 
     <div className="lm-grid" style={{marginBottom:16}}>
+      {/* Büyük sayı takımın ortalama ACWR'ı (her sporcunun akut ÷ kronik oranı, sonra ortalama);
+          haftanın monotonisi alttaki küçük kutulardan birinde. */}
       <div className="lm-gauge-card">
         <div className="lac-head">
-          <span className="lac-title">{L('Takım Monotonluğu','Team Monotony')}</span>
-          <span className="lac-zone" style={{color:lmMonoZone.dot}}><span className="lac-zdot" style={{background:lmMonoZone.dot}}/>{exLabel(lmMonoZone.t||'').toUpperCase()}</span>
+          <span className="lac-title">{L('Ort. ACWR','Avg ACWR')}</span>
+          <span className="lac-zone" style={{color:lmAcwrZ.dot}}><span className="lac-zdot" style={{background:lmAcwrZ.dot}}/>{exLabel(lmAcwrZ.t||'').toUpperCase()}</span>
         </div>
-        <div className="lac-sub">{L(`Foster · ${mWk.n||0} sporcu ortalaması`,`Foster · avg across ${mWk.n||0} athlete${(mWk.n||0)===1?'':'s'}`)}</div>
-        <div className="lac-val" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div>
-        <div className="lac-vsub">{L('her sporcunun ortalaması ÷ SS, sonra ortalama','each athlete\'s mean ÷ SD, averaged')}</div>
-        <MonoBar value={mWk.monotony}/>
+        <div className="lac-sub">{L(`Akut:kronik · ${lmLoad.n||0} sporcu ortalaması`,`Acute:chronic · avg across ${lmLoad.n||0} athlete${(lmLoad.n||0)===1?'':'s'}`)}</div>
+        <div className="lac-val" style={{color:lmAcwrZ.c}}>{lmLoad.acwr?lmLoad.acwr.toFixed(2):'—'}</div>
+        <div className="lac-vsub">{L('her sporcunun akut ÷ kronik oranı, sonra ortalama','each athlete\'s acute ÷ chronic, averaged')}</div>
+        <AcwrBar value={lmLoad.acwr}/>
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">{L('Ort. ACWR','Avg ACWR')}</div><div className="v" style={{color:lmAcwrZone.c}}>{lmLoad.acwr?lmLoad.acwr.toFixed(2):'—'}</div></div></div>
+          <div className="m" title={L(`Foster · ${mWk.n||0} sporcu ortalaması · ${exLabel(lmMonoZone.t||'')}`,`Foster · avg across ${mWk.n||0} athletes · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
           <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
@@ -323,7 +324,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
     </div>
 
-    <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
+    <AthleteLoadBoard athletes={team.athletes} refDate={lmRef} teamId={team.id}/>
 
     {(()=>{
       const mv=mWeeks.filter(w=>w.monotony>0);
