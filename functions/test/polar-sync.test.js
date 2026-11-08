@@ -635,3 +635,17 @@ ta('koçun uçları anonim (ekip üyesi) oturumu hâlâ reddeder', async () => {
     assert.strictEqual(r.status, 401, route);
   }
 });
+
+ta('CORS: ekip üyesinin uçları her HTTPS kökenine açık, koçun uçları yalnızca listedekilere', async () => {
+  const env = staffSetup();
+  const pre = async (route, origin) => {
+    const res = fakeRes();
+    await handle({ method: 'OPTIONS', path: route, query: {}, body: {}, headers: { origin } }, res, env.deps);
+    return res.headers['access-control-allow-origin'] || null;
+  };
+  assert.strictEqual(await pre('/staff-sleep', 'https://emincanozer05.github.io'), 'https://emincanozer05.github.io');
+  assert.strictEqual(await pre('/staff-sync', 'https://coachos-git-x.vercel.app'), 'https://coachos-git-x.vercel.app');
+  assert.strictEqual(await pre('/staff-sleep', 'http://evil.example'), null);
+  assert.strictEqual(await pre('/team-data', 'https://emincanozer05.github.io'), null);
+  assert.strictEqual(await pre('/team-data', 'https://periodization-planner.web.app'), 'https://periodization-planner.web.app');
+});

@@ -212,6 +212,7 @@ header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
 .card.compact .btn{flex:none;margin-top:0;padding:7px 14px;font-size:13px}
 .card.compact .btn.on{border-color:rgba(47,224,168,.45);opacity:1}
 .card.compact + .msgbox .msg{margin:-6px 0 14px}
+.card[hidden]{display:none}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
   margin-top:16px;padding:12px 22px;border-radius:999px;border:1.5px solid #2fe0a8;
@@ -470,6 +471,7 @@ var I18N={
     pol_linked:'{n} sporcu bağlı',pol_slept:'{n} uyku verisi',
     pol_none:'Polar\'a bağlı sporcu yok',pol_last:'son alım {t}',
     pol_done:'Güncellendi',pol_fail:'Polar verisi alınamadı',
+    pol_net:'Polar sunucusuna ulaşılamadı, biraz sonra tekrar dene',
     months:['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
   },
   en:{
@@ -556,6 +558,7 @@ var I18N={
     pol_linked:'{n} athletes linked',pol_slept:'{n} nights in',
     pol_none:'No athlete is linked to Polar',pol_last:'last fetch {t}',
     pol_done:'Updated',pol_fail:'Could not get Polar data',
+    pol_net:'Could not reach the Polar server, try again shortly',
     months:['January','February','March','April','May','June','July','August','September','October','November','December'],
   }
 };
@@ -1129,12 +1132,14 @@ function drawSetup(){
   var btn=el('button',{class:'btn',text:T('push_btn'),onclick:function(){enable(btn,msg,setOn);}});
   card.appendChild(btn);
   setupBox.appendChild(msg);
-  /* Açık hâli daha da kısa: açıklama kalkıyor, başlık kısalıyor. Düğme kalkmıyor,
-     "Açık ✓" olarak duruyor — ekip üyesi bakınca durumu tek bakışta görsün. */
+  /* Bildirimler açıksa kart HİÇ görünmüyor: iş bir kez yapılıp bitiyor ve ekranın
+     en üstündeki yer sporcuların. Kart yalnızca bildirim henüz kapalıyken (ilk kurulum)
+     ya da cihaz kaydı tazelenemediğinde çıkıyor. */
   function setOn(on){
     btn.classList.toggle('on',on);
     h2.textContent=on?T('push_h_on'):T('push_h');
     p.hidden=on;
+    card.hidden=on;
   }
 
   // Zaten açıksa token'ı sessizce tazele — cihaz token'ları dönebiliyor.
@@ -1455,7 +1460,10 @@ function polarPost(path,body){
   return USER.getIdToken().then(function(tok){
     return fetch(polarBase()+path,{method:'POST',
       headers:{'content-type':'application/json',authorization:'Bearer '+tok},
-      body:JSON.stringify(body||{})});
+      body:JSON.stringify(body||{})}).catch(function(){
+        // Tarayıcının çıplak "Failed to fetch"i: ağ yok, sunucu henüz yayında değil ya da adres izinli değil.
+        var e=new Error(T('pol_net'));e.code='NETWORK';throw e;
+      });
   }).then(function(r){
     return r.json().catch(function(){return {};}).then(function(j){
       if(!r.ok){var e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status));
@@ -1929,6 +1937,7 @@ function watchFeed(){
   var lastToday=todayKey();
   function recheck(){
     if(!rosterUnsub)watchRoster();     // arkadan öne gelen sayfa: şeridi beklemeden yeniden dene
+    if(POLAR.state==='err'&&!POLAR.busy&&shownDay)loadSleep(shownDay);   // Polar'a ulaşılamamıştı: yeniden dene
     sweepPending();
     var d=todayKey();
     if(d===lastToday)return;
