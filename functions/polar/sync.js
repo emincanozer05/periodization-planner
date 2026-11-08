@@ -37,7 +37,12 @@ const DATA_COL = {
 };
 const HR_RANGE_DAYS = 28;   // sürekli nabız: tek istekte en çok 28 gün (Polar'ın sınırı)
 const HR_FALLBACK_DAYS = 7; // aralık ucu yoksa gün gün en çok bu kadar gün
-const LOCK_MS = 90 * 1000;              // aynı sporcu için eşzamanlı ikinci senkron yok
+const LOCK_MS = 150 * 1000;             // aynı sporcu için eşzamanlı ikinci senkron yok (function sınırından uzun)
+/* Bir senkronun süre bütçesi. polarApi'nin sınırı 120 sn (index.js); bütçe onun epey
+   altında kalıyor ki adımlar, hesap bilgisi ve kilidin bırakılması sınıra çarpmadan bitsin.
+   Bütçe dolunca kalan adımlar yapılmıyor ("deferred"): veri bir sonraki senkronda gelir,
+   koç ise "Ağ hatası" yerine güncellenmiş veriyi görür. */
+const SYNC_BUDGET_MS = 80 * 1000;
 const MANUAL_MIN_GAP_MS = 2 * 60 * 1000; // düğmeye art arda basılırsa Polar'ı yormayalım
 const BATCH = 400;
 const SUMMARY_PAR = 3;                   // aktivite özetleri: aynı anda en çok bu kadar istek
@@ -272,7 +277,7 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
 
   const ctx = {
     db, now: now(), log, linkId, coachUid, athleteId, teamId: l.teamId || null, polarUserId: pid,
-    client: makeClient({ fetch: deps.fetch, accessToken, sleep: deps.sleep, log }),
+    client: makeClient({ fetch: deps.fetch, accessToken, sleep: deps.sleep, log, deadline: now() + SYNC_BUDGET_MS, clock: now }),
   };
   const steps = [
     ['sleep', () => syncList(ctx, 'sleep', '/users/sleep', ['nights'], N.sleep, n => n.date)],
@@ -284,11 +289,18 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
     ['hr', () => syncContinuousHr(ctx)],
   ];
   try {
+    let outOfTime = false;
     for (const [kind, run] of steps) {
+      if (outOfTime) { report[kind] = { status: 'deferred', code: 'TIME_BUDGET', count: 0, written: 0 }; continue; }
       try {
         report[kind] = await run();
       } catch (e) {
         if (e instanceof PolarError && e.code === 'UNAUTHORIZED') throw e;            // tüm senkronu durdur
+        if (e instanceof PolarError && e.code === 'TIME_BUDGET') {
+          outOfTime = true; report[kind] = { status: 'deferred', code: 'TIME_BUDGET', count: 0, written: 0 };
+          log('warn', 'sync_time_budget', { linkId, kind });
+          continue;
+        }
         if (e instanceof PolarError && e.code === 'RATE_LIMITED') { report[kind] = { status: 'error', code: 'RATE_LIMITED', count: 0, written: 0 }; break; }
         report[kind] = { status: 'error', code: (e && e.code) || 'ERROR', count: 0, written: 0 };
         log('warn', 'sync_step_failed', { linkId, kind, code: e && e.code, error: String((e && e.message) || e).slice(0, 160) });
@@ -307,7 +319,7 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
   // Bağlı Polar hesabının sahibi (ad, Polar'a kayıt tarihi): koç doğru hesabın
   // bağlandığını görebilsin. Yalnızca bilgi — alınamazsa senkron etkilenmez.
   let account = null;
-  if (!Object.values(report).some(r => r && r.code === 'RATE_LIMITED')) {
+  if (!Object.values(report).some(r => r && (r.code === 'RATE_LIMITED' || r.code === 'TIME_BUDGET'))) {
     try { account = await fetchAccount(ctx); } catch (e) { account = null; }
   }
 
@@ -324,4 +336,4 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
   return { ok, report, lastSyncAt: ok ? t : (l.lastSyncAt || null) };
 }
 
-module.exports = { syncLink, DATA_COL, MANUAL_MIN_GAP_MS, LOCK_MS };
+module.exports = { syncLink, DATA_COL, MANUAL_MIN_GAP_MS, LOCK_MS, SYNC_BUDGET_MS };

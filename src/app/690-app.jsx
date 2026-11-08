@@ -364,8 +364,8 @@ function App(){
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam} weeks={weeks}/>}
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
-      {view==='reports'&&<><TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>
-        <InjurySurveillance key={team.id} athletes={team.athletes||[]} setup={team.setup}/></>}
+      {/* Sakatlık Sürveyansı Yük Takibi'nden kalktı; sporcunun kendi sayfasında duruyor. */}
+      {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam} focus={wvFocus}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {/* No `team` prop and no `key` off the team: the pool is the same list whichever
