@@ -195,6 +195,26 @@ Firestore indeksi gerekmez ve aralığın başı doğrulanmış koç kimliğinde
 verisine ulaşılamaz. Bu yüzden antrenman dokümanlarının adı tarihle başlar
 (`polar_exercises/{link}__{tarih}__{id}`). Açık aralık en çok 92 gün.
 
+## Ekip üyesinin telefon sayfası (alerts.html) → uyku saatleri
+
+Wellness kartlarının altında, Polar'a bağlı sporcular için **Yattı · Kalktı · Uyudu** satırı ve
+listenin üstünde **Polar Verilerini Al** düğmesi. Ekip üyesi anonim oturumla açtığı için Polar
+koleksiyonlarını doğrudan okuyamaz; veri `polarApi`'den gelir (`functions/polar/staff.js`):
+
+| Uç | Gövde | Ne yapar |
+|---|---|---|
+| `POST /staff-sleep` | `{ from, to }` | Takımın bağlı sporcuları + o günlerin gecesi: yalnızca `sleepStart`, `sleepEnd`, `asleepSec` |
+| `POST /staff-sync` | `{ athleteId }` | O sporcunun manuel senkronu (iki dakika kuralı ve kilit aynı) |
+
+Kapsam istekten değil `staff_members/{uid}` eşleşmesinden kurulur ve dayandığı `staff_links/{token}`
+hâlâ aynı koçu ve takımı gösteriyor mu diye her istekte yeniden bakılır; link silinince erişim biter
+(403 `NOT_STAFF`). Başka takımın sporcusu için `/staff-sync` 404 döner. HRV, ANS, antrenman ve
+Polar hesap bilgisi ekip üyesine gitmez. Uyku kaydının tarihi uyanılan gün olduğu için kartın
+gününe ait gece doğrudan o tarihli kayıttır; saatler Polar'ın yerel saatinden okunur.
+
+Sabah formundaki "Dinlenik KAH" sorusu kaldırıldı: istirahat nabzı artık Polar'dan (günün en düşük
+nabzı). Eski kayıtlardaki `RHR` okunmaya devam eder.
+
 ## Testler
 
 Gerçek Firestore emulator'ünde (Java gerekir; önce `cd functions && npm ci`), depo kökünden:
