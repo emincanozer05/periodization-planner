@@ -573,7 +573,7 @@ async function staffReq(env, route, body, tok = 'tok-staff') {
   return { status: res.statusCode, json: JSON.parse(res.body) };
 }
 
-ta('eşleşmiş ekip üyesi: yalnızca yattı / kalktı / süre gelir, HRV / hesap / ham veri gelmez', async () => {
+ta('eşleşmiş ekip üyesi: yalnızca yattı / kalktı / süre / uyku skoru gelir, HRV / hesap / ham veri gelmez', async () => {
   const env = staffSetup();
   await syncReq(env);
   const r = await staffReq(env, '/staff-sleep', { from: '2026-11-01', to: '2026-11-01' });
@@ -582,9 +582,9 @@ ta('eşleşmiş ekip üyesi: yalnızca yattı / kalktı / süre gelir, HRV / hes
   const a = r.json.athletes[0];
   assert.strictEqual(a.athleteId, 'ath1');
   assert.strictEqual(a.status, 'active');
-  assert.deepStrictEqual(a.sleep, [{ date: '2026-11-01', sleepStart: '2026-10-31T23:40:00+03:00', sleepEnd: '2026-11-01T07:10:00+03:00', asleepSec: 26000 }]);
+  assert.deepStrictEqual(a.sleep, [{ date: '2026-11-01', sleepStart: '2026-10-31T23:40:00+03:00', sleepEnd: '2026-11-01T07:10:00+03:00', asleepSec: 26000, sleepScore: 81 }]);
   const txt = JSON.stringify(r.json);
-  for (const k of ['recharge', 'hrvMs', 'sleepScore', 'polarAccount', 'Papur', 'hypnogram', 'exercises']) assert.ok(!txt.includes(k), k + ' ekip üyesine gitmemeli');
+  for (const k of ['recharge', 'hrvMs', 'sleepCharge', 'continuity', 'deepSec', 'polarAccount', 'Papur', 'hypnogram', 'exercises']) assert.ok(!txt.includes(k), k + ' ekip üyesine gitmemeli');
 });
 
 ta('ekip linki silinmiş ya da başka takımı gösteriyorsa: 403, veri yok', async () => {

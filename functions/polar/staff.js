@@ -15,8 +15,8 @@
    (`staff_links/{token}`) hâlâ duruyor ve aynı takımı gösteriyor mu diye yeniden
    bakılıyor — koç linki silince ekip üyesinin erişimi de bitiyor.
 
-   Ekip üyesine yalnızca uyku SAATLERİ ve süresi gidiyor (yattı, kalktı, uyudu);
-   HRV, ANS, antrenman ve hesap bilgisi gitmiyor.
+   Ekip üyesine yalnızca uyku SAATLERİ, süresi ve Polar uyku skoru gidiyor (yattı,
+   kalktı, uyudu, skor); HRV, ANS, antrenman ve hesap bilgisi gitmiyor.
    ═══════════════════════════════════════════════════════════════════════════ */
 const { LinkError, linkIdOf, cleanAthleteId } = require('./links');
 const { COL } = require('./config');
@@ -46,6 +46,7 @@ const night = s => ({
   sleepStart: s.sleepStart || null,
   sleepEnd: s.sleepEnd || null,
   asleepSec: s.asleepSec == null ? null : s.asleepSec,
+  sleepScore: s.sleepScore == null ? null : s.sleepScore,
 });
 
 async function loadSleep(deps, { uid, from, to }) {
