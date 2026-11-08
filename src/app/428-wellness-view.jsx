@@ -296,7 +296,7 @@ function WvAthCard({a,d,i,onOpen,rhr}){
         <div className="wv-photo">{hasMedia(a.photo)?<img src={mediaSrc(a.photo)} alt="" loading="lazy"/>:<span>{wvInitials(a.name)}</span>}</div>
       </WvRing>
       {d&&(d.pain||d.note)&&<span className="wv-card-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}
-        title={d.pain?d.pain.list.map(p=>p.region+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}>!</span>}
+        title={d.pain?d.pain.list.map(p=>painRegionShort(p.region)+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}>!</span>}
       <div className="wv-card-nm">{a.name}</div>
       {a.position&&<div className="wv-card-pos">{posOf(a.position)}</div>}
     </div>
@@ -394,7 +394,7 @@ function WvRecords({ath,updAth,P,val,nh,addDate,onAdded}){
           {MS.map(m=>cell(m,m.id==='nightHR'?val(k,'nightHR'):(d?d[m.id]:null)))}
           <td className="wv-rec-v"><b style={{color:d&&d.RHR!=null?'var(--text2)':'var(--dim)'}}>{d&&d.RHR!=null?Math.round(d.RHR):'—'}</b></td>
           <td>{d&&(d.pain||d.note)&&<i className="wv-rec-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}
-            title={d.pain?d.pain.list.map(p=>p.region+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}/>}</td>
+            title={d.pain?d.pain.list.map(p=>painRegionShort(p.region)+' · '+PAIN_SEV_LABEL()[p.sev]).join('\n'):d.note}/>}</td>
         </tr>;})}</tbody>
     </table>
       {rows.length>10&&<button className="wv-rec-more" onClick={()=>setAll(x=>!x)}>{all?L('Daralt','Collapse'):L(`Tümünü göster (${rows.length})`,`Show all (${rows.length})`)}</button>}
@@ -488,8 +488,8 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
                 <b style={{color:m.five?(score5Color(x)||'var(--text)'):'var(--text)'}}>{wvFmt(x,m.five)}</b></span>)}</span>}
               {d&&(d.pain||d.note)&&<span className="wv-cal-pain" style={{background:d.pain?PAIN_SEV_COL[d.pain.max]:'#f43f5e'}}/>}
               {wkCal&&d&&(d.pain||d.note)&&<span className="wv-cal-pains">
-                {d.pain&&d.pain.list.map(p=><span key={p.region} title={`${p.region} · ${PAIN_SEV_LABEL()[p.sev]}`}>
-                  <i style={{background:PAIN_SEV_COL[p.sev]}}/><em>{p.region}</em></span>)}
+                {d.pain&&d.pain.list.map(p=><span key={p.region} title={`${painRegionShort(p.region)} · ${PAIN_SEV_LABEL()[p.sev]}`}>
+                  <i style={{background:PAIN_SEV_COL[p.sev]}}/><em>{painRegionShort(p.region)}</em></span>)}
                 {d.note&&<q title={d.note}>{d.note}</q>}
               </span>}
             </button>;})}
@@ -505,7 +505,8 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
         <div className="wv-ph"><h2>{DN[(parseD(dayKey).getDay()+6)%7]} · {fd(dayKey)}</h2>
           <span>{L('Polar antrenmanları','Polar sessions')}</span></div>
         {NH.off?<div className="empty-st">{polarMsg}</div>
-          :<WvHrZones ex={NH.ex} dayKey={dayKey} msg={(!NH.ex||!NH.ex.length)?polarMsg:null} bare/>}
+          :<WvHrZones ex={NH.ex} dayKey={dayKey} msg={(!NH.ex||!NH.ex.length)?polarMsg:null} bare
+            onDay={k=>{setDayKey(k);if(!inCal(k))setCalAt(k);}}/>}
       </div>
     </div>
     <div className="panel wv-month">

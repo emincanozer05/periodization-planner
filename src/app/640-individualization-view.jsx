@@ -12,9 +12,32 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const saveAthDays=(athId,days)=>updateTeam(team.id,{athletes:athletes.map(a=>a.id===athId?{...a,days}:a)});
 
   const daySessions=((team.days||{})[date]||{}).sessions||[];
+  /* THE ATHLETE'S OWN SESSIONS ARE SOURCES TOO. A programme put straight onto one athlete's
+     calendar (Kadro → sporcu → Takvim) belongs to that athlete alone, so it is offered here
+     for that athlete only: it is written back over the very session it came from (same id,
+     same day), never as a second row. What the sheet builds on is the session as the coach
+     wrote it — `indiv.base`, kept on the written copy — so writing it again does not feed
+     the sheet its own output. Only S&C sessions: a match or a team practice carries fields
+     (kind, the score, the court) the sheet's session would drop. A team mirror (`sourceId`)
+     is the team session's, and one the sheet wrote from another source is that source's. */
+  const athSources=useMemo(()=>{
+    const out=[];
+    athletes.forEach(a=>{
+      ((((a.days||{})[date])||{}).sessions||[]).forEach(s=>{
+        if(!s||!s.id||s.sourceId||sesKind(s))return;
+        const key=indivAthSrcKey(date,a.id,s.id);
+        if(s.indiv&&s.indiv.srcKey!==key)return;
+        const base=indivAthBase(s);
+        out.push({key,group:'ath',ath:a.id,sesId:s.id,base,session:base,
+          label:`${a.name||'—'} · ${s.name||base.name||L('Antrenman','Session')}${s.time?' · '+s.time:''}`});
+      });
+    });
+    return out;
+  },[athletes,date]);
   const sources=useMemo(()=>[
     ...daySessions.map(s=>({key:`team:${date}:${s.id}`,group:'Team plan',label:`${s.name||'Session'} · ${s.time||''}`,session:s,team:s})),
-  ],[daySessions,date]);
+    ...athSources,
+  ],[daySessions,date,athSources]);
   /* THE SOURCE THE SHEET OPENS ON IS THE DAY'S OWN PLAN — NEVER A TEMPLATE.
      The pick used to fall through to `sources[0]`, and on a date with no team session
      that first source is whatever template happens to sit at the top of the library. The
@@ -26,7 +49,10 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      button is dead, and a template reaches a calendar only once the coach has picked it
      here by name. */
   const teamSrc=sources.find(s=>s.group==='Team plan')||null;
-  const src=sources.find(s=>s.key===srcKey)||teamSrc;
+  /* With no team session the day's first athlete-calendar session is opened: it belongs to
+     this day and to that athlete, and the sheet never writes it on sight (see
+     `autoFirstWrite`), so opening it is only reading it. */
+  const src=sources.find(s=>s.key===srcKey)||teamSrc||sources.find(s=>s.group==='ath')||null;
   const activeKey=src?src.key:'';
   const ovrAll=(store.ovr||{})[activeKey]||{};
 
@@ -38,7 +64,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      belongs to no day), carry no assignment to honour: there the whole roster stands, as
      it always has. `null` means exactly that — no assignment. */
   const srcRoster=useMemo(()=>{
-    const ids=(src&&src.team&&src.team.athletes)||[];
+    const ids=(src&&src.ath)?[src.ath]:((src&&src.team&&src.team.athletes)||[]);
     // Ticked names that have since left the squad drop out, but the assignment itself
     // stands: a session given to five players who are all gone reaches nobody, it does
     // not fall back to the whole roster.
@@ -275,6 +301,15 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         // across a rewrite the same way it rides across a team re-sync.
         if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';ses.notes=sessions[i].notes||'';sessions[i]=ses;}
         else sessions.push(ses);
+      } else if(src.ath){
+        /* The athlete's own session is written over in place: same id, so the calendar,
+           the source key and the athlete's feedback all stay where they were. The session
+           as the coach wrote it rides along as `indiv.base` — what the sheet builds on and
+           what "undo" puts back. */
+        ses.indiv.base=src.base;
+        const i=sessions.findIndex(s=>s.id===src.sesId);
+        if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';ses.notes=sessions[i].notes||'';sessions[i]=ses;}
+        else{ses.id=src.sesId;sessions.push(ses);}
       } else {
         const i=sessions.findIndex(s=>s.indiv&&s.indiv.srcKey===activeKey&&s.indiv.date===date);
         if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';ses.notes=sessions[i].notes||'';sessions[i]=ses;}
@@ -307,18 +342,25 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const removeFrom=()=>{
     const ids=new Set(removable.map(a=>a.id));
     if(!ids.size)return;
-    if(!confirm(L(`${ids.size} sporcunun ${fd(date)} takviminden bu program silinsin mi?\n\n(Yalnızca bu sayfanın yazdığı antrenman kaldırılır; elle eklediklerin yerinde kalır.)`,
+    if(!confirm(src.ath
+      ?L('Bireysel program geri alınsın mı? Sporcunun takvimindeki seans, takvimde yazıldığı hâline döner.',
+        'Undo the individual programme? The session on the athlete\'s calendar goes back to how it was written there.')
+      :L(`${ids.size} sporcunun ${fd(date)} takviminden bu program silinsin mi?\n\n(Yalnızca bu sayfanın yazdığı antrenman kaldırılır; elle eklediklerin yerinde kalır.)`,
       `Remove this program from ${ids.size} athlete${ids.size>1?'s':''}' ${fd(date)} calendar?\n\n(Only the session this page wrote is removed; anything added by hand stays.)`)))return;
     const next=athletes.map(a=>{
       if(!ids.has(a.id))return a;
       const day=(a.days||{})[date];
       if(!day)return a;
       const days={...(a.days||{})};
-      days[date]={...day,sessions:(day.sessions||[]).filter(s=>!(s.indiv&&s.indiv.srcKey===activeKey))};
+      /* The athlete's own session is not deleted — it goes back to how the coach wrote it. */
+      days[date]={...day,sessions:src.ath
+        ?(day.sessions||[]).map(s=>s.indiv&&s.indiv.srcKey===activeKey?indivAthBase(s):s)
+        :(day.sessions||[]).filter(s=>!(s.indiv&&s.indiv.srcKey===activeKey))};
       return{...a,days};
     });
     updateTeam(team.id,{athletes:next});
-    setToast(L(`${ids.size} sporcunun takviminden kaldırıldı ✓`,
+    setToast(src.ath?L('Seans takvimde yazıldığı hâline döndü ✓','The session is back to how it was written ✓')
+      :L(`${ids.size} sporcunun takviminden kaldırıldı ✓`,
       `Removed from ${ids.size} athlete${ids.size>1?'s':''}' calendars ✓`));
     setTimeout(()=>setToast(''),3500);
   };
@@ -389,8 +431,10 @@ function IndividualizationView({data,team,updateTeam,weeks}){
           {/* With a team session on the date the box holds it and needs no placeholder.
               Without one it stays empty and says so, rather than showing the name of a
               template the coach never chose. */}
-          {!teamSrc&&<option value="">{L('— bu tarihte takım seansı yok','— no team session on this date')}</option>}
-          {sources.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
+          {!src&&<option value="">{L('— bu tarihte takım seansı yok','— no team session on this date')}</option>}
+          {[['Team plan',L('Takım planı','Team plan')],['ath',L('Sporcu takvimi','Athlete calendar')]].map(([g,lbl])=>{
+            const ss=sources.filter(s=>s.group===g);
+            return ss.length?<optgroup key={g} label={lbl}>{ss.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</optgroup>:null;})}
         </select>
       </div>
       <div className="iv-f"><label>{L('Sporcular','Athletes')}</label>
@@ -401,7 +445,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
             carry a dead button on a day nothing was written. */}
         {removable.length>0&&<button className="btn sec sm" onClick={removeFrom}
           title={L('Bu programı seçili sporcuların takviminden kaldırır.','Removes this program from the selected athletes\' calendars.')}>
-          ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
+          {src&&src.ath?<>↺ {L('Bireyselleştirmeyi geri al','Undo individualization')}</>:<>✕ {L('Takvimden kaldır','Remove from calendars')}</>}</button>}
         {/* Everyone selected above, as one printout: each athlete's programme from their own
             calendar, one document. Counts only the athletes who have one written. */}
         <button className="btn sec sm" onClick={()=>printSquad(false)} disabled={!printable.length}
@@ -414,11 +458,13 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
+        {src&&src.ath?L('Bu seans sporcunun kendi takviminden: bireysel program yalnızca ona, aynı seansın yerine yazılır (ikinci bir satır oluşmaz). Kartı açıp Hareket Paterni tablosunda programla ve onayla; "Bireyselleştirmeyi geri al" seansı takvimde yazıldığı hâline döndürür. ',
+          'This session is from the athlete\'s own calendar: the individual programme is written for them only, over that same session (no duplicate row). Open the card, program it in the Movement Pattern table and approve; "Undo individualization" puts the session back as it was written. '):''}
         {src&&src.team?L('Bu bir takım seansı: bireysel program sporcunun o seanstaki kopyasının yerini alır (ikinci bir satır oluşmaz) ve takım seansını sonradan düzenlemek artık onun üzerine yazmaz. ',
           'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. '):''}
-        {srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
+        {!(src&&src.ath)&&srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
                      `This session is assigned to ${srcRoster.length} athlete${srcRoster.length>1?'s':''} — the program is written to their calendars only. To reach anyone else, tick them on the session itself first. `):''}
-        {L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Seansta kimse işaretli değilse takvime kendiliğinden hiçbir şey yazılmaz — sporcunun kartından Hareket Paterni tablosunu doldurup programı oluştur ve onayla. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
+        {!(src&&src.ath)&&L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Seansta kimse işaretli değilse takvime kendiliğinden hiçbir şey yazılmaz — sporcunun kartından Hareket Paterni tablosunu doldurup programı oluştur ve onayla. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
           <>This program is written by itself onto the calendars of the athletes <strong>ticked on that day's team session</strong>, and reaches nobody else. With a session nobody is ticked on, nothing is written on its own — fill in the Movement Pattern table on the athlete's card, build the programme and approve it. Open an athlete's card, pick the session on their calendar and edit it in place with <em>✎ Edit</em>; a day you edit by hand is never overwritten from this page again.</>)}
       </div>
     </div>
@@ -433,7 +479,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       </button>)}
     </div>}
     {!src&&<div className="ex-empty">{sources.length===0
-      ?L('Bu tarihte takım seansı yok — takvime bir antrenman planla.','There is no team session on this date — plan a session on the calendar.')
+      ?L('Bu tarihte takım seansı ya da sporcu takviminde S&C seansı yok — takvime bir antrenman planla.','There is no team session and no S&C session on an athlete\'s calendar on this date — plan a session on the calendar.')
       :L('Bu tarihte takım seansı yok — bu gün kimsenin takvimine bir şey yazılmaz.','There is no team session on this date — nothing is written to anyone for this day.')}</div>}
     {src&&plans.map(p=>{const b=bundles[p.ath.id];return(<IndivAthleteCard key={p.ath.id} plan={p}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}

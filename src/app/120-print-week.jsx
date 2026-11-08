@@ -34,6 +34,17 @@ function printDayA4(title,subtitle,sessions,opts){
    its sessions under it with the time, the title and how long, and the week's totals at
    the foot. A rest day says so rather than going missing — "no line for Wednesday" and
    "nothing on Wednesday" have to be different things to read. */
+/* A match is sent with who it is against: "20:00 Müsabaka" alone leaves the staff asking
+   which game. The opponent comes from the match window (`s.match.opponent`); the name is
+   kept as written, so a card the coach already titled "Müsabaka – Anadolu Efes" is not
+   given the opponent twice. */
+const shareSesName=s=>{
+  const name=String((s&&s.name)||'').trim()||L('Antrenman','Session');
+  if(sesKind(s)!=='match')return name;
+  const opp=String(((s&&s.match)||{}).opponent||'').trim();
+  if(!opp||name.toLocaleLowerCase('tr').includes(opp.toLocaleLowerCase('tr')))return name;
+  return `${name} – ${opp}`;
+};
 function weekShareText(title,weekStart,days,athletes){
   const dates=Array.from({length:7},(_,i)=>fmt(addD(parseD(weekStart),i)));
   const teamDaily=teamDailyLoadMap(days,athletes);
@@ -53,7 +64,7 @@ function weekShareText(title,weekStart,days,athletes){
       const blocks=[...new Set((x.blocks||[]).map(b=>blkSesName(x,b)).filter(Boolean))]
         .filter(n=>n!==(x.name||''));
       const dur=Number(x.duration)||0;
-      out.push(`  • ${x.time||''} ${x.name||L('Antrenman','Session')}${dur?` (${dur}${L('dk','min')})`:''}`
+      out.push(`  • ${x.time||''} ${shareSesName(x)}${dur?` (${dur}${L('dk','min')})`:''}`
         +(blocks.length?` — ${blocks.join(', ')}`:''));
     });
   });
@@ -208,7 +219,7 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
         /* Only what, when and how long — no RPE (target or logged sRPE) and no goal line. */
         ss.map(s=>{const c=colorOf(s);
           return`<div class="sess" style="border-color:${c}">
-          <div class="sess-h"><span class="sess-name">${s.name}</span></div>
+          <div class="sess-h"><span class="sess-name">${escHTML(shareSesName(s))}</span></div>
           <div class="sess-meta"><span class="sess-time">${s.time}</span><span class="sess-sep"></span><span class="sess-dur">${Number(s.duration)||0} ${L('dk','min')}</span></div>
         </div>`;}).join('')}
       ${ss.length>0?`<div class="day-total"><u>${L('Toplam Yük','Total Load')}</u><b>${Math.round(dayLoad)} AU</b></div>`:''}

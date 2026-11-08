@@ -272,7 +272,7 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const painChips=[
     ...(plan.painNote&&plan.painNote.quoted?[{key:'note',note:true,text:`“${plan.painNote.text}”`,
       title:L(`Ağrı bildirimi · ${fd(plan.painNote.date)}`,`Pain report · ${fd(plan.painNote.date)}`)}]:[]),
-    ...(plan.painNote?(plan.painNote.regions||[]).map(g=>({key:'g'+g.region,text:g.region,style:painChipStyle(g.sev),
+    ...(plan.painNote?(plan.painNote.regions||[]).map(g=>({key:'g'+g.region,text:painRegionShort(g.region),style:painChipStyle(g.sev),
       title:L(`Ağrı bildirimi · ${fd(g.date||plan.painNote.date)}${sevTxt(g.sev)}`,`Pain report · ${fd(g.date||plan.painNote.date)}${sevTxt(g.sev)}`)})):[]),
     ...(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>({key:'p'+p.tag,text:ctLabel(p.tag),style:painChipStyle(p.sev),
       title:L(`Günlük check-in · ${fd(p.date)}${sevTxt(p.sev)}`,`Daily check-in · ${fd(p.date)}${sevTxt(p.sev)}`)})),

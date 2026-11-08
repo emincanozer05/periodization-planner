@@ -388,7 +388,7 @@ function RpeGauge({value,onChange,hideZone}){
   </div>);
 }
 
-function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId,dateKey}){
+function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId,dateKey,bank}){
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
@@ -429,7 +429,9 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     if(sig===a.sig)return;
     a.sig=sig;
     clearTimeout(a.timer);
-    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);};
+    /* The ready-made phases written here go into the athlete's phase bank too — the list
+       the Individualization table and this editor's phase bar both offer (phbFromSession). */
+    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);phbFromSession(saveAth,sesDate,session);};
     a.timer=setTimeout(()=>a.run&&a.run(),2000);
   },[session.blocks]);
   useEffect(()=>()=>{const a=autoRef.current;clearTimeout(a.timer);if(a.run)a.run();},[]);
@@ -507,7 +509,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
         athUpd={ids=>setBlkAthletes(b.id,ids)} setColor={c=>setBlkColor(b.id,c)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
-        ses={sesCtl} sesMoves={bi===0?moveBtns:null}/>)}
+        ses={sesCtl} sesMoves={bi===0?moveBtns:null}
+        bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
           title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>

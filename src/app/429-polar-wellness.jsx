@@ -328,7 +328,39 @@ function PwZoneRow({title,sub,sec,delay}){
    bölge sürelerinin seans başına ortalaması; haftada birden çok spor varsa her spor ayrı
    (kuvvet antrenmanının, basketbolun ortalaması). Altında o gün kaydedilen her antrenman
    kendi bölgeleriyle ayrı ayrı. */
-function WvHrZones({ex,dayKey,msg,bare}){
+/* Haftanın bölge grafiği: Pzt–Paz her gün bir yığılmış çubuk, çubuğun dilimleri o gün
+   kaydedilen bütün Polar antrenmanlarının bölgede geçen DAKİKA toplamı (Z1 altta, Z5
+   üstte). Ortalama değil toplam: iki seanslı gün iki seansın süresini taşır, haftanın
+   yükü gün gün görünür. Seçili gün koyu, öteki günler hafif soluk; bir güne tıklamak
+   (onDay verilmişse) o günü seçer. */
+function WvHrZoneWeek({wk,days,dayKey,onDay}){
+  const per=days.map(k=>{const zs=wk.filter(x=>x.e.date===k).map(x=>x.z);
+    return zs.length?[0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)):null;});
+  if(!per.some(Boolean))return null;
+  const sel=days.indexOf(dayKey);
+  const labels=days.map((k,i)=>`${DN[i]} ${parseD(k).getDate()}`);
+  const sets=PW_ZONE_COL.map((c,z)=>({type:'bar',label:'Z'+(z+1),
+    data:per.map(p=>p&&p[z]>0?Math.round(p[z]/6)/10:null),
+    backgroundColor:days.map((_,i)=>sel<0||i===sel?c:c+'8c'),
+    borderSkipped:false,borderRadius:2,stack:'z',barPercentage:.72,categoryPercentage:.9}));
+  const opts={responsive:true,maintainAspectRatio:false,animation:false,
+    interaction:{mode:'index',intersect:false},
+    onClick:onDay?(_,els)=>{const e=els&&els[0];if(e&&days[e.index])onDay(days[e.index]);}:undefined,
+    plugins:{legend:{display:false},
+      tooltip:{displayColors:true,callbacks:{
+        title:it=>it&&it[0]?labels[it[0].dataIndex]:'',
+        label:c=>pwNum(c.raw)?`${c.dataset.label}: ${c.raw} ${L('dk','min')}`:null,
+        footer:it=>{const p=it&&it[0]&&per[it[0].dataIndex];if(!p)return'';
+          return L(`Toplam ${Math.round(p.reduce((a,b)=>a+b,0)/60)} dk`,`Total ${Math.round(p.reduce((a,b)=>a+b,0)/60)} min`);}}}},
+    scales:{x:{stacked:true,grid:{display:false},border:{display:false},ticks:{color:'#94a3b8',maxRotation:0,font:{size:10}}},
+      y:{stacked:true,beginAtZero:true,grace:'8%',grid:{color:'rgba(255,255,255,.05)'},border:{display:false},
+        ticks:{color:'#94a3b8',maxTicksLimit:4,font:{size:10},padding:6},
+        title:{display:true,text:L('dk','min'),color:'#94a3b8',font:{size:10}}}}};
+  return(<div className="pwz-wk">
+    <div className="pwz-wk-cv"><ChartC type="bar" chartData={{labels,datasets:sets}} options={opts}/></div>
+  </div>);
+}
+function WvHrZones({ex,dayKey,msg,bare,onDay}){
   const wS=fmt(sow(parseD(dayKey))),wE=fmt(addD(sow(parseD(dayKey)),6));
   const wk=(ex||[]).filter(e=>e.date>=wS&&e.date<=wE).map(e=>({e,z:pwZoneSec(e)})).filter(x=>x.z);
   const day=(ex||[]).filter(e=>e.date===dayKey);
@@ -342,6 +374,10 @@ function WvHrZones({ex,dayKey,msg,bare}){
   return(<div className={'pwz'+(bare?' bare':'')}>
     <div className="pwz-k">{L('Kalp atım bölgeleri','Heart rate zones')}<em className="wv-polar-tag">Polar</em></div>
     {none?<div className="pwz-none">{msg||L(`${wLbl} haftasında Polar antrenman kaydı yok.`,`No Polar sessions in the week of ${wLbl}.`)}</div>:<>
+      {wk.length>0&&<>
+        <div className="pwz-sec">{L('Haftalık bölge dağılımı','Weekly zone distribution')} · {wLbl}</div>
+        <WvHrZoneWeek wk={wk} days={Array.from({length:7},(_,i)=>fmt(addD(parseD(wS),i)))} dayKey={dayKey} onDay={onDay}/>
+      </>}
       <div className="pwz-sec">{L('Hafta ortalaması','Week average')} · {wLbl}</div>
       {wk.length?<>
         <PwZoneRow title={L('Bütün antrenmanlar','All sessions')} sub={L(`seans başına ort. · ${nTxt(wk.length)}`,`avg per session · ${nTxt(wk.length)}`)} sec={pwZoneMean(wk.map(x=>x.z))}/>
@@ -429,38 +465,11 @@ function pwNight(p,day){
   const r=(s&&rr.find(x=>x.date===s.date))||rr.find(x=>x.date===day)||null;
   return{s,r};
 }
-/* Uyku neden yok: son senkronda Polar'ın uyku uç noktası ne dedi. Tahmin yok —
-   raporda olanı düz yazıyla söyler. */
-function pwNoSleepWhy(p,day){
-  const rp=p.lastSyncReport&&p.lastSyncReport.sleep;
-  const when=pwNum(p.lastSyncAt)?L(` · son senkron ${polarWhen(p.lastSyncAt)}`,` · last sync ${polarWhen(p.lastSyncAt)}`):'';
-  const pa=p.polarAccount;
-  const acct=pa&&(pa.name||pa.registeredAt)?L(` · bağlı Polar hesabı: ${pa.name||'adsız'}${pa.registeredAt?` (Polar'a kayıt ${fd(String(pa.registeredAt).slice(0,10))})`:''}`,
-    ` · linked Polar account: ${pa.name||'unnamed'}${pa.registeredAt?` (registered ${fd(String(pa.registeredAt).slice(0,10))})`:''}`):'';
-  if(!rp)return L('Henüz senkron raporu yok: "Verileri al"a bas.','No sync report yet: press "Fetch data".')+when;
-  if(rp.status==='unavailable')return L(`Polar uyku verisine erişim vermiyor (${rp.code||'—'}). Sporcunun Polar bağlantısını kesip yeniden bağla.`,
-    `Polar refuses access to sleep data (${rp.code||'—'}). Disconnect and reconnect the athlete.`)+when;
-  if(rp.status==='error')return L(`Son senkronda uyku alınamadı (${rp.code||'hata'}). Biraz sonra tekrar "Verileri al".`,
-    `Sleep could not be fetched in the last sync (${rp.code||'error'}). Try "Fetch data" again later.`)+when;
-  if(!rp.count){
-    /* Aynı hesaptan adım geliyorsa bileklik bu hesaba bağlı: uyku Polar'da hiç oluşmuyor.
-       Adım da yoksa bağlı hesap bilekliğin hesabı olmayabilir. */
-    const steps=(p.activity||[]).some(x=>pwNum(x.steps)&&x.steps>0);
-    return(steps
-      ?L('Polar son 28 günde bu hesapta hiç uyku kaydı göndermedi; aynı hesaptan adım geliyor, yani bileklik bu hesaba bağlı. Sporcu Polar Flow\'da dünkü uykusunu görüyor mu? Görmüyorsa uyku bileklikte kaydedilmiyor (gece takılı değil ya da kola gevşek).',
-        'Polar sent no sleep record on this account in the last 28 days; steps do arrive from it, so the band is paired with this account. Does the athlete see last night in Polar Flow? If not, the band is not recording sleep.')
-      :L('Polar son 28 günde bu hesapta ne uyku ne de son iki günde adım gönderdi: bağlanan Polar hesabı, bilekliğin bağlı olduğu hesap olmayabilir. Aşağıdaki hesap adı sporcunun kendisi mi, kontrol et; değilse bağlantıyı kesip bilekliğin hesabıyla yeniden bağla.',
-        'Polar sent no sleep in 28 days and no steps in the last two days on this account: the linked Polar account may not be the band\'s account. Check the account name below; if it is wrong, disconnect and reconnect with the band\'s account.'))+acct+when;
-  }
-  if(rp.latest&&rp.latest<day)return L(`Polar'daki en yeni uyku kaydı ${fd(rp.latest)}: bu gecenin uykusu henüz Polar'a ulaşmamış. Sporcu Polar Flow'u açıp bilekliği eşitlesin.`,
-    `Newest sleep record at Polar is ${fd(rp.latest)}: last night has not reached Polar yet. Ask the athlete to open Polar Flow and sync.`)+when;
-  return L(`Polar son senkronda ${rp.count} gece gönderdi, bu güne ait uyku yok.`,`Polar sent ${rp.count} nights in the last sync, none for this day.`)+when;
-}
-
 /* Takım tablosunun son okunan hali (takım|gün → /team-data yanıtı), oturum boyunca.
    Sekme değiştirip geri gelince tablo hemen bu kopyadan çizilir; arkada aynı gün
    sessizce yeniden okunur. */
 const PW_DAY_CACHE=new Map();
+const PW_SYNC_PAR=5;
 function PolarWellness({team,dayKey,onOpen,onSynced}){
   const theme=useAppTheme();
   const day=dayKey||fmt(new Date());
@@ -508,7 +517,11 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
           done++;setProg({done,total:act.length,fails:fails.slice()});
         }
       };
-      await Promise.all([worker(),worker(),worker()]);
+      /* Aynı anda PW_SYNC_PAR sporcu. Polar'ın sınırı istek SAYISI (15 dk / 24 sa
+         penceresi), eşzamanlılık değil: aynı sayıda istek daha kısa sürede biter. Her
+         sporcunun senkronu sunucuda yine sırayla ve kendi kilidiyle çalışır; 429'da
+         sunucu bekleyip yeniden dener, o sporcunun kalan adımlarını durdurur. */
+      await Promise.all(Array.from({length:Math.min(PW_SYNC_PAR,act.length)},worker));
       await load(day);
       if(typeof onSynced==='function')onSynced();
     }catch(e){setErr(e.message||String(e));}
@@ -521,9 +534,6 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
     .sort((x,y)=>(!!y.p-!!x.p)||(x.a.name||'').localeCompare(y.a.name||'','tr'));
   const nLinked=rows.filter(r=>r.p&&r.p.status==='active').length;
   const pick=(arr)=>(arr||[]).find(x=>x.date===day)||null;
-  /* Bağlı ama bu sabahın uykusu olmayan sporcular ve nedeni (son senkronun raporundan). */
-  const noSleep=rows.filter(({p})=>p&&p.status==='active'&&!pwNight(p,day).s)
-    .map(({a,p})=>({name:a.name||p.athleteName||'—',why:pwNoSleepWhy(p,day)}));
 
   return(<div className="panel pw">
     <div className="pw-h">
@@ -573,11 +583,6 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
             <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
-      {noSleep.length>0&&<div className="pw-why">
-        <b>{isToday?L(`Bu sabahın uyku verisi gelmeyen sporcular (${noSleep.length})`,`No sleep data for this morning (${noSleep.length})`)
-          :L(`${fd(day)} sabahı uyku verisi olmayan sporcular (${noSleep.length})`,`No sleep data for the morning of ${fd(day)} (${noSleep.length})`)}</b>
-        {noSleep.map(x=><div key={x.name}><span>{x.name}</span>{x.why}</div>)}
-      </div>}
       <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. RHR: Polar'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız); aşağıdaki RHR Takibi aynı değeri kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
         `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. RHR: Polar's lowest heart rate of the day (continuous HR; else the lowest during sleep); the RHR Monitor below uses the same value. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}

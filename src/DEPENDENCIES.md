@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1976**, yinelenen: **0**
+- Üst düzey ad sayısı: **1990**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -16,7 +16,7 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 |---|---:|---:|
 | `dates-language-factories` | 85 | 2 |
 | `prelude` | 68 | 1 |
-| `constants-session-focus` | 44 | 1 |
+| `constants-session-focus` | 46 | 1 |
 | `photo-local-media-store` | 37 | 2 |
 | `periods-weeks-load-monotony` | 29 | 7 |
 | `test-metadata-fms` | 20 | 5 |
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **114** / toplam bağ 623
+- Geriye bağ sayısı: **116** / toplam bağ 628
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 58 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -49,16 +49,16 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 1 | `prelude` | 13 | `dates-language-factories`↑ |
 | 2 | `constants-session-focus` | 82 | `dates-language-factories`↑ |
 | 3 | `dates-language-factories` | 87 | `prelude`, `constants-session-focus` |
-| 4 | `test-metadata-fms` | 79 | `prelude`, `dates-language-factories`, `print-week`↑, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
+| 4 | `test-metadata-fms` | 80 | `prelude`, `dates-language-factories`, `print-week`↑, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
 | 5 | `test-thumbs` | 1 | — |
 | 6 | `athlete-boxes` | 76 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`↑ |
 | 7 | `session-load-clipboard` | 26 | `prelude`, `constants-session-focus`, `dates-language-factories` |
 | 8 | `team-data-migration` | 17 | `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`↑, `move-taxonomy`↑, `interval-timer`↑, `evaluation-tryouts`↑, `exercise-taxonomy-text`↑, `exercise-modal-cards`↑, `indiv-plan-descriptions`↑ |
-| 9 | `periods-weeks-load-monotony` | 75 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `photo-local-media-store`↑, `exercise-taxonomy-text`↑, `exercise-library-export`↑ |
+| 9 | `periods-weeks-load-monotony` | 77 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `photo-local-media-store`↑, `exercise-taxonomy-text`↑, `exercise-library-export`↑ |
 | 10 | `rhr-team-sync-picker` | 18 | `prelude`, `constants-session-focus`, `dates-language-factories`, `photo-local-media-store`↑, `athlete-detail-snapshot`↑ |
 | 11 | `chart-wrapper` | 14 | `prelude`, `dates-language-factories` |
 | 12 | `print-session-html` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`, `photo-local-media-store`↑, `session-analysis-muscle-model`↑, `ball-practice`↑, `exercise-taxonomy-text`↑, `indiv-plan-descriptions`↑ |
-| 13 | `print-week` | 5 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `print-session-html`, `crest-week-image`↑, `print-month`↑, `photo-local-media-store`↑, `indiv-plan-descriptions`↑ |
+| 13 | `print-week` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `print-session-html`, `crest-week-image`↑, `print-month`↑, `photo-local-media-store`↑, `indiv-plan-descriptions`↑ |
 | 14 | `crest-week-image` | 12 | `prelude`, `dates-language-factories`, `print-week`, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
 | 15 | `print-month` | 8 | `prelude`, `constants-session-focus`, `dates-language-factories`, `print-session-html`, `print-week`, `crest-week-image`, `photo-local-media-store`↑, `block-editor-session-details`↑ |
 | 16 | `pdf-share-coach-report` | 11 | `prelude`, `dates-language-factories`, `print-session-html`, `crest-week-image` |
@@ -74,7 +74,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 26 | `session-kinds` | 17 | `prelude`, `constants-session-focus`, `dates-language-factories`, `photo-local-media-store`, `block-editor-session-details`↑, `evaluation-tryouts`↑, `program-bank`↑ |
 | 27 | `block-editor-session-details` | 19 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `rhr-team-sync-picker`, `photo-local-media-store`, `move-taxonomy`, `session-analysis-muscle-model`, `session-editor-planner`↑, `exercise-taxonomy-text`↑, `indiv-plan-descriptions`↑, `coach-assistant`↑ |
 | 28 | `pattern-plan-table` | 29 | `prelude`, `dates-language-factories`, `session-load-clipboard`, `photo-local-media-store`, `move-taxonomy`, `session-analysis-muscle-model`, `block-editor-session-details`, `indiv-plan-descriptions`↑, `coach-assistant`↑ |
-| 29 | `ball-practice` | 47 | `prelude`, `dates-language-factories`, `rhr-team-sync-picker`, `print-session-html`, `print-week`, `photo-local-media-store`, `block-editor-session-details`, `pattern-plan-table`, `sync-infra-chunking-merge`↑, `exercise-video-picker`↑, `coach-assistant`↑ |
+| 29 | `ball-practice` | 47 | `prelude`, `dates-language-factories`, `rhr-team-sync-picker`, `print-session-html`, `print-week`, `photo-local-media-store`, `block-editor-session-details`, `pattern-plan-table`, `sync-infra-chunking-merge`↑, `exercise-video-picker`↑, `program-bank`↑, `coach-assistant`↑ |
 | 30 | `session-editor-planner` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `rhr-team-sync-picker`, `print-week`, `pdf-share-coach-report`, `session-kinds`, `block-editor-session-details`, `pattern-plan-table`, `ball-practice`, `exercise-taxonomy-text`↑, `program-bank`↑ |
 | 31 | `interval-timer` | 15 | `prelude`, `dates-language-factories`, `setup-all-teams-calendar` |
 | 32 | `reports-photo-cell` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `periods-weeks-load-monotony`, `chart-wrapper`, `photo-local-media-store`, `setup-all-teams-calendar`, `polar-wellness`↑, `exercise-taxonomy-text`↑ |
@@ -105,7 +105,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 57 | `athlete-polar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`↑ |
 | 58 | `wellness-view` | 24 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `night-sleep-helpers`, `428b-athlete-monitoring`↑, `polar-wellness`↑ |
 | 59 | `428b-athlete-monitoring` | 36 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `monitor-config`, `monitor-engine`, `night-sleep-helpers`, `athlete-polar`, `polar-wellness`↑, `sync-infra-chunking-merge`↑ |
-| 60 | `polar-wellness` | 58 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
+| 60 | `polar-wellness` | 61 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
 | 61 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 62 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
 | 63 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `indiv-plan-descriptions`↑ |
@@ -118,9 +118,9 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 70 | `researches` | 28 | `prelude`, `dates-language-factories` |
 | 71 | `exercise-library-export` | 20 | `prelude`, `dates-language-factories`, `crest-week-image`, `pdf-share-coach-report`, `photo-local-media-store`, `move-taxonomy`, `ball-practice`, `exercise-taxonomy-text`, `athlete-context-readiness`↑, `indiv-plan-descriptions`↑ |
 | 72 | `program-history` | 10 | `prelude`, `dates-language-factories`, `ai-layer`↑ |
-| 73 | `program-bank` | 34 | `prelude`, `dates-language-factories`, `move-taxonomy`, `program-history`, `indiv-plan-descriptions`↑, `ai-layer`↑ |
+| 73 | `program-bank` | 39 | `prelude`, `dates-language-factories`, `move-taxonomy`, `session-analysis-muscle-model`, `program-history`, `indiv-plan-descriptions`↑, `ai-layer`↑, `di-forms-program-view`↑ |
 | 74 | `athlete-context-readiness` | 20 | `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `exercise-library-export` |
-| 75 | `indiv-plan-descriptions` | 29 | `prelude`, `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`, `move-taxonomy`, `session-analysis-muscle-model`, `athlete-context-readiness`, `ai-coach`↑ |
+| 75 | `indiv-plan-descriptions` | 31 | `prelude`, `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`, `move-taxonomy`, `session-analysis-muscle-model`, `athlete-context-readiness`, `ai-coach`↑ |
 | 76 | `coach-assistant` | 18 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `periods-weeks-load-monotony`, `block-editor-session-details`, `exercise-library-export`, `athlete-context-readiness` |
 | 77 | `di-engine-baseline` | 31 | `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `exercise-library-export`, `athlete-context-readiness` |
 | 78 | `atp-athlete-training-profile` | 62 | `dates-language-factories`, `move-taxonomy`, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `exercise-taxonomy-text`¹, `di-engine-baseline`, `sport-context-equipment`↑ |
@@ -129,7 +129,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 81 | `ai-layer` | 73 | `dates-language-factories`, `test-metadata-fms`, `move-taxonomy`¹, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-library-export`, `coach-assistant`, `di-engine-baseline`, `sport-context-equipment`¹, `di-adjust-tier-bundle`, `di-forms-program-view`↑ |
 | 82 | `di-forms-program-view` | 18 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `print-session-html`, `print-week`, `photo-local-media-store`, `move-taxonomy`, `session-analysis-muscle-model`, `block-editor-session-details`, `pattern-plan-table`, `exercise-taxonomy-text`, `program-bank`, `indiv-plan-descriptions`, `di-engine-baseline`, `ai-layer` |
 | 83 | `daily-indiv-panel` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `pattern-plan-table`, `exercise-library-export`, `athlete-context-readiness`, `indiv-plan-descriptions`, `di-adjust-tier-bundle`, `ai-layer`, `di-forms-program-view` |
-| 84 | `individualization-view` | 1 | `prelude`, `dates-language-factories`, `print-session-html`, `print-week`, `setup-all-teams-calendar`, `program-history`, `athlete-context-readiness`, `indiv-plan-descriptions`, `di-adjust-tier-bundle`, `ai-layer`, `daily-indiv-panel` |
+| 84 | `individualization-view` | 1 | `prelude`, `constants-session-focus`, `dates-language-factories`, `print-session-html`, `print-week`, `setup-all-teams-calendar`, `program-history`, `athlete-context-readiness`, `indiv-plan-descriptions`, `di-adjust-tier-bundle`, `ai-layer`, `daily-indiv-panel` |
 | 85 | `language-selector-nav-icons` | 4 | `dates-language-factories` |
 | 86 | `ai-coach` | 18 | `dates-language-factories`, `sync-infra-chunking-merge` |
 | 87 | `checkin-wellness-alerts-client` | 43 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `setup-all-teams-calendar`, `staff-roster-backup`, `sync-infra-chunking-merge`, `lift-log`↑ |

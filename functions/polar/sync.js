@@ -40,6 +40,7 @@ const HR_FALLBACK_DAYS = 7; // aralık ucu yoksa gün gün en çok bu kadar gün
 const LOCK_MS = 90 * 1000;              // aynı sporcu için eşzamanlı ikinci senkron yok
 const MANUAL_MIN_GAP_MS = 2 * 60 * 1000; // düğmeye art arda basılırsa Polar'ı yormayalım
 const BATCH = 400;
+const SUMMARY_PAR = 3;                   // aktivite özetleri: aynı anda en çok bu kadar istek
 
 /* Yalnızca değişen dokümanları yaz. Döner: { written, unchanged }. */
 async function writeChanged(db, col, docs) {
@@ -165,18 +166,34 @@ async function syncActivity(ctx) {
   const txUrl = String(t.json['resource-uri']);
   const list = await ctx.client.get(txUrl);
   const urls = (list.json && Array.isArray(list.json['activity-log'])) ? list.json['activity-log'] : [];
+  /* Özetler en çok SUMMARY_PAR tanesi aynı anda okunuyor (ilk senkronda 28 günlük özet
+     sırayla okunurken senkronun en uzun adımıydı). Sonuçlar yine listedeki SIRAYLA
+     işleniyor: aynı güne düşen özetlerden hangisinin kalacağı sıralı okumayla aynı.
+     Biri okunamazsa yenisi başlatılmıyor ve commit yok. */
+  const got = new Array(urls.length);
+  let next = 0, bad = null, stop = false;
+  const reader = async () => {
+    while (!stop && next < urls.length) {
+      const i = next++;
+      let s;
+      // 401 / kalıcı 429 / ağ hatası fırlatılır: öbür okuyucular yeni istek açmasın.
+      try { s = await ctx.client.get(String(urls[i])); } catch (e) { stop = true; throw e; }
+      if (s.status < 200 || s.status >= 300 || !s.json) { stop = true; if (!bad) bad = s; return; }
+      got[i] = s.json;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(SUMMARY_PAR, urls.length) }, reader));
+  if (bad) {
+    // Bir özet okunamadıysa commit ETME: o veri kaybolur.
+    return { status: 'error', code: 'SUMMARY_' + bad.status, count: 0, written: 0, committed: false };
+  }
   // Aynı gün için birden çok özet gelebilir (gün içinde güncellenir): en son oluşturulan kalır.
   const byDate = new Map();
-  for (const u of urls) {
-    const s = await ctx.client.get(String(u));
-    if (s.status < 200 || s.status >= 300 || !s.json) {
-      // Bir özet okunamadıysa commit ETME: o veri kaybolur.
-      return { status: 'error', code: 'SUMMARY_' + s.status, count: 0, written: 0, committed: false };
-    }
-    const norm = N.activity(s.json);
+  for (const json of got) {
+    const norm = N.activity(json);
     if (!norm.date) continue;
     const prev = byDate.get(norm.date);
-    if (!prev || String(norm.created || '') >= String(prev.norm.created || '')) byDate.set(norm.date, { raw: s.json, norm });
+    if (!prev || String(norm.created || '') >= String(prev.norm.created || '')) byDate.set(norm.date, { raw: json, norm });
   }
   const docs = [...byDate.values()].map(({ raw, norm }) => docFor(ctx, 'activity', raw, norm, norm.date));
   let w;
