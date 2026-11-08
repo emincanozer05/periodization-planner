@@ -410,7 +410,7 @@ function AthleteLoadBoard({athletes,refDate,teamId}){
     {sorted.length>0&&<div style={{overflowX:'auto'}}>
       <table className="lb-tbl">
         <thead><tr>
-          <th>{L('Sporcu','Athlete')}</th><th>{L('Mevki','Pos')}</th><th>{L('7 günlük yük','7-day load')}</th>
+          <th>{L('Sporcu','Athlete')}</th><th>{L('7 günlük yük','7-day load')}</th>
           {/* Day initials sit under the column label, on the same 27px grid as the
               squares below, so a coach can read which weekday a value belongs to. */}
           <th><div className="lb-rpe-hd">{L('7 günlük RPE','7-day RPE')}
@@ -425,8 +425,7 @@ function AthleteLoadBoard({athletes,refDate,teamId}){
           </div></th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
-          <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
-          <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
+          <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><div className="lb-nm"><span className="lb-name">{r.name}</span>{r.pos&&<span className="lb-pos">{r.pos}</span>}</div></div></td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
