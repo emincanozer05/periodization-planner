@@ -397,8 +397,6 @@ function AthleteLoadBoard({athletes,refDate,teamId}){
       hrz:pwAthZoneWeek(pById.get(String(a.id)),days7)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
-  /* The longest day on the board fills a cell; every other day is drawn against it. */
-  const maxZ=Math.max(0,...rows.flatMap(r=>r.hrz.map(z=>z?z.reduce((x,y)=>x+y,0):0)));
   const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
   return(<div className="panel lb-wrap">
     <div className="lb-head">
@@ -419,8 +417,11 @@ function AthleteLoadBoard({athletes,refDate,teamId}){
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
           <th>{L('Bölge','Zone')}</th>
-          <th title={L('Polar antrenmanlarının kalp atım bölgeleri, gün gün (Z1 altta, Z5 üstte); kutunun boyu günün toplam bölge süresi','Heart rate zones of the Polar sessions, day by day (Z1 bottom, Z5 top); the cell\'s height is the day\'s total zone time')}><div className="lb-rpe-hd">{L('HR Zone · Polar','HR Zone · Polar')}
-            <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
+          <th title={L('Polar antrenmanlarında bölgelerde geçen toplam dakika, gün gün. Renk günün ortalama bölgesi, alttaki şerit Z1→Z5 dağılımı; ayrıntı için kutunun üzerine gel','Total minutes in HR zones from Polar sessions, day by day. Colour is the day\'s average zone, the stripe below is the Z1→Z5 split; hover a cell for details')}><div className="lb-rpe-hd">{L('HR Zone · Polar (dk)','HR Zone · Polar (min)')}
+            <div className="lb-rpe-days lb-hz-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
+          </div></th>
+          <th><div className="lb-rpe-hd">{L('Haftalık bölge dağılımı','Weekly zone split')}
+            <div className="lb-hz-leg">{PW_ZONE_COL.map((c,i)=><span key={i}><i style={{background:c}}/>Z{i+1}</span>)}</div>
           </div></th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
@@ -429,7 +430,8 @@ function AthleteLoadBoard({athletes,refDate,teamId}){
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
-          <td><PwZoneWeekStrip week={r.hrz} days={days7} max={maxZ}/></td>
+          <td><PwZoneWeekStrip week={r.hrz} days={days7}/></td>
+          <td><PwZoneWeekSum week={r.hrz}/></td>
           <td className="r"><span className="lb-acwr" style={{color:r.has?z.c:undefined}}>{r.has?r.acwr.toFixed(2):'—'}</span></td>
         </tr>);})}</tbody>
       </table>

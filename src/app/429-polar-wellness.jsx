@@ -451,29 +451,69 @@ function TeamHrZoneSummary({Z}){
     <em>{L(`antrenmana katılan sporcuların ortalaması · sporcu-gün başına · ${Z.nAD} sporcu-gün · Polar`,`mean of athletes who trained · per athlete-day · ${Z.nAD} athlete-days · Polar`)}</em></div>);
 }
 
-/* ── Yük Takibi → Sporcu Yük Panosu: sporcunun haftalık HR Zone şeridi ──────────
-   Pzt–Paz her gün bir küçük kutu: içinde o gün kaydedilen bütün Polar antrenmanlarının
-   bölge süreleri (toplam) Z1 altta Z5 üstte yığılmış. Kutunun dolu yüksekliği günün toplam
-   bölge dakikası, panodaki en uzun güne göre; renkler dağılım. Polar kaydı olmayan gün
-   kesik çizgili boş kutu. `pwAthZoneWeek` sporcunun Polar kaydından yedi günün dizisini
-   çıkarır: [Z1…Z5] saniye ya da null. */
+/* ── Yük Takibi → Sporcu Yük Panosu: sporcunun haftalık HR Zone'u ───────────────
+   İki sütun:
+   · Gün gün (PwZoneWeekStrip): Pzt–Paz her gün bir kutu. Kutunun İÇİNDE o günkü bütün
+     Polar antrenmanlarının bölgede geçen toplam DAKİKASI yazar; yazının ve zeminin rengi
+     günün ortalama bölgesi (dakika ağırlıklı Z1…Z5 — gri, mavi, yeşil, sarı, kırmızı), yani
+     günün ne kadar sert geçtiği bir bakışta okunur. Kutunun altındaki ince şerit günün
+     Z1→Z5 dağılımı. Üzerine gelince ayrıntı kutusu: her bölgenin dakikası, yüzdesi,
+     çubuğu ve o gün kaydedilen antrenmanlar. Kaydı olmayan gün "·".
+   · Hafta (PwZoneWeekSum): haftanın toplam bölge dağılımı tek yatay çubukta, yanında
+     toplam dakika ve yüksek yoğunluk payı (Z4+Z5).
+   `pwAthZoneWeek` sporcunun Polar kaydından yedi günü çıkarır: {z:[Z1…Z5] sn, sports:[…]}
+   ya da null. */
 function pwAthZoneWeek(p,days){
-  return days.map(k=>{const zs=((p&&p.exercises)||[]).filter(e=>e&&e.date===k).map(pwZoneSec).filter(Boolean);
-    return zs.length?[0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)):null;});
+  return days.map(k=>{const ex=((p&&p.exercises)||[]).filter(e=>e&&e.date===k).map(e=>({e,z:pwZoneSec(e)})).filter(x=>x.z);
+    if(!ex.length)return null;
+    return{z:[0,1,2,3,4].map(i=>ex.reduce((s,x)=>s+x.z[i],0)),sports:ex.map(x=>pwSportLbl(x.e))};});
 }
-function PwZoneWeekStrip({week,days,max}){
-  return(<div className="lb-rpe-row lb-hrz-row">
-    {days.map((dk,i)=>{const z=week&&week[i];const tot=z?z.reduce((a,b)=>a+b,0):0;
-      const dn=`${DN[(parseD(dk).getDay()+6)%7]} · ${fd(dk)}`;
-      if(!tot)return<span key={dk} className="lb-hrz-cell empty" title={`${dn} · ${L('Polar antrenman kaydı yok','No Polar session')}`}/>;
-      const h=Math.max(22,Math.min(100,tot/(max||tot)*100));
-      return<span key={dk} className="lb-hrz-cell" role="img"
-        aria-label={`${dn}: ${z.map((v,j)=>`Z${j+1} ${pwMin(v)} ${L('dk','min')}`).join(', ')}`}
-        title={`${dn} · ${L('toplam','total')} ${pwMin(tot)} ${L('dk','min')}\n`+z.map((v,j)=>`Z${j+1}  ${pwMin(v)} ${L('dk','min')} · ${pwPct(Math.round(v/tot*100))}`).join('\n')}>
-        <span className="lb-hrz-fill" style={{height:`${h}%`}}>
-          {z.map((v,j)=>v>0?<i key={j} style={{flexGrow:v,background:PW_ZONE_COL[j]}}/>:null)}
-        </span>
+const pwZTot=z=>z?z.reduce((a,b)=>a+b,0):0;
+/* Dakika ağırlıklı ortalama bölge, 1…5 (ondalıklı). */
+const pwZAvg=z=>{const t=pwZTot(z);return t?z.reduce((s,v,i)=>s+v*(i+1),0)/t:0;};
+const pwZCol=z=>PW_ZONE_COL[Math.max(0,Math.min(4,Math.round(pwZAvg(z))-1))];
+/* Yatay dağılım şeridi: Z1 solda, Z5 sağda. */
+function PwZoneBar({z,cls}){
+  const t=pwZTot(z);
+  return(<span className={cls||'lb-hz-bar'}>{t>0&&z.map((v,j)=>v>0?<i key={j} style={{flexGrow:v,background:PW_ZONE_COL[j]}}/>:null)}</span>);
+}
+function PwZoneWeekStrip({week,days}){
+  const[tip,setTip]=useState(null);
+  const show=(ev,i)=>{const r=ev.currentTarget.getBoundingClientRect();
+    const half=150,vw=window.innerWidth||0;
+    setTip({x:Math.min(Math.max(r.left+r.width/2,half),Math.max(half,vw-half)),y:r.top,i});};
+  const d=tip&&week&&week[tip.i];const dt=d?pwZTot(d.z):0;
+  return(<div className="lb-hz-row">
+    {days.map((dk,i)=>{const x=week&&week[i];const t=x?pwZTot(x.z):0;
+      if(!t)return<span key={dk} className="lb-hz-cell empty" onMouseEnter={ev=>show(ev,i)} onMouseLeave={()=>setTip(null)}>·</span>;
+      return<span key={dk} className="lb-hz-cell" style={{'--zc':pwZCol(x.z)}}
+        aria-label={`${DN[i]}: ${pwMin(t)} ${L('dk','min')}, ${x.z.map((v,j)=>`Z${j+1} ${pwMin(v)}`).join(', ')}`}
+        onMouseEnter={ev=>show(ev,i)} onMouseLeave={()=>setTip(null)}>
+        <b>{pwMin(t)}</b><PwZoneBar z={x.z}/>
       </span>;})}
+    {tip&&ReactDOM.createPortal(
+      <div className="lb-rpe-tip lb-hz-tip" style={{left:tip.x,top:tip.y}}>
+        <div className="d">{DN[(parseD(days[tip.i]).getDay()+6)%7]} · {fd(days[tip.i])}{dt?` · ${pwMin(dt)} ${L('dk','min')}`:''}</div>
+        {dt?<>
+          {d.z.map((v,j)=><div key={j} className={'lb-hz-tr'+(v>0?'':' z0')}>
+            <i className="dot" style={{background:PW_ZONE_COL[j]}}/><span className="zk">Z{j+1}</span>
+            <span className="tb"><i style={{width:`${v/dt*100}%`,background:PW_ZONE_COL[j]}}/></span>
+            <span className="zm">{pwMin(v)} {L('dk','min')}</span><span className="zp">{pwPct(Math.round(v/dt*100))}</span></div>)}
+          <div className="lb-hz-ses">{[...new Set(d.sports)].join(' · ')}</div>
+        </>:<span className="none">{L('Bu gün Polar antrenman kaydı yok','No Polar session on this day')}</span>}
+      </div>, document.body)}
+  </div>);
+}
+function PwZoneWeekSum({week}){
+  const days=(week||[]).filter(Boolean);
+  if(!days.length)return<span className="lb-hz-none">—</span>;
+  const z=[0,1,2,3,4].map(i=>days.reduce((s,x)=>s+x.z[i],0));const t=pwZTot(z);
+  const hi=Math.round((z[3]+z[4])/t*100);
+  return(<div className="lb-hz-wk" title={z.map((v,j)=>`Z${j+1}  ${pwMin(v)} ${L('dk','min')} · ${pwPct(Math.round(v/t*100))}`).join('\n')}>
+    <PwZoneBar z={z} cls="lb-hz-wbar"/>
+    <div className="lb-hz-wt"><b>{pwMin(t)}</b> {L('dk','min')}<span className="sep">·</span>
+      <span style={{color:hi>=20?PW_ZONE_COL[4]:hi>=10?PW_ZONE_COL[3]:'var(--dim)'}}>Z4–5 {pwPct(hi)}</span>
+      <span className="sep">·</span>{L(`${days.length} gün`,`${days.length} d`)}</div>
   </div>);
 }
 

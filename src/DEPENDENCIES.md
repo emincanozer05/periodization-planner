@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1992**, yinelenen: **0**
+- Üst düzey ad sayısı: **1997**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -105,7 +105,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 57 | `athlete-polar` | 9 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`↑ |
 | 58 | `wellness-view` | 24 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `photo-local-media-store`, `athlete-detail-snapshot`, `night-sleep-helpers`, `428b-athlete-monitoring`↑, `polar-wellness`↑ |
 | 59 | `428b-athlete-monitoring` | 36 | `prelude`, `dates-language-factories`, `periods-weeks-load-monotony`, `monitor-config`, `monitor-engine`, `night-sleep-helpers`, `athlete-polar`, `polar-wellness`↑, `sync-infra-chunking-merge`↑ |
-| 60 | `polar-wellness` | 63 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
+| 60 | `polar-wellness` | 68 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
 | 61 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 62 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
 | 63 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `indiv-plan-descriptions`↑ |
