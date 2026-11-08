@@ -104,9 +104,16 @@ async function authenticate(req, deps, staffOk) {
   } catch (e) { return null; }
 }
 
-function cors(req, res) {
+/* Ekip üyesinin uçları (`anyOrigin`) her HTTPS kökenine açık: telefon sayfası
+   uygulamanın yayımlandığı her adresten (Vercel önizlemesi, GitHub Pages, Firebase
+   Hosting) açılabiliyor ve liste dışındaki bir adreste tarayıcı isteği "Failed to
+   fetch" ile kesiyordu. Güvenlik CORS'ta değil: istek çerez taşımıyor, kimlik
+   Authorization başlığındaki Firebase ID token'ıyla ve kapsam sunucudaki eşleşme
+   kaydıyla doğrulanıyor. */
+function cors(req, res, anyOrigin) {
   const origin = String((req.headers && req.headers.origin) || '');
-  const ok = ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const ok = ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    || (anyOrigin && /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(origin));
   if (ok) {
     res.set('Access-Control-Allow-Origin', origin);
     res.set('Vary', 'Origin');
@@ -133,7 +140,7 @@ const STAFF_ROUTES = ['/staff-sleep', '/staff-sync'];
 const JSON_ROUTES = ['/invite', '/disconnect', '/sync', '/team-data'].concat(STAFF_ROUTES);
 
 async function jsonRoute(route, req, res, deps) {
-  cors(req, res);
+  cors(req, res, STAFF_ROUTES.includes(route));
   if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
   if (req.method !== 'POST') return jsonError(res, 405, 'METHOD', 'Yalnızca POST.');
   const isStaff = STAFF_ROUTES.includes(route);
