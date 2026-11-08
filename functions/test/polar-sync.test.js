@@ -351,6 +351,30 @@ ta('kalıcı 429: o adım ve sonrası durur, kısmi sonuç raporlanır, kilit a�
   assert.strictEqual(env.db.get('polar_links', 'coach1__ath1').syncLockUntil, null);
 });
 
+ta('süre bütçesi: Polar yavaşsa kalan adımlar ertelenir, yanıt function sınırından önce döner', async () => {
+  let env;
+  env = setup({ routes: { 'GET /users/nightly-recharge': () => { env.tick(sync.SYNC_BUDGET_MS + 5000); return { status: 200, body: { recharges: [RECHARGE] } }; } } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.report.recharge.status, 'ok');
+  for (const k of ['exercises', 'cardioLoad', 'activity', 'hr']) {
+    assert.strictEqual(r.json.report[k].status, 'deferred', k);
+    assert.strictEqual(r.json.report[k].code, 'TIME_BUDGET', k);
+  }
+  assert.ok(!env.polar.calls.some(c => c.path.startsWith('/exercises')), 'bütçe dolunca yeni istek açılmamalı');
+  assert.ok(env.db.get('polar_sleep', 'coach1__ath1__2026-11-01'), 'bütçeden önce alınan veri yazılmış');
+  assert.strictEqual(env.db.get('polar_links', 'coach1__ath1').syncLockUntil, null);
+});
+
+ta('süre bütçesi: sığmayan yeniden deneme beklenmez', async () => {
+  let env;
+  env = setup({ routes: { 'GET /users/sleep': () => { env.tick(sync.SYNC_BUDGET_MS - 2500); return { status: 503 }; } } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.report.sleep.code, 'TIME_BUDGET');
+  assert.deepStrictEqual(env.waits, [], 'kalan süreye sığmayan bekleme yapılmamalı');
+});
+
 ta('geçici ağ hatası ve 5xx yeniden deneniyor', async () => {
   let n = 0;
   const env = setup({ routes: { 'GET /exercises?zones=true': () => (++n === 1 ? new Error('ECONNRESET') : n === 2 ? { status: 503 } : { status: 200, body: [EXERCISE] }) } });

@@ -519,7 +519,10 @@ const polarLog = (level, event, fields) => {
 
 exports.polarApi = functions
   .region(POLAR_REGION)
-  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 60, memory: '256MB' })
+  /* 120 sn: bir sporcunun tam senkronu (altı adım, Polar yavaşken yeniden denemeler)
+     60 sn'yi aşabiliyordu; aşınca bağlantı CORS başlığı olmadan kesiliyor ve koç
+     "Ağ hatası" görüyordu. Senkronun kendi bütçesi 80 sn (polar/sync.js). */
+  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 120, memory: '256MB' })
   .https.onRequest((req, res) => polarHandler.handle(req, res, {
     db: db(),
     fetch: (...a) => globalThis.fetch(...a),

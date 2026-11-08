@@ -222,236 +222,163 @@ function SparkSVG({id,data,color,avg,unit,showValues,valueColor}){
   </div>;
 }
 
-/* Build one report section (compact CSS bar chart of column team totals +
-   athlete x column matrix with per-athlete totals, column totals and grand
-   total). Returns an HTML string. `perAthlete` = [{name,data:[...]}]. */
-function _loadSectionHTML(title,subtitle,colLabels,perAthlete,accent){
-  const nf=v=>Number(v||0).toLocaleString('tr-TR');
-  const sorted=[...(perAthlete||[])].map(a=>({name:a.name,data:a.data||[],total:(a.data||[]).reduce((x,y)=>x+(y||0),0)})).sort((a,b)=>b.total-a.total);
-  const colTotals=colLabels.map((_,i)=>sorted.reduce((s,a)=>s+(a.data[i]||0),0));
-  const grand=colTotals.reduce((a,b)=>a+b,0);
-  const maxCol=Math.max(1,...colTotals);
-  const bars=colLabels.map((lab,i)=>{
-    const h=Math.round((colTotals[i]/maxCol)*88);
-    return `<div class="bc"><div class="bgraph"><div class="bv">${colTotals[i]?nf(colTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div></div><div class="bl">${lab}</div></div>`;
-  }).join('');
-  const head=`<tr><th class="ath"># ${L('Sporcu','Athlete')}</th>${colLabels.map(l=>`<th>${l}</th>`).join('')}<th class="tot">${L('Top','Tot')}</th></tr>`;
-  const rows=sorted.length?sorted.map((a,ri)=>`<tr><td class="ath">${ri+1}. ${a.name}</td>${a.data.map(v=>`<td>${v?nf(v):'<span class=z>·</span>'}</td>`).join('')}<td class="tot">${nf(a.total)}</td></tr>`).join('')
-    :`<tr><td class="ath">—</td>${colLabels.map(()=>'<td>·</td>').join('')}<td class="tot">0</td></tr>`;
-  const foot=`<tr class="tr2"><td class="ath">${L('TAKIM TOPLAMI','TEAM TOTAL')}</td>${colTotals.map(v=>`<td>${nf(v)}</td>`).join('')}<td class="tot grand">${nf(grand)}</td></tr>`;
-  return `<div class="sec">
-    <div class="sh"><span class="dot"></span><span class="st">${title}</span><span class="ssub">${subtitle}</span></div>
-    <div class="chart">${bars}</div>
-    <table><thead>${head}</thead><tbody>${rows}${foot}</tbody></table>
-  </div>`;
-}
-/* Build a Turkish monthly team report (A4 landscape, multi-section):
-   summary metrics + Weekly Load Distribution + Daily Team Load + ACWR +
-   Weekly Monotony + Training Purpose Distribution. */
-/* Turkish single-week team report (A4 landscape) — mirrors monthly but
-   scoped to one Archivoy-anchored week (per-day team load + athlete x day
-   matrix + week ACWR/monotony/strain + week purpose distribution). */
-function printWeeklyReportTR(R){
+/* =========================================================
+   YÜK RAPORU ÇIKTISI — haftalık ve aylık (A4 yatay)
+   =========================================================
+   Veri buildLoadReport'tan (280) gelir; bu işlev yalnızca basar. Sayfa 1: başlık (küçük
+   CoachOS logosu), yedi gösterge kutusu, günlük yük grafiği + haftalar tablosu (ACWR,
+   monotoni, zorlanma), antrenman türü ve odağı dağılımı. Sayfa 2: sporcu tablosu (gün ya
+   da hafta yükleri, toplam, ort. RPE, hazır oluş, monotoni, ACWR). Kinexon raporu dili:
+   siyah başlık bandı, ince çizgili tablolar, renk yalnızca bant işaretlerinde. */
+function printLoadReport(R){
   const w=window.open('','_blank','width=1280,height=920');
-  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
-  const nf=v=>Number(v||0).toLocaleString('tr-TR');
-  const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
-  const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
-  const monoTR=m=>!m?'—':m>2?L('Yüksek','High'):m>=1.5?L('İzle','Watch'):m>=1?L('Normal','Normal'):L('Düşük','Low');
-  // Daily team-load chart — colored session pills on top, value, bar, day label
-  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const SC={
-    strength:{c:'#1f7cc2',g:'rgba(31,124,194,.4)'},
-    practice:{c:'#5b8cff',g:'rgba(91,140,255,.4)'},
-    speed:{c:'#a855f7',g:'rgba(168,85,247,.4)'},
-    recovery:{c:'#46d6a0',g:'rgba(70,214,160,.4)'},
-    match:{c:'#ff6b5b',g:'rgba(255,107,91,.4)'},
-    endurance:{c:'#22d3ee',g:'rgba(34,211,238,.4)'},
-  };
-  const maxDay=Math.max(1,...R.dayTotals);
-  const dailyBars=R.dailyLabels.map((lab,i)=>{
-    const h=Math.round((R.dayTotals[i]/maxDay)*64);
-    const wks=(R.daySessions&&R.daySessions[i])||[];
-    const wkHtml=wks.slice(0,3).map(s=>{
-      const col=SC[s.type]||SC.practice;
-      const meta=[s.duration?s.duration+'min':null,s.au?nf(s.au)+' AU':null].filter(Boolean).join(' · ');
-      return `<div class="wkchip" style="border-left-color:${col.c};background:${col.c}14"><div class="wn">${esc(s.name)}</div>${meta?`<div class="wm">${esc(meta)}</div>`:''}</div>`;
-    }).join('');
-    return `<div class="bc"><div class="bworks-top">${wkHtml}</div><div class="bgraph"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div></div><div class="bl">${lab}</div></div>`;
-  }).join('');
-  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Günlük Takım Yükü (AU)','Daily Team Load (AU)')}</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
-  // Per-athlete x day matrix (allows in-page break)
-  const matrixSec=_loadSectionHTML(L('Sporcu × Gün Yük Dağılımı (AU)','Athlete × Day Load (AU)'),L('Yüke göre sıralı','Sorted by load'),R.dailyLabels,R.perAthlete,'#1f7cc2').replace('class="sec"','class="sec matrix-sec"');
-  // Week ACWR / Monotony summary card
-  const summary=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Özet','Weekly Summary')}</span><span class="ssub">${R.weekLabel}</span></div>
-    <table><thead><tr><th class="ath">${L('Gösterge','Metric')}</th><th>${L('Değer','Value')}</th><th>${L('Durum / Açıklama','Status / Note')}</th></tr></thead><tbody>
-      <tr><td class="ath">${L('ACWR (hafta sonu)','ACWR (week end)')}</td><td>${R.acwr?R.acwr.toFixed(2):'—'}</td><td>${acwrTR} · ${L('Güvenli aralık','Safe band')} 0.8–1.3</td></tr>
-      <tr><td class="ath">${L('Haftalık Toplam Yük','Weekly Total Load')}</td><td>${nf(Math.round(R.weekTotal))}</td><td>${L('AU (takım)','AU (team)')}</td></tr>
-      <tr><td class="ath">${L('Ortalama Günlük Yük','Mean Daily Load')}</td><td>${nf(Math.round(R.weekMean))}</td><td>AU</td></tr>
-      <tr><td class="ath">${L('Standart Sapma','Standard Deviation')}</td><td>${R.weekSD.toFixed(1)}</td><td>${L('Günler arası dağılım','Day-to-day spread')}</td></tr>
-      <tr><td class="ath">${L('Monotoni','Monotony')}</td><td>${R.weekMono.toFixed(2)}</td><td>${monoTR(R.weekMono)} ${L('(Ortalama ÷ SS)','(Mean ÷ SD)')}</td></tr>
-      <tr><td class="ath">${L('Zorlanma','Strain')}</td><td>${nf(Math.round(R.weekStrain))}</td><td>${L('Toplam × Monotoni','Total × Monotony')}</td></tr>
-      <tr><td class="ath">${L('Antrenman Günü','Training Days')}</td><td>${R.trainDays}</td><td>${L('yük > 0 olan günler','days with load > 0')}</td></tr>
-    </tbody></table>
-    <div class="note">${L('<b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — 1.0–1.5 normal, &gt;2.0 yüksek.','<b>ACWR</b> = total team load of the last 7 days ÷ the weekly average of the last 28 days. Safe band 0.8–1.3, &gt;1.5 high injury risk. <b>Monotony</b>: within-week load variety — 1.0–1.5 normal, &gt;2.0 high.')}</div></div>`;
-  // Purpose mix
-  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
-  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
-    <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Haftalık Antrenman Raporu','Weekly Training Report')} — ${R.teamName}</title>
-
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const nf=v=>Math.round(Number(v)||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
+  const f2=v=>v==null||!v?'—':Number(v).toFixed(2);
+  const f1=v=>v==null?'—':Number(v).toFixed(1);
+  const acC=v=>!v?'#8b9099':v>1.5?'#dc2626':(v>=0.8&&v<=1.3)?'#16a34a':'#d97706';
+  const acT=v=>!v?L('Veri yok','No data'):v>1.5?L('Yüksek risk','High risk'):(v>=0.8&&v<=1.3)?'Optimal':v<0.8?L('Düşük yük','Low load'):L('Dikkat','Caution');
+  const moC=v=>!v?'#8b9099':v>2?'#dc2626':v>=1.5?'#d97706':v>=1?'#16a34a':'#2563eb';
+  const moT=v=>!v?'—':v>2?L('Yüksek','High'):v>=1.5?L('İzle','Watch'):v>=1?'Normal':L('Düşük','Low');
+  const rdC=v=>v==null?'#8b9099':v>=4?'#16a34a':v>=3?'#d97706':'#dc2626';
+  const K=R.kpi,wk=R.kind==='week';
+  const title=wk?L('Haftalık Yük Raporu','Weekly Load Report'):L('Aylık Yük Raporu','Monthly Load Report');
+  const tile=(k,v,sub,c)=>`<div class="kp"${c?` style="--kc:${c}"`:''}><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${sub}</div></div>`;
+  const kpis=[
+    tile(L('Yük / sporcu','Load / athlete'),nf(K.load),L(`AU · ${K.nAth} sporcu`,`AU · ${K.nAth} athletes`)),
+    tile(L('Antrenman','Training'),`${K.trainDays}<small>/${K.nDays} ${L('gün','d')}</small>`,L(`${K.nSes} seans · ${nf(K.mins)} dk`,`${K.nSes} sessions · ${nf(K.mins)} min`)),
+    tile('ACWR',f2(K.acwr),acT(K.acwr)+' · 0.8–1.3',acC(K.acwr)),
+    tile(wk?L('Monotoni','Monotony'):L('Ort. monotoni','Avg monotony'),f2(K.mono),moT(K.mono)+' · '+L('ort. ÷ SS','mean ÷ SD'),moC(K.mono)),
+    tile(wk?L('Zorlanma','Strain'):L('Ort. zorlanma','Avg strain'),nf(K.strain),L('haftalık yük × monotoni','weekly load × monotony')),
+    tile(L('Ort. sRPE','Avg sRPE'),f1(K.rpe),L('seans zorluğu (0–10)','session effort (0–10)')),
+    tile(L('Hazır oluş','Readiness'),K.rd==null?'—':f1(K.rd)+'<small>/5</small>',L('wellness ortalaması','wellness average'),rdC(K.rd)),
+  ].join('');
+  /* Günlük yük grafiği. */
+  const maxD=Math.max(1,...R.daily.map(d=>d.avg));
+  const many=R.daily.length>10;
+  const bars=R.daily.map((d,i)=>{const h=Math.round(d.avg/maxD*100);const dt=parseD(d.k);const we=[0,6].includes(dt.getDay());
+    const chips=wk?d.ses.slice(0,3).map(s=>`<div class="ch" style="--sc:${RPT_TYPE_COL[s.type]||'#78716c'}"><b>${esc(s.name)}</b>${s.duration?`<span>${s.duration} ${L('dk','min')}</span>`:''}</div>`).join(''):'';
+    return`<div class="bc${we&&many?' we':''}${d.fut?' fut':''}">${wk?`<div class="chs">${chips}</div>`:''}<div class="bg"><div class="bv">${d.avg?nf(d.avg):''}</div><div class="br" style="height:${Math.max(d.avg?2:0,h)}%"></div></div>
+      <div class="bl">${wk?`<b>${DN[i]}</b>${fd(d.k).slice(0,5)}`:dt.getDate()}</div></div>`;}).join('');
+  const dailySec=`<div class="sec"><div class="sh"><span class="st">${L('Günlük yük','Daily load')}</span><span class="ss">${L('sporcu başına ort. AU','avg AU per athlete')}</span></div>
+    <div class="chart${wk?' wk':''}">${bars}</div></div>`;
+  /* Haftalar. */
+  const wRows=R.weeks.map(x=>`<tr${wk&&x.ws===R.from?' class="cur"':''}><td class="l">${fd(x.ws).slice(0,5)} – ${fd(x.we).slice(0,5)}</td>
+    <td>${x.fut?'—':nf(x.load)}</td><td><b style="color:${acC(x.acwr)}">${x.fut?'—':f2(x.acwr)}</b></td>
+    <td><b style="color:${moC(x.mono)}">${x.fut?'—':f2(x.mono)}</b><i class="tg" style="--tc:${moC(x.mono)}">${x.fut?'':moT(x.mono)}</i></td><td>${x.fut||!x.strain?'—':nf(x.strain)}</td></tr>`).join('');
+  const weeksSec=`<div class="sec"><div class="sh"><span class="st">${wk?L('Son 4 hafta','Last 4 weeks'):L('Haftalar','Weeks')}</span><span class="ss">ACWR · ${L('monotoni','monotony')} · ${L('zorlanma','strain')}</span></div>
+    <table class="tw"><thead><tr><th class="l">${L('Hafta','Week')}</th><th>${L('Yük/sporcu','Load/ath.')}</th><th>ACWR</th><th>${L('Monotoni','Monotony')}</th><th>${L('Zorlanma','Strain')}</th></tr></thead><tbody>${wRows}</tbody></table></div>`;
+  /* Dağılımlar. */
+  const distSec=(t,sub,list)=>{const tot=list.reduce((x,y)=>x+y.min,0);
+    const stack=list.map(x=>x.min>0?`<i style="flex-grow:${x.min};background:${x.color}"></i>`:'').join('');
+    const rows=list.length?list.map(x=>`<tr><td class="l"><span class="sw" style="background:${x.color}"></span>${esc(x.label)}</td><td>${nf(x.min)}</td><td>${x.n}</td>
+      <td class="pc"><div class="pb"><i style="width:${x.pct.toFixed(1)}%;background:${x.color}"></i></div><b>${x.pct.toFixed(0)}%</b></td></tr>`).join('')
+      :`<tr><td class="l" colspan="4">${L('Bu dönemde seans yok','No sessions in this period')}</td></tr>`;
+    return`<div class="sec"><div class="sh"><span class="st">${t}</span><span class="ss">${sub} · ${nf(tot)} ${L('dk','min')}</span></div>
+      ${tot?`<div class="stk">${stack}</div>`:''}
+      <table class="td"><thead><tr><th class="l">${L('Kategori','Category')}</th><th>${L('Dakika','Minutes')}</th><th>${L('Seans','Sessions')}</th><th>${L('Pay','Share')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;};
+  const typeSec=distSec(L('Antrenman türü dağılımı','Training type split'),L('seans türüne göre','by session type'),R.types);
+  const focSec=distSec(L('Antrenman odağı dağılımı','Training focus split'),L('çok odaklı seansın süresi odaklarına bölünür','a multi-focus session is split across its foci'),R.focus);
+  /* Sporcu tablosu. */
+  const mx=Math.max(1,...R.rows.flatMap(r=>r.v));
+  const aRows=R.rows.map((r,i)=>`<tr${r.total?'':' class="off"'}><td class="n">${i+1}</td><td class="l"><b>${esc(r.name)}</b>${r.pos?`<em>${esc(r.pos)}</em>`:''}</td>
+    ${r.v.map(v=>`<td class="c"${v?` style="background:rgba(31,124,194,${(0.06+v/mx*0.34).toFixed(2)})"`:''}>${v?nf(v):'<span class="z">·</span>'}</td>`).join('')}
+    <td class="t">${nf(r.total)}</td><td>${f1(r.rpe)}</td><td><b style="color:${rdC(r.rd)}">${r.rd==null?'—':f1(r.rd)}</b></td>
+    <td><b style="color:${moC(r.mono)}">${f2(r.mono)}</b></td><td><b style="color:${acC(r.acwr)}">${r.acwr==null?'—':f2(r.acwr)}</b></td></tr>`).join('');
+  const mean=a=>{const v=a.filter(x=>x!=null);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
+  const act=R.rows.filter(r=>r.total>0);
+  const aFoot=`<tr class="ft"><td></td><td class="l">${L('TAKIM','TEAM')}<em>${L('toplam · ortalama','total · mean')}</em></td>${R.colTot.map(v=>`<td class="c">${v?nf(v):'·'}</td>`).join('')}
+    <td class="t">${nf(R.colTot.reduce((x,y)=>x+y,0))}</td><td>${f1(mean(act.map(r=>r.rpe)))}</td><td>${f1(mean(R.rows.map(r=>r.rd)))}</td><td>${f2(mean(act.map(r=>r.mono)))}</td><td>${f2(R.kpi.acwr)}</td></tr>`;
+  const athSec=`<div class="sec ath"><div class="sh"><span class="st">${L('Sporcular','Athletes')}</span><span class="ss">${wk?L('günlük yük (AU)','daily load (AU)'):L('haftalık yük (AU)','weekly load (AU)')} · ${L('toplam yüke göre sıralı','sorted by total load')}</span></div>
+    <table class="ta"><thead><tr><th class="n">#</th><th class="l">${L('Sporcu','Athlete')}</th>${R.cols.map(c=>`<th class="c">${c.lab}</th>`).join('')}
+      <th class="t">${L('Toplam','Total')}</th><th>sRPE</th><th>${L('Hazır','Ready')}</th><th>${L('Mono','Mono')}</th><th>ACWR</th></tr></thead>
+    <tbody>${aRows||`<tr><td colspan="${R.cols.length+7}">${L('Kadroda sporcu yok','No athletes on the roster')}</td></tr>`}</tbody><tfoot>${aFoot}</tfoot></table></div>`;
+  const gen=new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${esc(R.teamName)} — ${esc(R.label)}</title>
 <style>
 @page{size:A4 landscape;margin:9mm}
 ${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--ac:#1f7cc2;--accent:#1f7cc2;--ink:#0a0b0d;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
-.mono{font-family:'Google Sans',Arial,sans-serif}
-.hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:2px;padding:14px 18px;margin-bottom:14px}
-.hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
-.hd .hd-logo{height:26px;width:auto;flex:none}
-.hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#fff;background:var(--accent);padding:5px 14px;border-radius:2px;white-space:nowrap;letter-spacing:.04em}
-.sec{border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid;background:#fff}
-.matrix-sec.sec{page-break-before:always;break-before:page;page-break-inside:auto;break-inside:auto}
-.matrix-sec tbody tr{page-break-inside:avoid;break-inside:avoid}
-.matrix-sec thead{display:table-header-group}
-.sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
-.sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:2px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
-.chart{display:flex;align-items:stretch;gap:5px;height:108px;padding:10px 10px 0}
-.chart.tall{height:220px;align-items:stretch}
-.bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
-.bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-self:stretch;padding:0 1px;margin-bottom:6px;min-height:30px}
-.wkchip{background:#fff;border:1px solid var(--border);border-left-width:3px;border-radius:2px;padding:5px 8px;color:var(--text);text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;box-shadow:0 1px 2px rgba(15,23,42,.05)}
-.wkchip .wn{font-size:9px;font-weight:600;color:var(--text);line-height:1.25}
-.wkchip .wm{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
-.bar{width:74%;max-width:46px;border-radius:0;background:var(--accent)}
-.bv{font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:600;margin-bottom:3px;color:var(--text);white-space:nowrap}
-.bl{font-family:'Google Sans',Arial,sans-serif;font-size:8.5px;color:var(--dim);margin-top:6px;text-align:center;font-weight:500;line-height:1.1;flex:0 0 auto}
-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
-th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
-tbody tr:nth-child(even) td{background:var(--bg2)}
-td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(31,124,194,.12)}
-.z{color:var(--dim)}
-.tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
-.tr2 td.grand{background:var(--accent)!important;color:#fff}
-.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
-.note b{color:var(--text);font-weight:600}
-.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
-.pt td.ath{width:42%}
-.pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
-.pbar>div{height:100%;border-radius:2px}
-.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
-.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-bottom:12px;align-items:stretch}
-.grid2.top2{grid-template-columns:1.15fr .85fr;page-break-after:avoid;break-after:avoid}
-.grid2>.sec{margin-bottom:0;display:flex;flex-direction:column}
-.grid2>.sec>table,.grid2>.sec>.note{flex:0 0 auto}
-.grid2>.sec>.chart{flex:1 1 auto;min-height:130px;padding-bottom:14px;align-items:flex-end}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--ac:#1f7cc2;--ink:#0b0c0e;--bg2:#f5f6f8;--bd:#e3e5e8;--mut:#5c626c;--dim:#8b9099}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--ink);font-size:10px;background:#fff}
+.hd{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;padding:11px 16px;margin-bottom:10px}
+.hd .l{display:flex;align-items:center;gap:14px}
+.hd img{height:13px;width:auto;opacity:.95}
+.hd .sep{width:1px;height:26px;background:rgba(255,255,255,.2)}
+.hd h1{font-size:16px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;line-height:1.1}
+.hd .tm{font-size:10px;color:rgba(255,255,255,.65);margin-top:3px;letter-spacing:.03em}
+.hd .r{text-align:right}
+.hd .rng{display:inline-block;font-size:11px;font-weight:700;background:var(--ac);padding:5px 12px;letter-spacing:.03em}
+.hd .gd{font-size:8.5px;color:rgba(255,255,255,.55);margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px}
+.kp{border:1px solid var(--bd);border-top:3px solid var(--kc,var(--ink));padding:8px 10px 9px}
+.kk{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.kv{font-size:21px;font-weight:700;margin-top:4px;line-height:1;color:var(--kc,var(--ink));font-variant-numeric:tabular-nums}
+.kv small{font-size:10px;font-weight:600;color:var(--dim);margin-left:2px}
+.ks{font-size:8.5px;color:var(--mut);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g2{display:grid;grid-template-columns:1.35fr 1fr;gap:10px;margin-bottom:10px}
+.g2b{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sec{border:1px solid var(--bd);break-inside:avoid;page-break-inside:avoid;background:#fff}
+.sh{display:flex;align-items:baseline;gap:10px;padding:7px 11px;border-bottom:1px solid var(--bd)}
+.st{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ac)}
+.ss{margin-left:auto;font-size:8.5px;color:var(--dim)}
+.chart{display:flex;gap:3px;height:150px;padding:10px 10px 6px;align-items:stretch}
+.chart.wk{height:206px;gap:6px}
+.bc{flex:1;display:flex;flex-direction:column;min-width:0}
+.bc.we .bg{background:var(--bg2)}
+.bc.fut .bl{opacity:.45}
+.chs{display:flex;flex-direction:column;gap:3px;min-height:34px;margin-bottom:5px}
+.ch{border-left:3px solid var(--sc);background:var(--bg2);padding:3px 5px;line-height:1.2}
+.ch b{display:block;font-size:8px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch span{font-size:7.5px;color:var(--mut)}
+.bg{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.bv{font-size:8px;font-weight:700;margin-bottom:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chart:not(.wk) .bv{font-size:6.5px}
+.br{width:70%;max-width:44px;background:var(--ac)}
+.bl{text-align:center;font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.25}
+.bl b{display:block;color:var(--ink);font-size:8.5px}
+table{width:100%;border-collapse:collapse}
+th{font-size:7.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff;background:var(--ink);padding:6px 5px;text-align:right}
+td{padding:5px 5px;border-top:1px solid var(--bd);text-align:right;font-variant-numeric:tabular-nums;font-size:9.5px}
+th.l,td.l{text-align:left;padding-left:10px}
+tbody tr:nth-child(even) td{background:#fafbfc}
+.tw tr.cur td{background:#eaf3fb!important;font-weight:700}
+.tg{display:inline-block;font-style:normal;font-size:7px;font-weight:700;color:var(--tc);margin-left:5px;letter-spacing:.04em;text-transform:uppercase}
+.stk{display:flex;height:10px;margin:9px 11px 4px;gap:1px}
+.stk i{display:block}
+.sw{display:inline-block;width:8px;height:8px;margin-right:6px;vertical-align:middle}
+.pc{width:34%}
+.pc .pb{display:inline-block;width:calc(100% - 34px);height:6px;background:var(--bg2);vertical-align:middle;margin-right:6px}
+.pc .pb i{display:block;height:100%}
+.pc b{display:inline-block;width:28px;text-align:right}
+.ath{break-before:page;page-break-before:always}
+.ta{table-layout:fixed}
+.ta th.n,.ta td.n{width:22px;text-align:center;color:var(--dim)}
+.ta th.l,.ta td.l{width:${wk?'20%':'19%'}}
+.ta td.l b{font-weight:700;text-transform:uppercase;font-size:9px}
+.ta td.l em{font-style:normal;color:var(--dim);font-size:8px;margin-left:6px}
+.ta th.c,.ta td.c{text-align:center}
+.ta th.t,.ta td.t{font-weight:700;background:#eef4fa}
+.ta th.t{background:var(--ac)}
+.ta tr.off td{color:var(--dim)}
+.ta tfoot td{background:var(--ink)!important;color:#fff;font-weight:700;border-top:2px solid var(--ac)}
+.ta tfoot td.l em{color:rgba(255,255,255,.6)}
+.ta tfoot td.t{background:var(--ac)!important}
+.z{color:#c3c7cd}
+.nt{margin-top:8px;font-size:8px;color:var(--mut);line-height:1.6;border-top:1px solid var(--bd);padding-top:6px}
+.nt b{color:var(--ink)}
+.fo{display:flex;justify-content:space-between;font-size:8px;color:var(--dim);margin-top:6px}
 </style></head><body>
-<div class="hd"><div class="hd-l"><img class="hd-logo" src="${COACHOS_LOGO}" alt="CoachOS"><div><h1>${L('Haftalık Antrenman Raporu','Weekly Training Report')}</h1><div class="tm">${R.teamName}</div></div></div><div class="rng">${R.weekLabel}</div></div>
-<div class="grid2 top2">${dailySec}${summary}</div>
-${purposeSec}
-${matrixSec}
-<div class="ft"><span>${L('AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.','AU = sRPE × minutes · Athletes sorted by total load.')}</span><span>CoachOS · ${new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB')}</span></div>
+<div class="hd"><div class="l"><img src="${COACHOS_LOGO}" alt="CoachOS"><span class="sep"></span><div><h1>${title}</h1><div class="tm">${esc(R.teamName)}</div></div></div>
+  <div class="r"><div class="rng">${esc(R.label)}</div><div class="gd">${R.partial?L(`${fd(R.ref)} itibarıyla · `,`as of ${fd(R.ref)} · `):''}${L('Oluşturuldu','Generated')} ${gen}</div></div></div>
+<div class="kpis">${kpis}</div>
+<div class="g2">${dailySec}${weeksSec}</div>
+<div class="g2b">${typeSec}${focSec}</div>
+<div class="nt">${L('<b>AU</b> = sRPE × dakika. <b>ACWR</b> = son 7 günün yükü ÷ son 28 günün haftalık ortalaması (güvenli 0.8–1.3, &gt;1.5 yüksek risk). <b>Monotoni</b> = haftalık günlük yük ortalaması ÷ standart sapması (&lt;1.0 düşük · 1.0–1.5 normal · 1.5–2.0 izle · &gt;2.0 yüksek). <b>Zorlanma</b> = haftalık yük × monotoni. Monotoni ve ACWR önce her sporcu için, sonra kadro ortalaması olarak hesaplanır — Yük Takibi ekranıyla aynı.','<b>AU</b> = sRPE × minutes. <b>ACWR</b> = last 7 days\' load ÷ the 28-day weekly average (safe 0.8–1.3, &gt;1.5 high risk). <b>Monotony</b> = weekly mean daily load ÷ its SD (&lt;1.0 low · 1.0–1.5 normal · 1.5–2.0 watch · &gt;2.0 high). <b>Strain</b> = weekly load × monotony. Monotony and ACWR are computed per athlete first, then averaged — the same as the Load Monitoring screen.')}</div>
+${athSec}
+<div class="fo"><span>CoachOS · ${esc(R.teamName)}</span><span>${esc(R.label)}</span></div>
 </body></html>`);
   w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},500);
 }
-function printMonthlyReportTR(R){
-  const w=window.open('','_blank','width=1280,height=920');
-  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
-  const nf=v=>Number(v||0).toLocaleString('tr-TR');
-  const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
-  const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
-  const zoneTR=v=>!v?'—':v>1.5?L('Yüksek risk','High risk'):(v>=0.8&&v<=1.3)?'Optimal':v<0.8?L('Düşük','Low'):L('Dikkat','Caution');
-  const monoTR=m=>!m?'—':m>2?L('Yüksek','High'):m>=1.5?L('İzle','Watch'):m>=1?L('Normal','Normal'):L('Düşük','Low');
-
-  const weeklySec=_loadSectionHTML(L('Haftalık Yük Dağılımı (AU)','Weekly Load Distribution (AU)'),L('Sporcu × Hafta · yüke göre sıralı','Athlete × Week · sorted by load'),R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
-
-  const maxDay=Math.max(1,...R.monthDays.map(d=>d.val));
-  const dailyBars=R.monthDays.map(d=>{const h=Math.round((d.val/maxDay)*118);return `<div class="bc"><div class="bv">${d.val?nf(d.val):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div><div class="bl">${d.lab}</div></div>`;}).join('');
-  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Günlük Takım Yükü (AU)','Daily Team Load (AU)')}</span><span class="ssub">${R.monthLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
-
-  const acwrRows=R.acwrWeekly.map(x=>`<tr><td class="ath">${x.label}</td><td>${x.acwr?x.acwr.toFixed(2):'—'}</td><td>${zoneTR(x.acwr)}</td></tr>`).join('')||`<tr><td class="ath">—</td><td>—</td><td>—</td></tr>`;
-  const acwrSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('ACWR — Akut:Kronik Yük Oranı','ACWR — Acute:Chronic Workload Ratio')}</span><span class="ssub">${R.acwr?R.acwr.toFixed(2):'—'} (${acwrTR})</span></div>
-    <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>ACWR</th><th>${L('Bölge','Zone')}</th></tr></thead><tbody>${acwrRows}</tbody></table>
-    <div class="note">${L('<b>Akut</b> = son 7 günün toplam takım yükü · <b>Kronik</b> = son 28 günün haftalık ortalaması · <b>ACWR</b> = Akut ÷ Kronik. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. Değerler her haftanın sonunda, takımın kayıtlı (sRPE) yükünden hesaplanır.','<b>Acute</b> = total team load of the last 7 days · <b>Chronic</b> = weekly average over the last 28 days · <b>ACWR</b> = Acute ÷ Chronic. Safe band 0.8–1.3, &gt;1.5 high injury risk. Computed at each week end from the logged (sRPE) team load.')}</div></div>`;
-
-  const monoRows=R.mWeeks.map(w2=>`<tr><td class="ath">${fd(w2.wkStart).slice(0,5)}</td><td>${nf(Math.round(w2.total))}</td><td>${w2.mean.toFixed(0)}</td><td>${w2.sd.toFixed(1)}</td><td>${w2.monotony.toFixed(2)}</td><td>${nf(Math.round(w2.strain))}</td><td>${monoTR(w2.monotony)}</td></tr>`).join('');
-  const monoSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Monotoni','Weekly Monotony')}</span><span class="ssub">${L('Ort.','Avg')} ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
-    <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>${L('Toplam','Total')}</th><th>${L('Ort.','Mean')}</th><th>${L('SS','SD')}</th><th>${L('Monotoni','Monotony')}</th><th>${L('Zorlanma','Strain')}</th><th>${L('Durum','Status')}</th></tr></thead><tbody>${monoRows}</tbody></table>
-    <div class="note">${L('<b>Monotoni</b> = her sporcunun günlük yük ortalaması ÷ standart sapması (hafta içi), takım geneline göre ortalaması. Bantlar: 1.0 altı düşük (yükler oldukça değişken), 1.0–1.5 normal, 1.5–2.0 artmaya başlayan monotoni, 2.0 üstü yüksek — aşırı yüklenme ve hastalık/sakatlık riski artabilir. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = per-athlete mean daily load ÷ standard deviation (within the week), averaged across the squad. Bands: below 1.0 low (loads highly varied), 1.0–1.5 normal, 1.5–2.0 rising monotony, above 2.0 high — overload and illness/injury risk climbs. <b>Strain</b> = Total × Monotony.')}</div></div>`;
-
-  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
-  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
-    <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
-
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Aylık Antrenman Raporu','Monthly Training Report')} — ${R.teamName}</title>
-
-<style>
-@page{size:A4 landscape;margin:9mm}
-${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-:root{--ac:#1f7cc2;--accent:#1f7cc2;--bg2:#f4f5f7;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Google Sans',Arial,sans-serif;color:var(--text);font-size:10px;background:#fff}
-.hd{display:flex;justify-content:space-between;align-items:center;background:#0a0b0d;color:#fff;border-radius:2px;padding:14px 18px;margin-bottom:14px}
-.hd .hd-l{display:flex;align-items:center;gap:14px;min-width:0}
-.hd .hd-logo{height:26px;width:auto;flex:none}
-.hd h1{font-size:20px;font-weight:700;line-height:1.05;letter-spacing:-.01em}
-.hd .tm{font-family:'Google Sans',Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.7);font-weight:500;margin-top:4px;letter-spacing:.04em}
-.hd .rng{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:600;color:#fff;background:var(--accent);padding:5px 14px;border-radius:2px;white-space:nowrap;letter-spacing:.04em}
-.mt{display:flex;gap:10px;margin-bottom:16px}
-.mc{flex:1;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:2px;padding:11px 14px;background:#fff}
-.mk{font-family:'Google Sans',Arial,sans-serif;font-size:9px;text-transform:uppercase;color:var(--dim);font-weight:500;letter-spacing:.06em}
-.mv{font-size:23px;font-weight:700;color:var(--text);line-height:1.15;letter-spacing:-.01em}
-.mh{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);font-weight:500}
-.sec{border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid;background:#fff}
-.sh{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--border)}
-.sh .dot{width:3px;height:15px;border-radius:2px;background:var(--accent)}
-.sh .st{font-family:'Google Sans',Arial,sans-serif;font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
-.sh .ssub{margin-left:auto;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);background:transparent;border:1px solid var(--border);padding:3px 10px;border-radius:2px;font-weight:500;white-space:nowrap;letter-spacing:.04em}
-.chart{display:flex;align-items:flex-end;gap:5px;height:128px;padding:10px 10px 0}
-.chart.tall{height:158px}
-.bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-.bar{width:72%;max-width:42px;border-radius:0;background:var(--accent)}
-.bv{font-family:'Google Sans',Arial,sans-serif;font-size:8px;font-weight:600;margin-bottom:2px;white-space:nowrap;color:var(--text)}
-.bl{font-family:'Google Sans',Arial,sans-serif;font-size:7.5px;color:var(--dim);margin-top:5px;text-align:center;font-weight:500;line-height:1.1}
-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-th{background:#0a0b0d;color:#fff;font-family:'Google Sans',Arial,sans-serif;font-size:9px;font-weight:500;padding:8px 4px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
-th.ath,td.ath{text-align:left;width:34%;padding-left:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:7px 4px;text-align:center;font-family:'Google Sans',Arial,sans-serif;font-size:10px;border-top:1px solid var(--border);font-weight:500;color:var(--text)}
-td.ath{font-family:'Google Sans',Arial,sans-serif;font-weight:600}
-tbody tr:nth-child(even) td{background:var(--bg2)}
-td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(31,124,194,.12)}
-.z{color:var(--dim)}
-.tr2 td{background:#0a0b0d!important;color:#fff;font-weight:600;border-top:2px solid var(--accent)}
-.tr2 td.grand{background:var(--accent)!important;color:#fff}
-.note{font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--muted);padding:9px 13px;background:var(--bg2);border-top:1px solid var(--border);line-height:1.6}
-.note b{color:var(--text);font-weight:600}
-.grid2{display:flex;gap:14px}
-.grid2>.sec{flex:1;margin-bottom:0}
-.gwrap{margin-bottom:14px}
-.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
-.pt td.ath{width:42%}
-.pbar{height:10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
-.pbar>div{height:100%;border-radius:2px}
-.ft{margin-top:8px;font-family:'Google Sans',Arial,sans-serif;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
-</style></head><body>
-<div class="hd"><div><h1>${L('Aylık Antrenman Raporu','Monthly Training Report')}</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
-${weeklySec}
-${dailySec}
-<div class="gwrap"><div class="grid2">${acwrSec}${monoSec}</div></div>
-${purposeSec}
-<div class="ft"><span>${L('AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.','AU = sRPE × minutes · Athletes sorted by total load.')}</span><span>CoachOS · ${new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB')}</span></div>
-</body></html>`);
-  w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
-}
-

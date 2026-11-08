@@ -117,7 +117,7 @@ function WvArea({vals,labels,color,lo,hi,h,five,team}){
 }
 
 /* ---- Başlık bandı ---- */
-function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name}){
+function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name,actions}){
   const dt=dayKey?parseD(dayKey):null;
   const isToday=dayKey===fmt(today);
   return(<div className="wv-hero">
@@ -140,6 +140,7 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name}){
       <div className="wv-hero-r">
         {stats&&stats.map((s,i)=><div key={i} className="wv-hero-stat" style={{animationDelay:(120+i*90)+'ms'}}>
           <b style={s.c?{color:s.c}:undefined}>{s.v}</b><span>{s.l}</span></div>)}
+        {actions&&<div className="wv-hero-acts">{actions}</div>}
         {setDayKey&&dt&&<div className="wv-day-nav">
           <button onClick={()=>setDayKey(fmt(addD(dt,-1)))} aria-label={L('Önceki gün','Previous day')}>‹</button>
           <div className="wv-day-lbl"><b>{DN[(dt.getDay()+6)%7]}</b>{fd(dayKey)}</div>
@@ -560,14 +561,18 @@ function WellnessView({team,updateTeam,focus}){
       if((xv==null)!==(yv==null))return xv==null?1:-1;
       if(xv!=null&&xv!==yv)return sort==='low'?xv-yv:yv-xv;}
     return(x.a.name||'').localeCompare(y.a.name||'','tr');});
-  const nIn=rows.filter(r=>r.d).length;
-  const rdy=wvMean(rows.map(r=>r.d&&r.d.readiness));
-  const low=rows.filter(r=>r.d&&r.d.readiness!=null&&r.d.readiness<3).length;
+  const wvPrint=kind=>{const d=parseD(dayKey);let from,to,label;
+    if(kind==='week'){from=fmt(sow(d));to=fmt(addD(sow(d),6));label=`${fd(from)} – ${fd(to)}`;}
+    else{from=fmt(new Date(d.getFullYear(),d.getMonth(),1));to=fmt(new Date(d.getFullYear(),d.getMonth()+1,0));label=`${MN[d.getMonth()]} ${d.getFullYear()}`;}
+    printWellnessReport(buildWellnessReport({team,kind,from,to,label,prhr}));};
   return(<div className="wv">
+    {/* Başlıkta istatistik kutuları yok (aynı sayılar hemen altındaki Takım Ortalaması'nda);
+        yerlerinde seçili günün haftası / ayı için wellness çıktısı. */}
     <WvHero title={L('Kadro Wellness','Squad Wellness')} sub={team.setup.teamName} dayKey={dayKey} setDayKey={setDayKey}
-      stats={[{v:`${nIn}/${athletes.length}`,l:L('check-in','check-ins')},
-        {v:wvFmt(rdy,true),l:L('takım hazır oluş','team readiness'),c:score5Color(rdy)},
-        {v:low,l:L('düşük (<3)','low (<3)'),c:low?'#f97316':undefined}]}/>
+      actions={athletes.length>0&&<>
+        <button className="btn sec sm" onClick={()=>wvPrint('week')} title={L('Seçili günün haftası (Pzt–Paz)','The selected day\'s week (Mon–Sun)')}>{L('Haftalık Çıktı Al','Weekly Printout')}</button>
+        <button className="btn sm" onClick={()=>wvPrint('month')} title={L('Seçili günün ayı','The selected day\'s month')}>{L('Aylık Çıktı Al','Monthly Printout')}</button>
+      </>}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
       <WvTeamPanel athletes={athletes} dayKey={dayKey} setDayKey={setDayKey} rows={rows} prhr={prhr}/>
       <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)} onSynced={()=>setPver(v=>v+1)}/>
@@ -592,4 +597,192 @@ function WellnessView({team,updateTeam,focus}){
       <MonAdequacyPanel team={team}/>
     </>}
   </div>);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WELLNESS ÇIKTISI — haftalık ve aylık (A4 yatay), Kinexon rapor dili
+   Sayfa 1: başlık (küçük CoachOS logosu), yedi gösterge (check-in uyumu ve beş sorunun +
+   RHR'nin takım ortalaması), takımın günlük hazır oluşu, dikkat gerektiren sporcular ve
+   kadro özeti (her sporcunun gün/hafta hazır oluşu, soru ortalamaları, check-in, ağrı).
+   Sonraki sayfalar: her sporcunun kartı — metrik × gün (hafta) ya da metrik × hafta (ay)
+   tablosu, check-in formunun renkleriyle (1 kırmızı … 5 mavi), ağrı bölgeleri.
+   Değerler ekranla aynı yoldan: wvDay (günün son kaydı, hazır oluş yoksa soruların
+   ortalaması), RHR için Polar'ın günün en düşük nabzı varsa o (wvRhr). Henüz gelmemiş
+   günler sayılmaz.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const WVR_IDS=['readiness','sleep','mentalFatigue','physicalFatigue','soreness','RHR'];
+function buildWellnessReport({team,kind,from,to,label,prhr}){
+  const tk=fmt(today);
+  const ath=(team.athletes||[]);
+  const days=[];for(let c=parseD(from);fmt(c)<=to;c=addD(c,1))days.push(fmt(c));
+  const done=days.filter(k=>k<=tk);
+  const len=days.length;
+  const pFrom=fmt(addD(parseD(from),kind==='week'?-7:-len)),pTo=fmt(addD(parseD(from),-1));
+  const cols=kind==='week'?days.map((k,i)=>({lab:DN[i],sub:fd(k).slice(0,5),days:[k]}))
+    :(()=>{const o=[];for(let c=sow(parseD(from));fmt(c)<=to;c=addD(c,7)){const ws=fmt(c),we=fmt(addD(c,6));
+      o.push({lab:fd(ws<from?from:ws).slice(0,5),sub:'– '+fd(we>to?to:we).slice(0,5),days:days.filter(k=>k>=ws&&k<=we)});}return o;})();
+  const dayOf=(a,k)=>{const d=wvDay(a,k);const r=wvRhr(a,d,k,prhr);if(!d&&r==null)return null;return{...(d||{}),RHR:r};};
+  const rows=ath.map(a=>{
+    const per={};done.forEach(k=>{per[k]=dayOf(a,k);});
+    const vals=(id,ks)=>ks.map(k=>per[k]&&per[k][id]).filter(v=>v!=null);
+    const avg={};WVR_IDS.forEach(id=>{avg[id]=wvMean(vals(id,done));});
+    const cells={};WVR_IDS.forEach(id=>{cells[id]=cols.map(c=>wvMean(vals(id,c.days.filter(k=>k<=tk))));});
+    const prev=[];for(let c=parseD(pFrom);fmt(c)<=pTo;c=addD(c,1)){const d=wvDay(a,fmt(c));if(d&&d.readiness!=null)prev.push(d.readiness);}
+    const pAvg=wvMean(prev);
+    const pain={};let painDays=0;
+    done.forEach(k=>{const p=per[k]&&per[k].pain;if(p&&p.list.length){painDays++;p.list.forEach(x=>{const o=pain[x.region]||(pain[x.region]={region:x.region,sev:0,n:0});o.sev=Math.max(o.sev,x.sev);o.n++;});}});
+    return{a,name:a.name||'—',pos:posOf(a.position)||'',avg,cells,
+      n:done.filter(k=>per[k]&&per[k].readiness!=null).length,
+      low:done.filter(k=>per[k]&&per[k].readiness!=null&&per[k].readiness<3).length,
+      delta:avg.readiness!=null&&pAvg!=null?avg.readiness-pAvg:null,
+      spark:done.map(k=>per[k]?per[k].readiness:null),
+      pain:Object.values(pain).sort((x,y)=>(y.sev-x.sev)||(y.n-x.n)),painDays};
+  }).sort((x,y)=>(x.name||'').localeCompare(y.name||'','tr'));
+  const all=id=>wvMean(rows.map(r=>r.avg[id]));
+  const team_=days.map(k=>{const v=k>tk?[]:ath.map(a=>{const d=wvDay(a,k);return d&&d.readiness;}).filter(x=>x!=null);
+    return{k,fut:k>tk,n:v.length,avg:wvMean(v)};});
+  const totalIn=rows.reduce((s,r)=>s+r.n,0),possible=ath.length*done.length;
+  const watch=rows.filter(r=>(r.avg.readiness!=null&&r.avg.readiness<3.5)||(r.delta!=null&&r.delta<=-0.5)||r.low>0||r.painDays>0)
+    .map(r=>({...r,score:(r.avg.readiness==null?5:r.avg.readiness)-(r.low*0.3)-(r.painDays*0.2)+(r.delta!=null&&r.delta<0?r.delta:0)}))
+    .sort((x,y)=>x.score-y.score);
+  return{kind,label,from,to,ref:done.length?done[done.length-1]:from,partial:done.length<days.length,teamName:(team.setup&&team.setup.teamName)||'',
+    cols,rows,days:team_,watch,nDone:done.length,
+    kpi:{comp:possible?totalIn/possible*100:null,totalIn,possible,readiness:all('readiness'),sleep:all('sleep'),mentalFatigue:all('mentalFatigue'),
+      physicalFatigue:all('physicalFatigue'),soreness:all('soreness'),RHR:all('RHR'),low:rows.reduce((s,r)=>s+r.low,0),pain:rows.reduce((s,r)=>s+r.painDays,0)}};
+}
+function printWellnessReport(R){
+  const w=window.open('','_blank','width=1280,height=920');
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const wk=R.kind==='week',K=R.kpi;
+  const f1=v=>v==null?'—':Number(v).toFixed(1);
+  const f0=v=>v==null?'—':String(Math.round(v));
+  /* Baskıda okunur renkler: formun 1-5 renkleri, sarı ve yeşil biraz koyulaştırılmış. */
+  const PC=['#dc2626','#ea580c','#ca8a04','#16a34a','#0284c7'];
+  const sc=v=>v==null?null:PC[Math.min(5,Math.max(1,Math.round(v)))-1];
+  const cell=(v,id)=>{if(v==null)return'<td class="c e">·</td>';if(id==='RHR')return`<td class="c r">${f0(v)}</td>`;
+    const c=sc(v);return`<td class="c" style="background:${c}1f;color:${c}"><b>${f1(v)}</b></td>`;};
+  const M={readiness:L('Hazır oluş','Readiness'),sleep:L('Uyku','Sleep'),mentalFatigue:L('Zihinsel yorg.','Mental fatigue'),
+    physicalFatigue:L('Fiziksel yorg.','Physical fatigue'),soreness:L('Kas ağrısı','Soreness'),RHR:L('RHR (bpm)','RHR (bpm)')};
+  const title=wk?L('Haftalık Wellness Raporu','Weekly Wellness Report'):L('Aylık Wellness Raporu','Monthly Wellness Report');
+  const tile=(k,v,sub,c)=>`<div class="kp"${c?` style="--kc:${c}"`:''}><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${sub}</div></div>`;
+  const kpis=[
+    tile(L('Check-in uyumu','Check-in rate'),K.comp==null?'—':`${Math.round(K.comp)}<small>%</small>`,`${K.totalIn}/${K.possible} ${L('form','forms')}`,K.comp==null?null:K.comp>=80?'#16a34a':K.comp>=60?'#ca8a04':'#dc2626'),
+    tile(M.readiness,f1(K.readiness)+'<small>/5</small>',L(`${K.low} düşük gün (<3)`,`${K.low} low days (<3)`),sc(K.readiness)),
+    tile(M.sleep,f1(K.sleep)+'<small>/5</small>',L('takım ortalaması','team mean'),sc(K.sleep)),
+    tile(M.mentalFatigue,f1(K.mentalFatigue)+'<small>/5</small>',L('5 = dinç','5 = fresh'),sc(K.mentalFatigue)),
+    tile(M.physicalFatigue,f1(K.physicalFatigue)+'<small>/5</small>',L('5 = dinç','5 = fresh'),sc(K.physicalFatigue)),
+    tile(M.soreness,f1(K.soreness)+'<small>/5</small>',L(`${K.pain} ağrı bildirimi`,`${K.pain} pain reports`),sc(K.soreness)),
+    tile(L('RHR','RHR'),f0(K.RHR)+'<small> bpm</small>',L('dinlenik nabız ort.','resting HR mean')),
+  ].join('');
+  /* Takımın günlük hazır oluşu. */
+  const many=R.days.length>10;
+  const bars=R.days.map((d,i)=>{const h=d.avg==null?0:Math.max(4,(d.avg-1)/4*100);const c=sc(d.avg)||'#c3c7cd';const dt=parseD(d.k);
+    return`<div class="bc${d.fut?' fut':''}${many&&[0,6].includes(dt.getDay())?' we':''}"><div class="bg"><div class="bv" style="color:${c}">${d.avg==null?'':f1(d.avg)}</div><div class="br" style="height:${h}%;background:${c}"></div></div>
+      <div class="bl">${wk?`<b>${DN[i]}</b>${fd(d.k).slice(0,5)}`:dt.getDate()}${d.n&&wk?`<i>${d.n} ${L('form','forms')}</i>`:''}</div></div>`;}).join('');
+  const daySec=`<div class="sec"><div class="sh"><span class="st">${L('Takımın günlük hazır oluşu','Team daily readiness')}</span><span class="ss">${L('check-in yapan sporcuların ortalaması · 1–5','mean of athletes who checked in · 1–5')}</span></div><div class="chart${wk?' wk':''}">${bars}</div></div>`;
+  const wl=R.watch.slice(0,7).map(r=>{const why=[];
+    if(r.avg.readiness!=null&&r.avg.readiness<3.5)why.push(L(`ort. hazır oluş ${f1(r.avg.readiness)}`,`avg readiness ${f1(r.avg.readiness)}`));
+    if(r.delta!=null&&r.delta<=-0.5)why.push(L(`önceki döneme göre ${r.delta.toFixed(1)}`,`${r.delta.toFixed(1)} vs previous`));
+    if(r.low)why.push(L(`${r.low} düşük gün`,`${r.low} low days`));
+    if(r.painDays)why.push(L(`ağrı: ${r.pain.slice(0,2).map(p=>p.region).join(', ')}`,`pain: ${r.pain.slice(0,2).map(p=>p.region).join(', ')}`));
+    return`<div class="wr"><span class="wd" style="background:${sc(r.avg.readiness)||'#c3c7cd'}"></span><b>${esc(r.name)}</b><em>${esc(why.join(' · '))}</em><span class="wv" style="color:${sc(r.avg.readiness)||'#8b9099'}">${f1(r.avg.readiness)}</span></div>`;}).join('');
+  const watchSec=`<div class="sec"><div class="sh"><span class="st">${L('Dikkat gerektirenler','Needs attention')}</span><span class="ss">${L('düşük ya da düşen hazır oluş, ağrı','low or falling readiness, pain')}</span></div>
+    <div class="wl">${wl||`<div class="ok">${L('Bu dönemde dikkat gerektiren sporcu yok.','No athlete needs attention in this period.')}</div>`}</div></div>`;
+  /* Kadro özeti. */
+  const sum=R.rows.map(r=>`<tr><td class="l"><b>${esc(r.name)}</b>${r.pos?`<em>${esc(r.pos)}</em>`:''}</td>${r.cells.readiness.map(v=>cell(v,'readiness')).join('')}
+    <td class="av" style="color:${sc(r.avg.readiness)||'#8b9099'}">${f1(r.avg.readiness)}</td>
+    <td>${f1(r.avg.sleep)}</td><td>${f1(r.avg.mentalFatigue)}</td><td>${f1(r.avg.physicalFatigue)}</td><td>${f1(r.avg.soreness)}</td><td>${f0(r.avg.RHR)}</td>
+    <td>${r.n}/${R.nDone}</td><td class="dl" style="color:${r.delta==null?'#8b9099':r.delta<=-0.3?'#dc2626':r.delta>=0.3?'#16a34a':'#5c626c'}">${r.delta==null?'—':Math.abs(r.delta)<0.05?'0.0':(r.delta>0?'+':'')+r.delta.toFixed(1)}</td>
+    <td class="pn">${r.pain.length?esc(r.pain.slice(0,3).map(p=>p.region).join(', ')):'<span class="z">—</span>'}</td></tr>`).join('');
+  const sumSec=`<div class="sec"><div class="sh"><span class="st">${L('Kadro özeti','Squad summary')}</span><span class="ss">${wk?L('günlük hazır oluş','daily readiness'):L('haftalık ort. hazır oluş','weekly mean readiness')} · ${L('dönem ortalamaları','period means')}</span></div>
+    <table class="ts"><thead><tr><th class="l">${L('Sporcu','Athlete')}</th>${R.cols.map(c=>`<th class="c">${c.lab}</th>`).join('')}<th>${L('Hazır','Ready')}</th><th>${L('Uyku','Sleep')}</th><th>${L('Zihin','Mental')}</th><th>${L('Fizik','Physical')}</th><th>${L('Ağrı','Sore')}</th><th>RHR</th><th>${L('Form','Forms')}</th><th>Δ</th><th class="l">${L('Ağrı bölgeleri','Pain areas')}</th></tr></thead><tbody>${sum}</tbody></table></div>`;
+  /* Sporcu kartları. */
+  const spark=v=>{const pts=v.map((x,i)=>x==null?null:[i,x]).filter(Boolean);if(pts.length<2)return'';const W=120,H=26,n=Math.max(1,v.length-1);
+    return`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline fill="none" stroke="#1f7cc2" stroke-width="1.5" points="${pts.map(([i,x])=>`${(i/n*W).toFixed(1)},${(H-2-(x-1)/4*(H-4)).toFixed(1)}`).join(' ')}"/></svg>`;};
+  const cards=R.rows.map(r=>`<div class="card"><div class="cd-h"><div><b>${esc(r.name)}</b>${r.pos?`<em>${esc(r.pos)}</em>`:''}</div>
+      <div class="cd-r">${wk?'':spark(r.spark)}<span class="cd-n">${r.n}/${R.nDone} ${L('form','forms')}</span><span class="cd-v" style="color:${sc(r.avg.readiness)||'#8b9099'}">${f1(r.avg.readiness)}<small>/5</small></span></div></div>
+    <table class="tc"><thead><tr><th class="l"></th>${R.cols.map(c=>`<th class="c">${c.lab}${wk?'':`<i>${c.sub}</i>`}</th>`).join('')}<th>${L('Ort.','Avg')}</th></tr></thead>
+      <tbody>${WVR_IDS.map(id=>`<tr><td class="l">${M[id]}</td>${r.cells[id].map(v=>cell(v,id)).join('')}<td class="av">${id==='RHR'?f0(r.avg[id]):f1(r.avg[id])}</td></tr>`).join('')}</tbody></table>
+    <div class="cd-p">${r.pain.length?`<span>${L('Ağrı','Pain')}:</span> ${r.pain.map(p=>`<i class="pg s${p.sev}">${esc(p.region)}${p.n>1?` ×${p.n}`:''}</i>`).join('')}`:`<span>${L('Ağrı bildirimi yok','No pain reported')}</span>`}</div></div>`).join('');
+  const gen=new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${esc(R.teamName)} — ${esc(R.label)}</title>
+<style>
+@page{size:A4 landscape;margin:9mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--ac:#1f7cc2;--ink:#0b0c0e;--bg2:#f5f6f8;--bd:#e3e5e8;--mut:#5c626c;--dim:#8b9099}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--ink);font-size:10px;background:#fff}
+.hd{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;padding:11px 16px;margin-bottom:10px}
+.hd .l{display:flex;align-items:center;gap:14px}.hd img{height:13px;width:auto}
+.hd .sep{width:1px;height:26px;background:rgba(255,255,255,.2)}
+.hd h1{font-size:16px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;line-height:1.1}
+.hd .tm{font-size:10px;color:rgba(255,255,255,.65);margin-top:3px}
+.hd .r{text-align:right}.hd .rng{display:inline-block;font-size:11px;font-weight:700;background:var(--ac);padding:5px 12px}
+.hd .gd{font-size:8.5px;color:rgba(255,255,255,.55);margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px}
+.kp{border:1px solid var(--bd);border-top:3px solid var(--kc,var(--ink));padding:8px 10px 9px}
+.kk{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.kv{font-size:21px;font-weight:700;margin-top:4px;line-height:1;color:var(--kc,var(--ink))}
+.kv small{font-size:10px;font-weight:600;color:var(--dim);margin-left:1px}
+.ks{font-size:8.5px;color:var(--mut);margin-top:5px}
+.g2{display:grid;grid-template-columns:1.45fr 1fr;gap:10px;margin-bottom:10px}
+.sec{border:1px solid var(--bd);break-inside:avoid;page-break-inside:avoid}
+.sh{display:flex;align-items:baseline;gap:10px;padding:7px 11px;border-bottom:1px solid var(--bd)}
+.st{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ac)}
+.ss{margin-left:auto;font-size:8.5px;color:var(--dim)}
+.chart{display:flex;gap:3px;height:150px;padding:10px 10px 6px}
+.chart.wk{gap:8px}
+.bc{flex:1;display:flex;flex-direction:column;min-width:0}.bc.we .bg{background:var(--bg2)}.bc.fut .bl{opacity:.4}
+.bg{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.bv{font-size:8px;font-weight:700;margin-bottom:2px}.chart:not(.wk) .bv{font-size:6.5px}
+.br{width:70%;max-width:44px}
+.bl{text-align:center;font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.25}
+.bl b{display:block;color:var(--ink);font-size:8.5px}.bl i{display:block;font-style:normal;font-size:7px}
+.wl{padding:4px 11px}
+.wr{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)}
+.wr:last-child{border-bottom:none}
+.wd{width:8px;height:8px;border-radius:50%;flex:none}
+.wr b{font-size:9.5px;text-transform:uppercase;white-space:nowrap}
+.wr em{font-style:normal;color:var(--mut);font-size:8.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wr .wv{font-size:13px;font-weight:700}
+.ok{padding:14px 0;color:var(--mut)}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:7.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff;background:var(--ink);padding:6px 4px;text-align:center}
+th i{display:block;font-style:normal;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:0}
+td{padding:4px 4px;border-top:1px solid var(--bd);text-align:center;font-variant-numeric:tabular-nums;font-size:9px}
+th.l,td.l{text-align:left;padding-left:9px}
+.ts th.l:first-child{width:19%}.ts td.l b,.ts td.l{font-size:9px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts td.l em,.cd-h em{font-style:normal;color:var(--dim);font-size:7.5px;margin-left:5px;text-transform:none}
+.ts th.l:last-child{width:15%}
+td.c b{font-weight:700}td.e{color:#c3c7cd}td.r{color:var(--mut)}
+td.av{font-weight:700;background:var(--bg2)}
+td.pn{text-align:left;font-size:8px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.z{color:#c3c7cd}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px;break-before:page;page-break-before:always}
+.card{border:1px solid var(--bd);break-inside:avoid;page-break-inside:avoid}
+.cd-h{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:2px solid var(--ink)}
+.cd-h b{font-size:11px;text-transform:uppercase;letter-spacing:.02em}
+.cd-r{display:flex;align-items:center;gap:10px}
+.cd-n{font-size:8px;color:var(--dim)}
+.cd-v{font-size:17px;font-weight:700;line-height:1}.cd-v small{font-size:8px;color:var(--dim)}
+.tc td.l{width:24%;font-size:8.5px;color:var(--mut)}
+.tc th{padding:4px 2px}
+.cd-p{padding:5px 10px 6px;font-size:8px;color:var(--mut);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.pg{font-style:normal;padding:1px 6px;border:1px solid}
+.pg.s0,.pg.s3{color:#dc2626;border-color:#dc262666;background:#dc262612}
+.pg.s2{color:#ea580c;border-color:#ea580c66;background:#ea580c12}
+.pg.s1{color:#ca8a04;border-color:#ca8a0466;background:#ca8a0412}
+.fo{display:flex;justify-content:space-between;font-size:8px;color:var(--dim);margin-top:8px}
+</style></head><body>
+<div class="hd"><div class="l"><img src="${COACHOS_LOGO}" alt="CoachOS"><span class="sep"></span><div><h1>${title}</h1><div class="tm">${esc(R.teamName)}</div></div></div>
+  <div class="r"><div class="rng">${esc(R.label)}</div><div class="gd">${R.partial?L(`${fd(R.ref)} itibarıyla · `,`as of ${fd(R.ref)} · `):''}${L('Oluşturuldu','Generated')} ${gen}</div></div></div>
+<div class="kpis">${kpis}</div>
+<div class="g2">${daySec}${watchSec}</div>
+${sumSec}
+<div class="cards">${cards}</div>
+<div class="fo"><span>${L('Puanlar 1–5: 1 kötü · 5 iyi (check-in formunun renkleri). RHR: Polar\'ın günün en düşük nabzı, yoksa check-in. Δ: önceki döneme göre hazır oluş farkı.','Scores 1–5: 1 poor · 5 good (check-in form colours). RHR: Polar\'s lowest HR of the day, else check-in. Δ: readiness change vs previous period.')}</span><span>CoachOS · ${esc(R.teamName)} · ${esc(R.label)}</span></div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},500);
 }
