@@ -376,21 +376,29 @@ function MonoBar({value}){
   </div>);
 }
 
-/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, readiness & ACWR.
+/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, Mon–Sun Polar HR
+   zones & ACWR. The HR zone column reads the team's Polar sessions for the board's week
+   (usePolarTeamRange, the same request the trend chart above makes for a 7-day window):
+   each day the athlete's sessions' zone minutes summed, drawn as one stacked cell.
    The ACWR is athACWR at the board's reference day — the same number the zone, the risk
    alerts and the individualization snapshot read — shown to two decimals, "—" with no
    load in the 28-day window. */
-function AthleteLoadBoard({athletes,refDate}){
+function AthleteLoadBoard({athletes,refDate,teamId}){
   const[lbSort,setLbSort]=useState('load');
   const ref=refDate||fmt(today);
+  const days7=Array.from({length:7},(_,i)=>fmt(addD(sow(parseD(ref)),i)));
+  const PZ=usePolarTeamRange(teamId,days7[0],days7[6],['exercises']);
+  const pById=new Map((PZ.athletes||[]).map(p=>[String(p.athleteId),p]));
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
     const w=athLoadWindows(a,ref);
     return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),has:w.ch>0,
-      rd:athWellnessVal(a,'readiness',ref)};
+      hrz:pwAthZoneWeek(pById.get(String(a.id)),days7)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
+  /* The longest day on the board fills a cell; every other day is drawn against it. */
+  const maxZ=Math.max(0,...rows.flatMap(r=>r.hrz.map(z=>z?z.reduce((x,y)=>x+y,0):0)));
   const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
   return(<div className="panel lb-wrap">
     <div className="lb-head">
@@ -410,7 +418,10 @@ function AthleteLoadBoard({athletes,refDate}){
           <th><div className="lb-rpe-hd">{L('7 günlük RPE','7-day RPE')}
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
-          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
+          <th>{L('Bölge','Zone')}</th>
+          <th title={L('Polar antrenmanlarının kalp atım bölgeleri, gün gün (Z1 altta, Z5 üstte); kutunun boyu günün toplam bölge süresi','Heart rate zones of the Polar sessions, day by day (Z1 bottom, Z5 top); the cell\'s height is the day\'s total zone time')}><div className="lb-rpe-hd">{L('HR Zone · Polar','HR Zone · Polar')}
+            <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
+          </div></th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
@@ -418,7 +429,7 @@ function AthleteLoadBoard({athletes,refDate}){
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
-          <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
+          <td><PwZoneWeekStrip week={r.hrz} days={days7} max={maxZ}/></td>
           <td className="r"><span className="lb-acwr" style={{color:r.has?z.c:undefined}}>{r.has?r.acwr.toFixed(2):'—'}</span></td>
         </tr>);})}</tbody>
       </table>

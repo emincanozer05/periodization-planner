@@ -59,6 +59,13 @@ const MV_CATS=[
     types:[['Jump','Jump','Jump'],['Hop','Hop','Hop'],['Bound','Bound','Bound'],['Upper Body','Upper Body','Upper Body']],
     dirs:[['Vertical','Dikey','Vertical'],['Forward','İleriye','Forward'],['Backward','Geriye','Backward'],
       ['Lateral','Yanal','Lateral'],['Diagonal','Diyagonal','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']]},
+  /* Multi-Directional Speed — sprint and field work filed by the quality it trains: getting up to
+     speed, braking, reacting, cutting and running a curve. */
+  {k:'Multi-Directional Speed',id:'mds',tr:'Çok Yönlü Hız',en:'Multi-Directional Speed',color:'#0891b2',
+    types:[['Acceleration','İvmelenme','Acceleration'],['Deceleration','Yavaşlama','Deceleration'],
+      ['Agility','Çeviklik','Agility'],['Change of Direction','Yön Değiştirme','Change of Direction'],
+      ['Curvilinear Sprint','Kavisli Koşu','Curvilinear Sprint']],
+    dirs:[]},
   {k:'Medicine Ball',id:'med_ball',tr:'Med Ball',en:'Med Ball',color:'#f08c3c',
     types:[['Chest Pass','Chest Pass','Chest Pass'],['Overhead Throw','Overhead Throw','Overhead Throw'],
       ['Rotational Throw','Rotational Throw','Rotational Throw'],['Scoop Toss','Scoop Toss','Scoop Toss'],
@@ -152,6 +159,9 @@ const MV_TYPE_WORDS={
     [/drill|technique|teknik|complex|balance|muscle|tall|scarecrow/,'Technique / Assistance']],
   'Plyometric':[[/push[- ]?up|clap|upper|plyo push|med ?ball push/,'Upper Body'],[/bound/,'Bound'],[/\bhop|pogo|skip/,'Hop'],
     [/jump|cmj|\bdj\b|depth|drop/,'Jump']],
+  'Multi-Directional Speed':[[/curv|bend|\barc\b|circle|kavis/,'Curvilinear Sprint'],[/react|mirror|agility|çeviklik/,'Agility'],
+    [/\bcod\b|change of direction|cut|shuttle|5[- ]?0[- ]?5|pro[- ]?agility|t[- ]?test|zig ?zag/,'Change of Direction'],
+    [/decel|brake|stop|yavaşla/,'Deceleration'],[/accel|start|sprint|ivme/,'Acceleration']],
   'Medicine Ball':[[/scoop/,'Scoop Toss'],[/shot ?put/,'Shot Put Throw'],[/slam/,'Slam'],[/chest pass|chest throw|\bpass\b/,'Chest Pass'],
     [/rotational|side toss|\btwist\b|rotation/,'Rotational Throw'],[/overhead|backward throw|over the head/,'Overhead Throw']],
   'Full Body':[[/get[- ]?up|turkish/,'Get-up'],[/burpee|ground to stand|sprawl/,'Ground to Standing'],[/complex|flow/,'Complex / Flow'],

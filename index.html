@@ -7604,6 +7604,14 @@ th{letter-spacing:.07em}
 .lb-rpe-days span{width:28px}
 .lb-rpe-row,.lb-rpe-days{gap:5px}
 .lb-rd,.lb-acwr{font-family:inherit;font-variant-numeric:tabular-nums}
+/* HR Zone haftası (Polar): RPE hücreleriyle aynı 28px ızgara. Hücrenin içinde günün bölge
+   dakikaları alttan üste yığılı (Z1 altta); dolu yükseklik günün toplam süresi, panodaki en
+   uzun güne göre. Kayıt olmayan gün kesik çizgili boş kutu. */
+.lb-hrz-cell{width:28px;height:28px;flex:none;box-sizing:border-box;border-radius:7px;border:1px solid var(--border);
+  background:var(--elevated);display:flex;align-items:flex-end;padding:2px;overflow:hidden;cursor:default}
+.lb-hrz-cell.empty{background:transparent;border-style:dashed}
+.lb-hrz-fill{width:100%;display:flex;flex-direction:column-reverse;gap:1px;border-radius:4px;overflow:hidden}
+.lb-hrz-fill i{display:block;min-height:2px}
 
 /* Açık temada iç yüzeyler bir ton açık kalsın: --bg2 beyaz panel üstünde fazla griydi. */
 :root[data-theme="light"] .atp-grp,:root[data-theme="light"] .atp-lane,
@@ -14162,21 +14170,29 @@ function MonoBar({value}){
   </div>);
 }
 
-/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, readiness & ACWR.
+/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, Mon–Sun Polar HR
+   zones & ACWR. The HR zone column reads the team's Polar sessions for the board's week
+   (usePolarTeamRange, the same request the trend chart above makes for a 7-day window):
+   each day the athlete's sessions' zone minutes summed, drawn as one stacked cell.
    The ACWR is athACWR at the board's reference day — the same number the zone, the risk
    alerts and the individualization snapshot read — shown to two decimals, "—" with no
    load in the 28-day window. */
-function AthleteLoadBoard({athletes,refDate}){
+function AthleteLoadBoard({athletes,refDate,teamId}){
   const[lbSort,setLbSort]=useState('load');
   const ref=refDate||fmt(today);
+  const days7=Array.from({length:7},(_,i)=>fmt(addD(sow(parseD(ref)),i)));
+  const PZ=usePolarTeamRange(teamId,days7[0],days7[6],['exercises']);
+  const pById=new Map((PZ.athletes||[]).map(p=>[String(p.athleteId),p]));
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
     const w=athLoadWindows(a,ref);
     return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),has:w.ch>0,
-      rd:athWellnessVal(a,'readiness',ref)};
+      hrz:pwAthZoneWeek(pById.get(String(a.id)),days7)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
+  /* The longest day on the board fills a cell; every other day is drawn against it. */
+  const maxZ=Math.max(0,...rows.flatMap(r=>r.hrz.map(z=>z?z.reduce((x,y)=>x+y,0):0)));
   const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
   return(<div className="panel lb-wrap">
     <div className="lb-head">
@@ -14196,7 +14212,10 @@ function AthleteLoadBoard({athletes,refDate}){
           <th><div className="lb-rpe-hd">{L('7 günlük RPE','7-day RPE')}
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
-          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
+          <th>{L('Bölge','Zone')}</th>
+          <th title={L('Polar antrenmanlarının kalp atım bölgeleri, gün gün (Z1 altta, Z5 üstte); kutunun boyu günün toplam bölge süresi','Heart rate zones of the Polar sessions, day by day (Z1 bottom, Z5 top); the cell\'s height is the day\'s total zone time')}><div className="lb-rpe-hd">{L('HR Zone · Polar','HR Zone · Polar')}
+            <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
+          </div></th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
@@ -14204,7 +14223,7 @@ function AthleteLoadBoard({athletes,refDate}){
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
-          <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
+          <td><PwZoneWeekStrip week={r.hrz} days={days7} max={maxZ}/></td>
           <td className="r"><span className="lb-acwr" style={{color:r.has?z.c:undefined}}>{r.has?r.acwr.toFixed(2):'—'}</span></td>
         </tr>);})}</tbody>
       </table>
@@ -18513,6 +18532,13 @@ const MV_CATS=[
     types:[['Jump','Jump','Jump'],['Hop','Hop','Hop'],['Bound','Bound','Bound'],['Upper Body','Upper Body','Upper Body']],
     dirs:[['Vertical','Dikey','Vertical'],['Forward','İleriye','Forward'],['Backward','Geriye','Backward'],
       ['Lateral','Yanal','Lateral'],['Diagonal','Diyagonal','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']]},
+  /* Multi-Directional Speed — sprint and field work filed by the quality it trains: getting up to
+     speed, braking, reacting, cutting and running a curve. */
+  {k:'Multi-Directional Speed',id:'mds',tr:'Çok Yönlü Hız',en:'Multi-Directional Speed',color:'#0891b2',
+    types:[['Acceleration','İvmelenme','Acceleration'],['Deceleration','Yavaşlama','Deceleration'],
+      ['Agility','Çeviklik','Agility'],['Change of Direction','Yön Değiştirme','Change of Direction'],
+      ['Curvilinear Sprint','Kavisli Koşu','Curvilinear Sprint']],
+    dirs:[]},
   {k:'Medicine Ball',id:'med_ball',tr:'Med Ball',en:'Med Ball',color:'#f08c3c',
     types:[['Chest Pass','Chest Pass','Chest Pass'],['Overhead Throw','Overhead Throw','Overhead Throw'],
       ['Rotational Throw','Rotational Throw','Rotational Throw'],['Scoop Toss','Scoop Toss','Scoop Toss'],
@@ -18606,6 +18632,9 @@ const MV_TYPE_WORDS={
     [/drill|technique|teknik|complex|balance|muscle|tall|scarecrow/,'Technique / Assistance']],
   'Plyometric':[[/push[- ]?up|clap|upper|plyo push|med ?ball push/,'Upper Body'],[/bound/,'Bound'],[/\bhop|pogo|skip/,'Hop'],
     [/jump|cmj|\bdj\b|depth|drop/,'Jump']],
+  'Multi-Directional Speed':[[/curv|bend|\barc\b|circle|kavis/,'Curvilinear Sprint'],[/react|mirror|agility|çeviklik/,'Agility'],
+    [/\bcod\b|change of direction|cut|shuttle|5[- ]?0[- ]?5|pro[- ]?agility|t[- ]?test|zig ?zag/,'Change of Direction'],
+    [/decel|brake|stop|yavaşla/,'Deceleration'],[/accel|start|sprint|ivme/,'Acceleration']],
   'Medicine Ball':[[/scoop/,'Scoop Toss'],[/shot ?put/,'Shot Put Throw'],[/slam/,'Slam'],[/chest pass|chest throw|\bpass\b/,'Chest Pass'],
     [/rotational|side toss|\btwist\b|rotation/,'Rotational Throw'],[/overhead|backward throw|over the head/,'Overhead Throw']],
   'Full Body':[[/get[- ]?up|turkish/,'Get-up'],[/burpee|ground to stand|sprawl/,'Ground to Standing'],[/complex|flow/,'Complex / Flow'],
@@ -18847,7 +18876,7 @@ const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
    with the category it trains (Kategori), its type (Tür) and, where the category has one,
-   its direction (Yön) — the fourteen categories of the MOVEMENT TAXONOMY. */
+   its direction (Yön) — the fifteen categories of the MOVEMENT TAXONOMY. */
 const EX_PATTERNS=MV_KEYS;
 /* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
    execution — is one of its category's own types (MOVEMENT TAXONOMY). */
@@ -18933,7 +18962,7 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core',
-  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory',
+  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Multi-Directional Speed':'MDS','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory',
   'Mobility':'Mobility','Motor Control':'Motor Ctrl'};
 /* What a set of exercise rows trains, read off the rows themselves. Every row already
    carries the pattern it trains and how that pattern is executed; a row nobody tagged is
@@ -25258,12 +25287,11 @@ function TeamReports({team,weeks,selected,setSelected}){
   const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
   // Acute (7d) / chronic (28d) / ACWR averaged per athlete, like the monotony below.
   const lmLoad=teamLoadStats(team.athletes,dayAvg,lmRef,teamFirst);
-  const lmAcwrZone=lmLoad.acwr===0?{c:'var(--text)'}:lmLoad.acwr>1.5?{c:'#ef4444'}
-    :(lmLoad.acwr>=0.8&&lmLoad.acwr<=1.3)?{c:'#10b981'}:{c:'#f59e0b'};
   // Monotony / SD / strain come from the selected Mon–Sun week via the shared helper, so
   // this card and the calendar's chip report the identical number for the same week.
   const mWk=teamWeekMono(team.days,team.athletes,lmWeek);
-  const lmMonoZone=monoZoneOf(mWk.monotony);   // gauge card shows monotony, not ACWR
+  const lmMonoZone=monoZoneOf(mWk.monotony);   // monotony sits in a small tile under the ACWR
+  const lmAcwrZ=acwrZoneOf(lmLoad.acwr,lmLoad.acwr>0);
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means, over the trend window.
   // The window always ENDS on the selected week's Sunday (not on `lmRef`, which is clamped
@@ -25371,19 +25399,21 @@ function TeamReports({team,weeks,selected,setSelected}){
     </div>
 
     <div className="lm-grid" style={{marginBottom:16}}>
+      {/* Büyük sayı takımın ortalama ACWR'ı (her sporcunun akut ÷ kronik oranı, sonra ortalama);
+          haftanın monotonisi alttaki küçük kutulardan birinde. */}
       <div className="lm-gauge-card">
         <div className="lac-head">
-          <span className="lac-title">{L('Takım Monotonluğu','Team Monotony')}</span>
-          <span className="lac-zone" style={{color:lmMonoZone.dot}}><span className="lac-zdot" style={{background:lmMonoZone.dot}}/>{exLabel(lmMonoZone.t||'').toUpperCase()}</span>
+          <span className="lac-title">{L('Ort. ACWR','Avg ACWR')}</span>
+          <span className="lac-zone" style={{color:lmAcwrZ.dot}}><span className="lac-zdot" style={{background:lmAcwrZ.dot}}/>{exLabel(lmAcwrZ.t||'').toUpperCase()}</span>
         </div>
-        <div className="lac-sub">{L(`Foster · ${mWk.n||0} sporcu ortalaması`,`Foster · avg across ${mWk.n||0} athlete${(mWk.n||0)===1?'':'s'}`)}</div>
-        <div className="lac-val" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div>
-        <div className="lac-vsub">{L('her sporcunun ortalaması ÷ SS, sonra ortalama','each athlete\'s mean ÷ SD, averaged')}</div>
-        <MonoBar value={mWk.monotony}/>
+        <div className="lac-sub">{L(`Akut:kronik · ${lmLoad.n||0} sporcu ortalaması`,`Acute:chronic · avg across ${lmLoad.n||0} athlete${(lmLoad.n||0)===1?'':'s'}`)}</div>
+        <div className="lac-val" style={{color:lmAcwrZ.c}}>{lmLoad.acwr?lmLoad.acwr.toFixed(2):'—'}</div>
+        <div className="lac-vsub">{L('her sporcunun akut ÷ kronik oranı, sonra ortalama','each athlete\'s acute ÷ chronic, averaged')}</div>
+        <AcwrBar value={lmLoad.acwr}/>
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">{L('Ort. ACWR','Avg ACWR')}</div><div className="v" style={{color:lmAcwrZone.c}}>{lmLoad.acwr?lmLoad.acwr.toFixed(2):'—'}</div></div></div>
+          <div className="m" title={L(`Foster · ${mWk.n||0} sporcu ortalaması · ${exLabel(lmMonoZone.t||'')}`,`Foster · avg across ${mWk.n||0} athletes · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
           <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
@@ -25419,7 +25449,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
     </div>
 
-    <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
+    <AthleteLoadBoard athletes={team.athletes} refDate={lmRef} teamId={team.id}/>
 
     {(()=>{
       const mv=mWeeks.filter(w=>w.monotony>0);
@@ -36438,6 +36468,32 @@ function TeamHrZoneSummary({Z}){
     <em>{L(`antrenmana katılan sporcuların ortalaması · sporcu-gün başına · ${Z.nAD} sporcu-gün · Polar`,`mean of athletes who trained · per athlete-day · ${Z.nAD} athlete-days · Polar`)}</em></div>);
 }
 
+/* ── Yük Takibi → Sporcu Yük Panosu: sporcunun haftalık HR Zone şeridi ──────────
+   Pzt–Paz her gün bir küçük kutu: içinde o gün kaydedilen bütün Polar antrenmanlarının
+   bölge süreleri (toplam) Z1 altta Z5 üstte yığılmış. Kutunun dolu yüksekliği günün toplam
+   bölge dakikası, panodaki en uzun güne göre; renkler dağılım. Polar kaydı olmayan gün
+   kesik çizgili boş kutu. `pwAthZoneWeek` sporcunun Polar kaydından yedi günün dizisini
+   çıkarır: [Z1…Z5] saniye ya da null. */
+function pwAthZoneWeek(p,days){
+  return days.map(k=>{const zs=((p&&p.exercises)||[]).filter(e=>e&&e.date===k).map(pwZoneSec).filter(Boolean);
+    return zs.length?[0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)):null;});
+}
+function PwZoneWeekStrip({week,days,max}){
+  return(<div className="lb-rpe-row lb-hrz-row">
+    {days.map((dk,i)=>{const z=week&&week[i];const tot=z?z.reduce((a,b)=>a+b,0):0;
+      const dn=`${DN[(parseD(dk).getDay()+6)%7]} · ${fd(dk)}`;
+      if(!tot)return<span key={dk} className="lb-hrz-cell empty" title={`${dn} · ${L('Polar antrenman kaydı yok','No Polar session')}`}/>;
+      const h=Math.max(22,Math.min(100,tot/(max||tot)*100));
+      return<span key={dk} className="lb-hrz-cell" role="img"
+        aria-label={`${dn}: ${z.map((v,j)=>`Z${j+1} ${pwMin(v)} ${L('dk','min')}`).join(', ')}`}
+        title={`${dn} · ${L('toplam','total')} ${pwMin(tot)} ${L('dk','min')}\n`+z.map((v,j)=>`Z${j+1}  ${pwMin(v)} ${L('dk','min')} · ${pwPct(Math.round(v/tot*100))}`).join('\n')}>
+        <span className="lb-hrz-fill" style={{height:`${h}%`}}>
+          {z.map((v,j)=>v>0?<i key={j} style={{flexGrow:v,background:PW_ZONE_COL[j]}}/>:null)}
+        </span>
+      </span>;})}
+  </div>);
+}
+
 /* ── Wellness: takımın GÜNLÜK Polar tablosu ──────────────────────────────────
    Wellness'ın üstündeki tarih seçicide hangi gün seçiliyse o günün verisi.
    Gece verisi (uyku, yatış/uyanış saati, HRV, gece nabzı, ANS) uyanılan SABAHIN tarihini
@@ -40251,7 +40307,7 @@ function PrivacyLink({className,children}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-/* The library's shelves are the fourteen categories of the MOVEMENT TAXONOMY (185): the same
+/* The library's shelves are the fifteen categories of the MOVEMENT TAXONOMY (185): the same
    Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
    shelf an older version had (Mobility, Stability …) keeps its value and is listed under
    "Kategorisiz" until it is given one of these. */
@@ -46213,13 +46269,13 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-/* The coach's patterns are the fourteen categories of the MOVEMENT TAXONOMY — the same chips,
+/* The coach's patterns are the fifteen categories of the MOVEMENT TAXONOMY — the same chips,
    the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
    category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
    throws and full-body lifts have no movement_pattern of their own: they are matched on their
    coach_pattern tag only, and picking one opens no pain-closed pattern. */
 const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
-  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[],fms:[],mobility:[],motor_control:[]};
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],mds:['Sprint / Locomotion'],med_ball:[],full_body:[],accessory:[],fms:[],mobility:[],motor_control:[]};
 const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
   {k:'type',label:mvTypeLab(c.k),opts:c.types},
   ...(c.dirs.length?[{k:'direction',label:mvDirLab(c.k),opts:c.dirs}]:[])]}));
