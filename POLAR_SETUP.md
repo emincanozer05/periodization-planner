@@ -197,13 +197,13 @@ verisine ulaşılamaz. Bu yüzden antrenman dokümanlarının adı tarihle başl
 
 ## Ekip üyesinin telefon sayfası (alerts.html) → uyku saatleri
 
-Wellness kartlarının altında, Polar'a bağlı sporcular için **Yattı · Kalktı · Uyudu** satırı ve
+Wellness kartlarının altında, Polar'a bağlı sporcular için **Yattı · Kalktı · Uyudu · Uyku skoru** kutusu ve
 listenin üstünde **Polar Verilerini Al** düğmesi. Ekip üyesi anonim oturumla açtığı için Polar
 koleksiyonlarını doğrudan okuyamaz; veri `polarApi`'den gelir (`functions/polar/staff.js`):
 
 | Uç | Gövde | Ne yapar |
 |---|---|---|
-| `POST /staff-sleep` | `{ from, to }` | Takımın bağlı sporcuları + o günlerin gecesi: yalnızca `sleepStart`, `sleepEnd`, `asleepSec` |
+| `POST /staff-sleep` | `{ from, to }` | Takımın bağlı sporcuları + o günlerin gecesi: yalnızca `sleepStart`, `sleepEnd`, `asleepSec`, `sleepScore` |
 | `POST /staff-sync` | `{ athleteId }` | O sporcunun manuel senkronu (iki dakika kuralı ve kilit aynı) |
 
 Kapsam istekten değil `staff_members/{uid}` eşleşmesinden kurulur ve dayandığı `staff_links/{token}`
