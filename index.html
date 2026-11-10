@@ -8414,25 +8414,24 @@ main .panel,main .ap-head{animation:none}
 
 /* ═════════════ Sporcu Profili → Polar bağlantı paneli (427-athlete-polar.jsx) ═════════════
    Düz yüzey, gradyan ve simge yok; durum yalnızca küçük bir yazı rozetinde renkli. */
-.pl-panel{margin-top:16px}
-.pl-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.pl-h h2{margin:0}
 .pl-st{font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:999px;border:1px solid var(--border2);color:var(--dim)}
 .pl-st.pl-on{color:var(--low-t);border-color:currentColor}
 .pl-st.pl-wait{color:#d97706;border-color:currentColor}
 .pl-st.pl-bad{color:var(--high-t);border-color:currentColor}
-.pl-rows{margin:12px 0 4px;border-top:1px solid var(--border)}
-.pl-r{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
-.pl-r span{color:var(--dim)}
-.pl-r b{color:var(--text);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
-.pl-r.pl-warn b{color:var(--high-t)}
 .pl-invite{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--r-sm)}
 .pl-ik{font-size:12px;color:var(--dim);margin-bottom:6px}
 .pl-invite input{width:100%;font-family:'IBM Plex Mono',monospace;font-size:12px}
 .pl-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .pl-err{margin-top:10px;font-size:13px;color:var(--high-t)}
 .pl-note{margin-top:10px;font-size:13px;color:var(--low-t)}
-.pl-help{margin-top:12px;font-size:12px;line-height:1.5;color:var(--dim)}
+/* Profili Düzenle penceresindeki Polar bağlantı bloğu: etiket + çerçeveli kutu (rozet, özet, düğmeler). */
+.pl-mini-box{border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;background:var(--bg2)}
+.pl-mini-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.pl-mini-sub{font-size:12px;line-height:1.45;color:var(--dim);font-variant-numeric:tabular-nums}
+.pl-mini-warn{margin-top:6px;color:var(--high-t)}
+.pl-mini .pl-btns{margin-top:10px}
+.pl-mini .pl-invite{margin-top:10px;padding:10px}
+.pl-mini .pl-err,.pl-mini .pl-note{margin-top:8px;font-size:12.5px}
 
 /* ---- Egzersiz Maruziyeti v2: referans günü adımları, önceki döneme göre değişim, kategori
    dağılım şeridi (Kategori · Tür, 185; tıklanınca egzersiz listesini süzer), egzersiz araması ---- */
@@ -9260,7 +9259,6 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 .wv-cal-pains q{font-size:10px;line-height:1.3;color:var(--muted);font-style:italic;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .pwz-sum{align-items:baseline}
 .pwz-sum em{margin-left:auto;font-style:normal;font-size:9.5px}
-.pw-t td.pw-rhr{color:var(--text);font-weight:700}
 
 @media(max-width:700px){.wv-wks{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(84px,1fr);overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}}
 @media (prefers-reduced-motion: reduce){
@@ -9455,58 +9453,198 @@ input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    TAKIM VERİLERİ (`td-*`) — Test ve Değerlendirme → "Takım Verileri" ekranı
-   Koyu, ışıklı bir başlık bandı (ızgara + yavaş parıltı) ve altında grafik kartları.
-   Grafik yüzeyleri düz panel; renk çizgide ve çubukta. Az-hareket korumalı.
+   Yukarıdan aşağı: başlık bandı (dört gösterge), kategori kartları (sekme), gelişim haritası
+   (sporcu × metrik ısı tablosu), metrik odağı (özet kutuları, ilk → son test sıralaması,
+   takım eğrisi) ve açılır karşılaştırma tablosu. Düz yüzeyler, gradyan yok; renk yalnızca
+   anlam taşıyan yerde: yeşil gelişme, kırmızı gerileme (her zaman işaretli sayıyla birlikte),
+   mavi takım ortalaması. Yazı her zaman metin renginde. Az-hareket korumalı.
    ═══════════════════════════════════════════════════════════════════════════ */
-@keyframes tdGlow{0%{transform:translate(-8%,0) scale(1)}50%{transform:translate(6%,-6%) scale(1.12)}100%{transform:translate(-8%,0) scale(1)}}
 @keyframes tdRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.td-wrap{display:flex;flex-direction:column;gap:16px;margin-top:6px}
-.td-hero{position:relative;overflow:hidden;border-radius:var(--r-md);padding:26px 26px 22px;color:#e6edf7;
-  background:#0a1222;border:1px solid rgba(56,189,248,.22);
-  background-image:none;
-  background-size:34px 34px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;
+@keyframes tdGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.td-wrap{--td-up:#4caf50;--td-dn:#e5322d;--td-same:#6f6f6f;display:flex;flex-direction:column;gap:16px;margin-top:6px}
+:root[data-theme="light"] .td-wrap{--td-up:#2e8b3d;--td-dn:#d0302b;--td-same:#aab1ba}
+
+/* ── gelişen / aynı / gerileyen payı ── */
+.td-split{display:flex;gap:2px;height:5px;margin-top:8px;background:transparent}
+.td-split i{display:block;height:100%;min-width:3px;border-radius:1px;transform-origin:left;animation:tdGrow var(--dur-4,.5s) var(--ease-out,ease-out) both}
+.td-split .td-s-up{background:var(--td-up)}.td-split .td-s-same{background:var(--td-same)}.td-split .td-s-dn{background:var(--td-dn)}
+
+/* ── 1 · başlık bandı ── */
+.td-hero{position:relative;overflow:hidden;border-radius:var(--r-md);padding:22px 24px;color:#e6edf7;background:#0a1222;
+  display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2.1fr);align-items:center;gap:22px;
   animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
-.td-hero-glow{position:absolute;inset:-40% -10% auto auto;width:70%;height:180%;pointer-events:none;
-  background:transparent;
-  filter:blur(10px);animation:tdGlow 14s ease-in-out infinite}
-.td-hero-tx,.td-kpis{position:relative}
-.td-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7dd3fc}
-.td-hero-t{font-size:24px;font-weight:800;line-height:1.2;margin-top:6px;max-width:520px;color:#fff}
-.td-kpis{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px}
-.td-kpi{background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.18);border-radius:var(--r-md);padding:12px 14px;
+.td-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6ab8ef}
+.td-hero-t{font-size:23px;font-weight:800;line-height:1.2;letter-spacing:-.01em;margin-top:6px;color:#fff;text-wrap:balance}
+.td-hero-s{font-size:12.5px;color:rgba(230,237,247,.72);margin-top:8px;font-variant-numeric:tabular-nums}
+.td-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.td-kpi{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-md);padding:12px 14px;min-width:0;
   animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
 .td-kpi:nth-child(2){animation-delay:60ms}.td-kpi:nth-child(3){animation-delay:120ms}.td-kpi:nth-child(4){animation-delay:180ms}
-.td-kpi-v{font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1}
-.td-kpi-v.sm{font-size:15px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
-.td-kpi-v.up{color:#34d399}.td-kpi-v.dn{color:#f87171}
-.td-kpi-l{font-size:11.5px;color:#94a3b8;margin-top:4px}
-.td-chips{display:flex;flex-wrap:wrap;gap:6px}
-.td-chip{border:1px solid var(--border);background:var(--panel);color:var(--text2);border-radius:999px;padding:6px 12px;
-  font-size:12.5px;font-weight:600;cursor:pointer;transition:background var(--dur-2,.18s),border-color var(--dur-2,.18s),color var(--dur-2,.18s)}
-.td-chip:hover{border-color:var(--accent)}
-.td-chip.on{background:var(--accent);border-color:var(--accent);color:#06121f}
-.td-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.td-span2{grid-column:1/-1}
-.td-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px;min-width:0;
-  animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
-.td-card:nth-child(2){animation-delay:80ms}.td-card:nth-child(3){animation-delay:140ms}
-.td-card-hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}
-.td-card-t{font-size:15px;font-weight:800;color:var(--text)}
-.td-card-s{font-size:12px;color:var(--muted)}
-.td-chart{position:relative;height:280px}
-.td-chart.tall{height:340px}
-.td-empty{padding:30px 10px;text-align:center;color:var(--muted);font-size:13px}
-.td-ath{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.td-ath-b{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;color:var(--text2);
-  border-radius:var(--r-sm);padding:4px 9px;font-size:12px;cursor:pointer;transition:background var(--dur-2,.18s),border-color var(--dur-2,.18s)}
-.td-ath-b i{width:9px;height:9px;border-radius:50%;display:inline-block}
-.td-ath-b:hover{background:var(--hover)}
-.td-ath-b.on{border-color:var(--accent);background:var(--hover);color:var(--text);font-weight:700}
+.td-kpi-l{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(230,237,247,.66)}
+.td-kpi-v{font-size:30px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:8px}
+.td-kpi-v small{font-size:15px;font-weight:700;color:rgba(230,237,247,.6);margin-left:2px}
+.td-kpi-v.sm{font-size:17px;line-height:1.25;min-height:33px;display:flex;align-items:center;overflow-wrap:anywhere}
+.td-kpi-s{font-size:11.5px;color:rgba(230,237,247,.66);margin-top:7px;font-variant-numeric:tabular-nums}
+
+/* ── 2 · kategori kartları ── */
+.td-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.td-cat{display:flex;flex-direction:column;align-items:stretch;text-align:left;font-family:inherit;cursor:pointer;min-width:0;
+  background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--border2);border-radius:var(--r-md);padding:12px 14px 12px;color:var(--text);
+  transition:border-color var(--dur-2,.18s),background var(--dur-2,.18s),transform var(--dur-2,.18s);animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
+.td-cat:hover{background:var(--hover)}
+.td-cat:active{transform:scale(.985)}
+.td-cat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.td-cat.on{border-color:var(--accent);border-top-color:var(--accent);background:var(--accent-bg)}
+.td-cat-n{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.td-cat.on .td-cat-n{color:var(--accent2)}
+.td-cat-v{display:flex;align-items:baseline;gap:7px;font-size:26px;font-weight:800;line-height:1.1;margin-top:8px;font-variant-numeric:tabular-nums}
+.td-cat-v>span small{font-size:14px;font-weight:700;color:var(--muted);margin-left:1px}
+.td-cat-v em{font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted)}
+.td-cat-f{font-size:11.5px;color:var(--dim);margin-top:8px;font-variant-numeric:tabular-nums}
+
+/* ── panel başlığı ── */
+.td-panel{animation:tdRise var(--dur-4,.4s) var(--ease-out,ease-out) both}
+.td-hd{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px;margin-bottom:14px}
+.td-hd h2{margin:0}
+.td-hd p{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted);max-width:760px}
+.td-u{font-size:12px;font-weight:600;color:var(--muted);margin-left:8px;text-transform:none;letter-spacing:0}
+.td-sel{width:auto;min-width:220px;max-width:100%}
+
+/* ── 3 · gelişim haritası ── */
+.td-leg{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.td-leg span{margin:0 5px}
+.td-leg i.td-c{display:inline-block;width:18px;min-width:0;height:12px;border-radius:1px}
+.td-leg-1{display:inline-flex;align-items:center;gap:6px;margin-left:12px!important}
+.td-leg-1 i.td-c{border:1px dashed var(--border2)}
+.td-heat-w{overflow-x:auto;margin:0 -4px;padding:0 4px 2px}
+.td-heat{border-collapse:separate;border-spacing:2px;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+.td-heat th,.td-heat td{padding:0;height:30px;text-align:center;white-space:nowrap;background:none;border:0}
+.td-heat thead th{height:auto;padding-bottom:4px;vertical-align:bottom;font-size:11px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:0}
+.td-heat thead th button{font:inherit;color:inherit;background:none;border:1px solid transparent;border-radius:var(--r-sm);padding:5px 7px;cursor:pointer;min-width:58px;
+  transition:color var(--dur-2,.18s),background var(--dur-2,.18s),border-color var(--dur-2,.18s)}
+.td-heat thead th button:hover{color:var(--text);border-color:var(--border2)}
+.td-heat thead th.sel button{background:var(--accent);border-color:var(--accent);color:#fff}
+.td-heat .td-h-ath{position:sticky;left:0;z-index:1;text-align:left;background:var(--panel);min-width:150px;max-width:220px;padding-right:10px;
+  font-size:12px;font-weight:600;color:var(--text2);text-transform:none;letter-spacing:0}
+.td-heat thead .td-h-ath,.td-heat thead .td-h-sum{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.td-heat tbody .td-h-ath button{font:inherit;font-weight:600;color:var(--text);background:none;border:0;padding:0 0 0 10px;cursor:pointer;text-align:left;width:100%;height:30px;
+  overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;transition:border-color var(--dur-2,.18s),color var(--dur-2,.18s)}
+.td-heat tbody .td-h-ath button:hover{color:var(--accent2)}
+.td-heat tbody tr.foc .td-h-ath button{border-left-color:var(--accent);color:var(--accent2)}
+.td-heat tfoot .td-h-ath{padding-left:12px;font-size:11px;color:var(--muted)}
+.td-heat tfoot tr:first-child>*{padding-top:6px}
+.td-heat .td-h-sum{min-width:66px;color:var(--muted);font-size:12px}
+.td-heat .td-h-sum b,.td-heat .td-f b{color:var(--text);font-weight:700}
+.td-heat .td-f{color:var(--muted)}
+.td-c{min-width:56px;border-radius:1px;color:var(--text);font-weight:600}
+/* Hücre zeminleri: 19z'nin çizgili tablo satırı (main table tbody tr:nth-child>td) bu ekranda
+   geçerli değil — zemin hücrenin kendi tonu. Aynı önek + sınıflar onu özgüllükte geçer. */
+:is(:root,:root[data-theme]) main .td-heat tbody tr>:is(td,th),
+:is(:root,:root[data-theme]) main .td-heat tfoot tr>:is(td,th){background-color:transparent}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-h-ath{background-color:var(--panel)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.p1,.td-leg .td-c.p1{background-color:color-mix(in srgb,var(--td-up) 18%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.p2,.td-leg .td-c.p2{background-color:color-mix(in srgb,var(--td-up) 36%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.p3,.td-leg .td-c.p3{background-color:color-mix(in srgb,var(--td-up) 58%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.n1,.td-leg .td-c.n1{background-color:color-mix(in srgb,var(--td-dn) 18%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.n2,.td-leg .td-c.n2{background-color:color-mix(in srgb,var(--td-dn) 36%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.n3,.td-leg .td-c.n3{background-color:color-mix(in srgb,var(--td-dn) 58%,transparent)}
+:is(:root,:root[data-theme]) main .td-heat tr>.td-c.z,.td-leg .td-c.z{background-color:color-mix(in srgb,var(--td-same) 28%,transparent)}
+td.td-c.one{color:var(--dim);font-weight:500;box-shadow:inset 0 0 0 1px var(--border)}
+td.td-c.none{color:var(--border2)}
+.td-heat tbody tr:hover td.td-c:not(.none){box-shadow:inset 0 0 0 1px var(--border2)}
+:is(:root,:root[data-theme]) main .td-per tbody tr>td{background-color:transparent}
+
+/* ── 4 · metrik odağı ── */
+.td-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.td-stat{border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg2);padding:11px 14px;min-width:0}
+.td-stat>span:first-child{display:block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.td-stat>b{display:block;font-size:24px;font-weight:800;line-height:1.15;margin-top:6px;color:var(--text);font-variant-numeric:tabular-nums}
+.td-stat>b small{font-size:12px;font-weight:600;color:var(--muted)}
+.td-stat>b i{font-style:normal;color:var(--dim);font-weight:500}
+.td-stat>b.g-up::before,.td-stat>b.g-dn::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle;transform:translateY(-2px)}
+.td-stat>b.g-up::before{background:var(--td-up)}.td-stat>b.g-dn::before{background:var(--td-dn)}
+.td-stat>em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-stat .td-split{margin-top:6px}
+.td-focus{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:26px;align-items:start}
+.td-sub{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;min-height:34px;margin-bottom:8px}
+.td-sub h3{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+/* ilk → son test: ortak eksende iki nokta */
+.td-db-ax,.td-db-r{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 104px 62px;align-items:center;column-gap:12px}
+.td-db-ax{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;height:22px}
+.td-db-ax .td-db-tr{height:22px}
+.td-db-ax .td-db-tr::before{display:none}
+.td-ax-lo,.td-ax-hi,.td-ax-avg{position:absolute;bottom:3px}
+.td-ax-lo{left:0}.td-ax-hi{right:0}
+.td-ax-avg{transform:translateX(-50%);white-space:nowrap;color:var(--accent2);font-weight:700;background:var(--panel);padding:0 5px;z-index:1}
+.td-db-dir{grid-column:3/5;text-align:right;white-space:nowrap}
+.td-db-rows{border-top:1px solid var(--border)}
+.td-db-r{width:100%;height:31px;padding:0;font:inherit;color:var(--text);background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;
+  transition:background var(--dur-2,.18s);animation:tdRise var(--dur-3,.3s) var(--ease-out,ease-out) both}
+.td-db-r:hover{background:var(--hover)}
+.td-db-r:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.td-db-r.foc{background:var(--accent-bg)}
+.td-db-n{display:flex;align-items:center;gap:8px;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:6px}
+.td-db-n i{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);width:18px;flex:none;text-align:right}
+.td-db-tr{position:relative;height:30px;margin:0 6px}
+.td-db-tr::before{content:'';position:absolute;left:-6px;right:-6px;top:50%;height:1px;background:var(--border)}
+.td-db-tr i{position:absolute;top:50%}
+.td-db-tr .td-m-avg{top:-1px;bottom:-1px;width:1px;background:var(--accent);opacity:.75}
+.td-db-tr .td-m-bar{height:4px;margin-top:-2px;border-radius:2px;background:var(--td-same)}
+.td-db-r.g-up .td-m-bar{background:var(--td-up)}.td-db-r.g-dn .td-m-bar{background:var(--td-dn)}
+.td-db-tr .td-m-d0,.td-db-tr .td-m-d1{width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;box-sizing:border-box}
+.td-db-tr .td-m-d0{background:var(--panel);border:2px solid var(--muted)}
+.td-db-tr .td-m-d1{background:var(--text);box-shadow:0 0 0 2px var(--panel)}
+.td-db-r.foc .td-m-d1,.td-db-r:hover .td-m-d1{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.td-db-v{display:flex;align-items:baseline;justify-content:flex-end;flex-direction:row-reverse;gap:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.td-db-v b{font-size:13px;font-weight:700}
+.td-db-v small{font-size:10.5px;color:var(--dim)}
+.td-db-g{font-size:12px;font-weight:700;text-align:right;padding-right:6px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--dim)}
+.td-db-g.g-up,.td-db-g.g-dn,.td-db-g.g-same{color:var(--text)}
+.td-db-g.g-up::before,.td-db-g.g-dn::before{content:'';display:inline-block;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;margin-right:5px;transform:translateY(-1px)}
+.td-db-g.g-up::before{border-bottom:6px solid var(--td-up)}
+.td-db-g.g-dn::before{border-top:6px solid var(--td-dn)}
+.td-db-leg,.td-tr-leg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+.td-db-leg span,.td-tr-leg span{display:inline-flex;align-items:center;gap:6px}
+.td-db-leg em{font-style:normal;color:var(--dim);margin-left:auto}
+.td-db-leg i,.td-tr-leg i{display:inline-block;flex:none}
+.td-k-d0{width:10px;height:10px;border-radius:50%;border:2px solid var(--muted)}
+.td-k-d1{width:10px;height:10px;border-radius:50%;background:var(--text)}
+.td-k-vln{width:1px;height:14px;background:var(--accent)}
+.td-k-ln{width:16px;height:3px;border-radius:2px}
+.td-k-band{width:16px;height:10px;background:color-mix(in srgb,var(--accent) 22%,transparent)}
+/* takım eğrisi */
+.td-chart{position:relative;height:250px}
+.td-empty{padding:34px 12px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--border2);border-radius:var(--r-md)}
+.td-per{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;font-variant-numeric:tabular-nums}
+.td-per th{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border2);background:none}
+.td-per td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);background:none}
+.td-per th:first-child,.td-per td:first-child{text-align:left;padding-left:0}
+.td-per td b{color:var(--text);font-weight:700}
+.td-note{font-size:11px;line-height:1.5;color:var(--dim);margin-top:10px}
+
+/* ── 5 · karşılaştırma tablosu ── */
 .td-cmp{border-top:1px solid var(--border);padding-top:12px}
-.td-cmp-tg{border:0;background:none;color:var(--text2);font-weight:700;font-size:14px;cursor:pointer;padding:4px 0}
+.td-cmp-tg{display:flex;align-items:baseline;gap:8px;border:0;background:none;color:var(--text2);font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;padding:4px 0}
+.td-cmp-tg span{color:var(--accent);width:12px}
+.td-cmp-tg em{font-style:normal;font-weight:500;font-size:12px;color:var(--dim);margin-left:6px}
 .td-cmp-tg:hover{color:var(--accent)}
-@media (max-width:900px){.td-grid{grid-template-columns:1fr}.td-kpis{grid-template-columns:repeat(2,1fr)}.td-hero-t{font-size:20px}}
-@media (prefers-reduced-motion:reduce){.td-hero-glow{animation:none}.td-hero,.td-kpi,.td-card{animation:none}}
+
+@media (max-width:1180px){
+  .td-hero{grid-template-columns:1fr}
+  .td-focus{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .td-kpis,.td-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .td-hero{padding:18px 16px}.td-hero-t{font-size:20px}
+  .td-db-ax,.td-db-r{grid-template-columns:minmax(84px,120px) minmax(0,1fr) 54px 58px;column-gap:8px}
+  .td-db-v small{display:none}
+  .td-heat .td-h-ath{min-width:120px}
+  .td-db-leg em{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .td-hero,.td-kpi,.td-cat,.td-panel,.td-db-r,.td-split i{animation:none}
+  .td-cat:active{transform:none}
+}
 /* ═════════ Test ve Değerlendirme — kompakt kartlar (v3) ═════════
    Kartlar küçüldü: ızgara ekran genişliğine göre 2-4 sütun, değer kutuları ve gözlem alanı
    daha alçak, sabit kart yüksekliği yok. Yeni testlerin parçaları (sağ/sol tablosu, okuma
@@ -14628,16 +14766,22 @@ function painTagsFromMap(map){
 }
 
 /* =========================================================
-   RHR MONITOR — resting heart rate, week over week
+   GECE NABZI TAKİBİ (eski "RHR Takibi") — Polar night heart rate, week over week
    The Wellness tab's athlete cards answer "what did this morning look like"; this
    answers "which way is it going". One point per week, Monday to Sunday, and the point is
-   the mean of the days that were actually measured: the week's readings added up
-   and divided by the number of days carrying one, never by seven. An athlete who
-   checked in twice that week has an average of two mornings — dividing that by the
-   calendar would read as a resting pulse in the teens and put a cliff in the line
+   the mean of the nights that were actually measured: the week's readings added up
+   and divided by the number of days carrying one, never by seven. An athlete whose
+   Polar recorded two nights that week has an average of two nights — dividing that by
+   the calendar would read as a pulse in the teens and put a cliff in the line
    where there is only a quiet week.
 
-   A week nobody reported has no point at all. The line breaks across it and a
+   The value is Polar's night heart rate (Nightly Recharge mean, `recharge.hrAvg`), filed
+   under the morning the athlete woke up — the same number as the "Gece nabzı" column of
+   the Polar table above it (pwNightHrMap, 429). Nothing else feeds it: the hand-typed
+   resting pulse of old check-ins is a different measurement and stays out, so the chart
+   and the table can never disagree.
+
+   A week with no night recorded has no point at all. The line breaks across it and a
    dashed connector spans the gap, so the chart never walks through a value that
    was never taken.
    ========================================================= */
@@ -14646,28 +14790,16 @@ function painTagsFromMap(map){
    #14171c before they were written down. The order is the safety mechanism, so
    slots are handed out from the front and a ninth line is refused rather than
    given a colour already on the chart. */
-const RHR_LINE=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
-const RHR_TEAM='#8b9099';   /* the squad reference — grey, so it never reads as an athlete */
-const RHR_WEEKS=12;         /* three months of weeks on screen at a time */
+const NHR_LINE=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const NHR_TEAM='#8b9099';   /* the squad reference — grey, so it never reads as an athlete */
+const NHR_WEEKS=12;         /* three months of weeks on screen at a time */
 
 /* One athlete's week → {avg,days}, or null when the week carries no reading.
-   Two check-ins on the same day count as one day, the later one winning, exactly
-   as the Wellness tab's day resolves them (wvDay) — a double entry can't weigh a week twice. */
-/* `pol` ({'YYYY-MM-DD': bpm}, Polar'ın günün en düşük nabzı — pwRhrMap, 429): Polar'a
-   bağlı sporcuda o günün değeri Polar'dan gelir, check-in'deki elle yazılan RHR yalnızca
-   Polar ölçümü olmayan günleri doldurur. Wellness'taki Polar tablosunun RHR sütunu ile bu
-   grafik böylece aynı sayıyı söyler. */
-function rhrWeekAvg(ath,wkStart,wkEnd,pol){
-  const byDay=new Map();
-  (ath.wellness||[]).forEach(e=>{
-    if(!e||!e.date||e.date<wkStart||e.date>wkEnd)return;
-    if(e.RHR===''||e.RHR==null)return;
-    const v=Number(e.RHR);
-    if(!isFinite(v)||v<=0)return;
-    byDay.set(e.date,v);
-  });
-  if(pol)Object.keys(pol).forEach(k=>{const v=Number(pol[k]);if(k>=wkStart&&k<=wkEnd&&isFinite(v)&&v>0)byDay.set(k,v);});
-  const vals=[...byDay.values()];
+   `pol` is the athlete's {'YYYY-MM-DD': bpm} night-HR map (pwNightHrMap): one value per
+   morning, so a day can't weigh a week twice. */
+function nhrWeekAvg(wkStart,wkEnd,pol){
+  const vals=[];
+  if(pol)Object.keys(pol).forEach(k=>{const v=Number(pol[k]);if(k>=wkStart&&k<=wkEnd&&isFinite(v)&&v>0)vals.push(v);});
   if(!vals.length)return null;
   return{avg:vals.reduce((a,b)=>a+b,0)/vals.length,days:vals.length};
 }
@@ -14676,7 +14808,7 @@ function rhrWeekAvg(ath,wkStart,wkEnd,pol){
    filed under the month its Thursday falls in — the ISO rule — so a week straddling
    two months belongs to exactly one of them, and "Week 1…5" under a month header
    counts the calendar's weeks rather than the window's. */
-function rhrWeeks(endKey,n){
+function nhrWeeks(endKey,n){
   const endMon=sow(parseD(endKey));
   return Array.from({length:n},(_,i)=>{
     const s=addD(endMon,(i-(n-1))*7),thu=addD(s,3);
@@ -14685,7 +14817,7 @@ function rhrWeeks(endKey,n){
   });
 }
 
-function RHRMonitor({athletes,weeks,polarRhr}){
+function NightHrMonitor({athletes,weeks,nightHr,status}){
   const wrapRef=useRef(null);
   const[w,setW]=useState(900);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;
@@ -14697,14 +14829,14 @@ function RHRMonitor({athletes,weeks,polarRhr}){
   const[hov,setHov]=useState(null);      // hovered week index → crosshair + card
   const[sel,setSel]=useState([]);        // [{id,slot}] — the slot IS the colour
   const rows=useMemo(()=>(athletes||[]).map(a=>{
-    const pol=polarRhr&&polarRhr[String(a.id)];
-    const pts=weeks.map(wk=>rhrWeekAvg(a,wk.start,wk.end,pol));
+    const pol=nightHr&&nightHr[String(a.id)];
+    const pts=weeks.map(wk=>nhrWeekAvg(wk.start,wk.end,pol));
     const got=pts.filter(Boolean);
     return{a,pts,n:got.length,
       avg:got.length?got.reduce((s,p)=>s+p.avg,0)/got.length:null,
       last:got.length?got[got.length-1].avg:null,
       prev:got.length>1?got[got.length-2].avg:null};
-  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks,polarRhr]);
+  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks,nightHr]);
   /* The chart opens on the first few athletes rather than empty or on all of them —
      twenty lines through one 300px band is not a trend anyone can read. After that
      the selection is the coach's: navigating weeks only drops athletes who left the
@@ -14722,10 +14854,10 @@ function RHRMonitor({athletes,weeks,polarRhr}){
     if(s.some(x=>x.id===id))return s.filter(x=>x.id!==id);
     const used=new Set(s.map(x=>x.slot));
     let slot=0;while(used.has(slot))slot++;
-    if(slot>=RHR_LINE.length)return s;
+    if(slot>=NHR_LINE.length)return s;
     return[...s,{id,slot}];
   });
-  const colOf=id=>{const e=sel.find(x=>x.id===id);return e?RHR_LINE[e.slot]:null;};
+  const colOf=id=>{const e=sel.find(x=>x.id===id);return e?NHR_LINE[e.slot]:null;};
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const first=n=>{const p=(n||'').trim().split(/\s+/)[0]||'';return p.length>9?p.slice(0,8)+'…':p;};
   /* Months across the top: consecutive weeks filed under the same month, banded. */
@@ -14770,14 +14902,14 @@ function RHRMonitor({athletes,weeks,polarRhr}){
   })();
   const trend=r=>{if(r.last==null||r.prev==null)return null;const d=r.last-r.prev;
     return{d,cls:Math.abs(d)<0.5?'fl':(d>0?'up':'dn'),s:(Math.abs(d)<0.5?'→ ':(d>0?'↑ ':'↓ '))+Math.abs(d).toFixed(1)};};
-  if(!rows.length)return<div className="empty-st">{L('Bu aralıkta dinlenik nabız ölçümü yok.','No resting-HR readings in this range.')}</div>;
+  if(!rows.length)return<div className="empty-st">{status||L('Bu aralıkta Polar gece nabzı kaydı yok.','No Polar night-HR readings in this range.')}</div>;
   return(<div className="rm-wrap">
     <div className="rm-legend">
-      <span className="rm-lg" style={{'--rm-c':RHR_TEAM}}><i/>{L('takım ort.','team avg')}</span>
+      <span className="rm-lg" style={{'--rm-c':NHR_TEAM}}><i/>{L('takım ort.','team avg')}</span>
       {shown.map(r=><button key={r.a.id} className="rm-chip" style={{'--rm-c':colOf(r.a.id)}} onClick={()=>toggle(r.a.id)}
         title={L('Grafikten çıkar','Remove from chart')}><i/>{r.a.name}<b>×</b></button>)}
       <span className="rm-hint">{!shown.length?L('grafiğe eklemek için tablodan bir sporcuya tıkla','click an athlete below to plot them')
-        :sel.length>=RHR_LINE.length?L('en fazla 8 çizgi','8 lines max')
+        :sel.length>=NHR_LINE.length?L('en fazla 8 çizgi','8 lines max')
         :L('sporcu eklemek/çıkarmak için tabloya tıkla','click the table to add or remove athletes')}</span>
     </div>
     <div className="rm-chart" ref={wrapRef}>
@@ -14800,7 +14932,7 @@ function RHRMonitor({athletes,weeks,polarRhr}){
         {/* The squad line first, so the athletes' own lines sit over it. */}
         {(()=>{const segs=segsOf(team.map(v=>v==null?null:{avg:v}));
           return segs.map((sg,k)=>sg.length>1?<path key={'tm'+k} d={sg.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')}
-            fill="none" stroke={RHR_TEAM} strokeWidth="1.5" strokeOpacity=".75" strokeDasharray="5 4" strokeLinecap="round"/>:null);})()}
+            fill="none" stroke={NHR_TEAM} strokeWidth="1.5" strokeOpacity=".75" strokeDasharray="5 4" strokeLinecap="round"/>:null);})()}
         {shown.map(r=>{const c=colOf(r.a.id),segs=segsOf(r.pts);
           return<g key={r.a.id}>
             {segs.slice(1).map((sg,k)=>{const a=segs[k][segs[k].length-1],b=sg[0];
@@ -14836,9 +14968,9 @@ function RHRMonitor({athletes,weeks,polarRhr}){
           {shown.map(r=>{const p=r.pts[hov];
             return<div key={r.a.id} className="rm-tip-r"><i style={{background:colOf(r.a.id)}}/>
               <span className="rm-tip-n">{r.a.name}</span><strong>{p?Math.round(p.avg):'—'}</strong>
-              <em>{p?p.days+L(' gün',' d'):''}</em></div>;})}
+              <em>{p?p.days+L(' gece',' n'):''}</em></div>;})}
           {!shown.length&&<div className="rm-tip-r"><span className="rm-tip-n">{L('sporcu seçili değil','no athlete plotted')}</span></div>}
-          {team[hov]!=null&&<div className="rm-tip-r"><i style={{background:RHR_TEAM}}/>
+          {team[hov]!=null&&<div className="rm-tip-r"><i style={{background:NHR_TEAM}}/>
             <span className="rm-tip-n">{L('takım ort.','team avg')}</span><strong>{Math.round(team[hov])}</strong><em/></div>}
         </div>;})()}
     </div>
@@ -14866,7 +14998,7 @@ function RHRMonitor({athletes,weeks,polarRhr}){
               {r.a.position&&<span className="rm-pos">{posOf(r.a.position)}</span>}
             </div></td>
             {r.pts.map((p,i)=><td key={i} className={'rm-cel'+(hov===i?' hv':'')}
-              title={p?`${r.a.name}\n${fd(weeks[i].start).slice(0,5)} – ${fd(weeks[i].end).slice(0,5)}\n${L('Ortalama','Average')}: ${p.avg.toFixed(1)} bpm · ${p.days} ${L('ölçüm günü','measured days')}`:undefined}>
+              title={p?`${r.a.name}\n${fd(weeks[i].start).slice(0,5)} – ${fd(weeks[i].end).slice(0,5)}\n${L('Ortalama','Average')}: ${p.avg.toFixed(1)} bpm · ${p.days} ${L('gece','nights')}`:undefined}>
               {p?<span className="rm-v">{Math.round(p.avg)}<i>{p.days}</i></span>:<span className="rm-na">·</span>}</td>)}
             <td className="rm-avg"><span className="rm-avg-in">
               <span className="rm-avg-v">{r.avg!=null?Math.round(r.avg):'—'}</span>
@@ -29567,18 +29699,24 @@ function FvSummaryCard({ath}){
 /* =========================================================
    TAKIM VERİLERİ — Test ve Değerlendirme'deki "Takım Verileri" düğmesinin açtığı ekran
    ---------------------------------------------------------
-   Sporcuların test kayıtlarından gelişimi okur: bir metrik seçilir (CMP_METRICS'in yönü
-   olanları + FMS toplamı), ekranda üç grafik ve özet kutuları çıkar:
-     1) Gelişim eğrisi — ay ay takım ortalaması (dolgulu kalın çizgi) ve her sporcunun
-        ince çizgisi; seçilen sporcu öne çıkar.
-     2) Gelişim sıralaması — her sporcunun ilk ve son testi arasındaki % değişim; yön
-        düzeltilmiş (sprint süresinin düşmesi gelişmedir), yeşil iyi, kırmızı geri.
-     3) Gelişim haritası — her metrikte iki testi olan sporculardan gelişenlerin oranı.
-   Altında eski "Sporcuları Karşılaştır" tablosu (CompareAthletes) aynen durur. */
+   Sporcuların test kayıtlarından takımın gelişimini okur. Yukarıdan aşağı, genelden özele:
+     1) Başlık bandı — dört gösterge: gelişen ölçümlerin oranı (ilk → son test, bütün
+        metrikler), en güçlü alan, gelişim alanı (en zayıf kategori), en çok gelişen sporcu.
+     2) Kategori kartları — Mobilite, Güç, Sürat, Kuvvet, Dayanıklılık: her birinde gelişen /
+        aynı / gerileyen karşılaştırmaların payı. Kart aynı zamanda sekme: haritayı o
+        kategoriye çevirir.
+     3) Gelişim haritası — seçili kategoride sporcu × metrik tablosu: hücre, sporcunun ilk ve
+        son testi arasındaki % değişim (yön düzeltilmiş: sprint süresinin düşmesi gelişmedir);
+        yeşil gelişme, kırmızı gerileme, ton büyüklük. Sütun başlığı o metriği seçer.
+     4) Metrik odağı — seçili metrik: dört özet kutusu, sporcu sporcu "ilk → son test" sırası
+        (ortak eksende iki nokta ve aradaki çubuk; takım ortalaması dikey çizgi) ve takımın
+        test dönemlerine göre eğrisi (ortalama + en düşük–en yüksek bandı, seçili sporcu).
+     5) Karşılaştırma tablosu (CompareAthletes) — açılır.
+   Metrikler arası toplamlarda % ortalaması değil GELİŞEN ORANI kullanılır: 3 üzerinden
+   puanlanan bir test (2 → 3 = +%50) ya da sıfıra yakın bir fark metriği yüzdeleri
+   ortalamada şişirir; "kaç karşılaştırmada gelişti" her metrikte aynı anlama gelir. */
 const TD_FMS={id:'fmsTotal',g:'mob',tr:'FMS Toplam',en:'FMS Total',u:'/21',dir:'hi',st:'FMS',se:'FMS',
   get:t=>{const f=fmsCalc(t.fms);return f.n?f.total:null;}};
-const TD_COLORS=['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#ef4444','#84cc16','#f97316','#14b8a6',
-  '#a855f7','#eab308','#0ea5e9','#22c55e','#e11d48','#6366f1','#d946ef','#64748b'];
 const tdVal=(m,t)=>{try{const v=m.get(t);return v==null||!isFinite(v)?null:v;}catch(e){return null;}};
 /* Bir sporcunun bu metrikteki tarihli değerleri, eskiden yeniye. */
 function tdSeries(ath,m){
@@ -29593,137 +29731,264 @@ function tdGain(s,dir){
   const pct=(b-a)/Math.abs(a)*100;
   return+(dir==='lo'?-pct:pct).toFixed(1);
 }
+/* Süre ve hız iki ondalıkla (3,25 sn ile 3,31 sn aynı sayı görünmesin), gerisi tablodaki gibi. */
+const tdFmt=(m,v)=>v==null?'—':(m&&(m.u==='s'||m.u==='m/s'))?Number(v).toFixed(2):cmpFmt(v);
+const tdPct=g=>g==null?'—':g===0?'0%':(g>0?'+':'−')+(Math.abs(g)>=100?Math.round(Math.abs(g)):+Math.abs(g).toFixed(1))+'%';
+/* Hücrenin tonu: işaret + büyüklük basamağı (±2 ve ±5). */
+const tdTier=g=>g==null?'':g===0?'z':(g>0?'p':'n')+(Math.abs(g)<2?1:Math.abs(g)<5?2:3);
+/* Gelişen / aynı / gerileyen payı tek yatay çubukta. */
+function TdSplit({up,same,dn}){
+  const t=up+same+dn;
+  return(<span className="td-split" aria-hidden="true">{t>0&&<>
+    {up>0&&<i className="td-s-up" style={{flexGrow:up}}/>}{same>0&&<i className="td-s-same" style={{flexGrow:same}}/>}{dn>0&&<i className="td-s-dn" style={{flexGrow:dn}}/>}</>}</span>);
+}
 function TeamData({athletes,setup,customTests,Lx}){
-  const metrics=useMemo(()=>[TD_FMS,...CMP_METRICS.filter(m=>m.dir&&m.g!=='anthro')]
-    .filter(m=>athletes.some(a=>tdSeries(a,m).length)),[athletes]);
+  const theme=useAppTheme();
+  const roster=useMemo(()=>[...athletes].sort(byAthleteName),[athletes]);
+  /* Bütün model tek yerde: her metrikte her sporcunun serisi, ilk/son değeri ve gelişimi. */
+  const model=useMemo(()=>{
+    const M=[TD_FMS,...CMP_METRICS.filter(m=>m.dir&&m.g!=='anthro')].map(m=>{
+      const per=roster.map(a=>{const s=tdSeries(a,m);return{a,s,g:tdGain(s,m.dir),first:s[0]||null,last:s[s.length-1]||null};}).filter(r=>r.s.length);
+      const gs=per.filter(r=>r.g!=null);
+      return{m,per,by:new Map(per.map(r=>[r.a.id,r])),n:per.length,cmp:gs.length,up:gs.filter(r=>r.g>0).length,dn:gs.filter(r=>r.g<0).length,
+        avg:gs.length?+(gs.reduce((x,r)=>x+r.g,0)/gs.length).toFixed(1):null};
+    }).filter(x=>x.n>0);
+    const sum=(xs,k)=>xs.reduce((t,x)=>t+x[k],0);
+    const cats=CMP_GROUPS.filter(g=>g.id!=='anthro').map(g=>{const ms=M.filter(x=>x.m.g===g.id);
+      const cmp=sum(ms,'cmp'),up=sum(ms,'up'),dn=sum(ms,'dn');
+      return{g,ms,cmp,up,dn,same:cmp-up-dn,pct:cmp?Math.round(up/cmp*100):null};}).filter(c=>c.ms.length);
+    const ath=roster.map(a=>{let cmp=0,up=0;M.forEach(x=>{const r=x.by.get(a.id);if(r&&r.g!=null){cmp++;if(r.g>0)up++;}});return{a,cmp,up};});
+    const cmp=sum(M,'cmp'),up=sum(M,'up'),dn=sum(M,'dn');
+    const dates=roster.flatMap(a=>(a.tests||[]).filter(t=>t.date).map(t=>t.date)).sort();
+    return{M,cats,ath,cmp,up,dn,same:cmp-up-dn,dates,
+      multi:roster.filter(a=>(a.tests||[]).filter(t=>t.date).length>1).length};
+  },[roster]);
+
+  const[catId,setCatId]=useState(null);
   const[mid,setMid]=useState(null);
   const[focus,setFocus]=useState(null);
+  const[sort,setSort]=useState('level');
   const[showCmp,setShowCmp]=useState(false);
-  /* Varsayılan metrik: en çok sporcunun iki ölçümü olan. */
-  const best=useMemo(()=>{
-    let top=null,n=-1;
-    metrics.forEach(m=>{const k=athletes.filter(a=>tdSeries(a,m).length>1).length;if(k>n){n=k;top=m;}});
-    return top;},[metrics,athletes]);
-  const m=metrics.find(x=>x.id===mid)||best;
-  const colorOf=useMemo(()=>{const map={};[...athletes].sort(byAthleteName).forEach((a,i)=>{map[a.id]=TD_COLORS[i%TD_COLORS.length];});
-    return id=>map[id]||'#94a3b8';},[athletes]);
-
-  const view=useMemo(()=>{
-    if(!m)return null;
-    const rows=athletes.map(a=>({a,s:tdSeries(a,m)})).filter(r=>r.s.length);
-    const months=[...new Set(rows.flatMap(r=>r.s.map(x=>x.d.slice(0,7))))].sort();
-    // Bir sporcunun o aydaki değeri: o ayın son testi.
-    const at=(r,mo)=>{const h=r.s.filter(x=>x.d.slice(0,7)===mo);return h.length?h[h.length-1].v:null;};
-    const avg=months.map(mo=>{const v=rows.map(r=>at(r,mo)).filter(x=>x!=null);
-      return v.length?+(v.reduce((s,x)=>s+x,0)/v.length).toFixed(2):null;});
-    const gains=rows.map(r=>({a:r.a,g:tdGain(r.s,m.dir),first:r.s[0],last:r.s[r.s.length-1]}))
-      .filter(x=>x.g!=null).sort((x,y)=>y.g-x.g);
-    return{rows,months,at,avg,gains};
-  },[athletes,m]);
-
-  /* Her metrikte gelişen sporcuların oranı (en az iki ölçümü olanlar arasında). */
-  const radar=useMemo(()=>metrics.map(x=>{
-    const gs=athletes.map(a=>tdGain(tdSeries(a,x),x.dir)).filter(g=>g!=null);
-    return{m:x,n:gs.length,pct:gs.length?Math.round(gs.filter(g=>g>0).length/gs.length*100):null};
-  }).filter(r=>r.n>0),[metrics,athletes]);
-
-  const totalTests=athletes.reduce((s,a)=>s+(a.tests||[]).filter(t=>t.date).length,0);
-  const multi=athletes.filter(a=>(a.tests||[]).filter(t=>t.date).length>1).length;
+  /* Varsayılanlar: en çok karşılaştırması olan kategori ve o kategoride en çok sporcunun iki ölçümü olan metrik. */
+  const most=(xs,k)=>xs.reduce((b,x)=>!b||x[k]>b[k]?x:b,null);
+  const cat=model.cats.find(c=>c.g.id===catId)||most(model.cats,'cmp');
+  const X=(cat&&cat.ms.find(x=>x.m.id===mid))||(cat&&(most(cat.ms,'cmp')||cat.ms[0]))||null;
+  const m=X&&X.m;
+  const pickMetric=id=>{const x=model.M.find(y=>y.m.id===id);if(!x)return;setCatId(x.m.g);setMid(id);};
+  const catLbl=g=>Lx(g.tr,g.en);
   const unit=m&&m.u?` ${m.u}`:'';
   const monLbl=mo=>{const[y,mm]=mo.split('-');return`${MN[Number(mm)-1]} ${y.slice(2)}`;};
-  const avgGain=view&&view.gains.length?+(view.gains.reduce((s,x)=>s+x.g,0)/view.gains.length).toFixed(1):null;
-  const top=view&&view.gains[0];
-  const sign=v=>v==null?'—':`${v>0?'+':''}${v}%`;
+  const toggleFocus=id=>setFocus(f=>f===id?null:id);
 
-  const theme=useAppTheme();
-  const grid='rgba(255,255,255,.07)',tick='rgba(255,255,255,.55)';
-  // datalabels are drawn as given in both themes (ChartC leaves them alone), so they pick their own colour.
-  const dlC=theme==='light'?'#334155':'rgba(255,255,255,.8)';
+  /* Başlık göstergeleri. */
+  const rated=model.cats.filter(c=>c.cmp>0);
+  const bestCat=rated.length?rated.reduce((b,c)=>c.pct>b.pct?c:b):null;
+  const weakCat=rated.length>1?rated.reduce((b,c)=>c.pct<b.pct?c:b):null;
+  const minCmp=Math.min(3,Math.max(1,...model.ath.map(x=>x.cmp)));
+  const topAth=model.ath.filter(x=>x.cmp>=minCmp&&x.up>0).sort((x,y)=>(y.up/y.cmp-x.up/x.cmp)||(y.up-x.up))[0]||null;
+  const allPct=model.cmp?Math.round(model.up/model.cmp*100):null;
+  const span=model.dates.length?(()=>{const a=model.dates[0].slice(0,7),b=model.dates[model.dates.length-1].slice(0,7);return a===b?monLbl(a):`${monLbl(a)} → ${monLbl(b)}`;})():'';
+  const nTests=model.dates.length;
+
+  /* Seçili metriğin görünümü: sıra, eksen, dönem eğrisi. */
+  const view=useMemo(()=>{
+    if(!X)return null;
+    const lo=m.dir==='lo';
+    const better=(a,b)=>lo?a-b:b-a;
+    const rows=[...X.per].sort((x,y)=>sort==='gain'
+      ?((y.g==null?-1e9:y.g)-(x.g==null?-1e9:x.g))||better(x.last.v,y.last.v)
+      :better(x.last.v,y.last.v)||(x.a.name||'').localeCompare(y.a.name||'','tr'));
+    const all=X.per.flatMap(r=>[r.first.v,r.last.v]);
+    let a=Math.min(...all),b=Math.max(...all);if(a===b){a-=1;b+=1;}
+    const pad=(b-a)*.07;a-=pad;b+=pad;
+    const pos=v=>(v-a)/(b-a)*100;
+    const lastAvg=X.per.reduce((t,r)=>t+r.last.v,0)/X.per.length;
+    const best=X.per.reduce((t,r)=>better(r.last.v,t.last.v)<0?r:t);
+    const months=[...new Set(X.per.flatMap(r=>r.s.map(x=>x.d.slice(0,7))))].sort();
+    /* Bir sporcunun o dönemdeki değeri: o ayın son testi. */
+    const at=(r,mo)=>{const h=r.s.filter(x=>x.d.slice(0,7)===mo);return h.length?h[h.length-1].v:null;};
+    const per=months.map(mo=>{const v=X.per.map(r=>at(r,mo)).filter(x=>x!=null);
+      return{mo,n:v.length,avg:v.length?+(v.reduce((t,x)=>t+x,0)/v.length).toFixed(2):null,min:v.length?Math.min(...v):null,max:v.length?Math.max(...v):null};});
+    return{rows,pos,lo:a,hi:b,lastAvg,best,months,per,at};
+  },[X,sort]);
+
+  const dark=theme!=='light';
+  const grid=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.08)',tick=dark?'rgba(255,255,255,.6)':'#5d6570';
+  const AVG=dark?'#3aa0e6':'#1a8ad4',FOC=dark?'#f0a35e':'#c2570c';
+  const fr=view&&focus?X.by.get(focus):null;
   const lineData=view&&{labels:view.months.map(monLbl),datasets:[
-    {label:Lx('Takım ortalaması','Team average'),data:view.avg,borderColor:'#38bdf8',borderWidth:3.5,pointRadius:4,
-      pointBackgroundColor:'#38bdf8',pointBorderColor:'#0b1220',pointBorderWidth:2,tension:.35,spanGaps:true,fill:true,
-      backgroundColor:vGrad('rgba(56,189,248,.32)','rgba(56,189,248,0)'),order:0},
-    ...view.rows.map(r=>{const on=focus===r.a.id,dim=focus&&!on;const c=colorOf(r.a.id);
-      return{label:r.a.name||'—',data:view.months.map(mo=>view.at(r,mo)),borderColor:dim?c+'26':(on?c:c+'8c'),
-        borderWidth:on?3:1.4,pointRadius:on?4:2,pointBackgroundColor:c,tension:.3,spanGaps:true,fill:false,order:on?-1:1};})]};
-  const lineOpts={responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
-    animation:{duration:900,easing:'easeOutQuart'},
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y}${unit}`}}},
-    scales:{x:{grid:{color:grid},ticks:{color:tick}},
-      y:{reverse:false,grid:{color:grid},ticks:{color:tick},title:{display:true,text:`${cmpLabel(m||TD_FMS)}${unit}`,color:tick}}}};
-  const barData=view&&{labels:view.gains.map(x=>x.a.name||'—'),datasets:[{data:view.gains.map(x=>x.g),
-    backgroundColor:view.gains.map(x=>x.a.id===focus?(x.g>=0?'#34d399':'#f87171'):(x.g>=0?'rgba(52,211,153,.55)':'rgba(248,113,113,.55)')),
-    borderColor:view.gains.map(x=>x.g>=0?'#34d399':'#f87171'),borderWidth:1,borderRadius:6,barThickness:16}]};
-  const barOpts={indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:900,easing:'easeOutQuart'},
-    onClick:(e,els)=>{if(els&&els[0]&&view){const a=view.gains[els[0].index].a;setFocus(f=>f===a.id?null:a.id);}},
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const x=view.gains[c.dataIndex];
-      return`${sign(x.g)} · ${cmpFmt(x.first.v)} → ${cmpFmt(x.last.v)}${unit}`;}}},
-      datalabels:{display:true,anchor:'end',align:c=>c.dataset.data[c.dataIndex]>=0?'right':'left',color:dlC,
-        font:{weight:'700',size:11},formatter:v=>sign(v)}},
-    layout:{padding:{right:46,left:8}},
-    scales:{x:{grid:{color:grid},ticks:{color:tick,callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:'rgba(255,255,255,.8)'}}}};
-  const radarData={labels:radar.map(r=>cmpShort(r.m)),datasets:[{label:Lx('Gelişen sporcu oranı','Share improving'),
-    data:radar.map(r=>r.pct),backgroundColor:'rgba(167,139,250,.25)',borderColor:'#a78bfa',borderWidth:2,
-    pointBackgroundColor:radar.map(r=>m&&r.m.id===m.id?'#f472b6':'#a78bfa'),pointRadius:radar.map(r=>m&&r.m.id===m.id?6:3)}]};
-  const radarOpts={responsive:true,maintainAspectRatio:false,animation:{duration:900},
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const r=radar[c.dataIndex];return`%${r.pct} · ${r.n} ${Lx('sporcu','athletes')}`;}}}},
-    scales:{r:{min:0,max:100,angleLines:{color:grid},grid:{color:grid},pointLabels:{color:'rgba(255,255,255,.75)',font:{size:11}},
-      ticks:{display:false,stepSize:25}}}};
+    {label:Lx('En yüksek','Highest'),data:view.per.map(p=>p.max),borderWidth:0,pointRadius:0,pointHoverRadius:0,fill:'+1',
+      backgroundColor:dark?'rgba(58,160,230,.13)':'rgba(26,138,212,.12)',tension:.3,spanGaps:true,order:3},
+    {label:Lx('En düşük','Lowest'),data:view.per.map(p=>p.min),borderWidth:0,pointRadius:0,pointHoverRadius:0,fill:false,tension:.3,spanGaps:true,order:3},
+    {label:Lx('Takım ortalaması','Team average'),data:view.per.map(p=>p.avg),borderColor:AVG,borderWidth:2.5,pointRadius:4.5,pointHoverRadius:6,
+      pointBackgroundColor:AVG,pointBorderColor:dark?'#232323':'#fff',pointBorderWidth:2,tension:.3,spanGaps:true,fill:false,order:1,
+      datalabels:{display:!fr,align:'top',offset:6,color:dark?'#f2f2f2':'#14181d',font:{weight:'700',size:11},formatter:v=>v==null?'':tdFmt(m,v)}},
+    ...(fr?[{label:fr.a.name||'—',data:view.months.map(mo=>view.at(fr,mo)),borderColor:FOC,borderWidth:2,pointRadius:4,pointHoverRadius:6,
+      pointBackgroundColor:FOC,pointBorderColor:dark?'#232323':'#fff',pointBorderWidth:2,tension:.3,spanGaps:true,fill:false,order:0}]:[])]};
+  const lineOpts={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    animation:{duration:500,easing:'easeOutQuart'},layout:{padding:{top:18,right:8}},
+    plugins:{legend:{display:false},datalabels:{display:false},
+      tooltip:{callbacks:{label:c=>c.parsed.y==null?null:`${c.dataset.label}: ${tdFmt(m,c.parsed.y)}${unit}`,
+        footer:it=>{const p=it&&it[0]&&view.per[it[0].dataIndex];return p?`${p.n} ${Lx('sporcu','athletes')}`:'';}}}},
+    scales:{x:{grid:{display:false},ticks:{color:tick}},
+      y:{grace:'12%',grid:{color:grid},border:{display:false},ticks:{color:tick,maxTicksLimit:6}}}};
 
+  if(!model.M.length)return(<div className="td-wrap">
+    <div className="empty-st">{Lx('Grafik için tarihli test sonucu yok. Bir sporcuya test girince burada görünür.','No dated test results to chart yet. They show here once tests are entered.')}</div>
+    <div className="td-cmp"><CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/></div>
+  </div>);
+
+  const heatRows=roster.filter(a=>cat.ms.some(x=>x.by.has(a.id)));
+  const same=X.cmp-X.up-X.dn;
   return(<div className="td-wrap">
+    {/* 1 · Başlık bandı */}
     <div className="td-hero">
-      <div className="td-hero-glow" aria-hidden="true"/>
       <div className="td-hero-tx">
         <div className="td-eyebrow">{Lx('Takım Verileri','Team Data')} · {setup.teamName}</div>
-        <div className="td-hero-t">{Lx('Sporcuların gelişimi, test test','How the squad is developing, test by test')}</div>
+        <div className="td-hero-t">{Lx('Takımın gelişimi, ilk testten son teste','How the squad developed, first test to latest')}</div>
+        <div className="td-hero-s">{[span,Lx(`${nTests} test kaydı`,`${nTests} test records`),Lx(`${model.multi}/${roster.length} sporcunun 2+ testi var`,`${model.multi}/${roster.length} athletes with 2+ tests`)].filter(Boolean).join(' · ')}</div>
       </div>
       <div className="td-kpis">
-        <div className="td-kpi"><div className="td-kpi-v">{totalTests}</div><div className="td-kpi-l">{Lx('Test kaydı','Test records')}</div></div>
-        <div className="td-kpi"><div className="td-kpi-v">{multi}</div><div className="td-kpi-l">{Lx('2+ testi olan sporcu','Athletes with 2+ tests')}</div></div>
-        <div className="td-kpi"><div className={'td-kpi-v'+(avgGain>0?' up':avgGain<0?' dn':'')}>{sign(avgGain)}</div><div className="td-kpi-l">{Lx('Ort. gelişim','Avg. change')}{m?` · ${cmpShort(m)}`:''}</div></div>
-        <div className="td-kpi"><div className="td-kpi-v sm">{top&&top.g>0?top.a.name:'—'}</div><div className="td-kpi-l">{Lx('En çok gelişen','Most improved')}{top&&top.g>0?` · ${sign(top.g)}`:''}</div></div>
+        <div className="td-kpi"><div className="td-kpi-l">{Lx('Gelişen ölçüm','Improved measures')}</div>
+          <div className="td-kpi-v">{allPct==null?'—':<>{allPct}<small>%</small></>}</div>
+          <TdSplit up={model.up} same={model.same} dn={model.dn}/>
+          <div className="td-kpi-s">{model.cmp?Lx(`${model.up} gelişti · ${model.same} aynı · ${model.dn} geriledi`,`${model.up} up · ${model.same} same · ${model.dn} down`):Lx('ikinci test girilince hesaplanır','needs a second test')}</div></div>
+        <div className="td-kpi"><div className="td-kpi-l">{Lx('En güçlü alan','Strongest area')}</div>
+          <div className="td-kpi-v sm">{bestCat?catLbl(bestCat.g):'—'}</div>
+          <div className="td-kpi-s">{bestCat?Lx(`%${bestCat.pct} gelişen · ${bestCat.up}/${bestCat.cmp} karşılaştırma`,`${bestCat.pct}% improved · ${bestCat.up}/${bestCat.cmp} comparisons`):'—'}</div></div>
+        <div className="td-kpi"><div className="td-kpi-l">{Lx('Gelişim alanı','Area to develop')}</div>
+          <div className="td-kpi-v sm">{weakCat&&weakCat!==bestCat?catLbl(weakCat.g):'—'}</div>
+          <div className="td-kpi-s">{weakCat&&weakCat!==bestCat?Lx(`%${weakCat.pct} gelişen · ${weakCat.up}/${weakCat.cmp} karşılaştırma`,`${weakCat.pct}% improved · ${weakCat.up}/${weakCat.cmp} comparisons`):Lx('tek kategoride veri var','one category has data')}</div></div>
+        <div className="td-kpi"><div className="td-kpi-l">{Lx('En çok gelişen','Most improved')}</div>
+          <div className="td-kpi-v sm">{topAth?topAth.a.name:'—'}</div>
+          <div className="td-kpi-s">{topAth?Lx(`${topAth.up}/${topAth.cmp} ölçümde gelişti`,`improved in ${topAth.up} of ${topAth.cmp} measures`):'—'}</div></div>
       </div>
     </div>
 
-    {metrics.length===0&&<div className="empty-st">{Lx('Grafik için tarihli test sonucu yok. Bir sporcuya test girince burada görünür.','No dated test results to chart yet. They show here once tests are entered.')}</div>}
+    {/* 2 · Kategori kartları (aynı zamanda haritanın sekmeleri) */}
+    <div className="td-cats" role="tablist" aria-label={Lx('Test kategorileri','Test categories')}>
+      {model.cats.map((c,i)=><button key={c.g.id} type="button" role="tab" aria-selected={c===cat} className={'td-cat'+(c===cat?' on':'')}
+        style={{animationDelay:(i*50)+'ms'}} onClick={()=>{setCatId(c.g.id);setMid(null);}}>
+        <span className="td-cat-n">{catLbl(c.g)}</span>
+        <span className="td-cat-v"><span>{c.pct==null?'—':<>{c.pct}<small>%</small></>}</span><em>{c.pct==null?Lx('ikinci test bekleniyor','awaiting a second test'):Lx('gelişen','improved')}</em></span>
+        <TdSplit up={c.up} same={c.same} dn={c.dn}/>
+        <span className="td-cat-f">{Lx(`${c.ms.length} metrik · ${c.cmp} karşılaştırma`,`${c.ms.length} metrics · ${c.cmp} comparisons`)}</span>
+      </button>)}
+    </div>
 
-    {m&&view&&<>
-      <div className="td-chips">
-        {metrics.map(x=><button key={x.id} type="button" className={'td-chip'+(x.id===m.id?' on':'')} onClick={()=>setMid(x.id)}>
-          {cmpLabel(x)}</button>)}
+    {/* 3 · Gelişim haritası */}
+    <div className="panel td-panel">
+      <div className="td-hd">
+        <div><h2>{Lx('Gelişim haritası','Development map')} · {catLbl(cat.g)}</h2>
+          <p>{Lx('Her hücre sporcunun ilk ve son testi arasındaki değişim; yön düzeltilmiş: artı her zaman gelişme. Sütun başlığına tıkla → metrik ayrıntısı.','Each cell is the change between the athlete\'s first and latest test, direction-corrected: plus is always improvement. Click a column header → metric detail.')}</p></div>
+        <div className="td-leg" aria-hidden="true">
+          <span>{Lx('geriledi','declined')}</span><i className="td-c n3"/><i className="td-c n2"/><i className="td-c n1"/><i className="td-c z"/><i className="td-c p1"/><i className="td-c p2"/><i className="td-c p3"/><span>{Lx('gelişti','improved')}</span>
+          <span className="td-leg-1"><i className="td-c one"/>{Lx('tek test (son değer)','single test (latest value)')}</span>
+        </div>
       </div>
+      <div className="td-heat-w"><table className="td-heat" key={cat.g.id}>
+        <thead><tr>
+          <th className="td-h-ath">{Lx('Sporcu','Athlete')}</th>
+          {cat.ms.map(x=><th key={x.m.id} className={x===X?'sel':''}>
+            <button type="button" aria-pressed={x===X} title={`${cmpLabel(x.m)}${x.m.u?' · '+x.m.u:''} · ${x.m.dir==='lo'?Lx('düşük daha iyi','lower is better'):Lx('yüksek daha iyi','higher is better')}`}
+              onClick={()=>setMid(x.m.id)}>{cmpShort(x.m)}</button></th>)}
+          <th className="td-h-sum" title={Lx('Bu kategoride gelişen ölçüm / karşılaştırılabilen ölçüm','Improved measures / comparable measures in this category')}>{Lx('Gelişen','Improved')}</th>
+        </tr></thead>
+        <tbody>{heatRows.map(a=>{let cmp=0,up=0;
+          const cells=cat.ms.map(x=>{const r=x.by.get(a.id);
+            if(!r)return<td key={x.m.id} className={'td-c none'+(x===X?' sel':'')}>·</td>;
+            if(r.g==null)return<td key={x.m.id} className={'td-c one'+(x===X?' sel':'')}
+              title={`${cmpLabel(x.m)} · ${fd(r.last.d)}: ${tdFmt(x.m,r.last.v)}${x.m.u?' '+x.m.u:''}`}>{tdFmt(x.m,r.last.v)}</td>;
+            cmp++;if(r.g>0)up++;
+            return<td key={x.m.id} className={'td-c '+tdTier(r.g)+(x===X?' sel':'')}
+              title={`${cmpLabel(x.m)}\n${fd(r.first.d)}: ${tdFmt(x.m,r.first.v)} → ${fd(r.last.d)}: ${tdFmt(x.m,r.last.v)}${x.m.u?' '+x.m.u:''}`}>{tdPct(r.g)}</td>;});
+          return<tr key={a.id} className={focus===a.id?'foc':''}>
+            <th className="td-h-ath"><button type="button" aria-pressed={focus===a.id} onClick={()=>toggleFocus(a.id)}
+              title={Lx('Metrik odağında öne çıkar','Highlight in the metric focus')}>{a.name||'—'}</button></th>
+            {cells}
+            <td className="td-h-sum">{cmp?<><b>{up}</b>/{cmp}</>:'—'}</td></tr>;})}</tbody>
+        <tfoot>
+          <tr><th className="td-h-ath">{Lx('Takım ort. değişim','Team avg. change')}</th>
+            {cat.ms.map(x=><td key={x.m.id} className={'td-c '+tdTier(x.avg)+(x===X?' sel':'')}>{tdPct(x.avg)}</td>)}<td className="td-h-sum"/></tr>
+          <tr><th className="td-h-ath">{Lx('Gelişen sporcu','Athletes improving')}</th>
+            {cat.ms.map(x=><td key={x.m.id} className={'td-f'+(x===X?' sel':'')}>{x.cmp?<><b>{x.up}</b>/{x.cmp}</>:'—'}</td>)}
+            <td className="td-h-sum">{cat.cmp?<><b>{cat.up}</b>/{cat.cmp}</>:'—'}</td></tr>
+        </tfoot>
+      </table></div>
+    </div>
 
-      <div className="td-grid">
-        <div className="td-card td-span2">
-          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim eğrisi','Development curve')}</span>
-            <span className="td-card-s">{cmpLabel(m)}{unit} · {m.dir==='lo'?Lx('düşük daha iyi','lower is better'):Lx('yüksek daha iyi','higher is better')}</span></div>
-          <div className="td-chart tall">{view.months.length>0&&<ChartC type="line" chartData={lineData} options={lineOpts}/>}</div>
-          <div className="td-ath">
-            {view.rows.map(r=><button key={r.a.id} type="button" className={'td-ath-b'+(focus===r.a.id?' on':'')}
-              onClick={()=>setFocus(f=>f===r.a.id?null:r.a.id)}>
-              <i style={{background:colorOf(r.a.id)}}/>{r.a.name||'—'}</button>)}
+    {/* 4 · Metrik odağı */}
+    <div className="panel td-panel" key={m.id}>
+      <div className="td-hd">
+        <div><h2>{Lx('Metrik odağı','Metric focus')} · {cmpLabel(m)}{m.u&&<span className="td-u">{m.u}</span>}</h2>
+          <p>{m.dir==='lo'?Lx('Düşük değer daha iyi.','Lower is better.'):Lx('Yüksek değer daha iyi.','Higher is better.')}{' '}{Lx(`${X.n} sporcunun ölçümü var, ${X.cmp} sporcu ilk ve son testiyle karşılaştırılabiliyor.`,`${X.n} athletes measured, ${X.cmp} comparable across first and latest test.`)}</p></div>
+        <select className="td-sel" value={m.id} onChange={e=>pickMetric(e.target.value)} aria-label={Lx('Metrik seç','Pick a metric')}>
+          {model.cats.map(c=><optgroup key={c.g.id} label={catLbl(c.g)}>{c.ms.map(x=><option key={x.m.id} value={x.m.id}>{cmpLabel(x.m)}</option>)}</optgroup>)}
+        </select>
+      </div>
+      <div className="td-stats">
+        <div className="td-stat"><span>{Lx('Takım ortalaması · son test','Team average · latest test')}</span>
+          <b>{tdFmt(m,view.lastAvg)}<small>{unit}</small></b><em>{Lx(`${X.n} sporcu`,`${X.n} athletes`)}</em></div>
+        <div className="td-stat"><span>{Lx('Ortalama gelişim','Average change')}</span>
+          <b className={X.avg>0?'g-up':X.avg<0?'g-dn':''}>{tdPct(X.avg)}</b><em>{Lx(`ilk → son test · ${X.cmp} sporcu`,`first → latest · ${X.cmp} athletes`)}</em></div>
+        <div className="td-stat"><span>{Lx('Gelişen / gerileyen','Improved / declined')}</span>
+          <b>{X.cmp?<>{X.up}<i> / </i>{X.dn}</>:'—'}</b><TdSplit up={X.up} same={same} dn={X.dn}/>
+          <em>{Lx(`${same} aynı · ${X.n-X.cmp} tek test`,`${same} same · ${X.n-X.cmp} single test`)}</em></div>
+        <div className="td-stat"><span>{Lx('En iyi değer','Best value')}</span>
+          <b>{tdFmt(m,view.best.last.v)}<small>{unit}</small></b><em>{view.best.a.name||'—'}</em></div>
+      </div>
+      <div className="td-focus">
+        <div className="td-db">
+          <div className="td-sub">
+            <h3>{Lx('Sporcu sıralaması · ilk → son test','Athlete ranking · first → latest test')}</h3>
+            <div className="lb-seg">
+              <button type="button" className={sort==='level'?'on':''} aria-pressed={sort==='level'} onClick={()=>setSort('level')}>{Lx('Son değere göre','By latest value')}</button>
+              <button type="button" className={sort==='gain'?'on':''} aria-pressed={sort==='gain'} onClick={()=>setSort('gain')}>{Lx('Gelişime göre','By change')}</button>
+            </div>
           </div>
+          <div className="td-db-ax">
+            <span/><div className="td-db-tr"><span className="td-ax-lo">{tdFmt(m,view.lo)}</span><span className="td-ax-hi">{tdFmt(m,view.hi)}</span>
+              <span className="td-ax-avg" style={{left:view.pos(view.lastAvg)+'%'}}>{Lx('takım ort.','team avg')} {tdFmt(m,view.lastAvg)}</span></div>
+            <span className="td-db-dir">{m.dir==='lo'?Lx('← daha iyi','← better'):Lx('daha iyi →','better →')}</span>
+          </div>
+          <div className="td-db-rows">{view.rows.map((r,i)=>{const pf=view.pos(r.first.v),pl=view.pos(r.last.v);const one=r.s.length<2;
+            const cls=r.g==null?'':r.g>0?' g-up':r.g<0?' g-dn':' g-same';
+            return<button type="button" key={r.a.id} className={'td-db-r'+cls+(focus===r.a.id?' foc':'')} aria-pressed={focus===r.a.id} onClick={()=>toggleFocus(r.a.id)}
+              style={{animationDelay:Math.min(i,20)*25+'ms'}}
+              title={one?`${fd(r.last.d)}: ${tdFmt(m,r.last.v)}${unit}`:`${fd(r.first.d)}: ${tdFmt(m,r.first.v)} → ${fd(r.last.d)}: ${tdFmt(m,r.last.v)}${unit}`}>
+              <span className="td-db-n"><i>{i+1}</i>{r.a.name||'—'}</span>
+              <span className="td-db-tr">
+                <i className="td-m-avg" style={{left:view.pos(view.lastAvg)+'%'}}/>
+                {!one&&<i className="td-m-bar" style={{left:Math.min(pf,pl)+'%',width:Math.abs(pl-pf)+'%'}}/>}
+                {!one&&<i className="td-m-d0" style={{left:pf+'%'}}/>}
+                <i className="td-m-d1" style={{left:pl+'%'}}/>
+              </span>
+              <span className="td-db-v"><b>{tdFmt(m,r.last.v)}</b>{!one&&<small>{tdFmt(m,r.first.v)} →</small>}</span>
+              <span className={'td-db-g'+cls}>{one?Lx('tek test','1 test'):tdPct(r.g)}</span>
+            </button>;})}</div>
+          <div className="td-db-leg"><span><i className="td-k-d0"/>{Lx('ilk test','first test')}</span><span><i className="td-k-d1"/>{Lx('son test','latest test')}</span>
+            <span><i className="td-k-vln"/>{Lx('takım ort. (son test)','team avg (latest)')}</span><em>{Lx('satıra tıkla → sporcu eğride öne çıkar','click a row → highlight the athlete on the curve')}</em></div>
         </div>
-        <div className="td-card">
-          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim sıralaması','Improvement ranking')}</span>
-            <span className="td-card-s">{Lx('ilk → son test','first → latest test')}</span></div>
-          {view.gains.length===0
-            ?<div className="td-empty">{Lx('Bu metrikte iki testi olan sporcu yok.','No athlete has two tests in this metric.')}</div>
-            :<div className="td-chart" style={{height:Math.max(220,view.gains.length*30+40)}}><ChartC type="bar" chartData={barData} options={barOpts}/></div>}
-        </div>
-        <div className="td-card">
-          <div className="td-card-hd"><span className="td-card-t">{Lx('Gelişim haritası','Development map')}</span>
-            <span className="td-card-s">{Lx('her metrikte gelişen sporcuların oranı','share of athletes improving per metric')}</span></div>
-          {radar.length<3
-            ?<div className="td-empty">{Lx('Harita için en az üç metrikte iki test gerekir.','The map needs two tests in at least three metrics.')}</div>
-            :<div className="td-chart" style={{height:320}}><ChartC type="radar" chartData={radarData} options={radarOpts}/></div>}
+        <div className="td-tr">
+          <div className="td-sub"><h3>{Lx('Takım eğrisi · test dönemleri','Team curve · test periods')}</h3></div>
+          {view.months.length<2
+            ?<div className="td-empty">{Lx('Eğri için bu metrikte en az iki ayrı test dönemi gerekir.','The curve needs at least two test periods in this metric.')}</div>
+            :<><div className="td-chart"><ChartC type="line" chartData={lineData} options={lineOpts}/></div>
+              <div className="td-tr-leg"><span><i className="td-k-ln" style={{background:AVG}}/>{Lx('takım ortalaması','team average')}</span>
+                <span><i className="td-k-band"/>{Lx('en düşük – en yüksek','lowest – highest')}</span>
+                {fr&&<span><i className="td-k-ln" style={{background:FOC}}/>{fr.a.name}</span>}</div></>}
+          <table className="td-per"><thead><tr><th>{Lx('Dönem','Period')}</th><th>{Lx('Sporcu','Athletes')}</th><th>{Lx('Ort.','Avg')}</th><th>{Lx('En düşük','Lowest')}</th><th>{Lx('En yüksek','Highest')}</th></tr></thead>
+            <tbody>{view.per.map(p=><tr key={p.mo}><td>{monLbl(p.mo)}</td><td>{p.n}</td><td><b>{tdFmt(m,p.avg)}</b></td><td>{tdFmt(m,p.min)}</td><td>{tdFmt(m,p.max)}</td></tr>)}</tbody></table>
+          <div className="td-note">{Lx('Dönem ortalaması o dönemde ölçülen sporcularla hesaplanır; sporcu sayısı dönemden döneme değişiyorsa ortalamalar birebir karşılaştırılamaz.','Each period average covers the athletes measured in that period; when the number of athletes differs, the averages are not directly comparable.')}</div>
         </div>
       </div>
-    </>}
+    </div>
 
+    {/* 5 · Karşılaştırma tablosu */}
     <div className="td-cmp">
-      <button type="button" className="td-cmp-tg" onClick={()=>setShowCmp(v=>!v)}>
-        {showCmp?'▾':'▸'} {Lx('Sporcuları karşılaştır (tablo)','Compare athletes (table)')}</button>
+      <button type="button" className="td-cmp-tg" aria-expanded={showCmp} onClick={()=>setShowCmp(v=>!v)}>
+        <span>{showCmp?'▾':'▸'}</span>{Lx('Sporcuları karşılaştır (tablo)','Compare athletes (table)')}
+        <em>{Lx('son test değerleri yan yana · çıktı alınabilir','latest test values side by side · printable')}</em></button>
       {showCmp&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
     </div>
   </div>);
@@ -32783,7 +33048,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
-    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/><PolarAthleteCharts ath={ath} teamId={teamId}/></>}
+    {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
@@ -32796,26 +33061,17 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
             <div><label>{L('Mevki','Position')}</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div></div>
-            {/* Cep telefonu: ülke kodu ayrı bir kutuda, numara ayrı. Numaranın uluslararası
-                biçimde durması gerekiyor, ve bir koç +90'ı numaranın içine yazmayı hep
-                unutuyor — o yüzden seçtiriyoruz. */}
-            <div style={{gridColumn:'span 2'}}><label>{L('Cep telefonu','Mobile phone')}</label>
-              <div style={{display:'flex',gap:8}}>
-                <select style={{flex:'0 0 130px'}} value={ath.phoneCode||DEFAULT_DIAL} onChange={e=>updAth(ath.id,{phoneCode:e.target.value})}>
-                  {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}
-                </select>
-                <input style={{flex:1}} type="tel" inputMode="tel" placeholder="532 123 45 67"
-                  value={ath.phone||''} onChange={e=>updAth(ath.id,{phone:cleanPhone(e.target.value)})}/>
-              </div>
-              <div className="help">{fullPhone(ath)||L('Ülke kodunu seç, numarayı başındaki 0 olmadan yaz.','Pick the country code, and write the number without a leading 0.')}</div></div>
-          </div>
-          <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
-              <option value="">{L('— girilmemiş','— not set')}</option>
-              <option value="M">{L('Erkek','Male')}</option>
-              <option value="F">{L('Kadın','Female')}</option>
-            </select></div>
+            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div>
+              <div style={{marginTop:12}}><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
+                <option value="">{L('— girilmemiş','— not set')}</option>
+                <option value="M">{L('Erkek','Male')}</option>
+                <option value="F">{L('Kadın','Female')}</option>
+              </select></div></div>
+            {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
+                burada (cep telefonu alanının yerinde) — durum, davet linki, senkron ve bağlantıyı
+                kesme aynı yerde. Sporcunun telefonu hiçbir yerde kullanılmıyordu; alan kalktı,
+                kayıtlı numara silinmedi. */}
+            <div style={{gridColumn:'span 2'}}><PolarConnect ath={ath} teamId={teamId}/></div>
           </div>
           <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/></div>
           <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>
@@ -34349,7 +34605,7 @@ function monAdequacyReport(items,cfg,toKey){
 
    Gece kaydı: [{id,date,bedTime,wakeTime,hrv,sleepHR}], sabah başına bir satır; tarih
    sporcunun uyandığı sabah. Check-in satırlarından ayrı durur ki yeniden gönderilen bir
-   form geceyi ezmesin. Kayıt formu artık Wellness → Sporcu İzleme'de (428b MonNightLog).
+   form geceyi ezmesin. Kayıt formu Sporcu İzleme bileşeninde (428b MonNightLog; bölüm Wellness sporcu sayfasından kaldırıldı).
 
    Eski "Uyku ve HRV" bölümü (CoachOS_HRV_Monitoring v1.0: RED / YELLOW / DAILY_DROP
    uyarı seviyeleri, renkli sabit eşikler) kaldırıldı: revizyon talimatı v1.4 risk renkli
@@ -34661,7 +34917,8 @@ setTimeout(ready,20000);})();
   pwSheetSection(ath,teamId,setup,6).then(writeSheet,()=>writeSheet(''));
 }
 /* ═══════════════════════════════════════════════════════════════════════════
-   POLAR — sporcu profilindeki bağlantı paneli (Aşama 1: davet, durum, bağlantı kesme)
+   POLAR — sporcunun bağlantı bloğu (Aşama 1: davet, durum, bağlantı kesme)
+   Sporcu detayındaki "Profili Düzenle" (✎) penceresinde, `compact` görünümüyle durur.
 
    Polar hesabı sporcunun; izni de sporcu veriyor. Koç burada bir DAVET LİNKİ üretiyor
    ve sporcuya gönderiyor (WhatsApp, kopyala). Sporcu linki telefonunda açıp Polar'da
@@ -34822,39 +35079,13 @@ function PolarConnect({ath,teamId}){
     window.open('https://wa.me/?text='+encodeURIComponent(inviteText()+' '+invite.url),'_blank','noopener');
   };
 
-  if(!uid)return(<div className="panel pl-panel">
-    <div className="pl-h"><h2>Polar</h2></div>
-    <div className="pl-help">{L('Polar bağlantısı için koç hesabıyla oturum aç.','Sign in with the coach account to connect Polar.')}</div>
-  </div>);
+  if(!uid)return(<div className="pl-mini"><label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div className="pl-mini-box"><div className="pl-mini-sub">{L('Polar bağlantısı için koç hesabıyla oturum aç.','Sign in with the coach account to connect Polar.')}</div></div></div>);
 
   const canInvite=status!=='active';
   const canCancel=status==='active'||status==='pending'||status==='expired'||status==='revoked'||status==='error';
   const rl=link&&link.lastSyncReport?polarReportLines(link.lastSyncReport):null;
-  return(<div className="panel pl-panel">
-    <div className="pl-h">
-      <h2>Polar</h2>
-      <span className={'pl-st pl-'+stCls}>{link===undefined?L('Yükleniyor…','Loading…'):stTxt}</span>
-    </div>
-    <div className="pl-rows">
-      <div className="pl-r"><span>{L('Bağlantı durumu','Connection status')}</span><b>{link===undefined?'—':stTxt}</b></div>
-      {status==='active'&&<div className="pl-r"><span>{L('Bağlandı','Connected on')}</span><b>{polarWhen(link.connectedAt)}</b></div>}
-      {status==='active'&&link.polarAccount&&link.polarAccount.name&&<div className="pl-r"><span>{L('Polar hesabı','Polar account')}</span><b>{link.polarAccount.name}</b></div>}
-      <div className="pl-r"><span>{L('Son senkronizasyon','Last sync')}</span><b>{link&&link.lastSyncAt?polarWhen(link.lastSyncAt):'—'}</b></div>
-      {rl&&rl.ok.length>0&&<div className="pl-r"><span>{L('Son senkronda gelen','Last sync brought')}</span><b>{rl.ok.join(' · ')}</b></div>}
-      {rl&&rl.off.length>0&&<div className="pl-r"><span>{L('Polar\'dan gelmeyen','Not provided by Polar')}</span><b>{rl.off.join(', ')}</b></div>}
-      {rl&&rl.err.length>0&&<div className="pl-r pl-warn"><span>{L('Alınamayan','Failed')}</span><b>{rl.err.join(', ')}</b></div>}
-      {(status==='pending'||status==='expired')&&<div className="pl-r"><span>{L('Davet geçerliliği','Invite valid until')}</span><b>{polarWhen(link.inviteExpiresAt)}</b></div>}
-      {link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&<div className="pl-r pl-warn"><span>{L('Son deneme','Last attempt')}</span><b>{polarErrText(link.lastError)}</b></div>}
-    </div>
-    {invite&&<div className="pl-invite">
-      <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
-      <input readOnly value={invite.url} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
-      <div className="pl-btns">
-        <button className="btn sm" onClick={share}>{L('Paylaş','Share')}</button>
-        <button className="btn sm sec" onClick={copy}>{L('Kopyala','Copy')}</button>
-      </div>
-    </div>}
-    <div className="pl-btns">
+  const btns=<div className="pl-btns">
       {status==='active'&&<button className="btn sm" disabled={busy||syncing} onClick={doSync}>
         {syncing?L('Senkronize ediliyor…','Syncing…'):L('Verileri Senkronize Et','Sync Data')}</button>}
       {canInvite&&<button className="btn sm" disabled={busy} onClick={makeInvite}>
@@ -34863,12 +35094,40 @@ function PolarConnect({ath,teamId}){
           :L('Polar Hesabını Bağla','Connect Polar Account')}</button>}
       {canCancel&&<button className="btn sm sec" disabled={busy} onClick={disconnect}>
         {status==='active'?L('Polar Bağlantısını Kes','Disconnect Polar'):L('Daveti iptal et','Cancel invite')}</button>}
+    </div>;
+  const inviteBox=invite&&<div className="pl-invite">
+      <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
+      <input readOnly value={invite.url} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
+      <div className="pl-btns">
+        <button className="btn sm" onClick={share}>{L('Paylaş','Share')}</button>
+        <button className="btn sm sec" onClick={copy}>{L('Kopyala','Copy')}</button>
+      </div>
+    </div>;
+  /* Durum rozeti + tek satır özet, altında düğmeler. */
+  const meta=link===undefined?[]:[
+    status==='active'&&link.polarAccount&&link.polarAccount.name,
+    status==='active'&&L(`bağlandı ${polarWhen(link.connectedAt)}`,`connected ${polarWhen(link.connectedAt)}`),
+    link&&link.lastSyncAt&&L(`son senkron ${polarWhen(link.lastSyncAt)}`,`last sync ${polarWhen(link.lastSyncAt)}`),
+    (status==='pending'||status==='expired')&&L(`davet geçerliliği ${polarWhen(link.inviteExpiresAt)}`,`invite valid until ${polarWhen(link.inviteExpiresAt)}`),
+  ].filter(Boolean);
+  const warn=[link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&polarErrText(link.lastError),
+    rl&&rl.err.length>0&&L(`Alınamayan: ${rl.err.join(', ')}`,`Failed: ${rl.err.join(', ')}`)].filter(Boolean);
+  return(<div className="pl-mini">
+    <label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div className="pl-mini-box">
+      <div className="pl-mini-top">
+        <span className={'pl-st pl-'+stCls}>{link===undefined?L('Yükleniyor…','Loading…'):stTxt}</span>
+        {meta.length>0&&<span className="pl-mini-sub">{meta.join(' · ')}</span>}
+      </div>
+      {warn.map((t,i)=><div key={i} className="pl-mini-sub pl-mini-warn">{t}</div>)}
+      {inviteBox}
+      {btns}
+      {err&&<div className="pl-err" role="alert">{err}</div>}
+      {note&&<div className="pl-note" role="status">{note}</div>}
     </div>
-    {err&&<div className="pl-err" role="alert">{err}</div>}
-    {note&&<div className="pl-note" role="status">{note}</div>}
-    <div className="pl-help">{status==='active'
-      ?L('Polar verisi (uyku, Nightly Recharge, antrenman, günlük aktivite) ayrı kaydedilir; sporcunun mevcut kayıtlarının üzerine yazılmaz. Otomatik senkron bir sonraki sürümde gelecek.','Polar data (sleep, Nightly Recharge, training, daily activity) is stored separately and never overwrites the athlete\'s existing records. Automatic sync arrives in the next release.')
-      :L('Polar hesabı sporcunun. Linki sporcuya gönder; sporcu linki kendi telefonunda açıp Polar\'da izin verdiğinde bağlantı burada "Bağlı" olarak görünür. Yeni link eskisini geçersiz kılar.','The Polar account belongs to the athlete. Send them the link; once they open it on their phone and allow access in Polar, this panel shows "Connected". A new link replaces the old one.')}</div>
+    <div className="help">{status==='active'
+      ?L('Polar verisi ayrı kaydedilir; sporcunun mevcut kayıtlarının üzerine yazılmaz.','Polar data is stored separately and never overwrites the athlete\'s existing records.')
+      :L('Linki sporcuya gönder; sporcu kendi telefonunda açıp Polar\'da izin verince burada "Bağlı" görünür.','Send the link to the athlete; once they open it on their phone and allow access in Polar, this shows "Connected".')}</div>
   </div>);
 }
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -34877,20 +35136,20 @@ function PolarConnect({ath,teamId}){
    Yük Takibi'ndeki Wellness Isı Haritası'nın yerini aldı. Üç katman:
      1. Başlık bandı — sade koyu zemin: yavaşça kayan iki hafif ışık ve sağa doğru
         silikleşen ince nokta deseni; seçili gün ve kaç sporcunun o gün form doldurduğu.
-     2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, RHR bpm (Polar'a
-        bağlı sporcuda Polar'ın günün en düşük nabzı), hazır oluşun 1-5 dağılımı ve takımın
+     2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, Polar gece nabzı
+        (bpm, o sabah uyanılan gecenin ortalaması), hazır oluşun 1-5 dağılımı ve takımın
         haftalık hazır oluşu (hafta şeridi + seçili haftanın günleri çubuk grafik).
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
         takvimi açılır: hafta (varsayılan) ya da ay görünümünde her gün kendi rengiyle,
         hafta görünümünde gün kutusunun altında o günün ağrı bölgeleri, yanında gün paneli
         (o haftanın ortalama ve o günün antrenman başına Polar HR bölgeleri), hafta / ay seçilebilen wellness eğrisi ve altında o dönemin
-        kayıtları (check-in + Polar gece nabzı), en altta Sporcu İzleme (428b: sağlık uyarıları,
-        yük ve toparlanma — kişisel referansa göre, risk skoru yok). Takım görünümünün en altında
+        kayıtları (check-in + Polar gece nabzı), altında Polar'ın 14/28 günlük grafikleri. Başlık
+        bandında sporcunun haftalık ve aylık wellness çıktısı (428c). Takım görünümünün en altında
         Veri yeterliliği raporu (428b MonAdequacyPanel).
    Puanlar check-in formunun kendi renkleriyle boyanır (SCORE5_COLORS: 1 kırmızı … 5 mavi),
-   formla ekran hiçbir zaman farklı renk söylemez. Haftalık RHR trendi (RHRMonitor) eski
-   ısı haritasının son düğmesiydi; burada kendi paneli olarak duruyor.
+   formla ekran hiçbir zaman farklı renk söylemez. Haftalık Gece Nabzı Takibi (NightHrMonitor,
+   eski "RHR Takibi") kendi paneli olarak duruyor: Polar'ın gece nabzı, Polar tablosuyla aynı.
    ═══════════════════════════════════════════════════════════════════════════ */
 const WV_METRICS=()=>[
   {id:'readiness',label:L('Hazır Oluş','Readiness'),short:L('Hazır','Ready'),five:true},
@@ -35011,9 +35270,9 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name,actions}){
         </div>
       </div>
       <div className="wv-hero-r">
+        {actions&&<div className="wv-hero-acts">{actions}</div>}
         {stats&&stats.map((s,i)=><div key={i} className="wv-hero-stat" style={{animationDelay:(120+i*90)+'ms'}}>
           <b style={s.c?{color:s.c}:undefined}>{s.v}</b><span>{s.l}</span></div>)}
-        {actions&&<div className="wv-hero-acts">{actions}</div>}
         {setDayKey&&dt&&<div className="wv-day-nav">
           <button onClick={()=>setDayKey(fmt(addD(dt,-1)))} aria-label={L('Önceki gün','Previous day')}>‹</button>
           <div className="wv-day-lbl"><b>{DN[(dt.getDay()+6)%7]}</b>{fd(dayKey)}</div>
@@ -35026,14 +35285,14 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name,actions}){
 }
 
 /* ---- Takımın o günkü ortalaması ---- */
-function WvTeamPanel({athletes,dayKey,setDayKey,rows,prhr}){
+function WvTeamPanel({athletes,dayKey,setDayKey,rows,pnhr}){
   const MS=WV_METRICS();
   const avg=id=>wvMean(rows.map(r=>r.d&&r.d[id]));
   const rdy=avg('readiness');
   const rdyN=useWvCount(rdy);
-  /* Ortalama RHR: Polar'a bağlı sporcuda Polar'ın günün en düşük nabzı, değilse check-in. */
-  const rhr=wvMean(rows.map(r=>wvRhr(r.a,r.d,dayKey,prhr)));
-  const rhrN=useWvCount(rhr);
+  /* Ortalama gece nabzı: Polar'a bağlı sporcuların o sabah biten gecesinin ortalaması. */
+  const nhr=wvMean(rows.map(r=>wvNhr(r.a,dayKey,pnhr)));
+  const nhrN=useWvCount(nhr);
   /* Hazır oluşun 1-5 dağılımı: kaç sporcu hangi renkte uyandı. */
   const dist=[0,0,0,0,0];rows.forEach(r=>{const v=r.d&&r.d.readiness;if(v!=null)dist[Math.min(5,Math.max(1,Math.round(v)))-1]++;});
   const distN=dist.reduce((a,b)=>a+b,0);
@@ -35050,7 +35309,7 @@ function WvTeamPanel({athletes,dayKey,setDayKey,rows,prhr}){
           </WvRing>
           <div className="wv-big-side">
             <div className="wv-rhr"><i className="wv-heart" aria-hidden="true">♥</i>
-              <b>{rhrN==null?'—':Math.round(rhrN)}</b><small>bpm</small><span>{L('ort. RHR','avg RHR')}</span></div>
+              <b>{nhrN==null?'—':Math.round(nhrN)}</b><small>bpm</small><span>{L('ort. gece nabzı','avg night HR')}</span></div>
             <div className="wv-pain-n" data-on={painN>0?'1':'0'}><b>{painN}</b><span>{L('ağrı bildirimi','pain reports')}</span></div>
           </div>
         </div>
@@ -35152,16 +35411,16 @@ function WvWeekBars({days,avg,total,dayKey,tk,onPick}){
     </svg>
   </div>);
 }
-/* Bir sporcunun o günkü RHR'ı: Polar'a bağlıysa Polar'ın günün en düşük nabzı (pwRhrMap),
-   değilse check-in'deki RHR. */
-function wvRhr(a,d,dk,prhr){
-  const p=prhr&&prhr[String(a.id)];const v=p?p[dk]:null;
-  if(typeof v==='number'&&isFinite(v)&&v>0)return v;
-  return d?d.RHR:null;
+/* Bir sporcunun o günkü gece nabzı: Polar'ın o sabah uyanılan gecedeki ortalaması
+   (pwNightHrMap). Polar'a bağlı değilse ya da o gece kayıt yoksa null — eski check-in'lerdeki
+   elle yazılan RHR başka bir ölçüm, bu sayıya karışmaz (sporcunun Kayıtlar tablosunda durur). */
+function wvNhr(a,dk,pnhr){
+  const p=pnhr&&pnhr[String(a.id)];const v=p?p[dk]:null;
+  return typeof v==='number'&&isFinite(v)&&v>0?v:null;
 }
 
 /* ---- Sporcu kutusu: fotoğraf + o günün değerleri ---- */
-function WvAthCard({a,d,i,onOpen,rhr}){
+function WvAthCard({a,d,i,onOpen,nhr}){
   const MS=WV_METRICS();
   const r=d?d.readiness:null,c=score5Color(r);
   return(<button className={'wv-card'+(d?'':' off')} onClick={onOpen} style={{animationDelay:Math.min(i,24)*45+'ms','--wv-rc':c||'var(--border2)'}}>
@@ -35180,7 +35439,7 @@ function WvAthCard({a,d,i,onOpen,rhr}){
         return<div key={m.id} className="wv-cv"><span>{m.short}</span>
           <i className="wv-cv-bar"><em style={{width:v==null?0:(v/5*100)+'%',background:score5Color(v)||'var(--dim)'}}/></i>
           <b>{wvFmt(v,true)}</b></div>;})}
-      <div className="wv-cv rhr"><span>RHR</span><b>{rhr!=null?Math.round(rhr):'—'}<small> bpm</small></b></div>
+      <div className="wv-cv rhr"><span title={L('Polar gece nabzı','Polar night HR')}>{L('Gece N.','Night HR')}</span><b>{nhr!=null?Math.round(nhr):'—'}<small> bpm</small></b></div>
     </div>:<div className="wv-card-none">{L('Bu gün check-in yok','No check-in this day')}</div>}
   </button>);
 }
@@ -35295,7 +35554,7 @@ function WvRecords({ath,updAth,P,val,nh,addDate,onAdded}){
     {nh&&!nh.off&&nh.err&&<div className="wv-rec-note">{L('Polar gece nabzı alınamadı: ','Polar night HR could not be loaded: ')}{nh.err}</div>}
   </div>);
 }
-function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
+function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId,team,pnhr}){
   const MS=WV_DET_METRICS();
   const tk=fmt(today);
   const[calMode,setCalMode]=useState('week');
@@ -35333,11 +35592,19 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
     :!NH.loaded?L('Polar verisi yükleniyor…','Loading Polar data…')
     :!NH.linked?L('Sporcu Polar\'a bağlı değil.','The athlete is not connected to Polar.'):null;
   const wkCal=calMode==='week';
+  /* Çıktı takvimde görünen dönemi basar: seçili gün o dönemdeyse onun haftası / ayı,
+     takvim başka bir döneme kaydırılmışsa o dönem. */
+  const repAt=inCal(dayKey)?dayKey:calAt;
+  const print=kind=>openAthleteWellnessReport({ath,team,kind,anchor:repAt,pnhr});
   return(<div className="wv-detail">
     <WvHero onBack={onBack} name={ath.name} photo={ath.photo} title={ath.name}
       sub={[ath.position&&posOf(ath.position),`${wvPeriodLbl(calMode,CP)} · ${cIn} check-in`].filter(Boolean).join(' · ')}
       stats={[{v:wvFmt(rdyAvg,true),l:wkCal?L('hafta ort. hazır oluş','week avg readiness'):L('ay ort. hazır oluş','month avg readiness'),c:score5Color(rdyAvg)},
-        {v:comp==null?'—':comp+'%',l:L('katılım','compliance')}]}/>
+        {v:comp==null?'—':comp+'%',l:L('katılım','compliance')}]}
+      actions={<>
+        <button className="btn sec sm" onClick={()=>print('week')} title={L(`Sporcunun haftalık wellness raporu · ${wvPeriodLbl('week',wvPeriod('week',repAt))}`,`The athlete's weekly wellness report · ${wvPeriodLbl('week',wvPeriod('week',repAt))}`)}>{L('Haftalık Çıktı Al','Weekly Printout')}</button>
+        <button className="btn sm" onClick={()=>print('month')} title={L(`Sporcunun aylık wellness raporu · ${wvPeriodLbl('month',wvPeriod('month',repAt))}`,`The athlete's monthly wellness report · ${wvPeriodLbl('month',wvPeriod('month',repAt))}`)}>{L('Aylık Çıktı Al','Monthly Printout')}</button>
+      </>}/>
     <div className="wv-cal-wrap">
       <div className={'panel wv-cal'+(wkCal?' wk':'')}>
         <div className="wv-ph wv-ph-wrap">
@@ -35403,7 +35670,6 @@ function WvAthleteDetail({ath,updAth,dayKey,setDayKey,onBack,teamId}){
         onAdded={k=>{if(!(k>=VP.from&&k<=VP.to))setCvAt(k);}}/>
     </div>
     <PolarAthleteCharts ath={ath} teamId={teamId}/>
-    <AthMonitoring ath={ath} updAth={updAth} teamId={teamId} dayKey={dayKey}/>
   </div>);
 }
 
@@ -35418,16 +35684,16 @@ function WellnessView({team,updateTeam,focus}){
   const[q,setQ]=useState('');
   const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
   const rows=useMemo(()=>athletes.map(a=>({a,d:wvDay(a,dayKey)})),[athletes,dayKey]);
-  const rhrWks=useMemo(()=>rhrWeeks(dayKey,RHR_WEEKS),[dayKey]);
-  /* Polar'ın günün en düşük nabzı (RHR) — RHR Takibi'nin 12 haftası tek istekte (sürekli
-     nabız + uyku). "Verileri al" bitince `pver` artar, aralık yeniden istenir. Takım
-     ortalamasındaki ve sporcu kutularındaki RHR de buradan. */
+  const nhrWks=useMemo(()=>nhrWeeks(dayKey,NHR_WEEKS),[dayKey]);
+  /* Polar gece nabzı — Gece Nabzı Takibi'nin 12 haftası tek istekte (Nightly Recharge + uyku:
+     gece, uyanılan sabahın tarihine yazılır). "Verileri al" bitince `pver` artar, aralık
+     yeniden istenir. Takım ortalamasındaki ve sporcu kutularındaki gece nabzı da buradan. */
   const[pver,setPver]=useState(0);
-  const PR=usePolarTeamRange(team.id,rhrWks[0].start,rhrWks[rhrWks.length-1].end,['hr','sleep'],pver);
-  const prhr=useMemo(()=>pwTeamRhr(PR.athletes),[PR.athletes]);
+  const PR=usePolarTeamRange(team.id,nhrWks[0].start,nhrWks[nhrWks.length-1].end,['recharge','sleep'],pver);
+  const pnhr=useMemo(()=>pwTeamNightHr(PR.athletes),[PR.athletes]);
   const sel=selId&&athletes.find(a=>a.id===selId);
   useEffect(()=>{try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}},[selId]);
-  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)} teamId={team.id}/>;
+  if(sel)return<WvAthleteDetail key={sel.id} ath={sel} updAth={updAth} dayKey={dayKey} setDayKey={setDayKey} onBack={()=>setSelId(null)} teamId={team.id} team={team} pnhr={pnhr}/>;
   const ql=q.trim().toLocaleLowerCase('tr');
   const shown=rows.filter(r=>!ql||(r.a.name||'').toLocaleLowerCase('tr').includes(ql)).sort((x,y)=>{
     if(sort==='low'||sort==='high'){const xv=x.d&&x.d.readiness,yv=y.d&&y.d.readiness;
@@ -35437,17 +35703,18 @@ function WellnessView({team,updateTeam,focus}){
   const wvPrint=kind=>{const d=parseD(dayKey);let from,to,label;
     if(kind==='week'){from=fmt(sow(d));to=fmt(addD(sow(d),6));label=`${fd(from)} – ${fd(to)}`;}
     else{from=fmt(new Date(d.getFullYear(),d.getMonth(),1));to=fmt(new Date(d.getFullYear(),d.getMonth()+1,0));label=`${MN[d.getMonth()]} ${d.getFullYear()}`;}
-    printWellnessReport(buildWellnessReport({team,kind,from,to,label,prhr}));};
+    printWellnessReport(buildWellnessReport({team,kind,from,to,label,pnhr}));};
   return(<div className="wv">
     {/* Başlıkta istatistik kutuları yok (aynı sayılar hemen altındaki Takım Ortalaması'nda);
-        yerlerinde seçili günün haftası / ayı için wellness çıktısı. */}
+        yerlerinde seçili günün haftası / ayı için takımın wellness çıktısı. Sporcunun kendi
+        haftalık / aylık çıktısı sporcu sayfasının başlığında (428c). */}
     <WvHero title={L('Kadro Wellness','Squad Wellness')} sub={team.setup.teamName} dayKey={dayKey} setDayKey={setDayKey}
       actions={athletes.length>0&&<>
         <button className="btn sec sm" onClick={()=>wvPrint('week')} title={L('Seçili günün haftası (Pzt–Paz)','The selected day\'s week (Mon–Sun)')}>{L('Haftalık Çıktı Al','Weekly Printout')}</button>
         <button className="btn sm" onClick={()=>wvPrint('month')} title={L('Seçili günün ayı','The selected day\'s month')}>{L('Aylık Çıktı Al','Monthly Printout')}</button>
       </>}/>
     {athletes.length===0?<div className="empty-st">{L('Kadroda sporcu yok.','No athletes on the roster.')}</div>:<>
-      <WvTeamPanel athletes={athletes} dayKey={dayKey} setDayKey={setDayKey} rows={rows} prhr={prhr}/>
+      <WvTeamPanel athletes={athletes} dayKey={dayKey} setDayKey={setDayKey} rows={rows} pnhr={pnhr}/>
       <PolarWellness team={team} dayKey={dayKey} onOpen={id=>setSelId(id)} onSynced={()=>setPver(v=>v+1)}/>
       <div className="wv-ath-h">
         <h2>{L('Sporcular','Athletes')}<span>{L('profile tıkla → takvim ve ayrıntılı veriler','click a profile → calendar & detailed data')}</span></h2>
@@ -35461,11 +35728,14 @@ function WellnessView({team,updateTeam,focus}){
         </div>
       </div>
       <div className="wv-grid" key={dayKey+sort}>
-        {shown.map((r,i)=><WvAthCard key={r.a.id} a={r.a} d={r.d} i={i} rhr={wvRhr(r.a,r.d,dayKey,prhr)} onOpen={()=>setSelId(r.a.id)}/>)}
+        {shown.map((r,i)=><WvAthCard key={r.a.id} a={r.a} d={r.d} i={i} nhr={wvNhr(r.a,dayKey,pnhr)} onOpen={()=>setSelId(r.a.id)}/>)}
       </div>
       <div className="panel lb-wrap wv-rhr-panel">
-        <div className="lb-head"><div className="lb-title">{L('RHR Takibi','RHR Monitor')}<span className="lb-sub">{L('haftalık ortalama dinlenik nabız · Pzt–Paz · Polar: günün en düşük nabzı, yoksa check-in','weekly average resting HR · Mon–Sun · Polar: lowest HR of the day, else check-in')}</span></div></div>
-        <RHRMonitor athletes={athletes} weeks={rhrWks} polarRhr={prhr}/>
+        <div className="lb-head"><div className="lb-title">{L('Gece Nabzı Takibi','Night HR Monitor')}<span className="lb-sub">{L('haftalık ortalama gece nabzı · Pzt–Paz · Polar Nightly Recharge, üstteki Polar tablosunun "Gece nabzı" sütunuyla aynı değer','weekly average night heart rate · Mon–Sun · Polar Nightly Recharge, the same value as the "Night HR" column of the Polar table above')}</span></div></div>
+        <NightHrMonitor athletes={athletes} weeks={nhrWks} nightHr={pnhr}
+          status={PR.off?L('Polar gece nabzı için koç hesabıyla oturum açılmalı.','Sign in with the coach account to see Polar night HR.')
+            :PR.err?L('Polar gece nabzı alınamadı: ','Polar night HR could not be loaded: ')+PR.err
+            :!PR.loaded?L('Polar gece nabzı yükleniyor…','Loading Polar night HR…'):null}/>
       </div>
       <MonAdequacyPanel team={team}/>
     </>}
@@ -35475,16 +35745,16 @@ function WellnessView({team,updateTeam,focus}){
 /* ═══════════════════════════════════════════════════════════════════════════
    WELLNESS ÇIKTISI — haftalık ve aylık (A4 yatay), Kinexon rapor dili
    Sayfa 1: başlık (küçük CoachOS logosu), yedi gösterge (check-in uyumu ve beş sorunun +
-   RHR'nin takım ortalaması), takımın günlük hazır oluşu, dikkat gerektiren sporcular ve
+   Polar gece nabzının takım ortalaması), takımın günlük hazır oluşu, dikkat gerektiren sporcular ve
    kadro özeti (her sporcunun gün/hafta hazır oluşu, soru ortalamaları, check-in, ağrı).
    Sonraki sayfalar: her sporcunun kartı — metrik × gün (hafta) ya da metrik × hafta (ay)
    tablosu, check-in formunun renkleriyle (1 kırmızı … 5 mavi), ağrı bölgeleri.
    Değerler ekranla aynı yoldan: wvDay (günün son kaydı, hazır oluş yoksa soruların
-   ortalaması), RHR için Polar'ın günün en düşük nabzı varsa o (wvRhr). Henüz gelmemiş
+   ortalaması), gece nabzı Polar'dan (wvNhr). Henüz gelmemiş
    günler sayılmaz.
    ═══════════════════════════════════════════════════════════════════════════ */
-const WVR_IDS=['readiness','sleep','mentalFatigue','physicalFatigue','soreness','RHR'];
-function buildWellnessReport({team,kind,from,to,label,prhr}){
+const WVR_IDS=['readiness','sleep','mentalFatigue','physicalFatigue','soreness','nightHR'];
+function buildWellnessReport({team,kind,from,to,label,pnhr}){
   const tk=fmt(today);
   const ath=(team.athletes||[]);
   const days=[];for(let c=parseD(from);fmt(c)<=to;c=addD(c,1))days.push(fmt(c));
@@ -35494,7 +35764,7 @@ function buildWellnessReport({team,kind,from,to,label,prhr}){
   const cols=kind==='week'?days.map((k,i)=>({lab:DN[i],sub:fd(k).slice(0,5),days:[k]}))
     :(()=>{const o=[];for(let c=sow(parseD(from));fmt(c)<=to;c=addD(c,7)){const ws=fmt(c),we=fmt(addD(c,6));
       o.push({lab:fd(ws<from?from:ws).slice(0,5),sub:'– '+fd(we>to?to:we).slice(0,5),days:days.filter(k=>k>=ws&&k<=we)});}return o;})();
-  const dayOf=(a,k)=>{const d=wvDay(a,k);const r=wvRhr(a,d,k,prhr);if(!d&&r==null)return null;return{...(d||{}),RHR:r};};
+  const dayOf=(a,k)=>{const d=wvDay(a,k);const r=wvNhr(a,k,pnhr);if(!d&&r==null)return null;return{...(d||{}),nightHR:r};};
   const rows=ath.map(a=>{
     const per={};done.forEach(k=>{per[k]=dayOf(a,k);});
     const vals=(id,ks)=>ks.map(k=>per[k]&&per[k][id]).filter(v=>v!=null);
@@ -35521,7 +35791,7 @@ function buildWellnessReport({team,kind,from,to,label,prhr}){
   return{kind,label,from,to,ref:done.length?done[done.length-1]:from,partial:done.length<days.length,teamName:(team.setup&&team.setup.teamName)||'',
     cols,rows,days:team_,watch,nDone:done.length,
     kpi:{comp:possible?totalIn/possible*100:null,totalIn,possible,readiness:all('readiness'),sleep:all('sleep'),mentalFatigue:all('mentalFatigue'),
-      physicalFatigue:all('physicalFatigue'),soreness:all('soreness'),RHR:all('RHR'),low:rows.reduce((s,r)=>s+r.low,0),pain:rows.reduce((s,r)=>s+r.painDays,0)}};
+      physicalFatigue:all('physicalFatigue'),soreness:all('soreness'),nightHR:all('nightHR'),low:rows.reduce((s,r)=>s+r.low,0),pain:rows.reduce((s,r)=>s+r.painDays,0)}};
 }
 function printWellnessReport(R){
   const w=window.open('','_blank','width=1280,height=920');
@@ -35533,10 +35803,10 @@ function printWellnessReport(R){
   /* Baskıda okunur renkler: formun 1-5 renkleri, sarı ve yeşil biraz koyulaştırılmış. */
   const PC=['#dc2626','#ea580c','#ca8a04','#16a34a','#0284c7'];
   const sc=v=>v==null?null:PC[Math.min(5,Math.max(1,Math.round(v)))-1];
-  const cell=(v,id)=>{if(v==null)return'<td class="c e">·</td>';if(id==='RHR')return`<td class="c r">${f0(v)}</td>`;
+  const cell=(v,id)=>{if(v==null)return'<td class="c e">·</td>';if(id==='nightHR')return`<td class="c r">${f0(v)}</td>`;
     const c=sc(v);return`<td class="c" style="background:${c}1f;color:${c}"><b>${f1(v)}</b></td>`;};
   const M={readiness:L('Hazır oluş','Readiness'),sleep:L('Uyku','Sleep'),mentalFatigue:L('Zihinsel yorg.','Mental fatigue'),
-    physicalFatigue:L('Fiziksel yorg.','Physical fatigue'),soreness:L('Kas ağrısı','Soreness'),RHR:L('RHR (bpm)','RHR (bpm)')};
+    physicalFatigue:L('Fiziksel yorg.','Physical fatigue'),soreness:L('Kas ağrısı','Soreness'),nightHR:L('Gece nabzı (bpm)','Night HR (bpm)')};
   const title=wk?L('Haftalık Wellness Raporu','Weekly Wellness Report'):L('Aylık Wellness Raporu','Monthly Wellness Report');
   const tile=(k,v,sub,c)=>`<div class="kp"${c?` style="--kc:${c}"`:''}><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${sub}</div></div>`;
   const kpis=[
@@ -35546,7 +35816,7 @@ function printWellnessReport(R){
     tile(M.mentalFatigue,f1(K.mentalFatigue)+'<small>/5</small>',L('5 = dinç','5 = fresh'),sc(K.mentalFatigue)),
     tile(M.physicalFatigue,f1(K.physicalFatigue)+'<small>/5</small>',L('5 = dinç','5 = fresh'),sc(K.physicalFatigue)),
     tile(M.soreness,f1(K.soreness)+'<small>/5</small>',L(`${K.pain} ağrı bildirimi`,`${K.pain} pain reports`),sc(K.soreness)),
-    tile(L('RHR','RHR'),f0(K.RHR)+'<small> bpm</small>',L('dinlenik nabız ort.','resting HR mean')),
+    tile(L('Gece nabzı','Night HR'),f0(K.nightHR)+'<small> bpm</small>',L('Polar · gece ortalaması','Polar · night mean')),
   ].join('');
   /* Takımın günlük hazır oluşu. */
   const many=R.days.length>10;
@@ -35565,18 +35835,18 @@ function printWellnessReport(R){
   /* Kadro özeti. */
   const sum=R.rows.map(r=>`<tr><td class="l"><b>${esc(r.name)}</b>${r.pos?`<em>${esc(r.pos)}</em>`:''}</td>${r.cells.readiness.map(v=>cell(v,'readiness')).join('')}
     <td class="av" style="color:${sc(r.avg.readiness)||'#8b9099'}">${f1(r.avg.readiness)}</td>
-    <td>${f1(r.avg.sleep)}</td><td>${f1(r.avg.mentalFatigue)}</td><td>${f1(r.avg.physicalFatigue)}</td><td>${f1(r.avg.soreness)}</td><td>${f0(r.avg.RHR)}</td>
+    <td>${f1(r.avg.sleep)}</td><td>${f1(r.avg.mentalFatigue)}</td><td>${f1(r.avg.physicalFatigue)}</td><td>${f1(r.avg.soreness)}</td><td>${f0(r.avg.nightHR)}</td>
     <td>${r.n}/${R.nDone}</td><td class="dl" style="color:${r.delta==null?'#8b9099':r.delta<=-0.3?'#dc2626':r.delta>=0.3?'#16a34a':'#5c626c'}">${r.delta==null?'—':Math.abs(r.delta)<0.05?'0.0':(r.delta>0?'+':'')+r.delta.toFixed(1)}</td>
     <td class="pn">${r.pain.length?esc(r.pain.slice(0,3).map(p=>p.region).join(', ')):'<span class="z">—</span>'}</td></tr>`).join('');
   const sumSec=`<div class="sec"><div class="sh"><span class="st">${L('Kadro özeti','Squad summary')}</span><span class="ss">${wk?L('günlük hazır oluş','daily readiness'):L('haftalık ort. hazır oluş','weekly mean readiness')} · ${L('dönem ortalamaları','period means')}</span></div>
-    <table class="ts"><thead><tr><th class="l">${L('Sporcu','Athlete')}</th>${R.cols.map(c=>`<th class="c">${c.lab}</th>`).join('')}<th>${L('Hazır','Ready')}</th><th>${L('Uyku','Sleep')}</th><th>${L('Zihin','Mental')}</th><th>${L('Fizik','Physical')}</th><th>${L('Ağrı','Sore')}</th><th>RHR</th><th>${L('Form','Forms')}</th><th>Δ</th><th class="l">${L('Ağrı bölgeleri','Pain areas')}</th></tr></thead><tbody>${sum}</tbody></table></div>`;
+    <table class="ts"><thead><tr><th class="l">${L('Sporcu','Athlete')}</th>${R.cols.map(c=>`<th class="c">${c.lab}</th>`).join('')}<th>${L('Hazır','Ready')}</th><th>${L('Uyku','Sleep')}</th><th>${L('Zihin','Mental')}</th><th>${L('Fizik','Physical')}</th><th>${L('Ağrı','Sore')}</th><th>${L('Gece N.','Night HR')}</th><th>${L('Form','Forms')}</th><th>Δ</th><th class="l">${L('Ağrı bölgeleri','Pain areas')}</th></tr></thead><tbody>${sum}</tbody></table></div>`;
   /* Sporcu kartları. */
   const spark=v=>{const pts=v.map((x,i)=>x==null?null:[i,x]).filter(Boolean);if(pts.length<2)return'';const W=120,H=26,n=Math.max(1,v.length-1);
     return`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline fill="none" stroke="#1f7cc2" stroke-width="1.5" points="${pts.map(([i,x])=>`${(i/n*W).toFixed(1)},${(H-2-(x-1)/4*(H-4)).toFixed(1)}`).join(' ')}"/></svg>`;};
   const cards=R.rows.map(r=>`<div class="card"><div class="cd-h"><div><b>${esc(r.name)}</b>${r.pos?`<em>${esc(r.pos)}</em>`:''}</div>
       <div class="cd-r">${wk?'':spark(r.spark)}<span class="cd-n">${r.n}/${R.nDone} ${L('form','forms')}</span><span class="cd-v" style="color:${sc(r.avg.readiness)||'#8b9099'}">${f1(r.avg.readiness)}<small>/5</small></span></div></div>
     <table class="tc"><thead><tr><th class="l"></th>${R.cols.map(c=>`<th class="c">${c.lab}${wk?'':`<i>${c.sub}</i>`}</th>`).join('')}<th>${L('Ort.','Avg')}</th></tr></thead>
-      <tbody>${WVR_IDS.map(id=>`<tr><td class="l">${M[id]}</td>${r.cells[id].map(v=>cell(v,id)).join('')}<td class="av">${id==='RHR'?f0(r.avg[id]):f1(r.avg[id])}</td></tr>`).join('')}</tbody></table>
+      <tbody>${WVR_IDS.map(id=>`<tr><td class="l">${M[id]}</td>${r.cells[id].map(v=>cell(v,id)).join('')}<td class="av">${id==='nightHR'?f0(r.avg[id]):f1(r.avg[id])}</td></tr>`).join('')}</tbody></table>
     <div class="cd-p">${r.pain.length?`<span>${L('Ağrı','Pain')}:</span> ${r.pain.map(p=>`<i class="pg s${p.sev}">${esc(p.region)}${p.n>1?` ×${p.n}`:''}</i>`).join('')}`:`<span>${L('Ağrı bildirimi yok','No pain reported')}</span>`}</div></div>`).join('');
   const gen=new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${esc(R.teamName)} — ${esc(R.label)}</title>
@@ -35654,7 +35924,7 @@ td.pn{text-align:left;font-size:8px;color:var(--mut);white-space:nowrap;overflow
 <div class="g2">${daySec}${watchSec}</div>
 ${sumSec}
 <div class="cards">${cards}</div>
-<div class="fo"><span>${L('Puanlar 1–5: 1 kötü · 5 iyi (check-in formunun renkleri). RHR: Polar\'ın günün en düşük nabzı, yoksa check-in. Δ: önceki döneme göre hazır oluş farkı.','Scores 1–5: 1 poor · 5 good (check-in form colours). RHR: Polar\'s lowest HR of the day, else check-in. Δ: readiness change vs previous period.')}</span><span>CoachOS · ${esc(R.teamName)} · ${esc(R.label)}</span></div>
+<div class="fo"><span>${L('Puanlar 1–5: 1 kötü · 5 iyi (check-in formunun renkleri). Gece nabzı: Polar Nightly Recharge, uyanılan sabahın tarihiyle. Δ: önceki döneme göre hazır oluş farkı.','Scores 1–5: 1 poor · 5 good (check-in form colours). Night HR: Polar Nightly Recharge, dated by the morning woken up. Δ: readiness change vs previous period.')}</span><span>CoachOS · ${esc(R.teamName)} · ${esc(R.label)}</span></div>
 </body></html>`);
   w.document.close();
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},500);
@@ -36283,12 +36553,310 @@ function MonAdequacyPanel({team}){
   </div>;
 }
 /* ═══════════════════════════════════════════════════════════════════════════
+   SPORCU WELLNESS ÇIKTISI — haftalık ve aylık (A4 dikey), tek sporcu
+   Wellness → sporcu sayfasının başlık bandındaki "Haftalık Çıktı Al" / "Aylık Çıktı Al".
+   Takım çıktısının (428, printWellnessReport) rapor dili; içerik sporcuya göre:
+     · sekiz gösterge: check-in uyumu, hazır oluş (önceki döneme göre fark), dört soru,
+       Polar gece nabzı ve Polar uyku süresi
+     · günlük hazır oluş çubukları (takımın o günkü ortalaması ince çizgiyle) + öne çıkanlar
+     · check-in puanları: metrik × gün (hafta) ya da metrik × hafta (ay), dönem ortalaması,
+       önceki dönem, fark ve takım ortalaması
+     · Polar Loop — uyku ve toparlanma: uyku süresi, uyku skoru, HRV, gece nabzı, ANS, adım
+     · antrenman yükü: sRPE (AU), Polar antrenman süresi / yükü / seans sayısı ve dönemin
+       kalp atım bölgesi dağılımı
+     · ağrı bildirimleri: bölge, en yüksek şiddet, kaç gün; gün gün liste ve notlar
+   Değerler ekranla aynı yoldan: wvDay (günün son kaydı), Polar gece verisi uyanılan sabahın
+   tarihiyle (pwNightHrMap'in kuralı). Henüz gelmemiş günler sayılmaz. Önceki dönem: haftada
+   bir önceki hafta, ayda bir önceki takvim ayı. Polar verisi çıktı açılırken tek istekle
+   (/team-data, önceki dönemin başı → dönemin sonu) alınır; sporcu Polar'a bağlı değilse ya da
+   istek başarısızsa Polar bölümleri nedenini yazan tek satırla basılır.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const AWR_CHECK=['readiness','sleep','mentalFatigue','physicalFatigue','soreness'];
+const AWR_POLAR=['sleepH','sleepScore','hrv','nightHR','ans','steps'];
+const AWR_LOAD=['srpe','exMin','exLoad','exN'];
+const AWR_SUM={srpe:1,exMin:1,exLoad:1,exN:1};
+
+/* Polar yanıtı → gün anahtarlı haritalar. Gece verisi (uyku, HRV, gece nabzı, ANS) uyanılan
+   sabahın tarihine yazılır; adım ve antrenman kendi gününe. */
+function awrPolarMaps(p){
+  const o={nightHR:{},hrv:{},ans:{},sleepH:{},sleepScore:{},steps:{},ex:{}};
+  if(!p)return o;
+  const wake={};
+  (p.sleep||[]).forEach(x=>{if(!x)return;const k=String(x.sleepEnd||'').slice(0,10)||x.date;if(!k)return;
+    if(x.date)wake[x.date]=k;
+    if(pwNum(x.asleepSec))o.sleepH[k]=x.asleepSec/3600;
+    if(pwNum(x.sleepScore))o.sleepScore[k]=x.sleepScore;});
+  (p.recharge||[]).forEach(r=>{if(!r||!r.date)return;const k=wake[r.date]||r.date;
+    if(pwNum(r.hrAvg))o.nightHR[k]=r.hrAvg;
+    if(pwNum(r.hrvMs))o.hrv[k]=r.hrvMs;
+    if(pwNum(r.ansCharge))o.ans[k]=r.ansCharge;});
+  (p.activity||[]).forEach(a=>{if(a&&a.date&&pwNum(a.steps))o.steps[a.date]=a.steps;});
+  (p.exercises||[]).forEach(e=>{if(e&&e.date)(o.ex[e.date]||(o.ex[e.date]=[])).push(e);});
+  return o;
+}
+
+function buildAthleteWellnessReport({ath,team,kind,from,to,label,polar,polarNote,pnhr}){
+  const tk=fmt(today);
+  const wk=kind==='week';
+  const span=(a,b)=>{const o=[];for(let c=parseD(a);fmt(c)<=b;c=addD(c,1))o.push(fmt(c));return o;};
+  const days=span(from,to);
+  const done=days.filter(k=>k<=tk);
+  const f0=parseD(from);
+  const pFrom=wk?fmt(addD(f0,-7)):fmt(new Date(f0.getFullYear(),f0.getMonth()-1,1));
+  const pTo=fmt(addD(f0,-1));
+  const prev=span(pFrom,pTo);
+  const cols=wk?days.map((k,i)=>({lab:DN[i],sub:fd(k).slice(0,5),days:[k]}))
+    :(()=>{const o=[];for(let c=sow(f0);fmt(c)<=to;c=addD(c,7)){const ws=fmt(c),we=fmt(addD(c,6));
+      o.push({lab:fd(ws<from?from:ws).slice(0,5),sub:'– '+fd(we>to?to:we).slice(0,5),days:days.filter(k=>k>=ws&&k<=we)});}return o;})();
+  const P=awrPolarMaps(polar);
+  const dc={};const dOf=k=>(k in dc)?dc[k]:(dc[k]=wvDay(ath,k));
+  const srpe={};(ath.srpeLog||[]).forEach(e=>{const v=e&&Number(e.totalLoad);if(e&&e.date&&isFinite(v)&&v>0)srpe[e.date]=(srpe[e.date]||0)+v;});
+  const exSum=(k,f)=>{const xs=(P.ex[k]||[]).map(f).filter(pwNum);return xs.length?xs.reduce((a,b)=>a+b,0):null;};
+  const nn=v=>v==null?null:v;
+  const get={
+    srpe:k=>nn(srpe[k]),
+    exMin:k=>{const v=exSum(k,e=>e.durationSec);return v==null?null:v/60;},
+    exLoad:k=>exSum(k,e=>e.trainingLoad),
+    exN:k=>(P.ex[k]||[]).length||null,
+  };
+  AWR_CHECK.forEach(id=>{get[id]=k=>nn((dOf(k)||{})[id]);});
+  ['sleepH','sleepScore','hrv','nightHR','ans','steps'].forEach(id=>{get[id]=k=>nn(P[id][k]);});
+  const agg=(id,ks)=>{const v=ks.map(get[id]).filter(x=>x!=null);if(!v.length)return null;
+    const s=v.reduce((a,b)=>a+b,0);return AWR_SUM[id]?s:s/v.length;};
+  const row=id=>{const cur=agg(id,done),pv=agg(id,prev);
+    return{id,cells:cols.map(c=>agg(id,c.days.filter(k=>k<=tk))),avg:cur,prev:pv,delta:cur!=null&&pv!=null?cur-pv:null,
+      n:done.filter(k=>get[id](k)!=null).length};};
+  const rows={};[...AWR_CHECK,...AWR_POLAR,...AWR_LOAD].forEach(id=>{rows[id]=row(id);});
+  /* Takım: her sporcunun dönem ortalamasının ortalaması (çok form dolduran ağır basmasın). */
+  const mates=(team&&team.athletes)||[];
+  const tm={};
+  AWR_CHECK.forEach(id=>{tm[id]=wvMean(mates.map(a=>wvMean(done.map(k=>{const d=wvDay(a,k);return d?d[id]:null;}))));});
+  tm.nightHR=pnhr?wvMean(mates.map(a=>{const m=pnhr[String(a.id)];return m?wvMean(done.map(k=>(typeof m[k]==='number'?m[k]:null))):null;})):null;
+  const daily=days.map(k=>{const fut=k>tk;
+    const tv=fut?[]:mates.map(a=>{const d=wvDay(a,k);return d&&d.readiness;}).filter(x=>x!=null);
+    return{k,fut,v:fut?null:get.readiness(k),team:wvMean(tv)};});
+  /* Ağrı: bölge başına en yüksek şiddet ve gün sayısı; ayrıca gün gün. */
+  const pain={},painDays=[];const notes=[];
+  done.forEach(k=>{const d=dOf(k);if(!d)return;
+    if(d.pain&&d.pain.list.length){painDays.push({k,list:d.pain.list});
+      d.pain.list.forEach(x=>{const o=pain[x.region]||(pain[x.region]={region:x.region,sev:0,n:0});o.sev=Math.max(o.sev,x.sev);o.n++;});}
+    if(d.note)notes.push({k,t:d.note});});
+  /* Dönemin kalp atım bölgeleri: bütün Polar antrenmanlarının bölge sürelerinin toplamı. */
+  const zs=done.flatMap(k=>(P.ex[k]||[]).map(pwZoneSec).filter(Boolean));
+  const zones=zs.length?[0,1,2,3,4].map(i=>zs.reduce((s,z)=>s+z[i],0)):null;
+  const nCheck=done.filter(k=>get.readiness(k)!=null).length;
+  const lowDays=done.filter(k=>{const v=get.readiness(k);return v!=null&&v<3;});
+  const withR=done.map(k=>({k,v:get.readiness(k)})).filter(x=>x.v!=null);
+  const minDay=withR.length?withR.reduce((a,b)=>b.v<a.v?b:a):null;
+  const maxDay=withR.length?withR.reduce((a,b)=>b.v>a.v?b:a):null;
+  return{kind,wk,label,from,to,ref:done.length?done[done.length-1]:from,partial:done.length<days.length,
+    teamName:(team&&team.setup&&team.setup.teamName)||'',name:ath.name||'—',pos:posOf(ath.position)||'',number:ath.number||'',
+    cols,rows,tm,daily,nDone:done.length,nCheck,lowDays,minDay,maxDay,
+    pain:Object.values(pain).sort((x,y)=>(y.sev-x.sev)||(y.n-x.n)),painDays,notes,zones,
+    hasPolar:!!polar,polarNote:polarNote||''};
+}
+
+function athleteWellnessReportHtml(R){
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const wk=R.wk;
+  const f1=v=>v==null?'—':Number(v).toFixed(1);
+  const f0=v=>v==null?'—':Math.round(v).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
+  const hm=h=>{if(h==null)return'—';const m=Math.round(h*60);return L(`${Math.floor(m/60)} sa ${String(m%60).padStart(2,'0')} dk`,`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`);};
+  const hmS=h=>{if(h==null)return'—';const m=Math.round(h*60);return`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;};
+  const sg=(v,d)=>v==null?'—':Math.abs(v)<(d?0.05:0.5)?(d?'0.0':'0'):(v>0?'+':'−')+(d?Math.abs(v).toFixed(d):Math.round(Math.abs(v)).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-GB'));
+  /* Baskıda okunur renkler: formun 1-5 renkleri, sarı ve yeşil biraz koyulaştırılmış. */
+  const PC=['#dc2626','#ea580c','#ca8a04','#16a34a','#0284c7'];
+  const sc=v=>v==null?null:PC[Math.min(5,Math.max(1,Math.round(v)))-1];
+  const prevLbl=wk?L('Önceki hafta','Prev. week'):L('Önceki ay','Prev. month');
+  const M={readiness:L('Hazır oluş','Readiness'),sleep:L('Uyku kalitesi','Sleep quality'),mentalFatigue:L('Zihinsel yorgunluk','Mental fatigue'),
+    physicalFatigue:L('Fiziksel yorgunluk','Physical fatigue'),soreness:L('Kas ağrısı','Muscle soreness'),
+    sleepH:L('Uyku süresi (sa:dk)','Sleep time (h:mm)'),sleepScore:L('Uyku skoru','Sleep score'),hrv:'HRV (ms)',nightHR:L('Gece nabzı (bpm)','Night HR (bpm)'),
+    ans:'ANS Charge',steps:L('Adım','Steps'),srpe:L('sRPE yükü (AU)','sRPE load (AU)'),exMin:L('Polar antrenman (dk)','Polar training (min)'),
+    exLoad:L('Polar antrenman yükü','Polar training load'),exN:L('Polar seans sayısı','Polar sessions')};
+  const FM={sleepH:hmS,sleepScore:f0,hrv:f0,nightHR:f0,ans:v=>v==null?'—':(v>0?'+':'')+v.toFixed(1),steps:f0,srpe:f0,exMin:f0,exLoad:f0,exN:f0};
+  const DL={sleepH:d=>d==null?'—':Math.abs(d*60)<0.5?'0:00':(d>0?'+':'−')+hmS(Math.abs(d)),ans:d=>sg(d,1)};
+  const title=wk?L('Haftalık Wellness Raporu','Weekly Wellness Report'):L('Aylık Wellness Raporu','Monthly Wellness Report');
+  const r=R.rows;
+  /* ── göstergeler ── */
+  const dCol=(d,good)=>d==null||!good?'#5c626c':d*good>=0.3?'#16a34a':d*good<=-0.3?'#dc2626':'#5c626c';
+  const tile=(k,v,sub,c)=>`<div class="kp"${c?` style="--kc:${c}"`:''}><div class="kk">${k}</div><div class="kv">${v}</div><div class="ks">${sub}</div></div>`;
+  const five=id=>tile(M[id],f1(r[id].avg)+'<small>/5</small>',
+    r[id].delta==null?`${prevLbl}: —`:`${prevLbl}: ${f1(r[id].prev)} <b style="color:${dCol(r[id].delta,1)}">(${sg(r[id].delta,1)})</b>`,sc(r[id].avg));
+  const comp=R.nDone?R.nCheck/R.nDone*100:null;
+  const kpis=[
+    tile(L('Check-in uyumu','Check-in rate'),comp==null?'—':`${Math.round(comp)}<small>%</small>`,L(`${R.nCheck}/${R.nDone} gün`,`${R.nCheck}/${R.nDone} days`),comp==null?null:comp>=80?'#16a34a':comp>=60?'#ca8a04':'#dc2626'),
+    five('readiness'),five('sleep'),five('mentalFatigue'),five('physicalFatigue'),five('soreness'),
+    tile(L('Gece nabzı','Night HR'),f0(r.nightHR.avg)+'<small> bpm</small>',r.nightHR.delta==null?L('Polar · gece ortalaması','Polar · night mean'):`${prevLbl}: ${f0(r.nightHR.prev)} (${sg(r.nightHR.delta)})`),
+    tile(L('Uyku süresi','Sleep time'),r.sleepH.avg==null?'—':hm(r.sleepH.avg),r.sleepH.delta==null?L('Polar · gece ortalaması','Polar · night mean'):`${prevLbl}: ${hm(r.sleepH.prev)}`),
+  ].join('');
+  /* ── günlük hazır oluş ── */
+  const bars=R.daily.map((d,i)=>{const h=d.v==null?0:Math.max(4,(d.v-1)/4*100);const c=sc(d.v)||'#c3c7cd';const dt=parseD(d.k);
+    const tl=d.team==null?'':`<i class="tl" style="bottom:${((d.team-1)/4*100).toFixed(1)}%"></i>`;
+    return`<div class="bc${d.fut?' fut':''}${!wk&&[0,6].includes(dt.getDay())?' we':''}"><div class="bg">${tl}<div class="bv" style="color:${c}">${d.v==null?'':f1(d.v)}</div><div class="br" style="height:${h}%;background:${c}"></div></div>
+      <div class="bl">${wk?`<b>${DN[i]}</b>${fd(d.k).slice(0,5)}`:dt.getDate()}</div></div>`;}).join('');
+  const daySec=`<div class="sec"><div class="sh"><span class="st">${L('Günlük hazır oluş','Daily readiness')}</span><span class="ss"><i class="tk"></i>${L('takım ortalaması · 1–5','team mean · 1–5')}</span></div><div class="chart${wk?' wk':''}">${bars}</div></div>`;
+  /* ── öne çıkanlar ── */
+  const dn=k=>`${DN[(parseD(k).getDay()+6)%7]} ${fd(k).slice(0,5)}`;
+  const hl=[];
+  const rd=r.readiness;
+  if(rd.avg!=null){
+    hl.push([sc(rd.avg),L(`Hazır oluş ortalaması <b>${f1(rd.avg)}</b>`,`Mean readiness <b>${f1(rd.avg)}</b>`)+(rd.delta!=null?L(` · ${wk?'önceki haftaya':'önceki aya'} göre <b>${sg(rd.delta,1)}</b>`,` · <b>${sg(rd.delta,1)}</b> vs the previous ${wk?'week':'month'}`):'')]);
+    if(R.tm.readiness!=null){const df=rd.avg-R.tm.readiness;
+      hl.push(['#8b9099',Math.abs(df)<0.2?L(`Takım ortalamasıyla aynı düzeyde (${f1(R.tm.readiness)})`,`In line with the team mean (${f1(R.tm.readiness)})`)
+        :L(`Takım ortalamasının (${f1(R.tm.readiness)}) <b>${Math.abs(df).toFixed(1)}</b> ${df>0?'üstünde':'altında'}`,`<b>${Math.abs(df).toFixed(1)}</b> ${df>0?'above':'below'} the team mean (${f1(R.tm.readiness)})`)]);}
+    if(R.minDay&&R.maxDay&&R.minDay.k!==R.maxDay.k)hl.push([sc(R.minDay.v),L(`En düşük gün ${dn(R.minDay.k)} (<b>${f1(R.minDay.v)}</b>) · en yüksek ${dn(R.maxDay.k)} (<b>${f1(R.maxDay.v)}</b>)`,`Lowest day ${dn(R.minDay.k)} (<b>${f1(R.minDay.v)}</b>) · highest ${dn(R.maxDay.k)} (<b>${f1(R.maxDay.v)}</b>)`)]);
+    if(R.lowDays.length)hl.push(['#dc2626',L(`<b>${R.lowDays.length}</b> gün hazır oluş 3'ün altında: ${R.lowDays.slice(0,6).map(dn).join(', ')}`,`Readiness below 3 on <b>${R.lowDays.length}</b> day(s): ${R.lowDays.slice(0,6).map(dn).join(', ')}`)]);
+  }
+  hl.push([R.nCheck===R.nDone?'#16a34a':'#ca8a04',L(`Check-in uyumu: ${R.nDone} günün <b>${R.nCheck}</b> günü`,`Check-in on <b>${R.nCheck}</b> of ${R.nDone} days`)]);
+  if(R.painDays.length)hl.push(['#ea580c',L(`<b>${R.painDays.length}</b> gün ağrı bildirimi: ${esc(R.pain.slice(0,3).map(p=>p.region).join(', '))}`,`Pain reported on <b>${R.painDays.length}</b> day(s): ${esc(R.pain.slice(0,3).map(p=>p.region).join(', '))}`)]);
+  if(r.sleepH.avg!=null)hl.push(['#1f7cc2',L(`Polar uyku ortalaması <b>${hm(r.sleepH.avg)}</b>`,`Polar mean sleep <b>${hm(r.sleepH.avg)}</b>`)+(r.sleepH.delta!=null?` (${DL.sleepH(r.sleepH.delta)})`:'')]);
+  if(r.nightHR.avg!=null)hl.push(['#1f7cc2',L(`Gece nabzı ortalaması <b>${f0(r.nightHR.avg)} bpm</b>`,`Mean night HR <b>${f0(r.nightHR.avg)} bpm</b>`)+(r.nightHR.delta!=null?` (${sg(r.nightHR.delta)})`:'')
+    +(R.tm.nightHR!=null?L(` · takım ${f0(R.tm.nightHR)}`,` · team ${f0(R.tm.nightHR)}`):'')]);
+  const hlSec=`<div class="sec"><div class="sh"><span class="st">${L('Öne çıkanlar','Highlights')}</span></div><div class="wl">${hl.length?hl.slice(0,7).map(([c,t])=>`<div class="wr"><span class="wd" style="background:${c||'#c3c7cd'}"></span><span>${t}</span></div>`).join(''):`<div class="ok">${L('Bu dönemde veri yok.','No data in this period.')}</div>`}</div></div>`;
+  /* ── tablolar ── */
+  const cell5=v=>{if(v==null)return'<td class="c e">·</td>';const c=sc(v);return`<td class="c" style="background:${c}1f;color:${c}"><b>${f1(v)}</b></td>`;};
+  const cellN=(v,id)=>v==null?'<td class="c e">·</td>':`<td class="c r">${FM[id](v)}</td>`;
+  const colHead=R.cols.map(c=>`<th class="c">${c.lab}<i>${c.sub}</i></th>`).join('');
+  const checkT=`<table class="tm"><thead><tr><th class="l">${L('Check-in','Check-in')}</th>${colHead}<th>${L('Ort.','Avg')}</th><th>${prevLbl}</th><th>Δ</th><th>${L('Takım','Team')}</th></tr></thead><tbody>
+    ${AWR_CHECK.map(id=>`<tr${id==='readiness'?' class="hi"':''}><td class="l">${M[id]}</td>${r[id].cells.map(cell5).join('')}<td class="av" style="color:${sc(r[id].avg)||'#8b9099'}">${f1(r[id].avg)}</td><td>${f1(r[id].prev)}</td>
+      <td class="dl" style="color:${dCol(r[id].delta,1)}">${sg(r[id].delta,1)}</td><td class="tmc">${f1(R.tm[id])}</td></tr>`).join('')}</tbody></table>`;
+  const numT=(ids,head,sumLbl,withTeam)=>`<table class="tm"><thead><tr><th class="l">${head}</th>${colHead}<th>${sumLbl}</th><th>${prevLbl}</th><th>Δ</th>${withTeam?`<th>${L('Takım','Team')}</th>`:''}</tr></thead><tbody>
+    ${ids.map(id=>{const x=r[id];const dl=DL[id]?DL[id](x.delta):AWR_SUM[id]?(x.delta==null||!x.prev?'—':(x.delta>0?'+':'−')+Math.round(Math.abs(x.delta)/x.prev*100)+'%'):sg(x.delta,id==='ans'?1:0);
+      return`<tr><td class="l">${M[id]}</td>${x.cells.map(v=>cellN(v,id)).join('')}<td class="av">${FM[id](x.avg)}</td><td>${FM[id](x.prev)}</td><td class="dl">${dl}</td>${withTeam?`<td class="tmc">${id==='nightHR'?f0(R.tm.nightHR):'—'}</td>`:''}</tr>`;}).join('')}</tbody></table>`;
+  const checkSec=`<div class="sec"><div class="sh"><span class="st">${L('Check-in puanları','Check-in scores')}</span><span class="ss">${wk?L('gün gün','day by day'):L('hafta hafta (ortalama)','week by week (mean)')} · ${L('1 kötü · 5 iyi','1 poor · 5 good')}</span></div>${checkT}</div>`;
+  const anyPolar=AWR_POLAR.some(id=>r[id].avg!=null||r[id].prev!=null);
+  const polarSec=`<div class="sec"><div class="sh"><span class="st">${L('Uyku ve toparlanma','Sleep and recovery')}</span><span class="ss">Polar Loop · ${L('gece verisi uyanılan sabahın tarihiyle','night data dated by the morning woken up')}</span></div>
+    ${anyPolar?numT(AWR_POLAR,'Polar',L('Ort.','Avg'),true):`<div class="none">${esc(R.polarNote||L('Bu dönemde Polar verisi yok.','No Polar data in this period.'))}</div>`}</div>`;
+  const anyLoad=AWR_LOAD.some(id=>r[id].avg!=null||r[id].prev!=null);
+  const zt=R.zones?R.zones.reduce((a,b)=>a+b,0):0;
+  const zoneBar=zt>0?`<div class="zn"><div class="zk">${L('Kalp atım bölgeleri · dönem toplamı','Heart rate zones · period total')} <b>${Math.round(zt/60)} ${L('dk','min')}</b></div>
+    <div class="zb">${R.zones.map((v,i)=>v>0?`<i style="flex-grow:${v};background:${PW_ZONE_COL[i]}"></i>`:'').join('')}</div>
+    <div class="zl">${R.zones.map((v,i)=>`<span><i style="background:${PW_ZONE_COL[i]}"></i>Z${i+1} <b>${Math.round(v/60)}</b> ${L('dk','min')} · %${Math.round(v/zt*100)}</span>`).join('')}</div></div>`:'';
+  const loadSec=`<div class="sec"><div class="sh"><span class="st">${L('Antrenman yükü','Training load')}</span><span class="ss">${L('sRPE: check-in (RPE × dk) · antrenman: Polar','sRPE: check-in (RPE × min) · sessions: Polar')}</span></div>
+    ${anyLoad?numT(AWR_LOAD,L('Yük','Load'),L('Toplam','Total'),false):`<div class="none">${L('Bu dönemde yük kaydı yok.','No load records in this period.')}</div>`}${zoneBar}</div>`;
+  /* ── ağrı ── */
+  const sevL=PAIN_SEV_LABEL();
+  const painSec=`<div class="sec"><div class="sh"><span class="st">${L('Ağrı bildirimleri','Pain reports')}</span><span class="ss">${R.painDays.length?L(`${R.painDays.length} gün · en yüksek şiddet ve gün sayısı`,`${R.painDays.length} day(s) · peak severity and day count`):''}</span></div>
+    ${R.pain.length?`<div class="pc">${R.pain.map(p=>`<i class="pg s${p.sev}">${esc(p.region)}${sevL[p.sev]?` · ${sevL[p.sev]}`:''}${p.n>1?` · ${p.n} ${L('gün','days')}`:''}</i>`).join('')}</div>
+      <div class="pd${R.painDays.length>4?' two':''}">${R.painDays.map(d=>`<div><b>${dn(d.k)}</b>${d.list.map(x=>`<span class="pt s${x.sev}">${esc(x.region)}${sevL[x.sev]?` (${sevL[x.sev].toLocaleLowerCase('tr')})`:''}</span>`).join('')}</div>`).join('')}</div>`
+      :`<div class="none">${L('Bu dönemde ağrı bildirimi yok.','No pain reported in this period.')}</div>`}
+    ${R.notes.length?`<div class="pn">${R.notes.map(n=>`<div><b>${dn(n.k)}</b> ${esc(n.t)}</div>`).join('')}</div>`:''}</div>`;
+  const gen=new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB');
+  const who=[R.pos,R.number&&'#'+R.number,R.teamName].filter(Boolean).join(' · ');
+  return`<!DOCTYPE html><html lang="${REPORT_LANG==='tr'?'tr':'en'}"><head><meta charset="utf-8"><title>${title} — ${esc(R.name)} — ${esc(R.label)}</title>
+<style>
+@page{size:A4 portrait;margin:9mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--ac:#1f7cc2;--ink:#0b0c0e;--bg2:#f5f6f8;--bd:#e3e5e8;--mut:#5c626c;--dim:#8b9099}
+body{font-family:'Google Sans',Arial,sans-serif;color:var(--ink);font-size:10px;background:#fff}
+.hd{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;padding:11px 16px;margin-bottom:9px}
+.hd .l{display:flex;align-items:center;gap:14px;min-width:0}.hd img{height:13px;width:auto}
+.hd .sep{width:1px;height:34px;background:rgba(255,255,255,.2)}
+.hd .ey{font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.hd h1{font-size:18px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;line-height:1.15;margin-top:2px}
+.hd .tm{font-size:9.5px;color:rgba(255,255,255,.65);margin-top:2px}
+.hd .r{text-align:right;flex:none}.hd .rng{display:inline-block;font-size:11px;font-weight:700;background:var(--ac);padding:5px 12px}
+.hd .gd{font-size:8.5px;color:rgba(255,255,255,.55);margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:9px}
+.kp{border:1px solid var(--bd);border-top:3px solid var(--kc,var(--ink));padding:7px 10px 8px}
+.kk{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.kv{font-size:20px;font-weight:700;margin-top:4px;line-height:1;color:var(--kc,var(--ink))}
+.kv small{font-size:10px;font-weight:600;color:var(--dim);margin-left:1px}
+.ks{font-size:8.5px;color:var(--mut);margin-top:5px}.ks b{font-weight:700}
+.g2{display:grid;grid-template-columns:1.25fr 1fr;gap:9px;margin-bottom:9px}
+.sec{border:1px solid var(--bd);break-inside:avoid;page-break-inside:avoid;margin-bottom:9px}
+.g2 .sec{margin-bottom:0}
+.sh{display:flex;align-items:baseline;gap:10px;padding:7px 11px;border-bottom:1px solid var(--bd)}
+.st{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ac)}
+.ss{margin-left:auto;font-size:8.5px;color:var(--dim);display:inline-flex;align-items:center;gap:5px}
+.ss .tk{display:inline-block;width:14px;height:0;border-top:1.5px solid var(--ink)}
+.chart{display:flex;gap:2px;height:136px;padding:10px 10px 6px}
+.chart.wk{gap:8px}
+.bc{flex:1;display:flex;flex-direction:column;min-width:0}.bc.we .bg{background:var(--bg2)}.bc.fut .bl{opacity:.4}
+.bg{position:relative;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.bv{font-size:8px;font-weight:700;margin-bottom:2px}.chart:not(.wk) .bv{font-size:6px}
+.br{width:70%;max-width:40px}
+.tl{position:absolute;left:8%;right:8%;height:0;border-top:1.5px solid var(--ink);z-index:2}
+.bl{text-align:center;font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.25}
+.bl b{display:block;color:var(--ink);font-size:8.5px}
+.wl{padding:3px 11px}
+.wr{display:flex;align-items:baseline;gap:8px;padding:5.5px 0;border-bottom:1px solid var(--bd);font-size:9px;color:var(--mut);line-height:1.35}
+.wr:last-child{border-bottom:none}.wr b{color:var(--ink);font-weight:700}
+.wd{width:7px;height:7px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.ok,.none{padding:12px 11px;color:var(--mut);font-size:9px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--ink);padding:5px 3px;text-align:center}
+th i{display:block;font-style:normal;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:0;text-transform:none}
+td{padding:4.5px 3px;border-top:1px solid var(--bd);text-align:center;font-variant-numeric:tabular-nums;font-size:9px}
+th.l,td.l{text-align:left;padding-left:10px;width:25%}
+td.l{font-size:8.8px;color:var(--mut)}tr.hi td.l{color:var(--ink);font-weight:700}
+td.c b{font-weight:700}td.e{color:#c3c7cd}td.r{color:var(--ink)}
+td.av{font-weight:700;background:var(--bg2)}td.dl{font-weight:700;color:var(--mut)}td.tmc{color:var(--mut)}
+.zn{padding:8px 11px 9px;border-top:1px solid var(--bd)}
+.zk{font-size:8.5px;color:var(--mut);margin-bottom:5px}.zk b{color:var(--ink)}
+.zb{display:flex;gap:2px;height:9px}.zb i{display:block;height:100%}
+.zl{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;font-size:8.5px;color:var(--mut)}
+.zl span{display:inline-flex;align-items:center;gap:4px}.zl i{width:7px;height:7px;display:inline-block}.zl b{color:var(--ink)}
+.pc{display:flex;flex-wrap:wrap;gap:4px;padding:8px 11px 4px}
+.pg{font-style:normal;font-size:8.5px;padding:2px 7px;border:1px solid}
+.pg.s0,.pg.s3{color:#dc2626;border-color:#dc262666;background:#dc262612}
+.pg.s2{color:#ea580c;border-color:#ea580c66;background:#ea580c12}
+.pg.s1{color:#a16207;border-color:#ca8a0466;background:#ca8a0412}
+.pd,.pn{padding:4px 11px 8px;font-size:8.8px;color:var(--mut)}
+.pd.two{columns:2;column-gap:18px}
+.pd div,.pn div{padding:2.5px 0;break-inside:avoid}.pd b,.pn b{color:var(--ink);margin-right:6px}
+.pt{margin-right:8px}.pt.s3,.pt.s0{color:#dc2626}.pt.s2{color:#ea580c}.pt.s1{color:#a16207}
+.pn{border-top:1px solid var(--bd);padding-top:6px}
+.fo{display:flex;justify-content:space-between;gap:16px;font-size:7.8px;color:var(--dim);margin-top:2px;line-height:1.4}
+</style></head><body>
+<div class="hd"><div class="l"><img src="${COACHOS_LOGO}" alt="CoachOS"><span class="sep"></span><div><div class="ey">${title}</div><h1>${esc(R.name)}</h1><div class="tm">${esc(who)}</div></div></div>
+  <div class="r"><div class="rng">${esc(R.label)}</div><div class="gd">${R.partial?L(`${fd(R.ref)} itibarıyla · `,`as of ${fd(R.ref)} · `):''}${L('Oluşturuldu','Generated')} ${gen}</div></div></div>
+<div class="kpis">${kpis}</div>
+<div class="g2">${daySec}${hlSec}</div>
+${checkSec}
+${polarSec}
+${loadSec}
+${painSec}
+<div class="fo"><span>${L('Puanlar 1–5: 1 kötü · 5 iyi (check-in formunun renkleri). Δ: önceki döneme göre fark (yüklerde % değişim). Takım: sporcuların dönem ortalamalarının ortalaması. Polar gece verisi uyanılan sabahın tarihini taşır; "·": veri yok.','Scores 1–5: 1 poor · 5 good (check-in form colours). Δ: change vs the previous period (% for loads). Team: mean of the athletes\' period means. Polar night data carries the date of the morning woken up; "·": no data.')}</span><span style="white-space:nowrap">CoachOS · ${esc(R.name)}</span></div>
+<script>(function(){var go=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},350);};
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(go,go);else go();})();<\/script>
+</body></html>`;
+}
+
+/* Düğmenin işi: pencere tıklamanın içinde açılır (pop-up engeline takılmasın), Polar verisi
+   beklenirken "hazırlanıyor" yazar, sonra rapor yazılır. `anchor`: haftası / ayı basılacak gün. */
+async function openAthleteWellnessReport({ath,team,kind,anchor,pnhr}){
+  const w=window.open('','_blank','width=980,height=1200');
+  if(!w){alert(L('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  try{w.document.open();w.document.write(`<!DOCTYPE html><meta charset="utf-8"><title>${L('Hazırlanıyor…','Preparing…')}</title><body style="font:14px system-ui,sans-serif;color:#3a4350;padding:32px">${L('Wellness raporu hazırlanıyor…','Preparing the wellness report…')}</body>`);w.document.close();}catch(e){}
+  const d=parseD(anchor);let from,to,label;
+  if(kind==='week'){from=fmt(sow(d));to=fmt(addD(sow(d),6));label=`${fd(from)} – ${fd(to)}`;}
+  else{from=fmt(new Date(d.getFullYear(),d.getMonth(),1));to=fmt(new Date(d.getFullYear(),d.getMonth()+1,0));label=`${MN[d.getMonth()]} ${d.getFullYear()}`;}
+  const pFrom=kind==='week'?fmt(addD(parseD(from),-7)):fmt(new Date(d.getFullYear(),d.getMonth()-1,1));
+  const tk=fmt(today);
+  let polar=null,polarNote='';
+  const fb=FB();const u=fb&&fb.auth&&fb.auth().currentUser;
+  if(!team||!team.id||!u||u.isAnonymous)polarNote=L('Polar verisi için koç hesabıyla oturum açılmalı.','Sign in with the coach account for Polar data.');
+  else if(pFrom>tk)polarNote=L('Bu dönem henüz başlamadı.','This period has not started yet.');
+  else{
+    try{
+      const j=await Promise.race([polarCall('/team-data',{teamId:team.id,athleteId:String(ath.id),from:pFrom,to:to>tk?tk:to}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error(L('Polar servisi zamanında yanıt vermedi.','The Polar service did not answer in time.'))),20000))]);
+      polar=(j.athletes||[])[0]||null;
+      if(!polar)polarNote=L('Sporcu Polar\'a bağlı değil.','The athlete is not connected to Polar.');
+    }catch(e){polarNote=L('Polar verisi alınamadı: ','Polar data could not be loaded: ')+(e.message||String(e));}
+  }
+  const R=buildAthleteWellnessReport({ath,team,kind,from,to,label,polar,polarNote,pnhr});
+  try{w.document.open();w.document.write(athleteWellnessReportHtml(R));w.document.close();}catch(e){}
+}
+/* ═══════════════════════════════════════════════════════════════════════════
    WELLNESS → POLAR: "Verileri al", takım tablosu ve sporcu grafikleri
 
    "Verileri al": takımın Polar'a bağlı her sporcusu için sunucuda senkron
    (functions/polar → /sync, aynı anda 3 sporcu), ardından Wellness'ta SEÇİLİ
-   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tabloda RHR
-   (günün en düşük nabzı, pwRhrMap) RHR Takibi'yle aynı kuralla. Senkron
+   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tablodaki gece
+   nabzı (pwNight) Gece Nabzı Takibi'yle (pwNightHrMap) aynı kuralla. Senkron
    az önce yapıldıysa (TOO_SOON) sporcu "güncel" sayılır. 14/28 günlük
    grafikler sporcunun kendi sayfasında (PolarAthleteCharts); aralık bugünle
    biten tam 14 / 28 gün (yerel takvim), istekte açık from/to olarak gidiyor.
@@ -36425,7 +36993,6 @@ function PwAthlete({a,title,from,to,tools}){
 }
 
 /* ── Bireysel: 14 / 28 günlük kutucuklar + grafikler ──────────────────────────
-   Sporcu profilinde (Kadro → sporcu → Profil, Polar panelinin altında) ve
    Wellness'ta sporcunun kendi sayfasında. Kendi verisini kendisi ister
    (/team-data, yalnızca bu sporcu); senkron yapmaz.
    Aralık: bugün (yerel gün) dahil geriye tam N gün → from = bugün − (N−1),
@@ -36487,10 +37054,8 @@ function usePolarNightHR(ath,teamId,from,to){
     Promise.all(need.map(m=>{
       const last=`${m}-${String(new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate()).padStart(2,'0')}`;
       return polarCall('/team-data',{teamId,athleteId:id,from:m+'-01',to:last>todayK?todayK:last}).then(j=>{
-        const a=(j.athletes||[])[0];const by={},sl={};
-        ((a&&a.recharge)||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))by[r.date]=r.hrAvg;});
-        /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı) —
-           Wellness'taki Sporcu İzleme uyku süresini buradan okur. */
+        const a=(j.athletes||[])[0];const by=pwNightHrMap(a),sl={};
+        /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı). */
         ((a&&a.sleep)||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.asleepSec))sl[k]=x.asleepSec;});
         /* Antrenmanlar (spor, süre, HR bölgeleri): Wellness gün ayrıntısındaki HR Zone bölümü. */
         const ex=((a&&a.exercises)||[]).filter(e=>e&&e.date);
@@ -36509,7 +37074,7 @@ function usePolarNightHR(ath,teamId,from,to){
 }
 
 /* ── Takımın bir tarih aralığındaki Polar verisi (yalnızca istenen türler) ─────
-   RHR Takibi (12 hafta, `hr` + `sleep`) ve Yük Takibi'ndeki takım HR Zone grafiği
+   Gece Nabzı Takibi (12 hafta, `recharge` + `sleep`) ve Yük Takibi'ndeki takım HR Zone grafiği
    (`exercises`) için. Yanıt oturum boyunca saklanır; aralık bugünü içeriyorsa 10
    dakikada bir, ayrıca `ver` değişince ("Verileri al" bitince) yeniden istenir.
    Eski sunucu `kinds`'ı bilmiyorsa bütün türleri döndürür — sonuç aynı. */
@@ -36536,19 +37101,21 @@ function usePolarTeamRange(teamId,from,to,kinds,ver){
   return{athletes:c?c.athletes:PW_NONE,loaded:off||!!c||!!err,off,err};
 }
 
-/* Polar'dan dinlenik nabız (RHR) = günün EN DÜŞÜK nabzı: sürekli nabzın o günkü en
-   küçük örneği (`hr`); o gün sürekli nabız yoksa o sabah biten uykudaki en düşük nabız.
-   Döner: {'YYYY-MM-DD': bpm}. Wellness'taki Polar tablosu, takım ortalaması ve RHR
-   Takibi aynı kuralı buradan okur. */
-function pwRhrMap(p){
+/* Polar gece nabzı = Nightly Recharge'ın gece ortalaması (`recharge.hrAvg`), uyanılan
+   SABAHIN tarihiyle: gecenin uykusunun uyanış saati (`sleepEnd`) hangi güne düşüyorsa o gün;
+   uyku kaydı yoksa recharge'ın kendi tarihi. Wellness'taki Polar tablosunun "Gece nabzı"
+   sütunu (pwNight) da aynı eşlemeyi yapar — takım ortalaması, sporcu kutuları, Gece Nabzı
+   Takibi ve wellness çıktıları bu haritadan okur, hepsi aynı sayıyı söyler.
+   Döner: {'YYYY-MM-DD': bpm}. (Eski "RHR = günün en düşük nabzı" kuralı kaldırıldı.) */
+function pwNightHrMap(p){
   const out={};if(!p)return out;
-  (p.sleep||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.hrMin))out[k]=x.hrMin;});
-  (p.hr||[]).forEach(x=>{if(x&&x.date&&pwNum(x.hrMin))out[x.date]=x.hrMin;});
+  const wake={};(p.sleep||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10);if(x&&x.date&&k)wake[x.date]=k;});
+  (p.recharge||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))out[wake[r.date]||r.date]=r.hrAvg;});
   return out;
 }
 /* Takımın bütün sporcuları: {athleteId: {'YYYY-MM-DD': bpm}} */
-function pwTeamRhr(athletes){
-  const out={};(athletes||[]).forEach(a=>{const m=pwRhrMap(a);if(Object.keys(m).length)out[a.athleteId]=m;});
+function pwTeamNightHr(athletes){
+  const out={};(athletes||[]).forEach(a=>{const m=pwNightHrMap(a);if(Object.keys(m).length)out[a.athleteId]=m;});
   return out;
 }
 
@@ -36900,19 +37467,18 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
       {prog.fails.map(f=><div key={f.name} className="pw-fail">{f.name}: {f.msg}</div>)}
     </div>}
     {err&&<div className="pw-err" role="alert">{err}</div>}
-    {!data?<div className="pw-empty">{reading?L('Son alınan veriler yükleniyor…','Loading the last fetched data…'):L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
+    {!data?<div className="pw-empty">{reading?L('Son alınan veriler yükleniyor…','Loading the last fetched data…'):L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profili Düzenle (✎) → Polar bağlantısı.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Edit Profile (✎) → Polar connection.')}</div>
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
           <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Yatış','Bedtime')}</th><th>{L('Uyanış','Wake')}</th><th>{L('Uyku skoru','Sleep score')}</th>
           <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th>
-          <th title={L('Dinlenik nabız: Polar\'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız)','Resting HR: Polar\'s lowest heart rate of the day (continuous HR; else the lowest HR during sleep)')}>RHR</th><th>ANS</th>
+          <th>ANS</th>
           <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
           const[stTxt,stCls]=(PW_STATUS[(p&&p.status)||'none']||PW_STATUS.none)();
           const{s,r}=p?pwNight(p,day):{s:null,r:null};const act=p&&pick(p.activity);
-          const rhr=p?pwRhrMap(p)[day]:null;
           const ex=p?(p.exercises||[]).filter(e=>e.date===day):[];
           const exDur=ex.map(e=>e.durationSec).filter(pwNum),exLoad=ex.map(e=>e.trainingLoad).filter(pwNum);
           const canOpen=!!p&&typeof onOpen==='function';
@@ -36926,15 +37492,14 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
             <td>{s?pwR(s.sleepScore):'—'}</td>
             <td>{r?pwR(r.hrvMs):'—'}</td>
             <td>{r?pwR(r.hrAvg):'—'}</td>
-            <td className="pw-rhr">{pwNum(rhr)?pwR(rhr):'—'}</td>
             <td>{r?pwR(r.ansCharge,1):'—'}</td>
             <td>{act&&pwNum(act.steps)?Math.round(act.steps).toLocaleString('tr-TR'):'—'}</td>
             <td>{ex.length?`${ex.length} · ${exDur.length?pwDur(exDur.reduce((x,y)=>x+y,0)):'—'}`:'—'}</td>
             <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
-      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. RHR: Polar'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız); aşağıdaki RHR Takibi aynı değeri kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
-        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. RHR: Polar's lowest heart rate of the day (continuous HR; else the lowest during sleep); the RHR Monitor below uses the same value. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
+      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir; aşağıdaki Gece Nabzı Takibi aynı gece nabzını kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
+        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning; the Night HR Monitor below uses the same night HR. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}
   </div>);
 }

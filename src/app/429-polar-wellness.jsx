@@ -3,8 +3,8 @@
 
    "Verileri al": takımın Polar'a bağlı her sporcusu için sunucuda senkron
    (functions/polar → /sync, aynı anda 3 sporcu), ardından Wellness'ta SEÇİLİ
-   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tabloda RHR
-   (günün en düşük nabzı, pwRhrMap) RHR Takibi'yle aynı kuralla. Senkron
+   GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tablodaki gece
+   nabzı (pwNight) Gece Nabzı Takibi'yle (pwNightHrMap) aynı kuralla. Senkron
    az önce yapıldıysa (TOO_SOON) sporcu "güncel" sayılır. 14/28 günlük
    grafikler sporcunun kendi sayfasında (PolarAthleteCharts); aralık bugünle
    biten tam 14 / 28 gün (yerel takvim), istekte açık from/to olarak gidiyor.
@@ -141,7 +141,6 @@ function PwAthlete({a,title,from,to,tools}){
 }
 
 /* ── Bireysel: 14 / 28 günlük kutucuklar + grafikler ──────────────────────────
-   Sporcu profilinde (Kadro → sporcu → Profil, Polar panelinin altında) ve
    Wellness'ta sporcunun kendi sayfasında. Kendi verisini kendisi ister
    (/team-data, yalnızca bu sporcu); senkron yapmaz.
    Aralık: bugün (yerel gün) dahil geriye tam N gün → from = bugün − (N−1),
@@ -203,10 +202,8 @@ function usePolarNightHR(ath,teamId,from,to){
     Promise.all(need.map(m=>{
       const last=`${m}-${String(new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate()).padStart(2,'0')}`;
       return polarCall('/team-data',{teamId,athleteId:id,from:m+'-01',to:last>todayK?todayK:last}).then(j=>{
-        const a=(j.athletes||[])[0];const by={},sl={};
-        ((a&&a.recharge)||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))by[r.date]=r.hrAvg;});
-        /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı) —
-           Wellness'taki Sporcu İzleme uyku süresini buradan okur. */
+        const a=(j.athletes||[])[0];const by=pwNightHrMap(a),sl={};
+        /* Uyku süresi de aynı yanıttan: uyanılan sabahın tarihiyle (pwNight'ın kuralı). */
         ((a&&a.sleep)||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.asleepSec))sl[k]=x.asleepSec;});
         /* Antrenmanlar (spor, süre, HR bölgeleri): Wellness gün ayrıntısındaki HR Zone bölümü. */
         const ex=((a&&a.exercises)||[]).filter(e=>e&&e.date);
@@ -225,7 +222,7 @@ function usePolarNightHR(ath,teamId,from,to){
 }
 
 /* ── Takımın bir tarih aralığındaki Polar verisi (yalnızca istenen türler) ─────
-   RHR Takibi (12 hafta, `hr` + `sleep`) ve Yük Takibi'ndeki takım HR Zone grafiği
+   Gece Nabzı Takibi (12 hafta, `recharge` + `sleep`) ve Yük Takibi'ndeki takım HR Zone grafiği
    (`exercises`) için. Yanıt oturum boyunca saklanır; aralık bugünü içeriyorsa 10
    dakikada bir, ayrıca `ver` değişince ("Verileri al" bitince) yeniden istenir.
    Eski sunucu `kinds`'ı bilmiyorsa bütün türleri döndürür — sonuç aynı. */
@@ -252,19 +249,21 @@ function usePolarTeamRange(teamId,from,to,kinds,ver){
   return{athletes:c?c.athletes:PW_NONE,loaded:off||!!c||!!err,off,err};
 }
 
-/* Polar'dan dinlenik nabız (RHR) = günün EN DÜŞÜK nabzı: sürekli nabzın o günkü en
-   küçük örneği (`hr`); o gün sürekli nabız yoksa o sabah biten uykudaki en düşük nabız.
-   Döner: {'YYYY-MM-DD': bpm}. Wellness'taki Polar tablosu, takım ortalaması ve RHR
-   Takibi aynı kuralı buradan okur. */
-function pwRhrMap(p){
+/* Polar gece nabzı = Nightly Recharge'ın gece ortalaması (`recharge.hrAvg`), uyanılan
+   SABAHIN tarihiyle: gecenin uykusunun uyanış saati (`sleepEnd`) hangi güne düşüyorsa o gün;
+   uyku kaydı yoksa recharge'ın kendi tarihi. Wellness'taki Polar tablosunun "Gece nabzı"
+   sütunu (pwNight) da aynı eşlemeyi yapar — takım ortalaması, sporcu kutuları, Gece Nabzı
+   Takibi ve wellness çıktıları bu haritadan okur, hepsi aynı sayıyı söyler.
+   Döner: {'YYYY-MM-DD': bpm}. (Eski "RHR = günün en düşük nabzı" kuralı kaldırıldı.) */
+function pwNightHrMap(p){
   const out={};if(!p)return out;
-  (p.sleep||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10)||(x&&x.date);if(k&&pwNum(x.hrMin))out[k]=x.hrMin;});
-  (p.hr||[]).forEach(x=>{if(x&&x.date&&pwNum(x.hrMin))out[x.date]=x.hrMin;});
+  const wake={};(p.sleep||[]).forEach(x=>{const k=String((x&&x.sleepEnd)||'').slice(0,10);if(x&&x.date&&k)wake[x.date]=k;});
+  (p.recharge||[]).forEach(r=>{if(r&&r.date&&pwNum(r.hrAvg))out[wake[r.date]||r.date]=r.hrAvg;});
   return out;
 }
 /* Takımın bütün sporcuları: {athleteId: {'YYYY-MM-DD': bpm}} */
-function pwTeamRhr(athletes){
-  const out={};(athletes||[]).forEach(a=>{const m=pwRhrMap(a);if(Object.keys(m).length)out[a.athleteId]=m;});
+function pwTeamNightHr(athletes){
+  const out={};(athletes||[]).forEach(a=>{const m=pwNightHrMap(a);if(Object.keys(m).length)out[a.athleteId]=m;});
   return out;
 }
 
@@ -616,19 +615,18 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
       {prog.fails.map(f=><div key={f.name} className="pw-fail">{f.name}: {f.msg}</div>)}
     </div>}
     {err&&<div className="pw-err" role="alert">{err}</div>}
-    {!data?<div className="pw-empty">{reading?L('Son alınan veriler yükleniyor…','Loading the last fetched data…'):L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profil → Polar.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Profile → Polar.')}</div>
+    {!data?<div className="pw-empty">{reading?L('Son alınan veriler yükleniyor…','Loading the last fetched data…'):L('"Verileri al"a bastığında Polar\'a bağlı bütün sporcuların verisi güncellenir ve üstteki tarih seçicide seçili günün değerleri burada listelenir. Sporcuyu bağlamak için: Kadro → sporcu → Profili Düzenle (✎) → Polar bağlantısı.','Press "Fetch data" to update every Polar-connected athlete; the values of the day picked above are listed here. To connect an athlete: Roster → athlete → Edit Profile (✎) → Polar connection.')}</div>
     :<>
       <div className="pw-tw"><table className="pw-t pw-team">
         <thead><tr>
           <th>{L('Sporcu','Athlete')}</th><th>Polar</th><th>{L('Uyku','Sleep')}</th><th>{L('Yatış','Bedtime')}</th><th>{L('Uyanış','Wake')}</th><th>{L('Uyku skoru','Sleep score')}</th>
           <th>HRV</th><th>{L('Gece nabzı','Night HR')}</th>
-          <th title={L('Dinlenik nabız: Polar\'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız)','Resting HR: Polar\'s lowest heart rate of the day (continuous HR; else the lowest HR during sleep)')}>RHR</th><th>ANS</th>
+          <th>ANS</th>
           <th>{L('Adım','Steps')}</th><th>{L('Antrenman','Training')}</th><th>{L('Yük','Load')}</th>
         </tr></thead>
         <tbody>{rows.map(({a,p})=>{
           const[stTxt,stCls]=(PW_STATUS[(p&&p.status)||'none']||PW_STATUS.none)();
           const{s,r}=p?pwNight(p,day):{s:null,r:null};const act=p&&pick(p.activity);
-          const rhr=p?pwRhrMap(p)[day]:null;
           const ex=p?(p.exercises||[]).filter(e=>e.date===day):[];
           const exDur=ex.map(e=>e.durationSec).filter(pwNum),exLoad=ex.map(e=>e.trainingLoad).filter(pwNum);
           const canOpen=!!p&&typeof onOpen==='function';
@@ -642,15 +640,14 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
             <td>{s?pwR(s.sleepScore):'—'}</td>
             <td>{r?pwR(r.hrvMs):'—'}</td>
             <td>{r?pwR(r.hrAvg):'—'}</td>
-            <td className="pw-rhr">{pwNum(rhr)?pwR(rhr):'—'}</td>
             <td>{r?pwR(r.ansCharge,1):'—'}</td>
             <td>{act&&pwNum(act.steps)?Math.round(act.steps).toLocaleString('tr-TR'):'—'}</td>
             <td>{ex.length?`${ex.length} · ${exDur.length?pwDur(exDur.reduce((x,y)=>x+y,0)):'—'}`:'—'}</td>
             <td>{exLoad.length?pwR(exLoad.reduce((x,y)=>x+y,0)):'—'}</td>
           </tr>);})}</tbody>
       </table></div>
-      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir. RHR: Polar'ın o günkü en düşük nabzı (sürekli nabız; yoksa uykudaki en düşük nabız); aşağıdaki RHR Takibi aynı değeri kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
-        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning. RHR: Polar's lowest heart rate of the day (continuous HR; else the lowest during sleep); the RHR Monitor below uses the same value. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
+      <div className="pw-foot">{L(`Uyku (süre, yatış ve uyanış saati), HRV, gece nabzı ve ANS o sabah uyanılan gecenin verisidir; aşağıdaki Gece Nabzı Takibi aynı gece nabzını kullanır. Adım ve antrenman ${isToday?'bugüne aittir ve gün içinde artar':'o güne aittir'}. "—": Polar bu değeri göndermedi. Satıra tıkla → sporcunun 14/28 günlük grafikleri.`,
+        `Sleep (duration, bedtime and wake time), HRV, night HR and ANS belong to the night ending that morning; the Night HR Monitor below uses the same night HR. Steps and training ${isToday?'are today\'s and grow during the day':'belong to that day'}. "—": Polar did not send this value. Click a row → the athlete\'s 14/28-day charts.`)}</div>
     </>}
   </div>);
 }

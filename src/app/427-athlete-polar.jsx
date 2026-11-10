@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   POLAR — sporcu profilindeki bağlantı paneli (Aşama 1: davet, durum, bağlantı kesme)
+   POLAR — sporcunun bağlantı bloğu (Aşama 1: davet, durum, bağlantı kesme)
+   Sporcu detayındaki "Profili Düzenle" (✎) penceresinde, `compact` görünümüyle durur.
 
    Polar hesabı sporcunun; izni de sporcu veriyor. Koç burada bir DAVET LİNKİ üretiyor
    ve sporcuya gönderiyor (WhatsApp, kopyala). Sporcu linki telefonunda açıp Polar'da
@@ -160,39 +161,13 @@ function PolarConnect({ath,teamId}){
     window.open('https://wa.me/?text='+encodeURIComponent(inviteText()+' '+invite.url),'_blank','noopener');
   };
 
-  if(!uid)return(<div className="panel pl-panel">
-    <div className="pl-h"><h2>Polar</h2></div>
-    <div className="pl-help">{L('Polar bağlantısı için koç hesabıyla oturum aç.','Sign in with the coach account to connect Polar.')}</div>
-  </div>);
+  if(!uid)return(<div className="pl-mini"><label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div className="pl-mini-box"><div className="pl-mini-sub">{L('Polar bağlantısı için koç hesabıyla oturum aç.','Sign in with the coach account to connect Polar.')}</div></div></div>);
 
   const canInvite=status!=='active';
   const canCancel=status==='active'||status==='pending'||status==='expired'||status==='revoked'||status==='error';
   const rl=link&&link.lastSyncReport?polarReportLines(link.lastSyncReport):null;
-  return(<div className="panel pl-panel">
-    <div className="pl-h">
-      <h2>Polar</h2>
-      <span className={'pl-st pl-'+stCls}>{link===undefined?L('Yükleniyor…','Loading…'):stTxt}</span>
-    </div>
-    <div className="pl-rows">
-      <div className="pl-r"><span>{L('Bağlantı durumu','Connection status')}</span><b>{link===undefined?'—':stTxt}</b></div>
-      {status==='active'&&<div className="pl-r"><span>{L('Bağlandı','Connected on')}</span><b>{polarWhen(link.connectedAt)}</b></div>}
-      {status==='active'&&link.polarAccount&&link.polarAccount.name&&<div className="pl-r"><span>{L('Polar hesabı','Polar account')}</span><b>{link.polarAccount.name}</b></div>}
-      <div className="pl-r"><span>{L('Son senkronizasyon','Last sync')}</span><b>{link&&link.lastSyncAt?polarWhen(link.lastSyncAt):'—'}</b></div>
-      {rl&&rl.ok.length>0&&<div className="pl-r"><span>{L('Son senkronda gelen','Last sync brought')}</span><b>{rl.ok.join(' · ')}</b></div>}
-      {rl&&rl.off.length>0&&<div className="pl-r"><span>{L('Polar\'dan gelmeyen','Not provided by Polar')}</span><b>{rl.off.join(', ')}</b></div>}
-      {rl&&rl.err.length>0&&<div className="pl-r pl-warn"><span>{L('Alınamayan','Failed')}</span><b>{rl.err.join(', ')}</b></div>}
-      {(status==='pending'||status==='expired')&&<div className="pl-r"><span>{L('Davet geçerliliği','Invite valid until')}</span><b>{polarWhen(link.inviteExpiresAt)}</b></div>}
-      {link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&<div className="pl-r pl-warn"><span>{L('Son deneme','Last attempt')}</span><b>{polarErrText(link.lastError)}</b></div>}
-    </div>
-    {invite&&<div className="pl-invite">
-      <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
-      <input readOnly value={invite.url} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
-      <div className="pl-btns">
-        <button className="btn sm" onClick={share}>{L('Paylaş','Share')}</button>
-        <button className="btn sm sec" onClick={copy}>{L('Kopyala','Copy')}</button>
-      </div>
-    </div>}
-    <div className="pl-btns">
+  const btns=<div className="pl-btns">
       {status==='active'&&<button className="btn sm" disabled={busy||syncing} onClick={doSync}>
         {syncing?L('Senkronize ediliyor…','Syncing…'):L('Verileri Senkronize Et','Sync Data')}</button>}
       {canInvite&&<button className="btn sm" disabled={busy} onClick={makeInvite}>
@@ -201,11 +176,39 @@ function PolarConnect({ath,teamId}){
           :L('Polar Hesabını Bağla','Connect Polar Account')}</button>}
       {canCancel&&<button className="btn sm sec" disabled={busy} onClick={disconnect}>
         {status==='active'?L('Polar Bağlantısını Kes','Disconnect Polar'):L('Daveti iptal et','Cancel invite')}</button>}
+    </div>;
+  const inviteBox=invite&&<div className="pl-invite">
+      <div className="pl-ik">{L('Sporcuya gönderilecek link','Link to send to the athlete')} · {L('geçerlilik','valid until')} {polarWhen(invite.expiresAt)}</div>
+      <input readOnly value={invite.url} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
+      <div className="pl-btns">
+        <button className="btn sm" onClick={share}>{L('Paylaş','Share')}</button>
+        <button className="btn sm sec" onClick={copy}>{L('Kopyala','Copy')}</button>
+      </div>
+    </div>;
+  /* Durum rozeti + tek satır özet, altında düğmeler. */
+  const meta=link===undefined?[]:[
+    status==='active'&&link.polarAccount&&link.polarAccount.name,
+    status==='active'&&L(`bağlandı ${polarWhen(link.connectedAt)}`,`connected ${polarWhen(link.connectedAt)}`),
+    link&&link.lastSyncAt&&L(`son senkron ${polarWhen(link.lastSyncAt)}`,`last sync ${polarWhen(link.lastSyncAt)}`),
+    (status==='pending'||status==='expired')&&L(`davet geçerliliği ${polarWhen(link.inviteExpiresAt)}`,`invite valid until ${polarWhen(link.inviteExpiresAt)}`),
+  ].filter(Boolean);
+  const warn=[link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&polarErrText(link.lastError),
+    rl&&rl.err.length>0&&L(`Alınamayan: ${rl.err.join(', ')}`,`Failed: ${rl.err.join(', ')}`)].filter(Boolean);
+  return(<div className="pl-mini">
+    <label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div className="pl-mini-box">
+      <div className="pl-mini-top">
+        <span className={'pl-st pl-'+stCls}>{link===undefined?L('Yükleniyor…','Loading…'):stTxt}</span>
+        {meta.length>0&&<span className="pl-mini-sub">{meta.join(' · ')}</span>}
+      </div>
+      {warn.map((t,i)=><div key={i} className="pl-mini-sub pl-mini-warn">{t}</div>)}
+      {inviteBox}
+      {btns}
+      {err&&<div className="pl-err" role="alert">{err}</div>}
+      {note&&<div className="pl-note" role="status">{note}</div>}
     </div>
-    {err&&<div className="pl-err" role="alert">{err}</div>}
-    {note&&<div className="pl-note" role="status">{note}</div>}
-    <div className="pl-help">{status==='active'
-      ?L('Polar verisi (uyku, Nightly Recharge, antrenman, günlük aktivite) ayrı kaydedilir; sporcunun mevcut kayıtlarının üzerine yazılmaz. Otomatik senkron bir sonraki sürümde gelecek.','Polar data (sleep, Nightly Recharge, training, daily activity) is stored separately and never overwrites the athlete\'s existing records. Automatic sync arrives in the next release.')
-      :L('Polar hesabı sporcunun. Linki sporcuya gönder; sporcu linki kendi telefonunda açıp Polar\'da izin verdiğinde bağlantı burada "Bağlı" olarak görünür. Yeni link eskisini geçersiz kılar.','The Polar account belongs to the athlete. Send them the link; once they open it on their phone and allow access in Polar, this panel shows "Connected". A new link replaces the old one.')}</div>
+    <div className="help">{status==='active'
+      ?L('Polar verisi ayrı kaydedilir; sporcunun mevcut kayıtlarının üzerine yazılmaz.','Polar data is stored separately and never overwrites the athlete\'s existing records.')
+      :L('Linki sporcuya gönder; sporcu kendi telefonunda açıp Polar\'da izin verince burada "Bağlı" görünür.','Send the link to the athlete; once they open it on their phone and allow access in Polar, this shows "Connected".')}</div>
   </div>);
 }
