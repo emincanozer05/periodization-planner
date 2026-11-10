@@ -3,7 +3,7 @@
 
    Gece kaydı: [{id,date,bedTime,wakeTime,hrv,sleepHR}], sabah başına bir satır; tarih
    sporcunun uyandığı sabah. Check-in satırlarından ayrı durur ki yeniden gönderilen bir
-   form geceyi ezmesin. Kayıt formu artık Wellness → Sporcu İzleme'de (428b MonNightLog).
+   form geceyi ezmesin. Kayıt formu Sporcu İzleme bileşeninde (428b MonNightLog; bölüm Wellness sporcu sayfasından kaldırıldı).
 
    Eski "Uyku ve HRV" bölümü (CoachOS_HRV_Monitoring v1.0: RED / YELLOW / DAILY_DROP
    uyarı seviyeleri, renkli sabit eşikler) kaldırıldı: revizyon talimatı v1.4 risk renkli

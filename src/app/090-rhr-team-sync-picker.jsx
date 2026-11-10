@@ -1,14 +1,20 @@
 /* =========================================================
-   RHR MONITOR — resting heart rate, week over week
+   GECE NABZI TAKİBİ (eski "RHR Takibi") — Polar night heart rate, week over week
    The Wellness tab's athlete cards answer "what did this morning look like"; this
    answers "which way is it going". One point per week, Monday to Sunday, and the point is
-   the mean of the days that were actually measured: the week's readings added up
-   and divided by the number of days carrying one, never by seven. An athlete who
-   checked in twice that week has an average of two mornings — dividing that by the
-   calendar would read as a resting pulse in the teens and put a cliff in the line
+   the mean of the nights that were actually measured: the week's readings added up
+   and divided by the number of days carrying one, never by seven. An athlete whose
+   Polar recorded two nights that week has an average of two nights — dividing that by
+   the calendar would read as a pulse in the teens and put a cliff in the line
    where there is only a quiet week.
 
-   A week nobody reported has no point at all. The line breaks across it and a
+   The value is Polar's night heart rate (Nightly Recharge mean, `recharge.hrAvg`), filed
+   under the morning the athlete woke up — the same number as the "Gece nabzı" column of
+   the Polar table above it (pwNightHrMap, 429). Nothing else feeds it: the hand-typed
+   resting pulse of old check-ins is a different measurement and stays out, so the chart
+   and the table can never disagree.
+
+   A week with no night recorded has no point at all. The line breaks across it and a
    dashed connector spans the gap, so the chart never walks through a value that
    was never taken.
    ========================================================= */
@@ -17,28 +23,16 @@
    #14171c before they were written down. The order is the safety mechanism, so
    slots are handed out from the front and a ninth line is refused rather than
    given a colour already on the chart. */
-const RHR_LINE=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
-const RHR_TEAM='#8b9099';   /* the squad reference — grey, so it never reads as an athlete */
-const RHR_WEEKS=12;         /* three months of weeks on screen at a time */
+const NHR_LINE=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const NHR_TEAM='#8b9099';   /* the squad reference — grey, so it never reads as an athlete */
+const NHR_WEEKS=12;         /* three months of weeks on screen at a time */
 
 /* One athlete's week → {avg,days}, or null when the week carries no reading.
-   Two check-ins on the same day count as one day, the later one winning, exactly
-   as the Wellness tab's day resolves them (wvDay) — a double entry can't weigh a week twice. */
-/* `pol` ({'YYYY-MM-DD': bpm}, Polar'ın günün en düşük nabzı — pwRhrMap, 429): Polar'a
-   bağlı sporcuda o günün değeri Polar'dan gelir, check-in'deki elle yazılan RHR yalnızca
-   Polar ölçümü olmayan günleri doldurur. Wellness'taki Polar tablosunun RHR sütunu ile bu
-   grafik böylece aynı sayıyı söyler. */
-function rhrWeekAvg(ath,wkStart,wkEnd,pol){
-  const byDay=new Map();
-  (ath.wellness||[]).forEach(e=>{
-    if(!e||!e.date||e.date<wkStart||e.date>wkEnd)return;
-    if(e.RHR===''||e.RHR==null)return;
-    const v=Number(e.RHR);
-    if(!isFinite(v)||v<=0)return;
-    byDay.set(e.date,v);
-  });
-  if(pol)Object.keys(pol).forEach(k=>{const v=Number(pol[k]);if(k>=wkStart&&k<=wkEnd&&isFinite(v)&&v>0)byDay.set(k,v);});
-  const vals=[...byDay.values()];
+   `pol` is the athlete's {'YYYY-MM-DD': bpm} night-HR map (pwNightHrMap): one value per
+   morning, so a day can't weigh a week twice. */
+function nhrWeekAvg(wkStart,wkEnd,pol){
+  const vals=[];
+  if(pol)Object.keys(pol).forEach(k=>{const v=Number(pol[k]);if(k>=wkStart&&k<=wkEnd&&isFinite(v)&&v>0)vals.push(v);});
   if(!vals.length)return null;
   return{avg:vals.reduce((a,b)=>a+b,0)/vals.length,days:vals.length};
 }
@@ -47,7 +41,7 @@ function rhrWeekAvg(ath,wkStart,wkEnd,pol){
    filed under the month its Thursday falls in — the ISO rule — so a week straddling
    two months belongs to exactly one of them, and "Week 1…5" under a month header
    counts the calendar's weeks rather than the window's. */
-function rhrWeeks(endKey,n){
+function nhrWeeks(endKey,n){
   const endMon=sow(parseD(endKey));
   return Array.from({length:n},(_,i)=>{
     const s=addD(endMon,(i-(n-1))*7),thu=addD(s,3);
@@ -56,7 +50,7 @@ function rhrWeeks(endKey,n){
   });
 }
 
-function RHRMonitor({athletes,weeks,polarRhr}){
+function NightHrMonitor({athletes,weeks,nightHr,status}){
   const wrapRef=useRef(null);
   const[w,setW]=useState(900);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;
@@ -68,14 +62,14 @@ function RHRMonitor({athletes,weeks,polarRhr}){
   const[hov,setHov]=useState(null);      // hovered week index → crosshair + card
   const[sel,setSel]=useState([]);        // [{id,slot}] — the slot IS the colour
   const rows=useMemo(()=>(athletes||[]).map(a=>{
-    const pol=polarRhr&&polarRhr[String(a.id)];
-    const pts=weeks.map(wk=>rhrWeekAvg(a,wk.start,wk.end,pol));
+    const pol=nightHr&&nightHr[String(a.id)];
+    const pts=weeks.map(wk=>nhrWeekAvg(wk.start,wk.end,pol));
     const got=pts.filter(Boolean);
     return{a,pts,n:got.length,
       avg:got.length?got.reduce((s,p)=>s+p.avg,0)/got.length:null,
       last:got.length?got[got.length-1].avg:null,
       prev:got.length>1?got[got.length-2].avg:null};
-  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks,polarRhr]);
+  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks,nightHr]);
   /* The chart opens on the first few athletes rather than empty or on all of them —
      twenty lines through one 300px band is not a trend anyone can read. After that
      the selection is the coach's: navigating weeks only drops athletes who left the
@@ -93,10 +87,10 @@ function RHRMonitor({athletes,weeks,polarRhr}){
     if(s.some(x=>x.id===id))return s.filter(x=>x.id!==id);
     const used=new Set(s.map(x=>x.slot));
     let slot=0;while(used.has(slot))slot++;
-    if(slot>=RHR_LINE.length)return s;
+    if(slot>=NHR_LINE.length)return s;
     return[...s,{id,slot}];
   });
-  const colOf=id=>{const e=sel.find(x=>x.id===id);return e?RHR_LINE[e.slot]:null;};
+  const colOf=id=>{const e=sel.find(x=>x.id===id);return e?NHR_LINE[e.slot]:null;};
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const first=n=>{const p=(n||'').trim().split(/\s+/)[0]||'';return p.length>9?p.slice(0,8)+'…':p;};
   /* Months across the top: consecutive weeks filed under the same month, banded. */
@@ -141,14 +135,14 @@ function RHRMonitor({athletes,weeks,polarRhr}){
   })();
   const trend=r=>{if(r.last==null||r.prev==null)return null;const d=r.last-r.prev;
     return{d,cls:Math.abs(d)<0.5?'fl':(d>0?'up':'dn'),s:(Math.abs(d)<0.5?'→ ':(d>0?'↑ ':'↓ '))+Math.abs(d).toFixed(1)};};
-  if(!rows.length)return<div className="empty-st">{L('Bu aralıkta dinlenik nabız ölçümü yok.','No resting-HR readings in this range.')}</div>;
+  if(!rows.length)return<div className="empty-st">{status||L('Bu aralıkta Polar gece nabzı kaydı yok.','No Polar night-HR readings in this range.')}</div>;
   return(<div className="rm-wrap">
     <div className="rm-legend">
-      <span className="rm-lg" style={{'--rm-c':RHR_TEAM}}><i/>{L('takım ort.','team avg')}</span>
+      <span className="rm-lg" style={{'--rm-c':NHR_TEAM}}><i/>{L('takım ort.','team avg')}</span>
       {shown.map(r=><button key={r.a.id} className="rm-chip" style={{'--rm-c':colOf(r.a.id)}} onClick={()=>toggle(r.a.id)}
         title={L('Grafikten çıkar','Remove from chart')}><i/>{r.a.name}<b>×</b></button>)}
       <span className="rm-hint">{!shown.length?L('grafiğe eklemek için tablodan bir sporcuya tıkla','click an athlete below to plot them')
-        :sel.length>=RHR_LINE.length?L('en fazla 8 çizgi','8 lines max')
+        :sel.length>=NHR_LINE.length?L('en fazla 8 çizgi','8 lines max')
         :L('sporcu eklemek/çıkarmak için tabloya tıkla','click the table to add or remove athletes')}</span>
     </div>
     <div className="rm-chart" ref={wrapRef}>
@@ -171,7 +165,7 @@ function RHRMonitor({athletes,weeks,polarRhr}){
         {/* The squad line first, so the athletes' own lines sit over it. */}
         {(()=>{const segs=segsOf(team.map(v=>v==null?null:{avg:v}));
           return segs.map((sg,k)=>sg.length>1?<path key={'tm'+k} d={sg.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')}
-            fill="none" stroke={RHR_TEAM} strokeWidth="1.5" strokeOpacity=".75" strokeDasharray="5 4" strokeLinecap="round"/>:null);})()}
+            fill="none" stroke={NHR_TEAM} strokeWidth="1.5" strokeOpacity=".75" strokeDasharray="5 4" strokeLinecap="round"/>:null);})()}
         {shown.map(r=>{const c=colOf(r.a.id),segs=segsOf(r.pts);
           return<g key={r.a.id}>
             {segs.slice(1).map((sg,k)=>{const a=segs[k][segs[k].length-1],b=sg[0];
@@ -207,9 +201,9 @@ function RHRMonitor({athletes,weeks,polarRhr}){
           {shown.map(r=>{const p=r.pts[hov];
             return<div key={r.a.id} className="rm-tip-r"><i style={{background:colOf(r.a.id)}}/>
               <span className="rm-tip-n">{r.a.name}</span><strong>{p?Math.round(p.avg):'—'}</strong>
-              <em>{p?p.days+L(' gün',' d'):''}</em></div>;})}
+              <em>{p?p.days+L(' gece',' n'):''}</em></div>;})}
           {!shown.length&&<div className="rm-tip-r"><span className="rm-tip-n">{L('sporcu seçili değil','no athlete plotted')}</span></div>}
-          {team[hov]!=null&&<div className="rm-tip-r"><i style={{background:RHR_TEAM}}/>
+          {team[hov]!=null&&<div className="rm-tip-r"><i style={{background:NHR_TEAM}}/>
             <span className="rm-tip-n">{L('takım ort.','team avg')}</span><strong>{Math.round(team[hov])}</strong><em/></div>}
         </div>;})()}
     </div>
@@ -237,7 +231,7 @@ function RHRMonitor({athletes,weeks,polarRhr}){
               {r.a.position&&<span className="rm-pos">{posOf(r.a.position)}</span>}
             </div></td>
             {r.pts.map((p,i)=><td key={i} className={'rm-cel'+(hov===i?' hv':'')}
-              title={p?`${r.a.name}\n${fd(weeks[i].start).slice(0,5)} – ${fd(weeks[i].end).slice(0,5)}\n${L('Ortalama','Average')}: ${p.avg.toFixed(1)} bpm · ${p.days} ${L('ölçüm günü','measured days')}`:undefined}>
+              title={p?`${r.a.name}\n${fd(weeks[i].start).slice(0,5)} – ${fd(weeks[i].end).slice(0,5)}\n${L('Ortalama','Average')}: ${p.avg.toFixed(1)} bpm · ${p.days} ${L('gece','nights')}`:undefined}>
               {p?<span className="rm-v">{Math.round(p.avg)}<i>{p.days}</i></span>:<span className="rm-na">·</span>}</td>)}
             <td className="rm-avg"><span className="rm-avg-in">
               <span className="rm-avg-v">{r.avg!=null?Math.round(r.avg):'—'}</span>

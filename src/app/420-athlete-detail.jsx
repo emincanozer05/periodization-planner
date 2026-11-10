@@ -107,7 +107,7 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs ath-tabs2" role="tablist">{ATH_TABS.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><AthIc k={t.id} size={19}/><span>{t.l}</span></button>)}</div>
-    {tab==='profile'&&<><ProfileTab ath={ath} updAth={updAth} setup={setup}/><PolarConnect ath={ath} teamId={teamId}/><PolarAthleteCharts ath={ath} teamId={teamId}/></>}
+    {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
@@ -120,26 +120,17 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
             <div><label>{L('Mevki','Position')}</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div></div>
-            {/* Cep telefonu: ülke kodu ayrı bir kutuda, numara ayrı. Numaranın uluslararası
-                biçimde durması gerekiyor, ve bir koç +90'ı numaranın içine yazmayı hep
-                unutuyor — o yüzden seçtiriyoruz. */}
-            <div style={{gridColumn:'span 2'}}><label>{L('Cep telefonu','Mobile phone')}</label>
-              <div style={{display:'flex',gap:8}}>
-                <select style={{flex:'0 0 130px'}} value={ath.phoneCode||DEFAULT_DIAL} onChange={e=>updAth(ath.id,{phoneCode:e.target.value})}>
-                  {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}
-                </select>
-                <input style={{flex:1}} type="tel" inputMode="tel" placeholder="532 123 45 67"
-                  value={ath.phone||''} onChange={e=>updAth(ath.id,{phone:cleanPhone(e.target.value)})}/>
-              </div>
-              <div className="help">{fullPhone(ath)||L('Ülke kodunu seç, numarayı başındaki 0 olmadan yaz.','Pick the country code, and write the number without a leading 0.')}</div></div>
-          </div>
-          <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
-              <option value="">{L('— girilmemiş','— not set')}</option>
-              <option value="M">{L('Erkek','Male')}</option>
-              <option value="F">{L('Kadın','Female')}</option>
-            </select></div>
+            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div>
+              <div style={{marginTop:12}}><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
+                <option value="">{L('— girilmemiş','— not set')}</option>
+                <option value="M">{L('Erkek','Male')}</option>
+                <option value="F">{L('Kadın','Female')}</option>
+              </select></div></div>
+            {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
+                burada (cep telefonu alanının yerinde) — durum, davet linki, senkron ve bağlantıyı
+                kesme aynı yerde. Sporcunun telefonu hiçbir yerde kullanılmıyordu; alan kalktı,
+                kayıtlı numara silinmedi. */}
+            <div style={{gridColumn:'span 2'}}><PolarConnect ath={ath} teamId={teamId}/></div>
           </div>
           <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/></div>
           <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>

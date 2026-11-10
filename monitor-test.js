@@ -419,7 +419,8 @@ group('Genel — bileşik risk puanı ve sabit eşikler');
   check('Eski risk/renk etiketleri ve sabit eşikli sınıflandırıcılar (acwrZoneOf, getAthleteRisks, HRV uyarıları, puan renkleri) Sporcu İzleme’de kullanılmıyor',
     !/acwrZoneOf|getAthleteRisks|HRV_ALERTS|readyColor|score5Color|SCORE5_COLORS|PAIN_SEV_COL/.test(srcs));
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-  check('Eski "Uyku ve HRV" bölümü ve HRV uyarı modeli kaldırıldı', !/AthWellness|hrvModel|HRV_ALERTS/.test(html) && /AthMonitoring ath=\{ath\}/.test(html));
+  // Sporcu İzleme bölümü Wellness sporcu sayfasından kaldırıldı (bileşen ve motor duruyor); eski bölümün geri gelmediği denetleniyor.
+  check('Eski "Uyku ve HRV" bölümü ve HRV uyarı modeli kaldırıldı', !/AthWellness|hrvModel|HRV_ALERTS/.test(html));
   const raw = { id: 'z', wellness: [{ date: K(1), sleep: '4', painMap: { Diz: 'Orta' } }], srpeLog: [{ date: K(1), tpRPE: '7', tpDuration: '60' }], nightLog: [{ date: K(1), bedTime: '23:00', wakeTime: '07:00' }], days: {}, injuries: [] };
   const b = JSON.stringify(raw); const M = A.monBuild(raw, { cfg: C(), today: K(3) }); A.monSummary(M, raw, A.monDN(K(3)), 'pencere');
   check('Mevcut ham veriler hesaplama sonrası değişmiyor', JSON.stringify(raw) === b);
