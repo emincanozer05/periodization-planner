@@ -98,7 +98,7 @@ function loadApp() {
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
     'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'indivSig', 'indivSigRaw', 'indivSigCompact', 'indivHandEdited', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
-    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems', 'tdMetrics', 'TEST_CATALOG', 'CMP_METRICS', 'CMP_METRIC_TEST'];
+    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems', 'tdItems', 'TEST_CATALOG', 'CMP_METRICS', 'CMP_METRIC_TEST'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1703,26 +1703,42 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   }
 
 
-  group('Takım Verileri — metrik listesi test kataloğuyla güncel');
+  group('Takım Verileri — test listesi test kataloğuyla güncel');
   {
-    const td = A.tdMetrics();
+    const items = A.tdItems();
     const src = id => A.CMP_METRIC_TEST[id];
     const cat = id => A.TEST_CATALOG.find(c => c.id === id);
+    const ids = A.CMP_METRICS.map(m => m.id);
     check('her karşılaştırma metriğinin kaynak testi katalogda var',
       A.CMP_METRICS.every(m => cat(src(m.id))), A.CMP_METRICS.filter(m => !cat(src(m.id))).map(m => m.id).join(','));
-    const ids = A.CMP_METRICS.map(m => m.id);
     check('karşılaştırma metriklerinde aynı id iki kez yok', new Set(ids).size === ids.length,
       ids.filter((x, i) => ids.indexOf(x) !== i).join(','));
-    check('Takım Verileri: FMS metriği yok',
-      td.every(m => !/fms/i.test(m.id + ' ' + m.tr + ' ' + src(m.id))), td.map(m => m.id).join(','));
-    check('Takım Verileri: emekliye ayrılmış testten metrik yok (ASLR, OHS)',
-      td.every(m => !cat(src(m.id)).retired) && !td.some(m => ['aslrR', 'aslrL', 'ohs'].includes(m.id)));
+    check('Takım Verileri: satır id\'leri tekil', new Set(items.map(x => x.id)).size === items.length);
+    check('Takım Verileri: FMS yok',
+      items.every(x => !/fms/i.test(x.id + ' ' + x.tr + ' ' + x.test)), items.map(x => x.id).join(','));
+    check('Takım Verileri: emekliye ayrılmış testten satır yok (ASLR, OHS)',
+      items.every(x => !cat(x.test).retired));
     /* Kataloğa sayısal bir test eklenip metriği yazılmazsa burada kırmızı olur. Ölçüsü sayı
-       olmayan (fotoğraf, +/− bulgu) ya da antropometrik testler bilerek dışarıda. */
-    const NO_SCORE = ['anthro', 'circ', 'posture', 'thomas'];
+       olmayan (fotoğraf, +/− bulgu) testler bilerek dışarıda. */
+    const NO_SCORE = ['circ', 'posture', 'thomas'];
     const missing = A.TEST_CATALOG.filter(c => !c.retired && !/^fms/.test(c.id) && !NO_SCORE.includes(c.id)
-      && !td.some(m => src(m.id) === c.id)).map(c => c.id);
-    check('Takım Verileri: katalogdaki her güncel sayısal testin en az bir metriği var', !missing.length, missing.join(','));
+      && !items.some(x => x.test === c.id)).map(c => c.id);
+    check('Takım Verileri: katalogdaki her güncel sayısal test listede', !missing.length, missing.join(','));
+    const test = items.filter(x => x.g !== 'anthro').map(x => x.test);
+    check('Takım Verileri: her test (antropometri dışında) tek satır', new Set(test).size === test.length, test.join(','));
+    const anthro = items.filter(x => x.g === 'anthro').map(x => x.id);
+    check('Takım Verileri: antropometri ölçü ölçü listede (boy, kilo, kulaç…)',
+      ['t_height', 't_weight', 't_wingspan', 't_bodyFat', 't_sitHt'].every(id => anthro.includes(id)), anthro.join(','));
+    const lcmj = items.find(x => x.test === 'lateralCmj');
+    check('Lateral CMJ tek satır: ana değer sağ-sol ortalaması, parçalar R / L / fark',
+      lcmj && lcmj.tr === 'Lateral CMJ' && lcmj.get({ lateralCmj: { right: '40', left: '44' } }) === 42
+      && lcmj.parts.map(p => p.m.id).join() === 'lcjR,lcjL,lcjD');
+    const spr = items.find(x => x.test === 'sprint');
+    const run = { sprintSplits: { t5: '1.10', t10: '1.90' }, sprint20m: { time: '3.20' } };
+    check('20m Sprint tek satır: ana değer 0-20 m, parçalar 0-5 / 0-10 / 0-20 m',
+      spr && spr.dir === 'lo' && spr.get(run) === 3.2 && spr.parts.map(p => p.m.get(run)).join() === '1.1,1.9,3.2');
+    const crun = items.find(x => x.test === 'curvedRun');
+    check('Curved Run listede: ana değer iyi taraf', crun && crun.get({ curvedRun: { right: '4.2', left: '4.0' } }) === 4);
   }
 
   group('Yeni — PHV (Mirwald 2002 maturity offset)');
