@@ -16,9 +16,16 @@
      5) Karşılaştırma tablosu (CompareAthletes) — açılır.
    Metrikler arası toplamlarda % ortalaması değil GELİŞEN ORANI kullanılır: 3 üzerinden
    puanlanan bir test (2 → 3 = +%50) ya da sıfıra yakın bir fark metriği yüzdeleri
-   ortalamada şişirir; "kaç karşılaştırmada gelişti" her metrikte aynı anlama gelir. */
-const TD_FMS={id:'fmsTotal',g:'mob',tr:'FMS Toplam',en:'FMS Total',u:'/21',dir:'hi',st:'FMS',se:'FMS',
-  get:t=>{const f=fmsCalc(t.fms);return f.n?f.total:null;}};
+   ortalamada şişirir; "kaç karşılaştırmada gelişti" her metrikte aynı anlama gelir.
+   Metrik listesi test kataloğundan okunur (tdMetrics): yalnızca katalogda GÜNCEL olan bir
+   testten gelen, yönü belli metrikler girer. Kataloğa yeni test eklenip CMP_METRICS'e metriği
+   yazılınca burada kendiliğinden görünür; katalogda emekliye ayrılan test (eski ASLR, OHS,
+   tek parça FMS) çıkar. FMS skorları bu ekrana hiç alınmaz (ne haritada, ne metrik listesinde,
+   ne başlık/kategori toplamlarında). */
+function tdMetrics(){
+  const live=new Set(TEST_CATALOG.filter(c=>!c.retired&&!/^fms/.test(c.id)).map(c=>c.id));
+  return CMP_METRICS.filter(m=>m.dir&&m.g!=='anthro'&&live.has(CMP_METRIC_TEST[m.id]));
+}
 const tdVal=(m,t)=>{try{const v=m.get(t);return v==null||!isFinite(v)?null:v;}catch(e){return null;}};
 /* Bir sporcunun bu metrikteki tarihli değerleri, eskiden yeniye. */
 function tdSeries(ath,m){
@@ -49,7 +56,7 @@ function TeamData({athletes,setup,customTests,Lx}){
   const roster=useMemo(()=>[...athletes].sort(byAthleteName),[athletes]);
   /* Bütün model tek yerde: her metrikte her sporcunun serisi, ilk/son değeri ve gelişimi. */
   const model=useMemo(()=>{
-    const M=[TD_FMS,...CMP_METRICS.filter(m=>m.dir&&m.g!=='anthro')].map(m=>{
+    const M=tdMetrics().map(m=>{
       const per=roster.map(a=>{const s=tdSeries(a,m);return{a,s,g:tdGain(s,m.dir),first:s[0]||null,last:s[s.length-1]||null};}).filter(r=>r.s.length);
       const gs=per.filter(r=>r.g!=null);
       return{m,per,by:new Map(per.map(r=>[r.a.id,r])),n:per.length,cmp:gs.length,up:gs.filter(r=>r.g>0).length,dn:gs.filter(r=>r.g<0).length,
