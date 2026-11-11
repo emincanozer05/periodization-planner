@@ -9886,6 +9886,14 @@ td.td-c.none{color:var(--border2)}
 .ev2-card-acts .btn{width:100%;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev2-lrow-acts{flex:none;display:flex;gap:6px}
 @media (max-width:640px){.ev2-lrow-acts{flex-direction:column}}
+
+/* ---- kart başlığında kırmızı ✕: testi kayıttan çıkarır (onaylı) ---- */
+.tcard-x{flex:none;margin-left:2px;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;
+  font:700 13px/1 'Space Grotesk',sans-serif;color:var(--red,#e5322d);background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;
+  transition:background-color .15s,border-color .15s,color .15s}
+.tcard-x:hover,.tcard-x:focus-visible{background:var(--red,#e5322d);border-color:var(--red,#e5322d);color:#fff;outline:none}
+.tcard-x:active{transform:scale(.94)}
+.tcard-hd .fmsl-print+.fms-hd-logo+.tcard-x{margin-left:6px}
 /* ═══════════════════════════════════════════════════════════════════════════
    ATLETİK GELİŞİM RAPORU — sayfa (`dr-*`). Koyu, ışıklı başlık bandı (her iki temada
    koyu kalır: ızgara deseni + yavaş parıltı, sporcu fotoğrafı, gelişim halkası, dört sayı);
@@ -28194,7 +28202,14 @@ function MkPM({value,onChange,auto,label}){
 /* ---- One FMS movement as its own card. It edits that movement's lines of the shared `fms`
    record — the score, its clearing / mobility lines, the comment or findings — and shows the
    final score and the running total of the whole screen. ---- */
-function FmsPartCard({item,test,ath,onUpdate}){
+/* Kart başlığındaki kırmızı ✕: testi bu kayıttan çıkarır (onayı üst bileşen sorar). */
+function MkRemove({onRemove,name}){
+  if(!onRemove)return null;
+  const t=L('Bu testi kayıttan sil','Remove this test from the record');
+  return(<button type="button" className="tcard-x" title={t} aria-label={t+': '+name} onClick={onRemove}>✕</button>);
+}
+
+function FmsPartCard({item,test,ath,onUpdate,onRemove}){
   const f=test.fms||{};
   const c=fmsCalc(f);
   const it=c.items.find(i=>i.id===item.id)||{};
@@ -28223,6 +28238,7 @@ function FmsPartCard({item,test,ath,onUpdate}){
       <img className="tcard-fmslogo" src={FMS_LOGO_SQ} alt="FMS"/>
       <div className="tcard-title">{item.en}</div>
       <div className="tcard-tag">FMS</div>
+      <MkRemove onRemove={onRemove} name={item.en}/>
     </div>
     <div className="tcard-col">
       <div className="fmsc">
@@ -28289,7 +28305,7 @@ function SprintCard({hd,test,onUpdate,ath,obsVal,setObs}){
   </div>);
 }
 
-function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
+function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
   const u=(k,v)=>onUpdate({[k]:v});
   // Merged into the test as it is when the value lands: photos arrive after their upload,
   // and merging into the closed-over `test` dropped the slots filled in the meantime.
@@ -28305,6 +28321,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
     <div className="tcard-badge">{String(index).padStart(2,'0')}</div>
     <div className="tcard-title">{name}</div>
     {tag&&<div className="tcard-tag">{tag}</div>}
+    <MkRemove onRemove={onRemove} name={name}/>
   </div>);
 
   if(id==='circ'){
@@ -28386,6 +28403,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
         <button type="button" className="btn xs sec fmsl-print" onClick={()=>{try{printFmsSheet(test,athObj,{note:test.notes});}catch(e){alert(L('Çıktı hatası: ','Print error: ')+e.message);}}}
           title={L('Puan kâğıdı tek A4 sayfada çıkar','The score sheet prints on one A4 page')}>{L('Kâğıdı yazdır','Print sheet')}</button>
         <img className="fms-hd-logo" src="fms-logo.png" alt="FMS"/>
+        <MkRemove onRemove={onRemove} name={name}/>
       </div>
       <div className="tcard-body-wide">
         <FmsSheetCard test={test} ath={athObj} onUpdate={onUpdate}/>
@@ -28400,7 +28418,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 
   if(fmsPartItem(id)){
     const athObj=(athletes||[]).find(a=>a.id===athId)||{id:athId};
-    return<FmsPartCard item={fmsPartItem(id)} test={test} ath={athObj} onUpdate={onUpdate}/>;
+    return<FmsPartCard item={fmsPartItem(id)} test={test} ath={athObj} onUpdate={onUpdate} onRemove={onRemove}/>;
   }
 
   const athObj=(athletes||[]).find(a=>a.id===athId)||null;
@@ -28663,6 +28681,14 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
   const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id))
     .filter(id=>!(ids.includes('fms')&&FMS_PART_IDS.includes(id)));
   const u=(k,v)=>onUpdate({[k]:v});
+  /* Testi kayıttan çıkarır: önce sorar, hemen silmez. Yalnızca bataryadan düşer; girilen değerler
+     kayıtta kalır ve test yeniden eklenirse geri gelir (bkz. 340'taki toggleBattery). */
+  const removeTest=(id,name)=>{
+    if(valid.length<=1){alert(L('Bir testte en az bir ölçüm kalmalı.','A test record must keep at least one measurement.'));return;}
+    if(!confirm(L(`“${name}” testini bu kayıttan silmek istediğinize emin misiniz?\n\nGirilen değerler saklanır; testi sonradan yeniden eklerseniz geri gelir.`,
+      `Are you sure you want to remove “${name}” from this record?\n\nEntered values are kept and come back if you add the test again.`)))return;
+    onUpdate({battery:ids.filter(x=>x!==id&&!(id==='fms'&&FMS_PART_IDS.includes(x)))});
+  };
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   return(<div className="panel" style={{borderColor:'var(--accent)',boxShadow:'0 0 0 1px rgba(0,148,255,.22)'}}>
     <div className="tsess-h">
@@ -28680,7 +28706,7 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
       </div>
     </div>
     <div className="ts-wrap">
-      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu} athletes={athletes} athId={ath.id}/>;})}
+      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);const nm=cu?cu.name:(MK_TITLE[id]||(TEST_CATALOG.find(c=>c.id===id)||{}).name||id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu} athletes={athletes} athId={ath.id} onRemove={()=>removeTest(id,nm)}/>;})}
       {valid.length===0&&<div className="empty-st">{L('Bu bataryada test yok.','No tests in this battery.')}</div>}
       <div className="tcard tcard-wide tcard-summary" style={{'--card-accent':'#0094ff'}}>
         <div className="tcard-hd">
