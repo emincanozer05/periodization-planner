@@ -453,7 +453,10 @@ async function smWrite(fs,wsPath,ops,K){
    dinleyiciler ilk cevabını verdikten sonra çağrılır. info: { fromCache, pending }.
    Dönen işlev bütün dinleyicileri kapatır. */
 var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','measurements','athleteDays','athleteSessions','logs'];
-function smListen(fs,wsPath,onDocs,onError){
+/* teams: üyenin erişebildiği takımlar. ['*'] ya da verilmezse bütün takım koleksiyonu dinlenir;
+   bir liste verilirse (yalnız belirli takımlara erişen antrenör) her takımın belgesi tek tek dinlenir —
+   kurallar bütün koleksiyonun listelenmesini o üyeye izin vermez. */
+function smListen(fs,wsPath,onDocs,onError,teams){
   var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
   var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
   var emit=function(){
@@ -493,16 +496,28 @@ function smListen(fs,wsPath,onDocs,onError){
     delete waiting.ws;emit();
   },err);
   SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
-  listenCol('teams','teams',function(snap){
-    var now={};snap.docs.forEach(function(d){now[d.id]=1;addTeam(d.id);});
-    Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
-  });
+  if(!teams||teams.indexOf('*')>=0){
+    listenCol('teams','teams',function(snap){
+      var now={};snap.docs.forEach(function(d){now[d.id]=1;addTeam(d.id);});
+      Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
+    });
+  }else{
+    teams.forEach(function(tid){
+      var key='td:'+tid;waiting[key]=1;
+      subs[key]=fs.doc(wsPath+'/teams/'+tid).onSnapshot({includeMetadataChanges:true},function(snap){
+        if(snap.exists){docs['teams/'+tid]=strip(snap.data());addTeam(tid);}
+        else{delete docs['teams/'+tid];dropTeam(tid);}
+        delete waiting[key];emit();
+      },err);
+    });
+  }
   return function(){dead=true;Object.keys(subs).forEach(function(k){try{subs[k]();}catch(e){}});};
 }
 
 /* Denetleyici: bir cihazın yeni yapıyla senkronu (React'tan bağımsız; emulator testinde iki cihaz
    olarak çalıştırılır). o: {
      fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
+     teams                              üyenin erişebildiği takımlar (['*'] = hepsi; Faz 5)
      getData()                          ekrandaki güncel veri (nesne kimliği önemli)
      apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
@@ -549,7 +564,7 @@ function smController(o){
     report();
   };
   return{
-    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error);},
+    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error,o.teams);},
     stop:function(){if(off){off();off=null;}},
     changed:flush,                      // ekranda veri değişti
     ready:function(){return docs!==null;},

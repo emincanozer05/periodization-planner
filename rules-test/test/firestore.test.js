@@ -184,3 +184,12 @@ test('hesap silme izi: istemciye tamamen kapalı', async () => {
   await assertFails(getDoc(doc(a, 'account_deletions/x')));
   await assertFails(setDoc(doc(a, 'account_deletions/x'), { at: 1 }));
 });
+
+test('abonelik: kulüp üyesi kulübün aboneliğini okur (Faz 5)', async () => {
+  await seed(async s => {
+    await setDoc(doc(s, 'billing/alice'), { status: 'active' });
+    await setDoc(doc(s, 'workspaces/alice/members/bob'), { uid: 'bob', role: 'coach', teams: ['*'] });
+  });
+  await assertSucceeds(getDoc(doc(db(await as('bob')), 'billing/alice')));
+  await assertFails(getDoc(doc(db(await as('eve')), 'billing/alice')));
+});

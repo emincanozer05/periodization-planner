@@ -46,12 +46,15 @@ const BILLING_FULL={status:'none',full:true,reason:'loading',daysLeft:null};
 /* Oturum açan kullanıcının abonelik durumu. Sunucu çağrısı belgeyi (yoksa) açar; sonra
    belge ve config/billing canlı dinlenir: ödeme gelince sayfa yenilenmeden açılır.
    Ağ ya da sunucu hatasında erişim TAM kalır — kimse bizim hatamız yüzünden kilitlenmez. */
-function useBilling(user){
+/* ws: açık kulüp (Faz 5). Üye, kulüp sahibinin aboneliğiyle çalışır: billing/{ws} okunur.
+   Kendi hesabında (ya da eski düzende) ws = kendi uid'i. */
+function useBilling(user,ws){
   const[billing,setBilling]=useState(null);
   const[cfg,setCfg]=useState({});
   const[ready,setReady]=useState(false);
   const[tick,setTick]=useState(0);
   const uid=user&&user.uid;
+  const bws=ws||uid;
   useEffect(()=>{
     setBilling(null);setCfg({});setReady(false);
     const fb=FB();
@@ -66,7 +69,7 @@ function useBilling(user){
       if(dead)return;
       try{
         const fs=fb.firestore();
-        offs.push(fs.collection('billing').doc(uid).onSnapshot(
+        offs.push(fs.collection('billing').doc(bws).onSnapshot(
           s=>{setBilling(s.exists?s.data():null);setReady(true);},
           e=>{console.warn('billing',e);setReady(true);}));
         offs.push(fs.collection('config').doc('billing').onSnapshot(
@@ -75,7 +78,7 @@ function useBilling(user){
       }catch(e){console.warn('billing listen',e);setReady(true);}
     })();
     return()=>{dead=true;offs.forEach(f=>{try{f();}catch(e){}});};
-  },[uid]);
+  },[uid,bws]);
   // Deneme/dönem gece yarısı biterse açık sekme de görsün: saatte bir yeniden hesapla.
   useEffect(()=>{const id=setInterval(()=>setTick(x=>x+1),3600*1000);return()=>clearInterval(id);},[]);
   const access=useMemo(()=>ready?billingAccess(billing,Date.now(),cfg):BILLING_FULL,[billing,cfg,ready,tick]);

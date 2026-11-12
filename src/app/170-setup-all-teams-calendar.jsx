@@ -260,7 +260,7 @@ function ThemePicker(){
         <span aria-hidden="true">{ic}</span>{lbl}</button>)}
   </div>);
 }
-function Setup({team,updateTeam,data,setData}){
+function Setup({team,updateTeam,data,setData,sync}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
   /* Several setup keys in ONE write. Two `u` calls in a row would each build their
      patch from the same `s`, so the second would drop the first — and the equipment
@@ -447,7 +447,7 @@ function Setup({team,updateTeam,data,setData}){
         behind a tab most of them never opened. It belongs with the rest of the things
         you switch on once and forget. */}
     <div className="panel su-panel"><h2>{L('Bildirimler','Notifications')}</h2>
-      <PushCard/>
+      {CLUB_MEMBER?<p className="su-lead">{L('Wellness bildirimleri kulüp sahibinin hesabına bağlı.','Wellness notifications are tied to the club owner\'s account.')}</p>:<PushCard/>}
     </div>
 
     <div className="panel su-panel"><h2>{L('Görünüm','Appearance')}</h2>
@@ -455,6 +455,8 @@ function Setup({team,updateTeam,data,setData}){
       <ThemePicker/>
     </div>
 
+    {/* Faz 5b: davet, üyeler, roller — yalnızca sahip ve yöneticiye (469-team-access.jsx). */}
+    <TeamAccessPanel sync={sync} data={data}/>
     <div className="panel su-panel"><h2>{L('Gizlilik ve KVKK','Privacy')}</h2>
       <p className="su-lead">{L('Hangi verilerin işlendiği, nereye aktarıldığı ve haklarınla ilgili bilgi.','What data is processed, where it is transferred, and your rights.')}</p>
       <PrivacyLink className="btn sec"/>

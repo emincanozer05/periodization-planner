@@ -157,10 +157,10 @@ test('verinin üst düzey alanları state/root\'ta; çalışma alanı belgesi (s
 });
 
 /* ── denetleyici: iki cihaz, her birinin kendi "ekranı" ─────────────────────── */
-async function deviceCtl(uid = 'alice') {
+async function deviceCtl(uid = 'alice', teams) {
   const screen = { data: null, status: '', notes: 0, errors: [] };
   const ctl = SM.smController({
-    fs: await device(uid), wsPath: WS, K: K(uid),
+    fs: await device(uid), wsPath: WS, K: K(uid), teams,
     getData: () => screen.data, apply: d => { screen.data = d; },
     prep: d => { const c = Object.assign({}, d); delete c.activeTeamId; return c; },
     fromDocs: docs => Object.assign(SM.smFromDocs(docs), { activeTeamId: 'T1' }),
@@ -225,4 +225,49 @@ test('denetleyici: silinmiş seansa düzenleme → not düşer, öbür değişik
   const c = await deviceCtl();
   await c.until(d => d.teams[0].days[D(3)].sessions.length === 0 && d.exercises[1].name === 'RDL 2');
   a.ctl.stop(); c.ctl.stop();
+});
+
+/* ── Faz 5: kulüp üyeleri ────────────────────────────────────────────────── */
+async function twoTeams() {
+  const data = sample();
+  data.teams.push({ id: 'T2', setup: { teamName: 'U16' }, days: {}, weekOverrides: {}, staff: [], seasons: [{ id: 'X' }], activeSeasonId: 'X', seasonData: {},
+    athletes: [{ id: 'u1', name: 'Genç', tests: [], injuries: [], measurements: [], wellness: [], srpeLog: [], nightLog: [], liftLog: [], days: {} }] });
+  await start(data);
+  await seed(async s => {
+    await setDoc(doc(s, 'workspaces/alice/members/bob'), { uid: 'bob', role: 'coach', teams: ['T1'] });
+    await setDoc(doc(s, 'workspaces/alice/members/dave'), { uid: 'dave', role: 'admin', teams: ['*'] });
+  });
+  return data;
+}
+
+test('üye: yalnız T1\'e erişen antrenör yalnız T1\'i görür, düzenler; düzenlemesi sahibe gelir', async () => {
+  await twoTeams();
+  const owner = await deviceCtl('alice'), bob = await deviceCtl('bob', ['T1']);
+  await owner.until(d => d.teams.length === 2);
+  await bob.until(d => d.teams.length === 1 && d.teams[0].id === 'T1');
+  if (bob.screen.errors.length) throw new Error('beklenmeyen hata: ' + bob.screen.errors[0].code);
+  bob.edit(d => { A0(d).position = 'C'; });
+  await owner.until(d => A0(d).position === 'C' && d.teams.length === 2);
+  await bob.ctl.idle();
+  if (bob.screen.errors.length) throw new Error('yazımda hata: ' + bob.screen.errors[0].code);
+  owner.ctl.stop(); bob.ctl.stop();
+});
+
+test('üye: yönetici bütün takımları görür', async () => {
+  await twoTeams();
+  const dave = await deviceCtl('dave', ['*']);
+  await dave.until(d => d.teams.length === 2 && d.teams[1].athletes[0].name === 'Genç');
+  dave.ctl.stop();
+});
+
+test('üye: izleyicinin yazımı reddedilir ve bildirilir, veri değişmez', async () => {
+  await twoTeams();
+  const carol = await deviceCtl('carol', ['*']);
+  await carol.until(d => d.teams.length === 2);
+  carol.edit(d => { d.exercises[0].name = 'izinsiz'; });
+  await carol.ctl.idle();
+  if (!carol.screen.errors.some(e => e.code === 'permission-denied')) throw new Error('reddedilme bildirilmedi');
+  const owner = await deviceCtl('alice');
+  await owner.until(d => d.exercises[0].name === 'Squat');
+  carol.ctl.stop(); owner.ctl.stop();
 });

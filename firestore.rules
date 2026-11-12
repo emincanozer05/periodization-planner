@@ -145,6 +145,8 @@ service cloud.firestore {
     match /billing/{ws} {
       allow read: if request.auth != null && (
         request.auth.uid == ws
+        // Kulübün üyesi (Faz 5): kulüp sahibinin aboneliğiyle çalışır.
+        || exists(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid))
         || (exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
             && get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data.coachUid == ws));
       allow write: if false;

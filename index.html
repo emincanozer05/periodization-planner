@@ -17842,7 +17842,7 @@ function ThemePicker(){
         <span aria-hidden="true">{ic}</span>{lbl}</button>)}
   </div>);
 }
-function Setup({team,updateTeam,data,setData}){
+function Setup({team,updateTeam,data,setData,sync}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
   /* Several setup keys in ONE write. Two `u` calls in a row would each build their
      patch from the same `s`, so the second would drop the first — and the equipment
@@ -18029,7 +18029,7 @@ function Setup({team,updateTeam,data,setData}){
         behind a tab most of them never opened. It belongs with the rest of the things
         you switch on once and forget. */}
     <div className="panel su-panel"><h2>{L('Bildirimler','Notifications')}</h2>
-      <PushCard/>
+      {CLUB_MEMBER?<p className="su-lead">{L('Wellness bildirimleri kulüp sahibinin hesabına bağlı.','Wellness notifications are tied to the club owner\'s account.')}</p>:<PushCard/>}
     </div>
 
     <div className="panel su-panel"><h2>{L('Görünüm','Appearance')}</h2>
@@ -18037,6 +18037,8 @@ function Setup({team,updateTeam,data,setData}){
       <ThemePicker/>
     </div>
 
+    {/* Faz 5b: davet, üyeler, roller — yalnızca sahip ve yöneticiye (469-team-access.jsx). */}
+    <TeamAccessPanel sync={sync} data={data}/>
     <div className="panel su-panel"><h2>{L('Gizlilik ve KVKK','Privacy')}</h2>
       <p className="su-lead">{L('Hangi verilerin işlendiği, nereye aktarıldığı ve haklarınla ilgili bilgi.','What data is processed, where it is transferred, and your rights.')}</p>
       <PrivacyLink className="btn sec"/>
@@ -35274,6 +35276,9 @@ function PolarConnect({ath,teamId}){
   ].filter(Boolean);
   const warn=[link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&polarErrText(link.lastError),
     rl&&rl.err.length>0&&L(`Alınamayan: ${rl.err.join(', ')}`,`Failed: ${rl.err.join(', ')}`)].filter(Boolean);
+  /* Faz 5: Polar bağlantıları kulüp sahibinin hesabına bağlı; başka bir kulübü açan üye yönetemez. */
+  if(CLUB_MEMBER)return(<div className="pl-mini"><label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div style={{fontSize:12,color:'var(--muted)'}}>{L('Polar bağlantılarını kulüp sahibi yönetir.','Polar connections are managed by the club owner.')}</div></div>);
   return(<div className="pl-mini">
     <label>{L('Polar bağlantısı','Polar connection')}</label>
     <div className="pl-mini-box">
@@ -40807,6 +40812,8 @@ function useCloudSync(data,setData){
     }
   };
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
+    /* Faz 5: açık kulüp ve bu kişinin oradaki rolü (yeni yapı etkin değilse ws/role null). */
+    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select},
     sizeReport:()=>syncSizeReport(dataRef.current),
     /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
     preflight:()=>smPreflightReport(dataRef.current),
@@ -40857,45 +40864,74 @@ function useCloudSync(data,setData){
 }
 
 /* =========================================================
-   KAYIT BAZLI SENKRON — UYGULAMA KANCASI (senkron Faz 2b-3)
+   KAYIT BAZLI SENKRON — UYGULAMA KANCASI (senkron Faz 2b-3, Faz 5)
    =========================================================
-   useCloudSync bunu çağırır. Hesap yeni yapıya TAŞINMIŞSA (workspaces/{uid}: schemaVersion 2 ve
-   migrated: true — bu işaretleri yalnızca Faz 3'ün taşıma aracı koyar) veri dinleme ve yazma
-   buradan yapılır; eski senkronun dinleyicisi, yazıcısı, sekme kapanırken boşaltması ve gözcüsü
-   durur. Taşınmamış hesapta (bugün bütün hesaplar) hiçbir şey değişmez: active hep false.
+   useCloudSync bunu çağırır. Yeni yapı iki durumda etkin:
+   • Kendi çalışma alanı: workspaces/{uid} → schemaVersion 2 ve migrated: true (yalnızca Faz 3'ün
+     taşıma aracı koyar). Rol: sahip, bütün takımlar.
+   • Bir kulübe üyelik (Faz 5): users/{uid}/memberships/{ws} (katılırken yazılır) ve
+     workspaces/{ws}/members/{uid} (rol + takımlar). Kulüp de taşınmış olmalı.
+   Kişi birden fazla kulübe üye olabilir; hangisinin açık olduğu cihaza kaydedilir (kulüp seçici).
+   Etkinken eski senkronun dinleyicisi, yazıcısı, boşaltması ve gözcüsü durur. Taşınmamış ve hiçbir
+   kulübe katılmamış hesapta (bugün bütün hesaplar) active hep false: hiçbir şey değişmez.
 
-   Mantık 468-store-map.jsx → smController'da (emulator'de iki cihazla sınanıyor:
-   rules-test/test/store-io.test.js). Burada yalnızca React'e bağlanır.
-
-   Bu parça JSX içermez: sync-test.js 440–460 aralığını düz JavaScript olarak çalıştırır. */
+   Mantık 468-store-map.jsx → smController'da (emulator'de iki cihazla ve üye rolleriyle sınanıyor:
+   rules-test/test/store-io.test.js). Bu parça JSX içermez: sync-test.js 440–460'ı düz JS çalıştırır. */
+const WS_PICK_KEY=uid=>'coachos_ws_'+uid;
 function useStoreV2(o){
   const{user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready}=o;
-  const[active,setActive]=useState(false);
+  const uid=user&&user.uid;
+  const[own,setOwn]=useState(false);                 // kendi çalışma alanı taşınmış mı
+  const[joined,setJoined]=useState([]);              // üye olduğu kulüpler (ws kimlikleri)
+  const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
+  const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
+  const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
   const ctl=useRef(null);
-  // 1) Bu hesap yeni yapıda mı? Sahip kendi çalışma alanı belgesini okuyabilir (yoksa bile).
+  const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
+  // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
-    setActive(false);
-    const fb=FB();if(!fb||!user)return;
-    let fs=null;try{fs=fb.firestore();}catch(e){return;}
-    if(!fs||typeof fs.doc!=='function')return;     // sahte ortam (sync-test) → eski düzen
-    let off=null;
+    setOwn(false);setJoined([]);
+    let p=null;try{p=uid?localStorage.getItem(WS_PICK_KEY(uid)):null;}catch(e){}
+    setPick(p);
+    const fs=fsOf();if(!fs)return;                   // sahte ortam (sync-test) → eski düzen
+    const offs=[];
     try{
-      off=fs.doc('workspaces/'+user.uid).onSnapshot(s=>{
-        const d=s.exists?s.data():null;
-        setActive(!!(d&&d.schemaVersion===2&&d.migrated===true));
-      },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setActive(false);});
-    }catch(e){return;}
-    return()=>{try{off&&off();}catch(e){}};
-  },[user]);
-  // 2) Denetleyici: yeni yapı etkinse dinle ve yaz.
+      offs.push(fs.doc('workspaces/'+uid).onSnapshot(s=>{
+        const d=s.exists?s.data():null;setOwn(!!(d&&d.schemaVersion===2&&d.migrated===true));
+      },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setOwn(false);}));
+      offs.push(fs.collection('users/'+uid+'/memberships').onSnapshot(s=>{
+        setJoined(s.docs.map(d=>d.id).filter(id=>id!==uid));
+      },e=>console.warn('store v2: üyelikler okunamadı',e&&e.code)));
+    }catch(e){}
+    return()=>offs.forEach(f=>{try{f();}catch(e){}});
+  },[uid]);
+  // Açık kulüp: seçim geçerliyse o, değilse kendi çalışma alanı (taşınmışsa), değilse yok.
+  const ws=uid&&(pick&&(pick===uid?own:joined.indexOf(pick)>=0)?pick:(own?uid:null));
+  // 2) açık kulüp başkasınınsa: üyelik (rol, takımlar) ve kulübün taşınmış olması
   useEffect(()=>{
-    if(!active||!user)return;
+    setMember(null);setWsOk(false);
+    if(!ws||ws===uid)return;
+    const fs=fsOf();if(!fs)return;
+    const offs=[];
+    offs.push(fs.doc('workspaces/'+ws+'/members/'+uid).onSnapshot(s=>setMember(s.exists?s.data():null),
+      e=>{console.warn('store v2: üyelik okunamadı',e&&e.code);setMember(null);}));
+    offs.push(fs.doc('workspaces/'+ws).onSnapshot(s=>{const d=s.exists?s.data():null;setWsOk(!!(d&&d.schemaVersion===2&&d.migrated===true));},
+      e=>{console.warn('store v2: kulüp okunamadı',e&&e.code);setWsOk(false);}));
+    return()=>offs.forEach(f=>{try{f();}catch(e){}});
+  },[ws,uid]);
+  const role=!ws?null:ws===uid?'owner':(member&&member.role)||null;
+  const teams=!ws?null:ws===uid?['*']:(member&&Array.isArray(member.teams)?member.teams:null);
+  const active=!!(ws&&role&&teams&&(ws===uid||wsOk));
+  const teamsKey=teams?teams.join('|'):'';
+  // 3) denetleyici
+  useEffect(()=>{
+    if(!active)return;
     const fb=FB();
-    slog('v2: yeni yapı etkin','uid='+user.uid.slice(0,6));
+    slog('v2: yeni yapı etkin','ws='+ws.slice(0,6)+' rol='+role);
     setStatus('syncing');
     const c=smController({
-      fs:fb.firestore(),wsPath:'workspaces/'+user.uid,
-      K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid:user.uid},
+      fs:fb.firestore(),wsPath:'workspaces/'+ws,teams,
+      K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid},
       getData:()=>dataRef.current,
       apply:d=>{dataRef.current=d;setData(d);},
       prep:d=>stripDeviceOnly(d),
@@ -40908,10 +40944,16 @@ function useStoreV2(o){
     });
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};
-  },[active,user]);
-  // 3) Ekrandaki her değişiklik: fark hemen gönderilir (bekletme yok; Firestore yerel önbelleğe anında yazar).
+  },[active,ws,role,teamsKey]);
+  // 4) ekrandaki her değişiklik: fark hemen gönderilir (izleyicinin ekranı zaten salt okunur)
   useEffect(()=>{if(ctl.current&&ctl.current.ready())ctl.current.changed();},[data]);
-  return{active,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  /* Kulüp değiştir: cihaza kaydedilir; ekran yeni kulübün verisini yükleyene kadar boş başlar. */
+  const select=id=>{
+    try{if(id)localStorage.setItem(WS_PICK_KEY(uid),id);else localStorage.removeItem(WS_PICK_KEY(uid));}catch(e){}
+    setPick(id||null);
+  };
+  const clubs=(own?[uid]:[]).concat(joined);
+  return{active,ws,role,teams,clubs,select,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }
 function LoadingScreen(){
   return(
@@ -41501,12 +41543,15 @@ const BILLING_FULL={status:'none',full:true,reason:'loading',daysLeft:null};
 /* Oturum açan kullanıcının abonelik durumu. Sunucu çağrısı belgeyi (yoksa) açar; sonra
    belge ve config/billing canlı dinlenir: ödeme gelince sayfa yenilenmeden açılır.
    Ağ ya da sunucu hatasında erişim TAM kalır — kimse bizim hatamız yüzünden kilitlenmez. */
-function useBilling(user){
+/* ws: açık kulüp (Faz 5). Üye, kulüp sahibinin aboneliğiyle çalışır: billing/{ws} okunur.
+   Kendi hesabında (ya da eski düzende) ws = kendi uid'i. */
+function useBilling(user,ws){
   const[billing,setBilling]=useState(null);
   const[cfg,setCfg]=useState({});
   const[ready,setReady]=useState(false);
   const[tick,setTick]=useState(0);
   const uid=user&&user.uid;
+  const bws=ws||uid;
   useEffect(()=>{
     setBilling(null);setCfg({});setReady(false);
     const fb=FB();
@@ -41521,7 +41566,7 @@ function useBilling(user){
       if(dead)return;
       try{
         const fs=fb.firestore();
-        offs.push(fs.collection('billing').doc(uid).onSnapshot(
+        offs.push(fs.collection('billing').doc(bws).onSnapshot(
           s=>{setBilling(s.exists?s.data():null);setReady(true);},
           e=>{console.warn('billing',e);setReady(true);}));
         offs.push(fs.collection('config').doc('billing').onSnapshot(
@@ -41530,7 +41575,7 @@ function useBilling(user){
       }catch(e){console.warn('billing listen',e);setReady(true);}
     })();
     return()=>{dead=true;offs.forEach(f=>{try{f();}catch(e){}});};
-  },[uid]);
+  },[uid,bws]);
   // Deneme/dönem gece yarısı biterse açık sekme de görsün: saatte bir yeniden hesapla.
   useEffect(()=>{const id=setInterval(()=>setTick(x=>x+1),3600*1000);return()=>clearInterval(id);},[]);
   const access=useMemo(()=>ready?billingAccess(billing,Date.now(),cfg):BILLING_FULL,[billing,cfg,ready,tick]);
@@ -41671,6 +41716,8 @@ function DeleteAccountModal({user,data,onClose}){
         <li>{L('Check-in ve antrenman günlüğü linkleri ve gelen yanıtlar; ekip üyelerinin bağlantıları','Check-in and training-log links and their answers; staff connections')}</li>
         <li>{L('Polar bağlantıları (Polar tarafında da kaldırılır) ve toplanan Polar verisi','Polar connections (removed on Polar\'s side too) and the collected Polar data')}</li>
         <li>{L('Yüklenen fotoğraflar ve dosyalar, abonelik kaydı, giriş hesabın','Uploaded photos and files, the subscription record, your sign-in account')}</li>
+        <li><b>{L('Bir kulübün sahibiysen kulübün bütün verisi de silinir ve davet ettiğin üyeler erişimini kaybeder.',
+          'If you own a club, all of its data is deleted too and the members you invited lose access.')}</b></li>
       </ul>
       <p style={{lineHeight:1.6}}>
         {L('Önce verilerini indirmeni öneririz:','We suggest downloading your data first:')}{' '}
@@ -42164,7 +42211,10 @@ async function smWrite(fs,wsPath,ops,K){
    dinleyiciler ilk cevabını verdikten sonra çağrılır. info: { fromCache, pending }.
    Dönen işlev bütün dinleyicileri kapatır. */
 var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','measurements','athleteDays','athleteSessions','logs'];
-function smListen(fs,wsPath,onDocs,onError){
+/* teams: üyenin erişebildiği takımlar. ['*'] ya da verilmezse bütün takım koleksiyonu dinlenir;
+   bir liste verilirse (yalnız belirli takımlara erişen antrenör) her takımın belgesi tek tek dinlenir —
+   kurallar bütün koleksiyonun listelenmesini o üyeye izin vermez. */
+function smListen(fs,wsPath,onDocs,onError,teams){
   var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
   var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
   var emit=function(){
@@ -42204,16 +42254,28 @@ function smListen(fs,wsPath,onDocs,onError){
     delete waiting.ws;emit();
   },err);
   SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
-  listenCol('teams','teams',function(snap){
-    var now={};snap.docs.forEach(function(d){now[d.id]=1;addTeam(d.id);});
-    Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
-  });
+  if(!teams||teams.indexOf('*')>=0){
+    listenCol('teams','teams',function(snap){
+      var now={};snap.docs.forEach(function(d){now[d.id]=1;addTeam(d.id);});
+      Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
+    });
+  }else{
+    teams.forEach(function(tid){
+      var key='td:'+tid;waiting[key]=1;
+      subs[key]=fs.doc(wsPath+'/teams/'+tid).onSnapshot({includeMetadataChanges:true},function(snap){
+        if(snap.exists){docs['teams/'+tid]=strip(snap.data());addTeam(tid);}
+        else{delete docs['teams/'+tid];dropTeam(tid);}
+        delete waiting[key];emit();
+      },err);
+    });
+  }
   return function(){dead=true;Object.keys(subs).forEach(function(k){try{subs[k]();}catch(e){}});};
 }
 
 /* Denetleyici: bir cihazın yeni yapıyla senkronu (React'tan bağımsız; emulator testinde iki cihaz
    olarak çalıştırılır). o: {
      fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
+     teams                              üyenin erişebildiği takımlar (['*'] = hepsi; Faz 5)
      getData()                          ekrandaki güncel veri (nesne kimliği önemli)
      apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
@@ -42260,7 +42322,7 @@ function smController(o){
     report();
   };
   return{
-    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error);},
+    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error,o.teams);},
     stop:function(){if(off){off();off=null;}},
     changed:flush,                      // ekranda veri değişti
     ready:function(){return docs!==null;},
@@ -42340,6 +42402,171 @@ function smPreflightReport(state){
   const byKind={};c.issues.forEach(i=>{byKind[i.kind]=(byKind[i.kind]||0)+1;});
   out.push('','Sorunlar: '+(c.issues.length?Object.entries(byKind).map(([k,n])=>k+' ×'+n).join(', '):'yok'));
   return out.join('\n');
+}
+/* =========================================================
+   EKİP VE ERİŞİM (senkron Faz 5b)
+   =========================================================
+   • TeamAccessPanel — Ayarlar'da, yalnızca sahip ve yöneticiye: davet linki (rol, takımlar, 7 gün),
+     üye listesi (rol / takım değiştir, çıkar), kulüp adı. Kurallar: firestore.rules → workspaces/**.
+   • useJoinInvite — adres ?join=<kulüp>.<davet> ile açılınca: giriş yapılmışsa onay sorar; kişinin
+     kendi üyeliği davetteki rol ve takımlarla açılır, davet aynı batch'te kullanıldı olarak işaretlenir
+     ve users/{uid}/memberships/{kulüp} yazılır; uygulama o kulübe geçer.
+   • ClubSwitcher — birden fazla kulübe üye olan için menünün altındaki seçici.
+   Hepsi yalnızca yeni yapıda (taşınmış hesap / kulüp) çalışır. */
+
+/* Başka birinin kulübünü açan üye mi (App her çizimde ayarlar). Sahibe bağlı özellikler (check-in,
+   Polar, uyarılar, bildirim) bu durumda gizlenir: hepsi bugün kişinin kendi kimliğini koç sayıyor. */
+let CLUB_MEMBER=false;
+
+const TA_ROLES=()=>[
+  {v:'admin',l:L('Yönetici','Admin'),d:L('Her şeyi düzenler, üye davet eder ve yönetir','Edits everything, invites and manages members')},
+  {v:'coach',l:L('Antrenör','Coach'),d:L('Erişimi olan takımlarda her şeyi düzenler','Edits everything in the teams they can access')},
+  {v:'viewer',l:L('İzleyici','Viewer'),d:L('Yalnızca görür','View only')},
+];
+const taRoleLabel=r=>r==='owner'?L('Sahip','Owner'):(TA_ROLES().find(x=>x.v===r)||{}).l||r;
+const taToken=()=>{const a=new Uint8Array(18);crypto.getRandomValues(a);return Array.from(a,b=>b.toString(36).padStart(2,'0')).join('').slice(0,28);};
+
+function TeamAccessPanel({sync,data}){
+  const v2=sync&&sync.v2;
+  const fb=FB();
+  const user=sync&&sync.user;
+  const canManage=!!(v2&&v2.active&&(v2.role==='owner'||v2.role==='admin'));
+  const[members,setMembers]=useState([]);
+  const[clubName,setClubName]=useState('');
+  const[role,setRole]=useState('coach');
+  const[teamsSel,setTeamsSel]=useState(['*']);
+  const[link,setLink]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const ws=v2&&v2.ws;
+  useEffect(()=>{
+    if(!canManage||!fb||!ws)return;
+    const fs=fb.firestore();
+    const a=fs.collection('workspaces/'+ws+'/members').onSnapshot(s=>setMembers(s.docs.map(d=>({id:d.id,...d.data()}))),e=>setErr(String(e.code||e)));
+    const b=fs.doc('workspaces/'+ws).onSnapshot(s=>setClubName((s.exists&&s.data().name)||''),()=>{});
+    return()=>{a();b();};
+  },[canManage,ws]);
+  if(!canManage)return null;
+  const teams=(data&&data.teams)||[];
+  const teamName=id=>id==='*'?L('Bütün takımlar','All teams'):((teams.find(t=>t.id===id)||{}).setup||{}).teamName||id;
+  const toggleTeam=id=>setTeamsSel(cur=>id==='*'?['*']:(cur.includes(id)?cur.filter(x=>x!==id):cur.filter(x=>x!=='*').concat([id])));
+  const fs=fb.firestore();
+  const invite=async()=>{
+    setErr('');setBusy(true);
+    try{
+      const t=taToken(),sel=teamsSel.length?teamsSel:['*'];
+      await fs.doc('workspaces/'+ws+'/invites/'+t).set({role,teams:sel,usedBy:null,createdBy:user.uid,
+        expiresAt:firebase.firestore.Timestamp.fromMillis(Date.now()+7*864e5),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      setLink(location.origin+location.pathname+'?join='+ws+'.'+t);
+    }catch(e){setErr(String(e.code||e.message||e));}
+    setBusy(false);
+  };
+  const update=(m,patch)=>fs.doc('workspaces/'+ws+'/members/'+m.id).update(patch).catch(e=>setErr(String(e.code||e)));
+  const remove=m=>{if(confirm(L(`${m.name||m.email||m.id} kulüpten çıkarılsın mı?`,`Remove ${m.name||m.email||m.id} from the club?`)))
+    fs.doc('workspaces/'+ws+'/members/'+m.id).delete().catch(e=>setErr(String(e.code||e)));};
+  return(<div className="panel su-panel" data-panel="team-access"><h2>{L('Ekip ve erişim','Team & access')}</h2>
+    <p className="su-lead">{L('Ekibin her üyesi kendi hesabıyla girer. Davet linki 7 gün geçerli ve tek kullanımlık.',
+      'Every member signs in with their own account. Invite links are valid for 7 days and single-use.')}</p>
+    {v2.role==='owner'&&<div style={{marginBottom:12}}>
+      <label htmlFor="ta-club">{L('Kulüp adı','Club name')}</label>
+      <input id="ta-club" defaultValue={clubName} key={clubName} onBlur={e=>{const v=e.target.value.trim();if(v!==clubName)fs.doc('workspaces/'+ws).update({name:v}).catch(x=>setErr(String(x.code||x)));}}/>
+    </div>}
+    <div style={{display:'grid',gap:8,gridTemplateColumns:'minmax(0,1fr)'}}>
+      <label htmlFor="ta-role">{L('Rol','Role')}</label>
+      <select id="ta-role" value={role} onChange={e=>setRole(e.target.value)}>
+        {TA_ROLES().map(r=><option key={r.v} value={r.v}>{r.l} — {r.d}</option>)}
+      </select>
+      <div>
+        <div style={{fontSize:12,color:'var(--muted)',marginBottom:4}}>{L('Erişeceği takımlar','Teams they can access')}</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          {['*'].concat(teams.map(t=>t.id)).map(id=><button key={id} type="button" className={'btn sm'+(teamsSel.includes(id)?'':' sec')}
+            aria-pressed={teamsSel.includes(id)} onClick={()=>toggleTeam(id)}>{teamName(id)}</button>)}
+        </div>
+      </div>
+      <button type="button" className="btn" disabled={busy} onClick={invite}>{L('Davet linki oluştur','Create invite link')}</button>
+      {link&&<div className="ta-link" style={{display:'flex',gap:6}}>
+        <input readOnly value={link} onFocus={e=>e.target.select()} aria-label={L('Davet linki','Invite link')}/>
+        <button type="button" className="btn sec sm" onClick={()=>{try{navigator.clipboard.writeText(link);}catch(e){}}}>{L('Kopyala','Copy')}</button>
+      </div>}
+    </div>
+    <div style={{marginTop:16,fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.4}}>{L('Üyeler','Members')}</div>
+    <div role="list">
+      {members.sort((a,b)=>(a.role==='owner'?-1:b.role==='owner'?1:0)).map(m=>{
+        const locked=m.role==='owner'||m.id===user.uid;
+        return(<div role="listitem" key={m.id} className="ta-member" style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center',padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+          <div style={{flex:'1 1 180px',minWidth:0}}>
+            <div style={{fontWeight:600}}>{m.name||m.email||(m.role==='owner'?L('Sahip','Owner'):m.id.slice(0,8))}</div>
+            <div style={{fontSize:12,color:'var(--muted)'}}>{(m.teams||[]).map(teamName).join(', ')}</div>
+          </div>
+          {locked?<span style={{fontSize:12}}>{taRoleLabel(m.role)}</span>
+            :<select value={m.role} aria-label={L('Rol','Role')} onChange={e=>update(m,{role:e.target.value})}>
+              {TA_ROLES().map(r=><option key={r.v} value={r.v}>{r.l}</option>)}</select>}
+          {!locked&&<button type="button" className="btn sec sm" onClick={()=>remove(m)}>{L('Çıkar','Remove')}</button>}
+        </div>);
+      })}
+    </div>
+    {err&&<div role="alert" style={{marginTop:8,color:'var(--red)',fontSize:13}}>{err}</div>}
+  </div>);
+}
+
+/* ?join=<kulüp>.<davet> */
+function useJoinInvite(sync){
+  const user=sync&&sync.user;
+  useEffect(()=>{
+    if(!user)return;
+    let q='';try{q=new URLSearchParams(location.search).get('join')||'';}catch(e){}
+    const m=/^([A-Za-z0-9_-]{1,128})\.([A-Za-z0-9]{8,64})$/.exec(q);
+    if(!m)return;
+    const ws=m[1],tok=m[2];
+    const clear=()=>{try{const u=new URL(location.href);u.searchParams.delete('join');history.replaceState(null,'',u.toString());}catch(e){}};
+    (async()=>{
+      const fs=FB().firestore();
+      try{
+        if(ws===user.uid){clear();return;}
+        const inv=await fs.doc('workspaces/'+ws+'/invites/'+tok).get();
+        const d=inv.exists?inv.data():null;
+        if(!d||d.usedBy||!(d.expiresAt&&d.expiresAt.toMillis()>Date.now())){
+          alert(L('Bu davet linki geçersiz, kullanılmış ya da süresi dolmuş. Kulüp yöneticisinden yeni bir link iste.',
+            'This invite link is invalid, used or expired. Ask the club admin for a new one.'));clear();return;}
+        if(!confirm(L(`Bu kulübe ${taRoleLabel(d.role)} olarak katılmak istiyor musun?`,`Join this club as ${taRoleLabel(d.role)}?`))){clear();return;}
+        const b=fs.batch();
+        b.set(fs.doc('workspaces/'+ws+'/members/'+user.uid),{uid:user.uid,role:d.role,teams:d.teams,invite:tok,
+          name:String(user.displayName||''),email:String(user.email||''),joinedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        b.update(fs.doc('workspaces/'+ws+'/invites/'+tok),{usedBy:user.uid,usedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        b.set(fs.doc('users/'+user.uid+'/memberships/'+ws),{ws,at:firebase.firestore.FieldValue.serverTimestamp()});
+        await b.commit();
+        slog('kulüp: davetle katıldı','ws='+ws.slice(0,6)+' rol='+d.role);
+        clear();
+        if(sync.v2&&sync.v2.select)sync.v2.select(ws);
+      }catch(e){
+        console.warn('join',e);
+        alert(L('Kulübe katılınamadı: ','Could not join the club: ')+String(e.code||e.message||e));clear();
+      }
+    })();
+  },[user&&user.uid]);
+}
+
+/* Birden fazla kulüp ya da kendi (eski düzendeki) hesabı + bir kulüp varsa: menünün altında seçici. */
+function ClubSwitcher({sync}){
+  const v2=sync&&sync.v2,user=sync&&sync.user;
+  const[names,setNames]=useState({});
+  const clubs=(v2&&v2.clubs)||[];
+  const others=clubs.filter(id=>id!==(user&&user.uid));
+  useEffect(()=>{
+    if(!others.length)return;
+    const fs=FB().firestore();
+    const offs=others.map(id=>fs.doc('workspaces/'+id).onSnapshot(s=>setNames(n=>({...n,[id]:(s.exists&&s.data().name)||''})),()=>{}));
+    return()=>offs.forEach(f=>f());
+  },[others.join('|')]);
+  if(!user||!others.length)return null;
+  const cur=(v2.active&&v2.ws)||'';
+  return(<div className="club-switch" style={{padding:'6px 12px'}}>
+    <label htmlFor="club-sel" style={{fontSize:11,color:'var(--muted)'}}>{L('Kulüp','Club')}</label>
+    <select id="club-sel" value={cur===user.uid?'':cur} onChange={e=>v2.select(e.target.value||null)} style={{width:'100%'}}>
+      <option value="">{L('Kendi hesabım','My own account')}</option>
+      {others.map(id=><option key={id} value={id}>{names[id]||L('Kulüp','Club')+' · '+id.slice(0,6)}</option>)}
+    </select>
+  </div>);
 }
 /* =========================================================
    EXERCISES LIBRARY
@@ -53019,11 +53246,16 @@ function App(){
   const[data,setDataRaw]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   // Senkron buluttan geleni HER ZAMAN yazar; abonelik kapısı yalnızca ekrandan gelen düzenlemelerde.
   const sync=useCloudSync(data,setDataRaw);
-  const bill=useBilling(sync.user);
+  const bill=useBilling(sync.user,sync.v2&&sync.v2.ws);
   usePrivacyAck(sync.user);   // aydınlatma metninin hangi sürümü gösterildi (467-account.jsx)
+  useJoinInvite(sync);        // ?join=<kulüp>.<davet> (469-team-access.jsx)
+  /* Başka birinin kulübünü açan üye: sahibe bağlı özellikler gizlenir (469 → CLUB_MEMBER). */
+  const clubMember=!!(sync.v2&&sync.v2.active&&sync.user&&sync.v2.ws!==sync.user.uid);
+  CLUB_MEMBER=clubMember;
   /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
      setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
-  const readOnly=!bill.access.full;
+  /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
+  const readOnly=!bill.access.full||(sync.v2&&sync.v2.role==='viewer');
   const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);
@@ -53275,7 +53507,7 @@ function App(){
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
       {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
-      {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
+      ...(clubMember?[]:[{id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin}]),
     ]},
     /* Tryouts is deliberately its own group rather than another Workspace row: every
        other tab on this sidebar is a view of the team in the picker above, and this one
@@ -53347,6 +53579,7 @@ function App(){
       </nav>
       {/* The signed-in account, pinned to the foot of the menu: who is working here and
           the one way out. */}
+      <ClubSwitcher sync={sync}/>
       {sync.user&&(()=>{const u=sync.user,nm=String(u.displayName||'').trim(),em=String(u.email||'').trim();
         const label=nm||em.split('@')[0]||L('Hesap','Account');
         return<div className="sb-account">
@@ -53368,7 +53601,7 @@ function App(){
         candidate and filters to a team switch it has nothing to do with. */}
     <main key={view+(view==='tryouts'||view==='allcal'?'':team.id)}>
       <BillingBanner bill={bill}/>
-      {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
+      {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData} sync={sync}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
       {view==='calendar'&&<><PageHero title={L('Takvim','Calendar')}
         sub={L(`Sezonun günleri · ${team.setup.teamName}`,`The season, day by day · ${team.setup.teamName}`)}
@@ -53406,18 +53639,18 @@ function App(){
     <datalist id="bp-lib-names">{ballNameOptions}</datalist>
     {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
         olsun dinlenir ve günlüğe işlenir. */}
-    <CheckinInbox sync={sync} setData={setData}/>
+    {!clubMember&&<CheckinInbox sync={sync} setData={setData}/>}
     {/* Antrenman günlüğü (lift.html): sporcunun kg/tekrar girişleri dinlenir; açıksa takvimdeki
         programlar sporcuya otomatik yayımlanır. */}
-    <LiftInbox sync={sync} setData={setData}/>
-    <LiftSync team={team} sync={sync}/>
+    {!clubMember&&<LiftInbox sync={sync} setData={setData}/>}
+    {!clubMember&&<LiftSync team={team} sync={sync}/>}
     {/* Aynı sebeple burada: sunucunun uyarıyı kime göndereceğini bildiği kadro
         özeti, koç hangi ekranda olursa olsun — ve HANGİ TAKIMA bakıyor olursa
         olsun — güncel tutulur. */}
-    <AlertRosterSync teams={data.teams} sync={sync}/>
+    {!clubMember&&<AlertRosterSync teams={data.teams} sync={sync}/>}
     {/* Cihaz kaydının tazeliği, uygulama açıkken gelen bildirim ve bildirime
         tıklayınca açılacak ekran — üçü de ekrandan bağımsız. */}
-    <PushBridge sync={sync} openAlert={openAlert}/>
+    {!clubMember&&<PushBridge sync={sync} openAlert={openAlert}/>}
   </div>);
 }
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a

@@ -194,6 +194,9 @@ function PolarConnect({ath,teamId}){
   ].filter(Boolean);
   const warn=[link&&link.lastError&&(status!=='active'||link.lastError.code==='SYNC_PARTIAL')&&polarErrText(link.lastError),
     rl&&rl.err.length>0&&L(`Alınamayan: ${rl.err.join(', ')}`,`Failed: ${rl.err.join(', ')}`)].filter(Boolean);
+  /* Faz 5: Polar bağlantıları kulüp sahibinin hesabına bağlı; başka bir kulübü açan üye yönetemez. */
+  if(CLUB_MEMBER)return(<div className="pl-mini"><label>{L('Polar bağlantısı','Polar connection')}</label>
+    <div style={{fontSize:12,color:'var(--muted)'}}>{L('Polar bağlantılarını kulüp sahibi yönetir.','Polar connections are managed by the club owner.')}</div></div>);
   return(<div className="pl-mini">
     <label>{L('Polar bağlantısı','Polar connection')}</label>
     <div className="pl-mini-box">
