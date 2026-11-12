@@ -1,6 +1,7 @@
 # Senkron Geçiş Planı — tek JSON'dan kayıt bazlı, çok kullanıcılı yapıya
 
-> **Durum:** Taslak, onay bekliyor · **Son güncelleme:** 2026-11-08
+> **Durum:** Onaylandı (K1–K7, K10) · **Son güncelleme:** 2026-11-12
+> Üst plan: [`yayina-hazirlik-plani.md`](yayina-hazirlik-plani.md) (abonelik ve KVKK ile birlikte sıra).
 > Bu dosya işin tek kaynağıdır. Her oturumda önce bu dosya okunur; her PR sonunda
 > en alttaki **İlerleme** bölümü güncellenir. Kararlar **Kararlar** bölümüne yazılır.
 
@@ -398,16 +399,16 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 
 | # | Soru | Öneri | Karar |
 |---|---|---|---|
-| K1 | Paylaşım birimi ne olsun? | Çalışma alanı (kulüp/hesap); üyeye takım bazında erişim verilebilir | ⏳ |
-| K2 | Hangi roller lazım? | Sahip, Yönetici, Antrenör (düzenler), İzleyici (yalnız görür) | ⏳ |
-| K3 | Kimlikler korunsun mu, çalışma alanı = eski uid olsun mu? | Evet (entegrasyonlar değişmeden çalışır) | ⏳ |
-| K4 | Aynı hesaba şifre paylaşarak girmek devam etsin mi? | Hayır: herkes kendi hesabı + davet. Geçiş döneminde eski yöntem de çalışır | ⏳ |
-| K5 | Egzersiz kütüphanesi, şablonlar, test tanımları kulüp genelinde ortak mı, kişisel mi? | Kulüp genelinde ortak | ⏳ |
-| K6 | Aynı alanı iki kişi aynı anda değiştirirse "son yazan kazanır" kabul mü? | Evet | ⏳ |
-| K7 | "Kim neyi değiştirdi" geçmişi ilk sürümde gerekli mi? | İlk sürümde yalnızca `updatedBy/At`; tam geçmiş sonra | ⏳ |
+| K1 | Paylaşım birimi ne olsun? | Çalışma alanı (kulüp/hesap); üyeye takım bazında erişim verilebilir | ✅ 2026-11-12: öneri kabul |
+| K2 | Hangi roller lazım? | Sahip, Yönetici, Antrenör (düzenler), İzleyici (yalnız görür) | ✅ 2026-11-12: öneri kabul |
+| K3 | Kimlikler korunsun mu, çalışma alanı = eski uid olsun mu? | Evet (entegrasyonlar değişmeden çalışır) | ✅ 2026-11-12: öneri kabul |
+| K4 | Aynı hesaba şifre paylaşarak girmek devam etsin mi? | Hayır: herkes kendi hesabı + davet. Geçiş döneminde eski yöntem de çalışır | ✅ 2026-11-12: öneri kabul |
+| K5 | Egzersiz kütüphanesi, şablonlar, test tanımları kulüp genelinde ortak mı, kişisel mi? | Kulüp genelinde ortak | ✅ 2026-11-12: öneri kabul |
+| K6 | Aynı alanı iki kişi aynı anda değiştirirse "son yazan kazanır" kabul mü? | Evet | ✅ 2026-11-12: öneri kabul |
+| K7 | "Kim neyi değiştirdi" geçmişi ilk sürümde gerekli mi? | İlk sürümde yalnızca `updatedBy/At`; tam geçmiş sonra | ✅ 2026-11-12: öneri kabul |
 | K8 | Kaç aktif kullanıcı, takım başına kaç sporcu, ne kadar geçmiş bekleniyor? | — (maliyet ve dizin tasarımı için) | ⏳ |
-| K9 | Firebase Blaze (kullandıkça öde) bütçesi var mı? | — | ⏳ |
-| K10 | Taşımayı kullanıcı mı başlatsın, otomatik mi olsun? | Sahip onaylar, uygulama yapar | ⏳ |
+| K9 | Firebase Blaze (kullandıkça öde) bütçesi var mı? | — | Blaze zaten açık (Cloud Functions çalışıyor); bütçe sınırı ⏳ |
+| K10 | Taşımayı kullanıcı mı başlatsın, otomatik mi olsun? | Sahip onaylar, uygulama yapar | ✅ 2026-11-12: öneri kabul |
 
 ---
 
@@ -425,3 +426,4 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | Tarih | Faz | Ne yapıldı | PR |
 |---|---|---|---|
 | 2026-11-08 | — | Plan taslağı yazıldı | — |
+| 2026-11-12 | — | Kararlar K1–K7, K10 onaylandı | — |
