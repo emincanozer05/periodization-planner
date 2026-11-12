@@ -247,7 +247,9 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 **Çıkış ölçütü:** Kural testleri CI'da yeşil; canlıya yayınlanan kurallar mevcut kullanıcıları etkilemiyor.
 
 ### Faz 2 — Uyumluluk katmanı (bayrak arkasında)
-- [ ] Yeni parça `src/app/44x-store-v2.jsx`: belge ↔ `data` eşlemesi (okuma), yol → belge eşlemesi (yazma).
+- [x] Belge ↔ `data` eşlemesi: `src/app/468-store-map.jsx` (`smToDocs` / `smFromDocs` / `smCheckDocs`), testi `store-map-test.js` (CI: validator.yml).
+- [x] Senkron tanı penceresinde "Yeni yapı ön kontrolü" (gerçek hesapta belge sayısı, en büyük belgeler, gidiş-dönüş; hiçbir şey yazmaz).
+- [ ] Uyumluluk katmanı `src/app/44x-store-v2.jsx`: dinleyiciler → `data`, `setData` farkı → değişen belgelerin `update()`'i.
 - [ ] Dinleyiciler: çalışma alanı, takımlar, sporcular, seçili sezonun seansları, son N ayın log kovaları;
       eski aylar ihtiyaç olunca.
 - [ ] Firestore çevrimdışı önbellek (`persistentLocalCache`, çoklu sekme).
@@ -428,4 +430,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-08 | — | Plan taslağı yazıldı | — |
 | 2026-11-12 | — | Kararlar K1–K7, K10 onaylandı | — |
 | 2026-11-12 | 0 | Emulator kural testleri CI'da | #748 |
-| 2026-11-12 | 1 | Veri modeli belgesi, `workspaces/**` kuralları ve testleri, eski senkronda `migratedTo` kilidi, hesap silmede çalışma alanı ve üyelikler | bu PR |
+| 2026-11-12 | 1 | Veri modeli belgesi, `workspaces/**` kuralları ve testleri, eski senkronda `migratedTo` kilidi, hesap silmede çalışma alanı ve üyelikler | #750 |
+| 2026-11-12 | 2 | Eşleme modülü (data ↔ belgeler) ve testleri: gidiş-dönüş birebir (gerçekçi, 18 kenar durum, 200 rastgele), tek düzenleme = tek belge; tanı penceresinde ön kontrol | bu PR |

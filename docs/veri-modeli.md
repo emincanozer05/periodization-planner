@@ -1,6 +1,6 @@
 # Veri Modeli — kayıt bazlı senkron (schemaVersion 2)
 
-> **Durum:** Faz 1 · **Son güncelleme:** 2026-11-12
+> **Durum:** Faz 2 — eşleme kodda: `src/app/468-store-map.jsx`, testi `store-map-test.js` · **Son güncelleme:** 2026-11-12
 > Üst belgeler: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) §3, [`yayina-hazirlik-plani.md`](yayina-hazirlik-plani.md).
 > Güvenlik kuralları: `firestore.rules` → `workspaces/**`; testleri `rules-test/test/workspaces.test.js`.
 
@@ -15,8 +15,11 @@ Tablo ile kod ayrışmasın diye ikisi aynı testle sınanacak (gidiş-dönüş:
 2. **Kimlikler aynen korunur** (K3): takım, sporcu, seans, test, sezon `id`'leri belge adıdır.
    Çalışma alanı kimliği = hesabın sahibinin `uid`'i. Check-in, Polar ve bildirim koleksiyonları
    (`coachUid`, `teamId`, `athleteId` taşıyanlar) hiç değişmeden çalışır.
-3. **Kimliği olmayan dizi elemanları** (bazı eski kayıtlar) taşımada içerikten türetilen kararlı bir
-   kimlik alır: `h_` + içeriğin özeti. Aynı veri iki kez taşınırsa aynı kimlik çıkar, çift kayıt oluşmaz.
+3. **Bir dizi yalnızca bütün elemanları geçerli ve benzersiz bir kimlik taşıyorsa belgelere bölünür.**
+   Kimliksiz ya da tekrarlanan kimlikli bir eleman varsa dizi üst belgede **olduğu gibi** kalır; kimlik
+   uydurulmaz. Aynı kural gün anahtarları (`YYYY-MM-DD`) ve takımlar arası seans kimlikleri için de geçerli.
+   Günlük kayıtlar (sRPE, wellness…) ay kovasında `k_<kimlik>` ile, kimliksiz eski kayıtlar `i_<sıra>` ile durur.
+   Sıra her yerde `_o` alanıyla korunur.
 4. **Cihaza ait olan buluta gitmez:** `activeTeamId` (seçili takım), seçili sezon, görünüm tercihleri.
 5. **Belge sınırı 1 MiB.** En büyük belge adayları bir ayın log kovası ve çok seanslı bir sporcu
    belgesi. Taşıma aracının kuru çalıştırması (Faz 3) her belgenin boyutunu ölçer; 900 KB'yi aşan
@@ -41,14 +44,14 @@ workspaces/{ws}                                  ws = sahibin uid'i
    │                                             checkin, indiv, seasons listesi, tallySync…)
    ├─ seasons/{seasonId}                          aktif sezon: team.setup + weekOverrides
    │                                             diğerleri: team.seasonData[sid].setup + weekOverrides
-   ├─ days/{seasonId}_{tarih}                     dailyNotes (boşsa belge yok)
+   ├─ days/{seasonId}_{tarih}                     date, dailyNotes
    ├─ sessions/{sessionId}                        days{tarih}.sessions[] → seasonId, date, order + seans
    └─ athletes/{athleteId}                        team.athletes[] (profil, phaseBank, programs…)
       ├─ tests/{testId}                           athlete.tests[]
       ├─ injuries/{injuryId}                      athlete.injuries[]
       ├─ measurements/{id}                        athlete.measurements[]
       ├─ sessions/{sessionId}                     athlete.days{tarih}.sessions[] (sourceId korunur)
-      ├─ days/{tarih}                             athlete.days{tarih}.dailyNotes (boşsa yok)
+      ├─ days/{tarih}                             athlete.days{tarih} (seanslar hariç)
       └─ logs/{YYYY-MM}                           srpe{id}, wellness{id}, night{id}, lift{id}
 ```
 
@@ -70,14 +73,14 @@ workspaces/{ws}                                  ws = sahibin uid'i
 | `team.seasons[]` | `teams/{teamId}.seasons` | — | Yalnızca liste (id, ad) |
 | `team.days{tarih}.sessions[]` | `sessions/{id}` | seans `id` | `seasonId`, `date`, `order` alanları eklenir |
 | `team.seasonData[sid].days{tarih}.sessions[]` | `sessions/{id}` | seans `id` | Aynı koleksiyon, `seasonId` ile ayrılır |
-| `team.days{tarih}.dailyNotes` | `days/{sid}_{tarih}` | | Boş not belge açmaz |
+| `team.days{tarih}` (seanslar hariç) | `days/{sid}_{tarih}` | | Her günün belgesi var (boş gün de geri kurulabilsin); seans eklemek gün belgesine dokunmaz |
 | `team.athletes[]` (aşağıdakiler hariç) | `athletes/{id}` | `id` | |
 | `athlete.tests[]` | `athletes/{a}/tests/{id}` | `id` | |
 | `athlete.injuries[]` | `…/injuries/{id}` | `id` | |
 | `athlete.measurements[]` | `…/measurements/{id}` | `id` | `srcTest` bağı korunur |
 | `athlete.days{tarih}.sessions[]` | `…/sessions/{id}` | `id` | Takım seansının kopyası `sourceId` taşır |
 | `athlete.srpeLog[]` | `…/logs/{YYYY-MM}.srpe.{id}` | | Ay kovası (aşağıda) |
-| `athlete.wellness[]` | `…/logs/{YYYY-MM}.wellness.{id}` | | Kimlik yoksa §1.3 |
+| `athlete.wellness[]` | `…/logs/{YYYY-MM}.wellness.{k_id\|i_sıra}` | | Kimliksiz eski kayıtlar sırayla (§1.3) |
 | `athlete.nightLog[]` | `…/logs/{YYYY-MM}.night.{id}` | | |
 | `athlete.liftLog` | `…/logs/{YYYY-MM}.lift.{id}` | | |
 | `athlete.deletedSrpeSrcIds[]` | `athletes/{id}` alanı | | Küçük |
@@ -116,4 +119,4 @@ Plan §3.3'teki kurallar geçerli. Kısaca:
 | Kurallarda abonelik kontrolü (`billingOk`) | İstemci ve yapay zekâ kapısı yeterli; kurala eklemek her yazıma 2 okuma ekler | Abonelik açılmadan önce değerlendirilecek |
 | `members.uid` collection-group dizini | Hesap silmenin başka kulüplerdeki üyeliği temizlemesi için. `firestore.indexes.json`'a yazıldı, CI dizin yayımlamıyor | Faz 5 (davet) açılmadan elle: `firebase deploy --only firestore:indexes` |
 | Gerçek hesabın boyut raporu | Kullanıcıdan bekleniyor (senkron göstergesi → Veri boyutu) | Faz 0 |
-| Kimliksiz dizi elemanlarının gerçek oranı | Boyut raporu + kuru çalıştırma gösterecek | Faz 3 |
+| Gerçek hesapta bölünemeyen (olduğu gibi kalan) dizilerin oranı | Senkron tanı penceresi → "Yeni yapı ön kontrolü" gösterir | Faz 0/3 |
