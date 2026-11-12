@@ -31,7 +31,7 @@
 | `status` | `trialing` · `active` · `past_due` · `canceled` · `expired` · `comp` |
 | `plan` | `trial` · `starter` · `pro` · `club` · `comp` |
 | `interval` | `month` · `year` · `null` |
-| `athleteLimit` | sayı ya da `null` (sınırsız) |
+| `athleteLimit` | sayı ya da `null` (sınırsız) — kademe sınırı henüz uygulanmıyor (fiyatlar belirlenince) |
 | `trialEndsAt`, `currentPeriodEnd` | zaman damgası |
 | `provider`, `providerRef` | `iyzico`/`paddle`/`manual`, sağlayıcıdaki abonelik kimliği |
 | `updatedAt` | sunucu zamanı |
@@ -101,4 +101,5 @@ Veri hiçbir zaman ödeme yüzünden silinmez ya da gizlenmez (KVKK erişim hakk
 
 | Tarih | Adım | Ne yapıldı | PR |
 |---|---|---|---|
-| 2026-11-12 | — | Plan ve kararlar yazıldı | — |
+| 2026-11-12 | — | Plan ve kararlar yazıldı | #747 |
+| 2026-11-12 | 1, 2 | Kural testleri (Firebase Emulator, `rules-test/`, CI `rules.yml`). Abonelik altyapısı: `billing/{ws}` + `config/billing` kuralları, `billingStatus` function'ı (kurucu hesaplara comp, yenilere 14 gün deneme), yapay zekâda abonelik kapısı, uygulamada durum şeridi ve salt okunur mod. `config/billing.enforced` kapalı: bugün kimse etkilenmiyor | bu PR |

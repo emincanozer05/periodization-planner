@@ -183,6 +183,15 @@ async function processJob(deps) {
     return { claimed: true, ok: false, errorCode: 'SERVER_NOT_CONFIGURED' };
   }
 
+  /* Abonelik: kilitli hesap model çağırmadan, bütçe harcamadan reddedilir. */
+  if (deps.hasAccess && !(await deps.hasAccess(job.uid))) {
+    await ref.update({ status: STATUS.FAILED, errorCode: 'SUBSCRIPTION_REQUIRED', completedAt: now(), updatedAt: now(),
+      validationStatus: 'not_run', calendarWriteStatus: 'not_written' });
+    await releaseLock({ db, job, jobId });
+    log('info', 'ai_job_subscription_required', base);
+    return { claimed: true, ok: false, errorCode: 'SUBSCRIPTION_REQUIRED' };
+  }
+
   const watch = (deps.watchDoc || watchDoc)(ref);
   let round = 0;
   let result;

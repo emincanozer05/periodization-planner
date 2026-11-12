@@ -23,6 +23,23 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == uid;
     }
 
+    /* ABONELİK (docs/yayina-hazirlik-plani.md §3). Belgeyi YALNIZCA sunucu yazar
+       (billingStatus function'ı, ileride ödeme sağlayıcısının webhook'u). Okuyan: hesabın
+       sahibi ve o hesabın eşleşmiş ekip üyesi. İstemcinin kendine "aktif" yazabilmesi
+       ücretsiz kullanım demek olurdu; bu yüzden yazım tamamen kapalı. */
+    match /billing/{ws} {
+      allow read: if request.auth != null && (
+        request.auth.uid == ws
+        || (exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+            && get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data.coachUid == ws));
+      allow write: if false;
+    }
+    /* Aboneliğin genel ayarı (enforced, founderCutoff). Firebase Console'dan elle değişir. */
+    match /config/billing {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     // Check-in linkleri: adresi (token) bilen okur, listeleyemez.
     match /checkin_links/{token} {
       allow get:    if true;

@@ -1,0 +1,53 @@
+# Güvenlik kuralı testleri — Firebase Emulator üzerinde, her PR'da.
+#
+# firestore.rules ve storage.rules main'e girince functions.yml onları canlıya
+# deploy ediyor. Bu iş, bir kural değişikliğinin "başka hesabın verisine erişim"
+# açığı ya da mevcut özelliği kıran bir red getirmediğini merge'den ÖNCE gösterir.
+# Hiçbir sır okumaz, hiçbir şey deploy etmez; demo proje kimliğiyle yalnızca
+# yerel emulator'e bağlanır.
+name: Rules
+
+on:
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'firebase.json'
+      - 'rules-test/**'
+      - '.github/workflows/rules.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'storage.rules'
+      - 'rules-test/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: rules-test/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('rules-test/package-lock.json') }}
+      - name: Install
+        working-directory: rules-test
+        run: npm ci
+      - name: Test
+        working-directory: rules-test
+        run: npm test
