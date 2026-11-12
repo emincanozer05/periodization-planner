@@ -34,6 +34,11 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data.coachUid == ws));
       allow write: if false;
     }
+    /* Hesap silme izi (functions/account/delete.js): belge adı uid'nin özeti, içinde
+       yalnızca zaman ve silinen kayıt sayıları. Yalnızca sunucu yazar ve okur. */
+    match /account_deletions/{id} {
+      allow read, write: if false;
+    }
     /* Aboneliğin genel ayarı (enforced, founderCutoff). Firebase Console'dan elle değişir. */
     match /config/billing {
       allow read: if request.auth != null;

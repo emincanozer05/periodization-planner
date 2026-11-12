@@ -69,9 +69,9 @@ Veri hiçbir zaman ödeme yüzünden silinmez ya da gizlenmez (KVKK erişim hakk
 
 | İş | Kim | Durum |
 |---|---|---|
-| Hesap ve tüm verinin silinmesi (uygulama içinden) | Kod | ⏳ |
-| Verinin dışa aktarılması (JSON) | Kod | ⏳ |
-| Aydınlatma metni onayının ve sürümünün kaydı (kayıtta) | Kod | ⏳ |
+| Hesap ve tüm verinin silinmesi (uygulama içinden) | Kod | ✅ `deleteAccount` + Ayarlar → Gizlilik ve KVKK |
+| Verinin dışa aktarılması (JSON) | Kod | ✅ Ayarlar → "Verilerimi indir" (Yedek sekmesindekiyle aynı içerik) |
+| Aydınlatma metni onayının ve sürümünün kaydı (kayıtta) | Kod | ✅ girişte `users/{uid}/legal/privacy` (gösterilen sürüm) |
 | Sporcu check-in formunda aydınlatma + sağlık verisi açık rızası; 18 yaş altı veli onayı | Kod | ⏳ |
 | Kullanım şartları + veri işleme sözleşmesi (koç = veri sorumlusu, CoachOS = veri işleyen) **taslağı** | Kod (taslak) → Avukat | ⏳ |
 | Mesafeli satış sözleşmesi + ön bilgilendirme formu **taslağı** | Kod (taslak) → Avukat | ⏳ |
@@ -80,6 +80,7 @@ Veri hiçbir zaman ödeme yüzünden silinmez ya da gizlenmez (KVKK erişim hakk
 | Yurt dışına aktarım: standart sözleşme + Kurum'a bildirim (Firebase, Gemini, Vercel) | Avukat | ⏳ |
 | VERBİS kaydı gerekip gerekmediği | Avukat | ⏳ |
 | Şahıs şirketi, e-arşiv fatura, ETBİS | Mali müşavir | ⏳ (iyzico seçilirse ödeme açılmadan önce şart) |
+| Fotoğraf klasörü (Storage `users/{uid}`) yalnızca sahibine açık; indirme adresleri çalışmaya devam eder | Kod | ✅ |
 | Güvenlik kurallarının dış gözle incelenmesi (senkron Faz 1 sonrası) | Dışarıdan Firebase uzmanı | ⏳ |
 | Kulüple sözleşme: fikrî haklar uygulama sahibinde; kulüp masrafları karşılar, karşılığında münhasır olmayan kullanım lisansı alır; kulübün sporcu verisi kulübündür (FSEK m.18 riskine karşı) | Avukat | ⏳ |
 | "CoachOS" adı ve logosu için marka araştırması + TÜRKPATENT tescili | Sen / marka vekili | ⏳ |
@@ -102,4 +103,5 @@ Veri hiçbir zaman ödeme yüzünden silinmez ya da gizlenmez (KVKK erişim hakk
 | Tarih | Adım | Ne yapıldı | PR |
 |---|---|---|---|
 | 2026-11-12 | — | Plan ve kararlar yazıldı | #747 |
-| 2026-11-12 | 1, 2 | Kural testleri (Firebase Emulator, `rules-test/`, CI `rules.yml`). Abonelik altyapısı: `billing/{ws}` + `config/billing` kuralları, `billingStatus` function'ı (kurucu hesaplara comp, yenilere 14 gün deneme), yapay zekâda abonelik kapısı, uygulamada durum şeridi ve salt okunur mod. `config/billing.enforced` kapalı: bugün kimse etkilenmiyor | bu PR |
+| 2026-11-12 | 1, 2 | Kural testleri (Firebase Emulator, `rules-test/`, CI `rules.yml`). Abonelik altyapısı: `billing/{ws}` + `config/billing` kuralları, `billingStatus` function'ı (kurucu hesaplara comp, yenilere 14 gün deneme), yapay zekâda abonelik kapısı, uygulamada durum şeridi ve salt okunur mod. `config/billing.enforced` kapalı: bugün kimse etkilenmiyor | #748 |
+| 2026-11-12 | 3 | KVKK: hesabı ve bütün veriyi silme (`deleteAccount`, Polar kaydı da kaldırılır), verilerimi indir, aydınlatma metni sürüm kaydı, Storage okuma kuralı yalnızca sahibine. Sporcu açık rıza akışı avukat kararını bekliyor | bu PR |

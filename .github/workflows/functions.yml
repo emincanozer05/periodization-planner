@@ -17,6 +17,7 @@ on:
       - 'functions/**'
       - 'firebase.json'
       - 'firestore.rules'
+      - 'storage.rules'
       - '.github/workflows/functions.yml'
   workflow_dispatch:
 
@@ -71,6 +72,17 @@ jobs:
         run: >
           npx --yes firebase-tools@15 deploy
           --only firestore:rules
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      # Storage kuralları (fotoğraf/dosya klasörü yalnızca sahibine). Kendi adımında ve
+      # continue-on-error YOK: bir güvenlik kuralının yayımlanamaması sessiz kalmamalı.
+      - name: Deploy Storage rules
+        if: env.HAS_CREDENTIALS == 'true'
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only storage
           --project periodization-planner
           --non-interactive
           --force
@@ -136,6 +148,26 @@ jobs:
         if: env.HAS_CREDENTIALS == 'true' && steps.deploy_polar.outcome == 'failure'
         run: |
           echo "::warning::polarApi deploy edilemedi. POLAR_CLIENT_SECRET ve POLAR_TOKEN_KEY secret'ları tanımlı mı? (firebase functions:secrets:set …) — POLAR_SETUP.md."
+
+      # Hesap ve abonelik (docs/yayina-hazirlik-plani.md): billingStatus (deneme/abonelik
+      # belgesi) ve deleteAccount (KVKK: hesabı ve bütün veriyi sil). deleteAccount Polar
+      # sırlarını kullanır (sporcunun Polar kaydını da kaldırmak için); sırlar yoksa bu adım
+      # düşer ama öbürlerini sürüklemez.
+      - name: Deploy account functions
+        id: deploy_account
+        if: env.HAS_CREDENTIALS == 'true'
+        continue-on-error: true
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only functions:billingStatus,functions:deleteAccount
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: Account deploy uyarısı
+        if: env.HAS_CREDENTIALS == 'true' && steps.deploy_account.outcome == 'failure'
+        run: |
+          echo "::warning::billingStatus / deleteAccount deploy edilemedi. Uygulamada 'Hesabımı sil' çalışmaz; abonelik belgesi açılmaz (erişim yine tam kalır)."
 
       - name: Deploy atlandı
         if: env.HAS_CREDENTIALS != 'true'

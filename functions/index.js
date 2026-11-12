@@ -560,3 +560,45 @@ exports.polarApi = functions
     now: () => Date.now(),
     log: polarLog,
   }));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HESABI SİL (KVKK) — functions/account/delete.js
+
+   Ayarlar → Gizlilik ve KVKK → "Hesabımı sil". Son 15 dakikada giriş ve hesabın
+   e-postasını yazarak onay şart. Polar sırları, sporcunun Polar'daki kaydını da
+   kaldırabilmek için (token çözülüp Polar'a silme isteği gider).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const accountDelete = require('./account/delete');
+const polarApiMod = require('./polar/api');
+const polarCrypto = require('./polar/crypto');
+const ACCOUNT_ERR = {
+  UNAUTHENTICATED: 'unauthenticated',
+  REQUIRES_RECENT_LOGIN: 'failed-precondition',
+  CONFIRM_MISMATCH: 'invalid-argument',
+};
+
+exports.deleteAccount = functions
+  .region(REGION)
+  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 300, memory: '512MB' })
+  .https.onCall(async (data, context) => {
+    try {
+      return await accountDelete.deleteAccount(context.auth, data, {
+        db: db(),
+        auth: admin.auth(),
+        bucket: admin.storage().bucket(),
+        recursiveDelete: ref => admin.firestore().recursiveDelete(ref),
+        deregister: ({ accessToken, polarUserId }) =>
+          polarApiMod.deregisterUser({ fetch: (...a) => globalThis.fetch(...a), accessToken, polarUserId }),
+        decrypt: polarCrypto.decrypt,
+        tokenKey: polarConfig.settings().tokenKey,
+        now: () => Date.now(),
+        log: (level, event, fields) => (functions.logger[level] || functions.logger.info)('account: ' + event, fields || {}),
+      });
+    } catch (e) {
+      if (e instanceof accountDelete.DeleteError) {
+        throw new functions.https.HttpsError(ACCOUNT_ERR[e.code] || 'internal', e.message, { code: e.code });
+      }
+      functions.logger.error('account: delete failed', { error: String((e && e.message) || e).slice(0, 300) });
+      throw new functions.https.HttpsError('internal', 'Hesap silinirken bir hata oldu. Tekrar dene; kalan kayıtlar silinir.', { code: 'INTERNAL' });
+    }
+  });
