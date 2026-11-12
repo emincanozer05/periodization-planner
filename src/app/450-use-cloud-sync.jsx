@@ -1661,6 +1661,8 @@ function useCloudSync(data,setData){
     }
   };
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
+    /* Faz 5: açık kulüp ve bu kişinin oradaki rolü (yeni yapı etkin değilse ws/role null). */
+    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select},
     sizeReport:()=>syncSizeReport(dataRef.current),
     /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
     preflight:()=>smPreflightReport(dataRef.current),

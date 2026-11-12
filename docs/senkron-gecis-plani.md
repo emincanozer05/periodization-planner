@@ -285,10 +285,19 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 **Çıkış ölçütü:** 1 hafta boyunca veri kaybı ve takılma yok.
 
 ### Faz 5 — Çok kullanıcı
-- [ ] Ayarlar → **Ekip ve erişim:** davet linki oluştur, rol seç, takım seç, üyeyi çıkar.
-- [ ] Davet kabul akışı (kendi Google hesabıyla giriş → üyelik).
-- [ ] Mevcut `staff_members` / `staff_links` ile bağlantı (aynı kişi hem ekip üyesi hem uygulama kullanıcısı olabilir).
-- [ ] "Son düzenleyen" bilgisi gereken yerlerde (seans, test) küçük bir not.
+Kararlar (2026-11-12): bir kulüpte bir sahip, sınırsız yönetici, antrenör ve izleyici; bir kişi birden fazla
+kulübe üye olabilir (kulüp seçici); check-in, Polar ve uyarılar ilk sürümde sahip + yöneticide.
+
+- [x] **5a — üyelik temeli:** `smListen` takım kapsamlı (yalnız belirli takımlara erişen antrenör için her takım
+      belgesi ayrı dinlenir); `useStoreV2` kulüp seçimi (`users/{uid}/memberships` + cihazdaki seçim), rol ve takımlar;
+      izleyici salt okunur; abonelik kulüpten (`billing/{ws}`, kural: üye okur). Emulator: üye testleri.
+- [ ] **5b — davet ve yönetim:** Ayarlar → Ekip ve erişim (davet linki: rol, takımlar, süre; üye listesi: rol/takım
+      değiştir, çıkar); davetle katılma (`?join=`); kulüp seçici; üye için sahip özelliklerinin gizlenmesi;
+      uçtan uca test (sahip davet eder, ikinci tarayıcı katılır, birlikte düzenler).
+- [ ] **5c — yöneticiler için check-in, Polar, uyarılar:** kurallar ve sunucu fonksiyonları `coachUid == auth.uid`
+      yerine kulüp yöneticisini de kabul etmeli.
+- [ ] `members.uid` dizini elle yayımlanır (hesap silmenin başka kulüplerdeki üyeliği temizlemesi için).
+- [ ] Sahibin hesabını silmesi kulübü de siler: üyesi olan sahibe uyarı (ileride sahipliği devret).
 **Çıkış ölçütü:** İki ayrı hesap aynı takımda B1/B2'yi sağlıyor.
 
 ### Faz 6 — Herkese açılış ve temizlik
@@ -436,4 +445,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-12 | 2 | Eşleme v2 (liste belgesi yok, kesirli sıra, düz takım koleksiyonları), alan düzeyinde yazım farkı, 11 iki cihaz senaryosu | #752 |
 | 2026-11-12 | 2 | Firestore bağlantısı (smWrite/smListen), veri kökü state/root; emulator'de 7 test (eşzamanlı iki istemci dahil) | #753 |
 | 2026-11-12 | 2 | Denetleyici + uygulama kancası (useStoreV2), bayrak arkasında; eski senkron taşınmış hesapta durur | #754 |
-| 2026-11-12 | 3 | Taşıma aracı (smMigrate, iyimser kilit), pilot düğmesi, emulator testleri, uygulamanın emulator kancası ve uçtan uca tarayıcı testi | bu PR |
+| 2026-11-12 | 3 | Taşıma aracı (smMigrate, iyimser kilit), pilot düğmesi, emulator testleri, uygulamanın emulator kancası ve uçtan uca tarayıcı testi | #755 |
+| 2026-11-12 | 5a | Üyelik temeli: takım kapsamlı dinleme, kulüp seçimi, izleyici salt okunur, abonelik kulüpten | bu PR |

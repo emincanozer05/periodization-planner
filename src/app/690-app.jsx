@@ -3,11 +3,12 @@ function App(){
   const[data,setDataRaw]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   // Senkron buluttan geleni HER ZAMAN yazar; abonelik kapısı yalnızca ekrandan gelen düzenlemelerde.
   const sync=useCloudSync(data,setDataRaw);
-  const bill=useBilling(sync.user);
+  const bill=useBilling(sync.user,sync.v2&&sync.v2.ws);
   usePrivacyAck(sync.user);   // aydınlatma metninin hangi sürümü gösterildi (467-account.jsx)
   /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
      setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
-  const readOnly=!bill.access.full;
+  /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
+  const readOnly=!bill.access.full||(sync.v2&&sync.v2.role==='viewer');
   const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);

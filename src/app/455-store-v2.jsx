@@ -1,43 +1,72 @@
 /* =========================================================
-   KAYIT BAZLI SENKRON — UYGULAMA KANCASI (senkron Faz 2b-3)
+   KAYIT BAZLI SENKRON — UYGULAMA KANCASI (senkron Faz 2b-3, Faz 5)
    =========================================================
-   useCloudSync bunu çağırır. Hesap yeni yapıya TAŞINMIŞSA (workspaces/{uid}: schemaVersion 2 ve
-   migrated: true — bu işaretleri yalnızca Faz 3'ün taşıma aracı koyar) veri dinleme ve yazma
-   buradan yapılır; eski senkronun dinleyicisi, yazıcısı, sekme kapanırken boşaltması ve gözcüsü
-   durur. Taşınmamış hesapta (bugün bütün hesaplar) hiçbir şey değişmez: active hep false.
+   useCloudSync bunu çağırır. Yeni yapı iki durumda etkin:
+   • Kendi çalışma alanı: workspaces/{uid} → schemaVersion 2 ve migrated: true (yalnızca Faz 3'ün
+     taşıma aracı koyar). Rol: sahip, bütün takımlar.
+   • Bir kulübe üyelik (Faz 5): users/{uid}/memberships/{ws} (katılırken yazılır) ve
+     workspaces/{ws}/members/{uid} (rol + takımlar). Kulüp de taşınmış olmalı.
+   Kişi birden fazla kulübe üye olabilir; hangisinin açık olduğu cihaza kaydedilir (kulüp seçici).
+   Etkinken eski senkronun dinleyicisi, yazıcısı, boşaltması ve gözcüsü durur. Taşınmamış ve hiçbir
+   kulübe katılmamış hesapta (bugün bütün hesaplar) active hep false: hiçbir şey değişmez.
 
-   Mantık 468-store-map.jsx → smController'da (emulator'de iki cihazla sınanıyor:
-   rules-test/test/store-io.test.js). Burada yalnızca React'e bağlanır.
-
-   Bu parça JSX içermez: sync-test.js 440–460 aralığını düz JavaScript olarak çalıştırır. */
+   Mantık 468-store-map.jsx → smController'da (emulator'de iki cihazla ve üye rolleriyle sınanıyor:
+   rules-test/test/store-io.test.js). Bu parça JSX içermez: sync-test.js 440–460'ı düz JS çalıştırır. */
+const WS_PICK_KEY=uid=>'coachos_ws_'+uid;
 function useStoreV2(o){
   const{user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready}=o;
-  const[active,setActive]=useState(false);
+  const uid=user&&user.uid;
+  const[own,setOwn]=useState(false);                 // kendi çalışma alanı taşınmış mı
+  const[joined,setJoined]=useState([]);              // üye olduğu kulüpler (ws kimlikleri)
+  const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
+  const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
+  const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
   const ctl=useRef(null);
-  // 1) Bu hesap yeni yapıda mı? Sahip kendi çalışma alanı belgesini okuyabilir (yoksa bile).
+  const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
+  // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
-    setActive(false);
-    const fb=FB();if(!fb||!user)return;
-    let fs=null;try{fs=fb.firestore();}catch(e){return;}
-    if(!fs||typeof fs.doc!=='function')return;     // sahte ortam (sync-test) → eski düzen
-    let off=null;
+    setOwn(false);setJoined([]);
+    let p=null;try{p=uid?localStorage.getItem(WS_PICK_KEY(uid)):null;}catch(e){}
+    setPick(p);
+    const fs=fsOf();if(!fs)return;                   // sahte ortam (sync-test) → eski düzen
+    const offs=[];
     try{
-      off=fs.doc('workspaces/'+user.uid).onSnapshot(s=>{
-        const d=s.exists?s.data():null;
-        setActive(!!(d&&d.schemaVersion===2&&d.migrated===true));
-      },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setActive(false);});
-    }catch(e){return;}
-    return()=>{try{off&&off();}catch(e){}};
-  },[user]);
-  // 2) Denetleyici: yeni yapı etkinse dinle ve yaz.
+      offs.push(fs.doc('workspaces/'+uid).onSnapshot(s=>{
+        const d=s.exists?s.data():null;setOwn(!!(d&&d.schemaVersion===2&&d.migrated===true));
+      },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setOwn(false);}));
+      offs.push(fs.collection('users/'+uid+'/memberships').onSnapshot(s=>{
+        setJoined(s.docs.map(d=>d.id).filter(id=>id!==uid));
+      },e=>console.warn('store v2: üyelikler okunamadı',e&&e.code)));
+    }catch(e){}
+    return()=>offs.forEach(f=>{try{f();}catch(e){}});
+  },[uid]);
+  // Açık kulüp: seçim geçerliyse o, değilse kendi çalışma alanı (taşınmışsa), değilse yok.
+  const ws=uid&&(pick&&(pick===uid?own:joined.indexOf(pick)>=0)?pick:(own?uid:null));
+  // 2) açık kulüp başkasınınsa: üyelik (rol, takımlar) ve kulübün taşınmış olması
   useEffect(()=>{
-    if(!active||!user)return;
+    setMember(null);setWsOk(false);
+    if(!ws||ws===uid)return;
+    const fs=fsOf();if(!fs)return;
+    const offs=[];
+    offs.push(fs.doc('workspaces/'+ws+'/members/'+uid).onSnapshot(s=>setMember(s.exists?s.data():null),
+      e=>{console.warn('store v2: üyelik okunamadı',e&&e.code);setMember(null);}));
+    offs.push(fs.doc('workspaces/'+ws).onSnapshot(s=>{const d=s.exists?s.data():null;setWsOk(!!(d&&d.schemaVersion===2&&d.migrated===true));},
+      e=>{console.warn('store v2: kulüp okunamadı',e&&e.code);setWsOk(false);}));
+    return()=>offs.forEach(f=>{try{f();}catch(e){}});
+  },[ws,uid]);
+  const role=!ws?null:ws===uid?'owner':(member&&member.role)||null;
+  const teams=!ws?null:ws===uid?['*']:(member&&Array.isArray(member.teams)?member.teams:null);
+  const active=!!(ws&&role&&teams&&(ws===uid||wsOk));
+  const teamsKey=teams?teams.join('|'):'';
+  // 3) denetleyici
+  useEffect(()=>{
+    if(!active)return;
     const fb=FB();
-    slog('v2: yeni yapı etkin','uid='+user.uid.slice(0,6));
+    slog('v2: yeni yapı etkin','ws='+ws.slice(0,6)+' rol='+role);
     setStatus('syncing');
     const c=smController({
-      fs:fb.firestore(),wsPath:'workspaces/'+user.uid,
-      K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid:user.uid},
+      fs:fb.firestore(),wsPath:'workspaces/'+ws,teams,
+      K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid},
       getData:()=>dataRef.current,
       apply:d=>{dataRef.current=d;setData(d);},
       prep:d=>stripDeviceOnly(d),
@@ -50,8 +79,14 @@ function useStoreV2(o){
     });
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};
-  },[active,user]);
-  // 3) Ekrandaki her değişiklik: fark hemen gönderilir (bekletme yok; Firestore yerel önbelleğe anında yazar).
+  },[active,ws,role,teamsKey]);
+  // 4) ekrandaki her değişiklik: fark hemen gönderilir (izleyicinin ekranı zaten salt okunur)
   useEffect(()=>{if(ctl.current&&ctl.current.ready())ctl.current.changed();},[data]);
-  return{active,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  /* Kulüp değiştir: cihaza kaydedilir; ekran yeni kulübün verisini yükleyene kadar boş başlar. */
+  const select=id=>{
+    try{if(id)localStorage.setItem(WS_PICK_KEY(uid),id);else localStorage.removeItem(WS_PICK_KEY(uid));}catch(e){}
+    setPick(id||null);
+  };
+  const clubs=(own?[uid]:[]).concat(joined);
+  return{active,ws,role,teams,clubs,select,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }
