@@ -4,6 +4,7 @@ function App(){
   // Senkron buluttan geleni HER ZAMAN yazar; abonelik kapısı yalnızca ekrandan gelen düzenlemelerde.
   const sync=useCloudSync(data,setDataRaw);
   const bill=useBilling(sync.user);
+  usePrivacyAck(sync.user);   // aydınlatma metninin hangi sürümü gösterildi (467-account.jsx)
   /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
      setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
   const readOnly=!bill.access.full;

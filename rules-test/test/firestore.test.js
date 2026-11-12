@@ -178,3 +178,9 @@ test('abonelik ayarı: oturumlu herkes okur, kimse yazamaz', async () => {
   await assertFails(getDoc(doc(db(await anon()), 'config/billing')));
   await assertFails(getDoc(doc(a, 'config/diger')));
 });
+
+test('hesap silme izi: istemciye tamamen kapalı', async () => {
+  const a = db(await as('alice'));
+  await assertFails(getDoc(doc(a, 'account_deletions/x')));
+  await assertFails(setDoc(doc(a, 'account_deletions/x'), { at: 1 }));
+});

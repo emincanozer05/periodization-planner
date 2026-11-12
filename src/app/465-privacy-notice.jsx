@@ -55,7 +55,9 @@ function privacySections(){
         'Under KVKK Art. 11 you have the right to learn whether your personal data is processed and to request information if so; to learn the purpose of processing and whether it is used accordingly; to know the third parties it is transferred to; to request correction if incomplete or inaccurate; to request deletion or destruction when the conditions are met; to request that these actions be notified to the recipients; to object to a result against you arising from analysis by automated systems; and to claim compensation for damage caused by unlawful processing.')]],
     [L('9. Başvuru','9. How to apply'),
      [L(`Haklarına ilişkin taleplerini ${c.email} adresine yazılı olarak iletebilirsin. Başvurular en geç 30 gün içinde sonuçlandırılır.`,
-        `You can send requests about your rights in writing to ${c.email}. Requests are answered within 30 days at the latest.`)]],
+        `You can send requests about your rights in writing to ${c.email}. Requests are answered within 30 days at the latest.`),
+      L('Verilerinin bir kopyasını indirmek ve hesabını bütün verileriyle silmek için başvuru gerekmez: Ayarlar → Gizlilik ve KVKK → "Verilerimi indir" / "Hesabımı sil".',
+        'You do not need to apply to download a copy of your data or to delete your account with all of its data: Settings → Privacy → "Download my data" / "Delete my account".')]],
   ];
 }
 

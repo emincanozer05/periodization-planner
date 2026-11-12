@@ -9,12 +9,17 @@ rules_version = '2';
    or paste this file into Firebase Console → Storage → Rules → Publish.
 
    Every file lives under users/<uid>/…, written by uploadMedia() in index.html. A coach
-   may only touch their own folder. Reads are open because the download URLs land in
-   printed sheets and shared PDFs, which are opened without signing in. */
+   may only touch their own folder.
+
+   Reads through the SDK are the owner's only. Printed sheets, shared PDFs, the athlete's
+   pages and the service worker open files by their DOWNLOAD URL, whose token is checked
+   by Storage itself and is not subject to these rules, so they keep working signed out.
+   The rule used to be `read: if true`, which also let anyone who knew a coach's uid LIST
+   that folder and open every athlete photo in it (KVKK: health-adjacent personal data). */
 service firebase.storage {
   match /b/{bucket}/o {
     match /users/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 200 * 1024 * 1024;

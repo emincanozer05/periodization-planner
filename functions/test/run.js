@@ -15,5 +15,6 @@ require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, k
 require('./polar.test.js');            // Polar · davet, OAuth, token saklama, bağlantı kesme
 require('./polar-sync.test.js');       // Polar · veri senkronu, commit sırası, tekrar önleme
 require('./billing.test.js');          // Abonelik · erişim kuralı, deneme, uygulamayla aynı sonuç
+require('./account-delete.test.js');   // KVKK · hesabı sil: her kayıt gider, başkasınınki kalır
 
 run();
