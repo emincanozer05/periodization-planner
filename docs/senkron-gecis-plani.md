@@ -231,18 +231,18 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 ### Faz 0 — Hazırlık ve ölçüm
 - [ ] Gerçek bir hesabın (anonimleştirilmiş) boyut raporu: senkron panelindeki "Veri boyutu"
       (`syncSizeReport`) çıktısı → hangi alan ne kadar, gömülü medya var mı.
-- [ ] **Kararlar** bölümündeki açık soruların cevaplanması.
-- [ ] Firebase Emulator'ün CI'da çalıştırılması (GitHub Actions'ta Java + `firebase-tools`).
+- [x] **Kararlar** bölümündeki açık soruların cevaplanması (K8 ve K9'un bütçe kısmı hariç).
+- [x] Firebase Emulator'ün CI'da çalıştırılması (GitHub Actions'ta Java + `firebase-tools`). → `rules-test/`, `rules.yml` (#748)
 - [ ] Gerçekçi test verisi üreticisi: `tools/sync-loop-test.js`'deki veriden (12 sporcu, 4 hafta)
       ve büyük bir varyanttan (40 sporcu, 2 sezon) fixture.
 **Çıkış ölçütü:** Kararlar onaylandı, emulator CI'da ayağa kalkıyor.
 
 ### Faz 1 — Şema ve güvenlik kuralları (uygulamaya dokunmaz)
-- [ ] `docs/veri-modeli.md`: her koleksiyonun alanları, tipleri, örnekleri (bölüm 3.2'nin kesin hâli).
-- [ ] `firestore.rules`'a yeni `workspaces/**` kuralları (eskiler aynen kalır).
-- [ ] `storage.rules`'a `workspaces/{ws}/**` yolları.
-- [ ] Kural testleri: üye okur/yazar, üye olmayan okuyamaz, viewer yazamaz, başka çalışma alanına
-      erişim yok, kişi kendine rol veremez, taşınmış hesapta eski koleksiyona yazım reddedilir.
+- [x] `docs/veri-modeli.md`: eşleme tablosu, kimlik ve boyut kuralları, erişim özeti.
+- [x] `firestore.rules`'a yeni `workspaces/**` kuralları (eskiler aynen kalır) + eski manifestte `migratedTo` kilidi.
+- [ ] `storage.rules`'a `workspaces/{ws}/**` yolları. → Faz 2'ye ertelendi (ilk deploy'da ek IAM izni; bkz. veri-modeli §6)
+- [x] Kural testleri: üye okur/yazar, üye olmayan okuyamaz, viewer yazamaz, başka çalışma alanına
+      erişim yok, kişi kendine rol veremez, taşınmış hesapta eski koleksiyona yazım reddedilir. (`rules-test/test/workspaces.test.js`, 13 test)
 - [ ] `firestore.indexes.json`: tarih aralığı sorguları için dizinler.
 **Çıkış ölçütü:** Kural testleri CI'da yeşil; canlıya yayınlanan kurallar mevcut kullanıcıları etkilemiyor.
 
@@ -427,3 +427,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 |---|---|---|---|
 | 2026-11-08 | — | Plan taslağı yazıldı | — |
 | 2026-11-12 | — | Kararlar K1–K7, K10 onaylandı | — |
+| 2026-11-12 | 0 | Emulator kural testleri CI'da | #748 |
+| 2026-11-12 | 1 | Veri modeli belgesi, `workspaces/**` kuralları ve testleri, eski senkronda `migratedTo` kilidi, hesap silmede çalışma alanı ve üyelikler | bu PR |

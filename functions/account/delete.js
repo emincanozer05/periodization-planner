@@ -51,8 +51,11 @@ const BY_FIELD = [
 ];
 /* Belge adı doğrudan uid olanlar. */
 const BY_ID = ['ai_usage', 'billing'];
-/* Alt koleksiyonlarıyla birlikte silinenler. */
-const RECURSIVE = ['users'];
+/* Alt koleksiyonlarıyla birlikte silinenler. workspaces/{uid}: hesabın sahibi olduğu çalışma
+   alanı (K3: çalışma alanı kimliği = sahibin uid'i) ve içindeki her şey. */
+const RECURSIVE = ['users', 'workspaces'];
+/* Başka çalışma alanlarındaki üyelikler (kişi başka bir kulübe davetliyse): collection group. */
+const GROUP_BY_FIELD = [['members', 'uid']];
 
 const AUDIT_COL = 'account_deletions';
 const RECENT_LOGIN_SEC = 15 * 60;
@@ -135,6 +138,20 @@ async function deleteAccount(authCtx, data, deps) {
     if (s.exists) { await ref.delete(); counts[col] = 1; }
   }
   for (const col of RECURSIVE) await deps.recursiveDelete(db.collection(col).doc(uid));
+  for (const [group, field] of GROUP_BY_FIELD) {
+    if (!db.collectionGroup) continue;
+    /* Collection group sorgusu bir dizin ister (firestore.indexes.json → fieldOverrides).
+       Dizin yoksa (yayımlanmamışsa) silme burada durmasın: hesap ve kendi verisi yine silinir,
+       üyelik kalıntısı log'a yazılır. Ekip daveti (Faz 5) açılmadan dizin yayımlanmalı. */
+    try {
+      const snap = await db.collectionGroup(group).where(field, '==', uid).get();
+      for (const d of snap.docs) await d.ref.delete();
+      if (snap.size) counts['group:' + group] = snap.size;
+    } catch (e) {
+      counts['group:' + group] = 'failed';
+      log('error', 'account_delete_group_failed', { group, code: e && e.code });
+    }
+  }
 
   let files = 0;
   if (deps.bucket) {
@@ -151,4 +168,4 @@ async function deleteAccount(authCtx, data, deps) {
   return { deleted: true, counts };
 }
 
-module.exports = { deleteAccount, checkRequest, deleteWhere, auditId, DeleteError, BY_FIELD, BY_ID, RECURSIVE, AUDIT_COL, RECENT_LOGIN_SEC };
+module.exports = { deleteAccount, checkRequest, deleteWhere, auditId, DeleteError, BY_FIELD, BY_ID, RECURSIVE, GROUP_BY_FIELD, AUDIT_COL, RECENT_LOGIN_SEC };
