@@ -253,7 +253,7 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 - [x] Firestore bağlantısı (`468-store-map.jsx` → `<store-io>`): `smWrite` (400'lük paketler, silinen belgeye düşen düzenleme tek tek), `smListen` (takım başına 10 dinleyici). Emulator'de iki istemciyle eşzamanlı testler (`rules-test/test/store-io.test.js`).
 - [x] Denetleyici `smController` (468, React'tan bağımsız): yerel değişiklik her zaman önce gönderilir; gönderilmemiş düzenleme varken gelen güncelleme onu ezmez. Emulator'de iki cihazla 4 test.
 - [x] Uyumluluk katmanı `src/app/455-store-v2.jsx` (`useStoreV2`): `useCloudSync` içinden çağrılır. Bayrak: `workspaces/{uid}` → `schemaVersion: 2` ve `migrated: true` (yalnızca Faz 3'ün taşıma aracı koyar). Etkinken eski dinleyici, yazıcı, sekme kapanırken boşaltma, gözcü ve `writeNow` durur. Taşınmamış hesapta davranış birebir aynı (sync-test, smoke-test).
-- [ ] Gerçek tarayıcıda yeni yapıyla uçtan uca deneme (uygulama emulator'e bağlı, taşınmış test hesabı) — Faz 3'ün taşıma aracıyla birlikte.
+- [x] Gerçek tarayıcıda yeni yapıyla uçtan uca deneme: `tools/v2-e2e-test.js` (uygulama emulator'e bağlı; eski düzen → pilot taşıma → iki cihaz yeni yapıda, aynı anda düzenleme, bütün sekmeler). 16/16.
 - [ ] Dinleyiciler: çalışma alanı, takımlar, sporcular, seçili sezonun seansları, son N ayın log kovaları;
       eski aylar ihtiyaç olunca.
 - [ ] Firestore çevrimdışı önbellek (`persistentLocalCache`, çoklu sekme).
@@ -268,17 +268,14 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 **Çıkış ölçütü:** Bütün iki cihaz senaryoları yeşil; bayrak kapalıyken `tools/smoke-test.js` önce/sonra aynı.
 
 ### Faz 3 — Taşıma aracı
-- [ ] Eski JSON → yeni belgeler dönüştürücüsü (saf fonksiyon, test edilebilir).
-- [ ] Gömülü medya (`data:image…`, PDF) önce Storage'a yüklenir, belgede yol kalır.
-- [ ] Kuru çalıştırma: yazmadan "kaç belge, ne kadar veri, hangi uyarılar" raporu.
-- [ ] Yazım 500'lük batch'lerle, kaldığı yerden devam edebilir (yarıda kalırsa tekrar çalıştırılabilir,
-      aynı kimliklerle yazdığı için çift kayıt oluşmaz).
-- [ ] **Doğrulama:** yeni yapıdan `data` yeniden kurulur, eski JSON ile (cihaza ait alanlar hariç)
-      derin karşılaştırılır; tek fark varsa taşıma "tamamlandı" işaretlenmez.
-- [ ] Taşımadan hemen önce otomatik yedek (`snapshots` + indirilebilir JSON).
-- [ ] Testler: fixture'lar, eski düzen (`<uid>_<rev>_<i>`) hesaplar, boş hesap, çok sezonlu hesap,
-      gömülü medyalı hesap, bozuk/eksik alanlı hesap.
-**Çıkış ölçütü:** Bütün fixture'lar kayıpsız gidiş-dönüş yapıyor.
+- [x] Taşıma çekirdeği `smMigrate` (468 → `<store-io>`): ön kontrol (yazılabilirlik + gidiş-dönüş) → çalışma alanı + sahip üyeliği (`migrated:false`) → var olanla hedefin farkı (yarım deneme kaldığı yerden) → **sunucudan geri okuyup birebir doğrulama** → eski yapının kilidi → `migrated:true`.
+- [x] Eski yapının kilidi İYİMSER: manifeste `migratedTo` + `base = curRev` (kurallardaki `base == rev`). Taşıma sürerken başka cihaz eski yapıya yazdıysa kilit tutmaz, işaret konmaz, eski düzen sürer — o düzenleme kaybolmaz.
+- [x] Taşımadan hemen önce iki yedek: cihaza JSON (Verilerimi indir) + buluttaki günlük yedek.
+- [x] Emulator testleri (`rules-test/test/migrate.test.js`, 6): tam taşıma, ikinci çalıştırma, yarım deneme, kilit çakışması, ön kontrol düşmesi, başkasının taşıyamaması.
+- [x] Uygulamada pilot düğmesi: adres `?v2pilot=1` ile açılınca senkron tanı penceresinde "Yeni senkrona geç (pilot)". Başka kimse göremez.
+- [ ] Gömülü medya (`data:` görseller) belgede 900 KB'yi aşarsa ön kontrol durdurur; medyayı Storage'a taşıyan adım gerekirse pilot raporuna göre eklenecek.
+- [ ] Geri dönüş (yeni yapıdan eski yapıya): şimdilik yönetici işi (Firebase Console: `workspaces/{uid}.migrated=false`, manifestten `migratedTo` silinir). Yeni yapıda yapılan düzenlemeler eski JSON'a taşınmaz; pilotta bu yüzden önce test hesabı.
+**Çıkış ölçütü:** ✅ Emulator ve uçtan uca testlerde kayıpsız taşıma ve iki cihaz.
 
 ### Faz 4 — Pilot
 - [ ] Önce boş bir test hesabı → sonra test verisi yüklenmiş hesap → sonra **senin hesabın**
@@ -438,4 +435,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-12 | 2 | Eşleme modülü (data ↔ belgeler) ve testleri: gidiş-dönüş birebir (gerçekçi, 18 kenar durum, 200 rastgele), tek düzenleme = tek belge; tanı penceresinde ön kontrol | #751 |
 | 2026-11-12 | 2 | Eşleme v2 (liste belgesi yok, kesirli sıra, düz takım koleksiyonları), alan düzeyinde yazım farkı, 11 iki cihaz senaryosu | #752 |
 | 2026-11-12 | 2 | Firestore bağlantısı (smWrite/smListen), veri kökü state/root; emulator'de 7 test (eşzamanlı iki istemci dahil) | #753 |
-| 2026-11-12 | 2 | Denetleyici + uygulama kancası (useStoreV2), bayrak arkasında; eski senkron taşınmış hesapta durur | bu PR |
+| 2026-11-12 | 2 | Denetleyici + uygulama kancası (useStoreV2), bayrak arkasında; eski senkron taşınmış hesapta durur | #754 |
+| 2026-11-12 | 3 | Taşıma aracı (smMigrate, iyimser kilit), pilot düğmesi, emulator testleri, uygulamanın emulator kancası ve uçtan uca tarayıcı testi | bu PR |

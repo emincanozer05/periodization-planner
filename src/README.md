@@ -23,6 +23,9 @@ değiştiren işlerde ayrıca `node tools/sync-loop-test.js`: gerçekçi veriyle
 iki cihazı canlandırıp (durum sayfalar arasında karşılıklı aktarılır) birinin yazdığına öbürünün kendiliğinden yeniden
 yazdığı döngüleri sekme adıyla yakalar (#701'in faz bankası döngüsü gibi). Böyle bir döngü yine de yayına çıkarsa
 senkrondaki sigorta (`450-use-cloud-sync.jsx`, `AUTO_*`) yazımı seyreltir ve değişen yolu senkron günlüğüne yazar.
+Senkronun yeni yapısına (`455-store-v2.jsx`, `468-store-map.jsx`) dokunan işlerde ayrıca uçtan uca test:
+`node build.js && cd rules-test && npx firebase emulators:exec --config ../firebase.json --only firestore --project periodization-planner "node ../tools/v2-e2e-test.js"`
+— gerçek uygulama emulator'e bağlanır, bir hesabı eski düzenden taşır ve iki cihazı yeni yapıda aynı anda çalıştırır.
 Service worker'a dokunan işlerde ayrıca `node tools/sw-browser-test.js`: gerçek Chromium'da gerçek worker'ı,
 CORS göndermeyen sahte bir Storage sunucusuna karşı sınar (medya önbelleği, çevrimdışı görsel).
 

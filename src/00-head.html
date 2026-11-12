@@ -85,6 +85,15 @@ if(light){document.documentElement.setAttribute('data-theme','light');document.q
        uygulama günlerce açık kaldığı için tek hakkı yanlış yöne — çalışan taşımadan çalışmayana —
        harcanan oturum, kapatılana kadar sarıda kalıyordu.)
        Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı. */
+    /* YALNIZCA TEST: tools/v2-e2e-test.js sayfa yüklenmeden window.__COACHOS_EMU tanımlar ve
+       uygulama Firestore emulator'üne bağlanır (kimlik: emulator'ün sahte jetonu). Gerçek
+       kullanıcıda bu değişken hiç yok; aşağıdaki normal kurulum aynen çalışır. */
+    var _EMU=window.__COACHOS_EMU;
+    if(_EMU){
+      firebase.firestore().useEmulator(_EMU.host,_EMU.port,_EMU.mockUserToken?{mockUserToken:_EMU.mockUserToken}:undefined);
+      firebase.firestore().settings({experimentalForceLongPolling:true,merge:true});
+      window.__fsTransport='long';window.__fsTransportWorks=function(){};window.__fsSwitchTransport=function(){return false;};
+    }else{
     var _TKEY='coachos_fs_transport', _TSW='coachos_fs_transport_switched_at', _TSW_GAP=10*60*1000;
     var _tp=null; try{_tp=localStorage.getItem(_TKEY);}catch(e){}
     if(_tp!=='long'&&_tp!=='auto')_tp='auto';
@@ -122,6 +131,7 @@ if(light){document.documentElement.setAttribute('data-theme','light');document.q
        Her türlü Firestore kullanımından ÖNCE, settings()'in hemen ardından çağrılmalı. */
     try{firebase.firestore().enablePersistence({synchronizeTabs:true})
       .catch(e=>console.warn('offline persistence unavailable:',e&&e.code||e));}catch(e){}
+    }   // _EMU değilse
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
 <script>
