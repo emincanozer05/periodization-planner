@@ -13,14 +13,127 @@ service cloud.firestore {
         || !('rev' in resource.data)
         || request.resource.data.base == resource.data.rev;
     }
+    /* Senkron geçişi (docs/senkron-gecis-plani.md §7.4): hesap yeni yapıya taşınınca
+       manifeste `migratedTo` yazılır ve eski yapı SALT OKUNUR olur. Önbellekteki eski bir
+       uygulama sürümü artık yazamaz: ne manifesti, ne yeni bir parça. Taşınmamış hesaplarda
+       (bugün hepsi) bu koşul hiçbir şeyi değiştirmez. */
+    function legacyOpen() {
+      let head = /databases/$(database)/documents/kullanici_verileri/$(request.auth.uid);
+      return !exists(head) || !('migratedTo' in get(head).data);
+    }
     match /kullanici_verileri/{docId} {
       allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid && syncHeadOk(docId);
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && legacyOpen();
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid && syncHeadOk(docId)
+                    && (!('migratedTo' in resource.data));
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid && legacyOpen();
     }
     match /users/{uid}/{doc=**} {
       allow read, write: if request.auth.uid == uid;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       ÇALIŞMA ALANLARI — kayıt bazlı senkron (docs/senkron-gecis-plani.md §3,
+       docs/veri-modeli.md). Henüz hiçbir uygulama sürümü buraya yazmıyor (Faz 2'ye kadar).
+
+       workspaces/{ws}                       çalışma alanı; ws == sahibin uid'i (K3)
+       workspaces/{ws}/members/{uid}         üyelik: role + teams (['*'] ya da takım kimlikleri)
+       workspaces/{ws}/invites/{token}       davet linki; adresi bilen okur, kimse listeleyemez
+       workspaces/{ws}/teams/{teamId}/**     takımın her şeyi (sezon, seans, sporcu, test, log)
+       workspaces/{ws}/{col}/**              kulüp geneli: kütüphane, şablonlar, ayarlar…
+
+       Roller (K2): owner · admin (üyeleri yönetir) · coach (düzenler) · viewer (yalnız görür).
+       ═══════════════════════════════════════════════════════════════════════ */
+    function wsMemberPath(ws) {
+      return /databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid);
+    }
+    function isMember(ws) { return request.auth != null && exists(wsMemberPath(ws)); }
+    function wsRole(ws)   { return get(wsMemberPath(ws)).data.role; }
+    function wsTeams(ws)  { return get(wsMemberPath(ws)).data.teams; }
+    function canWrite(ws) { return isMember(ws) && wsRole(ws) in ['owner', 'admin', 'coach']; }
+    function canManage(ws){ return isMember(ws) && wsRole(ws) in ['owner', 'admin']; }
+    function teamOk(ws, teamId) { return '*' in wsTeams(ws) || teamId in wsTeams(ws); }
+    function validMember(d) {
+      return d.keys().hasAll(['uid', 'role', 'teams'])
+        && d.role in ['admin', 'coach', 'viewer']
+        && d.teams is list && d.teams.size() >= 1 && d.teams.size() <= 100;
+    }
+
+    match /workspaces/{ws} {
+      allow read: if isMember(ws);
+      // Yalnızca kendi kimliğiyle ve kendisi sahip olarak; sahip üyeliği aynı batch'te yazılır.
+      allow create: if request.auth != null && request.auth.uid == ws
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.ownerUid == ws
+        && existsAfter(wsMemberPath(ws))
+        && getAfter(wsMemberPath(ws)).data.role == 'owner';
+      allow update: if canManage(ws) && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if false;   // hesap silme (sunucu) dışında silinmez
+
+      match /members/{memberUid} {
+        allow read: if isMember(ws);
+        // Sahip üyeliği: yalnızca çalışma alanı kurulurken, sahibin kendisi.
+        allow create: if request.auth != null && request.auth.uid == ws && memberUid == ws
+            && request.resource.data.role == 'owner' && request.resource.data.uid == ws
+            && request.resource.data.teams == ['*']
+            && !exists(/databases/$(database)/documents/workspaces/$(ws))
+          // Davetle katılma: kişi yalnızca KENDİ üyeliğini, davetteki rol ve takımlarla açar;
+          // davet aynı batch'te bu kişi adına kullanıldı olarak işaretlenir.
+          || (request.auth != null && memberUid == request.auth.uid && memberUid != ws
+            && request.auth.token.firebase.sign_in_provider != 'anonymous'
+            && validMember(request.resource.data) && request.resource.data.uid == memberUid
+            && request.resource.data.invite is string
+            && exists(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite))
+            && get(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite)).data.usedBy == null
+            && get(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite)).data.expiresAt > request.time
+            && get(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite)).data.role == request.resource.data.role
+            && get(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite)).data.teams == request.resource.data.teams
+            && getAfter(/databases/$(database)/documents/workspaces/$(ws)/invites/$(request.resource.data.invite)).data.usedBy == memberUid)
+          // Yönetici doğrudan ekler (sahip rolü verilemez).
+          || (canManage(ws) && memberUid != ws && validMember(request.resource.data) && request.resource.data.uid == memberUid);
+        // Rol/takım değişikliği yöneticinin; sahibin üyeliği değiştirilemez.
+        allow update: if canManage(ws) && memberUid != ws && validMember(request.resource.data)
+          && request.resource.data.uid == resource.data.uid;
+        // Yönetici çıkarır; herkes kendisi ayrılabilir; sahip ayrılamaz.
+        allow delete: if memberUid != ws && (canManage(ws) || (request.auth != null && request.auth.uid == memberUid));
+      }
+
+      match /invites/{token} {
+        allow get: if request.auth != null;          // linki bilen (token gizli)
+        allow list: if canManage(ws);
+        allow create: if canManage(ws)
+          && request.resource.data.role in ['admin', 'coach', 'viewer']
+          && request.resource.data.teams is list && request.resource.data.teams.size() >= 1
+          && request.resource.data.usedBy == null
+          && request.resource.data.expiresAt is timestamp
+          && request.resource.data.createdBy == request.auth.uid;
+        // Kullanma: yalnızca usedBy, yalnızca kendisi, yalnızca bir kez, üyeliğiyle aynı batch'te.
+        allow update: if request.auth != null && resource.data.usedBy == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedBy', 'usedAt'])
+            && request.resource.data.usedBy == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/workspaces/$(ws)/members/$(request.auth.uid))
+          || canManage(ws);
+        allow delete: if canManage(ws);
+      }
+
+      // Takımın bütün alt verisi: üye ve o takıma erişimi var.
+      match /teams/{teamId} {
+        allow read: if isMember(ws) && teamOk(ws, teamId);
+        allow create, update: if canWrite(ws) && teamOk(ws, teamId);
+        allow delete: if canManage(ws) && teamOk(ws, teamId);
+        /* {sub} en az bir segment ister: `{rest=**}` tek başına SIFIR segmentle de eşleşir
+           ve takım belgesinin kendisini (silme dahil) koça açardı. */
+        match /{sub}/{rest=**} {
+          allow read: if isMember(ws) && teamOk(ws, teamId);
+          allow write: if canWrite(ws) && teamOk(ws, teamId);
+        }
+      }
+
+      // Kulüp geneli koleksiyonlar (K5): kütüphane, şablonlar, test tanımları, ayarlar…
+      match /{col}/{docId=**} {
+        allow read: if isMember(ws) && !(col in ['members', 'invites', 'teams']);
+        allow write: if canWrite(ws) && !(col in ['members', 'invites', 'teams']);
+      }
     }
 
     /* ABONELİK (docs/yayina-hazirlik-plani.md §3). Belgeyi YALNIZCA sunucu yazar

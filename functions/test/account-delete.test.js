@@ -40,6 +40,8 @@ function fakeDb(seed) {
       }),
     }),
     batch: () => { const ops = []; return { delete: r => ops.push(r), commit: async () => { for (const r of ops) await r.delete(); } }; },
+    /* collection group: "grup:" önekli düz koleksiyonlar (ör. 'members' grubunun belgeleri). */
+    collectionGroup: g => db.collection('group:' + g),
   };
   return db;
 }
@@ -96,6 +98,8 @@ const SEED = {
   'ai_usage/bob': { proxy: 1 },
   'billing/alice': { status: 'trialing' },
   'billing/bob': { status: 'active' },
+  'group:members/ws_bob__alice': { uid: 'alice', role: 'coach' },
+  'group:members/ws_bob__carol': { uid: 'carol', role: 'viewer' },
 };
 ta('hesabın her kaydı gider, başkasınınki kalır', async () => {
   const db = fakeDb(SEED);
@@ -111,7 +115,8 @@ ta('hesabın her kaydı gider, başkasınınki kalır', async () => {
   assert.deepStrictEqual(left('polar_sleep'), ['bob__b1__2026-11-01']);
   assert.deepStrictEqual(left('ai_usage'), ['bob']);
   assert.deepStrictEqual(left('billing'), ['bob']);
-  assert.deepStrictEqual(calls.recursive, ['users/alice']);
+  assert.deepStrictEqual(left('group:members'), ['ws_bob__carol'], 'başka kulüpteki üyeliği de gitmeli');
+  assert.deepStrictEqual(calls.recursive, ['users/alice', 'workspaces/alice']);
   assert.strictEqual(calls.files, 'users/alice/');
   assert.strictEqual(calls.deletedUser, 'alice');
   assert.deepStrictEqual(calls.deregistered, ['p1'], 'Polar kaydı Polar tarafında da kaldırılmalı');
@@ -157,8 +162,10 @@ ta('sayfalama: 400\'den fazla kayıt da silinir', async () => {
 section('HESABI SİL — firestore.rules ile uyum');
 t('kurallardaki her koleksiyon ya silinir ya da bilerek hesap dışıdır', () => {
   const rules = fs.readFileSync(path.join(__dirname, '..', '..', 'firestore.rules'), 'utf8');
-  const cols = new Set([...rules.matchAll(/match \/([a-z_]+)\//g)].map(m => m[1]));
-  cols.delete('databases');
+  /* Yalnızca üst düzey koleksiyonlar (4 boşluk girinti); workspaces/{ws} altındakiler
+     (members, invites, teams…) workspaces/{uid} ile birlikte silinir. */
+  const cols = new Set([...rules.matchAll(/^    match \/([a-z_]+)\//gm)].map(m => m[1]));
+  assert.ok(cols.has('kullanici_verileri') && cols.has('workspaces'), 'kural dosyası okunamadı');
   /* Hesaba bağlı olmayanlar: genel ayar ve silme izi. */
   const NOT_ACCOUNT = new Set(['config', A.AUDIT_COL]);
   const covered = new Set([...A.BY_FIELD.map(x => x[0]), ...A.BY_ID, ...A.RECURSIVE]);
