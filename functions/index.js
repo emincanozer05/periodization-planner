@@ -444,6 +444,9 @@ const aiJob = require('./ai/job');
 const aiProxy = require('./ai/proxy');
 const gemini = require('./ai/gemini');
 const AI_SECRET = 'GEMINI_API_KEY';
+const billing = require('./billing/entitlement');
+/* Abonelik kapısı: config/billing.enforced kapalıyken her zaman true. */
+const aiHasAccess = uid => billing.hasFullAccess({ db: db(), ws: uid, now: () => Date.now() });
 
 /* Yapılandırılmış log satırı. Anahtar ve sporcunun sağlık verisi buraya girmez;
    iş kimliği, sporcu/seans kimliği, model, deneme, hata türü, HTTP durumu,
@@ -473,6 +476,7 @@ exports.aiGenerationJob = functions
       gemini,
       apiKey: process.env[AI_SECRET] || '',
       log: aiLog,
+      hasAccess: aiHasAccess,
     });
     return null;
   });
@@ -483,7 +487,7 @@ exports.geminiProxy = functions
   .https.onCall(async (data, context) => {
     try {
       return await aiProxy.handle(data, context.auth, {
-        db: db(), gemini, apiKey: process.env[AI_SECRET] || '', log: aiLog,
+        db: db(), gemini, apiKey: process.env[AI_SECRET] || '', log: aiLog, hasAccess: aiHasAccess,
       });
     } catch (e) {
       if (e instanceof aiProxy.ProxyError) {
@@ -492,6 +496,30 @@ exports.geminiProxy = functions
       aiLog('error', 'ai_proxy_internal', { error: String((e && e.message) || e).slice(0, 300) });
       throw new functions.https.HttpsError('internal', aiProxy.USER_MSG.DEFAULT, { code: 'INTERNAL' });
     }
+  });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ABONELİK DURUMU (docs/yayina-hazirlik-plani.md §3)
+
+   Uygulama oturum açınca bir kez çağırır. billing/{uid} yoksa açar: bu tarihten
+   önce açılmış hesaplara "kurucu" (ücretsiz), yenilere 14 gün deneme. Belgeyi
+   yalnızca bu function (ve ileride ödeme sağlayıcısının webhook'u) yazar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+exports.billingStatus = functions
+  .region(REGION)
+  .runWith({ timeoutSeconds: 20, memory: '256MB' })
+  .https.onCall(async (data, context) => {
+    const auth = context.auth;
+    if (!auth || !auth.uid || (auth.token && auth.token.firebase && auth.token.firebase.sign_in_provider === 'anonymous'))
+      throw new functions.https.HttpsError('unauthenticated', 'Oturum açman gerekiyor.');
+    let createdAt = null;
+    try {
+      const u = await admin.auth().getUser(auth.uid);
+      createdAt = u.metadata && u.metadata.creationTime ? Date.parse(u.metadata.creationTime) : null;
+    } catch (e) {
+      functions.logger.warn('billing: getUser failed', { uid: auth.uid, error: String(e && e.message || e).slice(0, 200) });
+    }
+    return billing.ensureBilling({ db: db(), ws: auth.uid, createdAt, now: () => Date.now(), serverTimestamp: now });
   });
 
 /* ═══════════════════════════════════════════════════════════════════════════

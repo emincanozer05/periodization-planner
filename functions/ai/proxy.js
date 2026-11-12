@@ -15,6 +15,7 @@ const USER_MSG = {
   RATE_LIMITED: 'AI servisi geçici olarak yoğun ya da bu modelin kotası doldu. Biraz sonra tekrar dene.',
   QUOTA_EXHAUSTED_DAILY: 'Bu modelin günlük kotası doldu. Ayarlardan başka bir model seç ya da yarın tekrar dene.',
   RATE_LIMITED_USER: 'Bu saat için AI kullanım sınırına ulaşıldı. Biraz sonra tekrar dene.',
+  SUBSCRIPTION_REQUIRED: 'Yapay zekâ için aktif abonelik gerekiyor. Aboneliğini Ayarlar → Abonelik\'ten yenileyebilirsin.',
   MODEL_UNAVAILABLE: 'Seçili model şu anda kullanılamıyor. Ayarlar → Yapay Zekâ Asistanı\'ndan başka bir model seç.',
   AUTH_ERROR: 'Sunucudaki AI yapılandırması geçersiz. Yöneticiye bildir.',
   PERMISSION_DENIED: 'Sunucudaki AI anahtarının bu modele erişimi yok. Yöneticiye bildir.',
@@ -62,6 +63,10 @@ async function handle(data, auth, deps) {
     return { invalidated: n };
   }
   if (op !== 'generate') throw new ProxyError('invalid-argument', 'BAD_OP', 'Bilinmeyen işlem.');
+  /* Abonelik: maliyetin asıl kaynağı üretim çağrısı. config/billing.enforced kapalıyken
+     hasAccess her zaman true döner (billing/entitlement.js). */
+  if (deps.hasAccess && !(await deps.hasAccess(auth.uid)))
+    throw new ProxyError('permission-denied', 'SUBSCRIPTION_REQUIRED', USER_MSG.SUBSCRIPTION_REQUIRED);
 
   const model = String(d.model || '');
   if (!/^[a-z0-9][a-z0-9.\-]{1,80}$/i.test(model)) throw new ProxyError('invalid-argument', 'BAD_MODEL', 'Geçersiz model kimliği.');

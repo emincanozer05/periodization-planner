@@ -1,7 +1,13 @@
 function App(){
   useAppLang();   // re-render the whole tree the instant the language changes
-  const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
-  const sync=useCloudSync(data,setData);
+  const[data,setDataRaw]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
+  // Senkron buluttan geleni HER ZAMAN yazar; abonelik kapısı yalnızca ekrandan gelen düzenlemelerde.
+  const sync=useCloudSync(data,setDataRaw);
+  const bill=useBilling(sync.user);
+  /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
+     setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
+  const readOnly=!bill.access.full;
+  const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);
   /* Bir wellness uyarısına tıklandığında açılacak sporcu. Kadro ekranı bunu görüp
@@ -277,7 +283,8 @@ function App(){
               across two squads recognises the badge before they have read the word. */}
           {hasMedia(team.setup&&team.setup.logo)&&
             <img className="bt-teamlogo" src={mediaSrc(team.setup.logo)} alt=""/>}
-          <select value={data.activeTeamId} onChange={e=>setData(withTeam(data,e.target.value))}
+          {/* Seçili takım cihaza ait (buluta gitmez): salt okunur modda da değiştirilebilir. */}
+          <select value={data.activeTeamId} onChange={e=>setDataRaw(withTeam(data,e.target.value))}
             aria-label={L('Takım','Team')}>
             {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
           </select>
@@ -343,6 +350,7 @@ function App(){
         Tryouts, which is not a view of any squad and would only lose its selected
         candidate and filters to a team switch it has nothing to do with. */}
     <main key={view+(view==='tryouts'||view==='allcal'?'':team.id)}>
+      <BillingBanner bill={bill}/>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
       {view==='calendar'&&<><PageHero title={L('Takvim','Calendar')}

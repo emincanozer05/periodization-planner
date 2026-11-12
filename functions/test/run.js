@@ -14,5 +14,6 @@ require('./ai-router.test.js');        // AI · model zinciri, bütçe, retry, f
 require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, kilit, takvim güvenliği
 require('./polar.test.js');            // Polar · davet, OAuth, token saklama, bağlantı kesme
 require('./polar-sync.test.js');       // Polar · veri senkronu, commit sırası, tekrar önleme
+require('./billing.test.js');          // Abonelik · erişim kuralı, deneme, uygulamayla aynı sonuç
 
 run();
