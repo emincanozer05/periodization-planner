@@ -5,6 +5,10 @@ function App(){
   const sync=useCloudSync(data,setDataRaw);
   const bill=useBilling(sync.user,sync.v2&&sync.v2.ws);
   usePrivacyAck(sync.user);   // aydınlatma metninin hangi sürümü gösterildi (467-account.jsx)
+  useJoinInvite(sync);        // ?join=<kulüp>.<davet> (469-team-access.jsx)
+  /* Başka birinin kulübünü açan üye: sahibe bağlı özellikler gizlenir (469 → CLUB_MEMBER). */
+  const clubMember=!!(sync.v2&&sync.v2.active&&sync.user&&sync.v2.ws!==sync.user.uid);
+  CLUB_MEMBER=clubMember;
   /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
      setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
   /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
@@ -260,7 +264,7 @@ function App(){
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
       {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
-      {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
+      ...(clubMember?[]:[{id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin}]),
     ]},
     /* Tryouts is deliberately its own group rather than another Workspace row: every
        other tab on this sidebar is a view of the team in the picker above, and this one
@@ -332,6 +336,7 @@ function App(){
       </nav>
       {/* The signed-in account, pinned to the foot of the menu: who is working here and
           the one way out. */}
+      <ClubSwitcher sync={sync}/>
       {sync.user&&(()=>{const u=sync.user,nm=String(u.displayName||'').trim(),em=String(u.email||'').trim();
         const label=nm||em.split('@')[0]||L('Hesap','Account');
         return<div className="sb-account">
@@ -353,7 +358,7 @@ function App(){
         candidate and filters to a team switch it has nothing to do with. */}
     <main key={view+(view==='tryouts'||view==='allcal'?'':team.id)}>
       <BillingBanner bill={bill}/>
-      {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
+      {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData} sync={sync}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
       {view==='calendar'&&<><PageHero title={L('Takvim','Calendar')}
         sub={L(`Sezonun günleri · ${team.setup.teamName}`,`The season, day by day · ${team.setup.teamName}`)}
@@ -391,17 +396,17 @@ function App(){
     <datalist id="bp-lib-names">{ballNameOptions}</datalist>
     {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
         olsun dinlenir ve günlüğe işlenir. */}
-    <CheckinInbox sync={sync} setData={setData}/>
+    {!clubMember&&<CheckinInbox sync={sync} setData={setData}/>}
     {/* Antrenman günlüğü (lift.html): sporcunun kg/tekrar girişleri dinlenir; açıksa takvimdeki
         programlar sporcuya otomatik yayımlanır. */}
-    <LiftInbox sync={sync} setData={setData}/>
-    <LiftSync team={team} sync={sync}/>
+    {!clubMember&&<LiftInbox sync={sync} setData={setData}/>}
+    {!clubMember&&<LiftSync team={team} sync={sync}/>}
     {/* Aynı sebeple burada: sunucunun uyarıyı kime göndereceğini bildiği kadro
         özeti, koç hangi ekranda olursa olsun — ve HANGİ TAKIMA bakıyor olursa
         olsun — güncel tutulur. */}
-    <AlertRosterSync teams={data.teams} sync={sync}/>
+    {!clubMember&&<AlertRosterSync teams={data.teams} sync={sync}/>}
     {/* Cihaz kaydının tazeliği, uygulama açıkken gelen bildirim ve bildirime
         tıklayınca açılacak ekran — üçü de ekrandan bağımsız. */}
-    <PushBridge sync={sync} openAlert={openAlert}/>
+    {!clubMember&&<PushBridge sync={sync} openAlert={openAlert}/>}
   </div>);
 }

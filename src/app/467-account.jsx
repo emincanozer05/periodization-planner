@@ -97,6 +97,8 @@ function DeleteAccountModal({user,data,onClose}){
         <li>{L('Check-in ve antrenman günlüğü linkleri ve gelen yanıtlar; ekip üyelerinin bağlantıları','Check-in and training-log links and their answers; staff connections')}</li>
         <li>{L('Polar bağlantıları (Polar tarafında da kaldırılır) ve toplanan Polar verisi','Polar connections (removed on Polar\'s side too) and the collected Polar data')}</li>
         <li>{L('Yüklenen fotoğraflar ve dosyalar, abonelik kaydı, giriş hesabın','Uploaded photos and files, the subscription record, your sign-in account')}</li>
+        <li><b>{L('Bir kulübün sahibiysen kulübün bütün verisi de silinir ve davet ettiğin üyeler erişimini kaybeder.',
+          'If you own a club, all of its data is deleted too and the members you invited lose access.')}</b></li>
       </ul>
       <p style={{lineHeight:1.6}}>
         {L('Önce verilerini indirmeni öneririz:','We suggest downloading your data first:')}{' '}

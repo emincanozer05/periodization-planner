@@ -291,13 +291,14 @@ kulübe üye olabilir (kulüp seçici); check-in, Polar ve uyarılar ilk sürüm
 - [x] **5a — üyelik temeli:** `smListen` takım kapsamlı (yalnız belirli takımlara erişen antrenör için her takım
       belgesi ayrı dinlenir); `useStoreV2` kulüp seçimi (`users/{uid}/memberships` + cihazdaki seçim), rol ve takımlar;
       izleyici salt okunur; abonelik kulüpten (`billing/{ws}`, kural: üye okur). Emulator: üye testleri.
-- [ ] **5b — davet ve yönetim:** Ayarlar → Ekip ve erişim (davet linki: rol, takımlar, süre; üye listesi: rol/takım
-      değiştir, çıkar); davetle katılma (`?join=`); kulüp seçici; üye için sahip özelliklerinin gizlenmesi;
-      uçtan uca test (sahip davet eder, ikinci tarayıcı katılır, birlikte düzenler).
+- [x] **5b — davet ve yönetim** (`469-team-access.jsx`): Ayarlar → Ekip ve erişim (kulüp adı; davet linki: rol,
+      takımlar, 7 gün, tek kullanımlık; üye listesi: rol değiştir, çıkar); davetle katılma (`?join=<kulüp>.<davet>`,
+      tek batch: üyelik + davet kullanıldı + `users/{uid}/memberships`); kulüp seçici; başka kulübü açan üyede check-in,
+      gelen kutuları, kadro yayını, bildirim ve Polar gizli (`CLUB_MEMBER`). Uçtan uca test bölüm 6: 12 kontrol.
 - [ ] **5c — yöneticiler için check-in, Polar, uyarılar:** kurallar ve sunucu fonksiyonları `coachUid == auth.uid`
       yerine kulüp yöneticisini de kabul etmeli.
 - [ ] `members.uid` dizini elle yayımlanır (hesap silmenin başka kulüplerdeki üyeliği temizlemesi için).
-- [ ] Sahibin hesabını silmesi kulübü de siler: üyesi olan sahibe uyarı (ileride sahipliği devret).
+- [x] Hesap silme penceresinde kulüp sahibine uyarı. (İleride: sahipliği devret.)
 **Çıkış ölçütü:** İki ayrı hesap aynı takımda B1/B2'yi sağlıyor.
 
 ### Faz 6 — Herkese açılış ve temizlik
@@ -446,4 +447,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-12 | 2 | Firestore bağlantısı (smWrite/smListen), veri kökü state/root; emulator'de 7 test (eşzamanlı iki istemci dahil) | #753 |
 | 2026-11-12 | 2 | Denetleyici + uygulama kancası (useStoreV2), bayrak arkasında; eski senkron taşınmış hesapta durur | #754 |
 | 2026-11-12 | 3 | Taşıma aracı (smMigrate, iyimser kilit), pilot düğmesi, emulator testleri, uygulamanın emulator kancası ve uçtan uca tarayıcı testi | #755 |
-| 2026-11-12 | 5a | Üyelik temeli: takım kapsamlı dinleme, kulüp seçimi, izleyici salt okunur, abonelik kulüpten | bu PR |
+| 2026-11-12 | 5a | Üyelik temeli: takım kapsamlı dinleme, kulüp seçimi, izleyici salt okunur, abonelik kulüpten | #756 |
+| 2026-11-12 | 5b | Ekip ve erişim paneli, davetle katılma, kulüp seçici, üyede sahip özellikleri gizli; uçtan uca 28/28 | bu PR |

@@ -70,7 +70,8 @@ const SEED = () => {
 
   const { chromium } = playwright();
   const cache = {};
-  const body = key => cache[key] || (cache[key] = Buffer.concat([fs.readFileSync(libFile(key)), Buffer.from(key === 'fbauth' ? FAKE_AUTH : '')]));
+  const body = (key, uid = UID) => cache[key + uid] || (cache[key + uid] = Buffer.concat([fs.readFileSync(libFile(key)),
+    Buffer.from(key === 'fbauth' ? FAKE_AUTH.replace(/smoke-user/g, uid).replace(/smoke@example\.com/g, uid + '@example.com') : '')]));
   const srv = http.createServer((q, r) => {
     let u = decodeURIComponent(q.url.split('?')[0]); if (u === '/') u = '/index.html';
     const f = path.join(DIST, u);
@@ -82,19 +83,19 @@ const SEED = () => {
   const origin = 'http://localhost:' + srv.address().port;
   const browser = await chromium.launch({ args: ['--no-sandbox'] });
   const errors = [];
-  const open = async name => {
+  const open = async (name, uid = UID, query = '?v2pilot=1') => {
     const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 }, serviceWorkers: 'block' });
-    await ctx.addInitScript(([h, p, uid]) => { window.__COACHOS_EMU = { host: h, port: Number(p), mockUserToken: { sub: uid, user_id: uid } }; }, [EH, EP, UID]);
+    await ctx.addInitScript(([h, p, u]) => { window.__COACHOS_EMU = { host: h, port: Number(p), mockUserToken: { sub: u, user_id: u } }; }, [EH, EP, uid]);
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(name + ': ' + e.message.slice(0, 200)));
     page.on('dialog', d => d.accept());
     await page.route('**/*', route => {
       const url = route.request().url();
       if (url.startsWith(origin) || url.includes(EH + ':' + EP) || url.includes('localhost:' + EP)) return route.continue();
-      for (const [re, key] of ROUTES) if (re.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body: body(key) });
+      for (const [re, key] of ROUTES) if (re.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body: body(key, uid) });
       return route.abort();
     });
-    await page.goto(origin + '/index.html?v2pilot=1', { waitUntil: 'load' });
+    await page.goto(origin + '/index.html' + query, { waitUntil: 'load' });
     await page.waitForSelector('.nav-item', { timeout: 45000 });
     await page.waitForTimeout(800);
     await page.evaluate(HOOKS);
@@ -164,6 +165,35 @@ const SEED = () => {
     const navs = await B.$$eval('.nav-item', els => els.map(e => e.innerText.trim().split('\n')[0]));
     for (let i = 0; i < navs.length; i++) { await B.locator('.nav-item').nth(i).click(); await B.waitForTimeout(500); }
     check(navs.length + ' sekme gezildi, sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    console.log('\n== 6. ekip daveti (Faz 5b): sahip davet eder, ayrı bir kullanıcı katılır');
+    await edit(B, "d.teams.push({id:'T2',setup:{teamName:'U16'},days:{},weekOverrides:{},staff:[],seasons:[{id:'X'}],activeSeasonId:'X',seasonData:{},athletes:[{id:'u1',name:'Genç',tests:[],injuries:[],measurements:[],wellness:[],srpeLog:[],days:{}}]});");
+    check('sahip ikinci takımı ekledi', !!(await until(async () => (await get(`workspaces/${UID}/teams/T2`)))));
+    const setI = B.locator('.nav-item').filter({ hasText: /Settings|Ayarlar/ }).first();
+    await setI.click(); await B.waitForTimeout(600);
+    const panel = B.locator('[data-panel="team-access"]');
+    check('Ekip ve erişim paneli sahibe görünüyor', await panel.count() === 1);
+    await panel.getByRole('button', { name: 'E2E Takım' }).click();   // yalnız T1
+    await panel.getByRole('button', { name: /Create invite link|Davet linki oluştur/ }).click();
+    const link = await until(() => B.evaluate(() => { const i = document.querySelector('.ta-link input'); return i && i.value; }));
+    check('davet linki oluştu', !!link && /\?join=/.test(link), link);
+    const q = link ? link.slice(link.indexOf('?')) : '';
+    const C = await open('C', 'coach-user', q);
+    const joined = await until(() => logHas(C, /kulüp: davetle katıldı/), 20000);
+    check('C davetle katıldı', !!joined);
+    const mem = await get(`workspaces/${UID}/members/coach-user`);
+    check('üyelik: antrenör, yalnız T1', mem && mem.role === 'coach' && JSON.stringify(mem.teams) === '["T1"]', JSON.stringify(mem));
+    const inv = link && await get(`workspaces/${UID}/invites/${link.split('.').pop()}`);
+    check('davet kullanıldı olarak işaretlendi', inv && inv.usedBy === 'coach-user');
+    const cData = await until(async () => { const d = await data(C); return d.teams && d.teams.length === 1 && d.teams[0].id === 'T1' && d; }, 20000);
+    check('C yalnızca erişebildiği takımı görüyor (T1)', !!cData, cData ? '' : JSON.stringify((await data(C)).teams && (await data(C)).teams.map(t => t.id)));
+    const cNav = await C.$$eval('.nav-item', els => els.map(e => e.innerText));
+    check('C\'de check-in menüsü yok (sahibe bağlı özellik)', !cNav.some(t => /Check-in/.test(t)));
+    check('C\'de kulüp seçici kulübü gösteriyor', await C.evaluate(u => { const s = document.getElementById('club-sel'); return !!s && s.value === u; }, UID));
+    await edit(C, "d.teams[0].athletes.find(a=>a.id==='a1').name='C yazdı';");
+    check('C\'nin düzenlemesi sahibe geldi', !!(await until(async () => ath(await data(B), 'a1').name === 'C yazdı')));
+    check('sahipte iki takım duruyor', (await data(B)).teams.length === 2);
+    check('davet sırasında sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {
