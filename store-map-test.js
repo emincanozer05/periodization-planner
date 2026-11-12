@@ -5,7 +5,9 @@
      1. gidiş-dönüş BİREBİR: smFromDocs(smToDocs(d)) ≡ d (gerçekçi veri, kenar durumlar, rastgele veri)
      2. her belge Firestore'a yazılabilir (iç içe dizi yok, ayrılmış ad yok, boyut sınırı)
      3. tek düzenleme = tek belge (senkron planı B3): bir test değeri, bir seans adı, yeni bir
-        wellness kaydı yalnızca KENDİ belgesini değiştirir
+        wellness kaydı, kütüphanenin başına bir egzersiz yalnızca KENDİ belgesini değiştirir
+     4. iki cihaz (B1, B2): aynı başlangıçtan iki cihazın düzenlemeleri alan düzeyinde sırayla
+        uygulanınca ikisi de kalır; aynı alan → son yazan kazanır; silinen kayda düzenleme düşer
 
    Kurulum gerekmiyor: `node store-map-test.js`
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -17,7 +19,7 @@ const a = src.indexOf('/* <store-map>');
 const z = src.indexOf('/* </store-map> */');
 if (a < 0 || z < a) { console.error('468-store-map.jsx: <store-map> bölümü bulunamadı'); process.exit(1); }
 // eslint-disable-next-line no-new-func
-const SM = new Function(src.slice(a, z) + '; return { smToDocs, smFromDocs, smCheckDocs, smCanon, smEnc, smDec, SM_DOC_LIMIT };')();
+const SM = new Function(src.slice(a, z) + '; return { smToDocs, smFromDocs, smCheckDocs, smCanon, smEnc, smDec, smDiff, smApply, smOrder, SM_DOC_LIMIT };')();
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => {
@@ -134,29 +136,34 @@ section('Firestore\'a yazılabilirlik');
   check('sorun yok (iç içe dizi sarıldı)', c.issues.length === 0, JSON.stringify(c.issues.slice(0, 3)));
   const paths = Object.keys(docs);
   check('belge yolları çift parçalı (koleksiyon/kimlik)', paths.every(p => p === '' || p.split('/').length % 2 === 0), paths.find(p => p !== '' && p.split('/').length % 2 !== 0));
-  check('beklenen belgeler var', ['', 'exercises/e0', 'teams/T1', 'teams/T1/seasons/S2', 'teams/T1/seasons/S1', 'teams/T1/athletes/a0', 'teams/T1/athletes/a0/tests/t00',
-    'teams/T1/athletes/a0/logs/2026-11', 'teams/T1/athletes/a0/sessions/as0', 'teams/T1/sessions/tp1', 'teams/T1/sessions/old1', 'teams/T2'].every(p => p in docs),
-    ['', 'exercises/e0', 'teams/T1/athletes/a0/logs/2026-11'].filter(p => !(p in docs)).join(','));
+  const want = ['', 'exercises/e0', 'teams/T1', 'teams/T1/seasons/S2', 'teams/T1/seasons/S1', 'teams/T1/athletes/a0', 'teams/T1/tests/t00',
+    'teams/T1/injuries/i1', 'teams/T1/measurements/m0', 'teams/T1/logs/a0_2026-11', 'teams/T1/athleteSessions/as0', 'teams/T1/athleteDays/a0_' + D(1),
+    'teams/T1/sessions/tp1', 'teams/T1/sessions/old1', 'teams/T1/days/S2_' + D(0), 'teams/T1/days/S1_' + D(-400), 'teams/T2'];
+  check('beklenen belgeler var', want.every(p => p in docs), want.filter(p => !(p in docs)).join(', '));
+  const depth = Math.max(...paths.map(p => p ? p.split('/').length : 0));
+  check('en derin yol 4 parça (takım düzeyinde düz koleksiyonlar)', depth === 4, 'derinlik ' + depth);
   check('cihaza ait activeTeamId yazılmıyor', !JSON.stringify(docs['']).includes('activeTeamId'));
   const big = { teams: [{ id: 'T', athletes: [{ id: 'a', blob: 'x'.repeat(SM.SM_DOC_LIMIT + 10) }] }] };
   check('çok büyük belge raporlanır', SM.smCheckDocs(SM.smToDocs(big)).issues.some(i => i.kind === 'too-large'));
 }
 
 section('tek düzenleme = tek belge (B3)');
+/* Gerçek akış: cihaz elindeki belgelerden (prev) yeni belgeleri üretir, yalnızca farkı yazar. */
 const changed = (before, after) => {
-  const x = SM.smToDocs(clone(before)), y = SM.smToDocs(clone(after));
-  const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
-  return [...keys].filter(k => SM.smCanon(x[k]) !== SM.smCanon(y[k]));
+  const x = SM.smToDocs(clone(before));
+  const y = SM.smToDocs(clone(after), x);
+  return SM.smDiff(x, y).map(o => o.path);
 };
 const one = (name, mut, expect) => {
   const d = realistic(); const e = clone(d); mut(e);
-  const c = changed(d, e);
-  check(name + ' → ' + (expect || '1 belge'), expect ? SM.smCanon(c.sort()) === SM.smCanon(expect.sort()) : c.length === 1, 'değişen: ' + c.join(', '));
+  const c = changed(d, e).sort();
+  const ok = expect ? SM.smCanon(c) === SM.smCanon(expect.slice().sort()) : c.length === 1;
+  check(name + ' → ' + (expect ? expect.length : 1) + ' belge', ok, 'değişen: ' + c.join(', '));
 };
 one('bir test değeri', d => { d.teams[0].athletes[2].tests[1].cmj = 99; });
 one('bir seansın adı', d => { d.teams[0].days[D(1)].sessions[0].name = 'Yeni'; });
 one('park edilmiş sezondaki seans', d => { d.teams[0].seasonData.S1.days[D(-400)].sessions[0].duration = 75; });
-one('yeni wellness kaydı', d => { d.teams[0].athletes[3].wellness.push({ date: D(0), sleep: 5 }); });
+one('yeni wellness kaydı (kimliksiz)', d => { d.teams[0].athletes[3].wellness.push({ date: D(0), sleep: 5 }); });
 one('bir sRPE kaydının değeri', d => { d.teams[0].athletes[1].srpeLog[2].scRPE = 8; });
 one('sporcunun mevkisi', d => { d.teams[0].athletes[4].position = 'C'; });
 one('kütüphanede bir egzersiz', d => { d.exercises[3].purpose = 'Çekiş'; });
@@ -164,11 +171,87 @@ one('sezon tarihleri', d => { d.teams[0].setup.seasonEnd = D(210); });
 one('günlük not', d => { d.teams[0].days[D(2)].dailyNotes = 'Yağmur'; });
 one('sporcunun kendi takvimindeki seans', d => { d.teams[0].athletes[0].days[D(1)].sessions[0].notes = 'not'; });
 one('iki farklı sporcunun iki ayrı testi', d => { d.teams[0].athletes[0].tests[0].cmj = 1; d.teams[0].athletes[5].tests[0].cmj = 2; },
-  ['teams/T1/athletes/a0/tests/t00', 'teams/T1/athletes/a5/tests/t50']);
-one('yeni seans eklemek (yalnız seansın belgesi; gün belgesine dokunulmaz)', d => { d.teams[0].days[D(2)].sessions.push({ id: 'new1', name: 'Saha', blocks: [] }); },
+  ['teams/T1/tests/t00', 'teams/T1/tests/t50']);
+one('yeni seans (gün belgesine dokunmaz)', d => { d.teams[0].days[D(2)].sessions.push({ id: 'new1', name: 'Saha', blocks: [] }); },
   ['teams/T1/sessions/new1']);
-one('boş güne ilk seans', d => { d.teams[0].days[D(0)].sessions.push({ id: 'new2', name: 'Saha', blocks: [] }); },
-  ['teams/T1/sessions/new2']);
+one('kütüphanenin BAŞINA egzersiz (diğerleri yeniden yazılmaz)', d => { d.exercises.unshift({ id: 'eNew', name: 'Yeni' }); }, ['exercises/eNew']);
+one('takımın başına sporcu', d => { d.teams[0].athletes.unshift({ id: 'aNew', name: 'Yeni' }); }, ['teams/T1/athletes/aNew']);
+one('iki egzersizin yerini değiştirmek (yalnız biri yeni sıra alır)', d => { const x = d.exercises; [x[1], x[2]] = [x[2], x[1]]; });
+one('sezon değiştirmek (günler ve seanslar yazılmaz)', d => {
+  const t = d.teams[0]; const park = { setup: t.setup, days: t.days, weekOverrides: t.weekOverrides };
+  const nx = t.seasonData.S1; t.seasonData = { S2: park }; t.activeSeasonId = 'S1';
+  t.setup = nx.setup; t.days = nx.days; t.weekOverrides = nx.weekOverrides;
+}, ['teams/T1', 'teams/T1/seasons/S1', 'teams/T1/seasons/S2']);
+
+section('sıra: kesirli değerler');
+{
+  const o = SM.smOrder(['x', 'a', 'b', 'c'], { a: 0, b: 1024, c: 2048 });
+  check('başa ekleme: eskiler aynı, yeni öncesinde', o[1] === 0 && o[2] === 1024 && o[3] === 2048 && o[0] < 0, JSON.stringify(o));
+  const m = SM.smOrder(['a', 'x', 'b'], { a: 0, b: 1024 });
+  check('araya ekleme: komşuların arası', m[0] === 0 && m[2] === 1024 && m[1] > 0 && m[1] < 1024, JSON.stringify(m));
+  const r = SM.smOrder(['c', 'a', 'b'], { a: 0, b: 1024, c: 2048 });
+  check('taşıma: yalnızca taşınan değişir', r[1] === 0 && r[2] === 1024 && r[0] < 0, JSON.stringify(r));
+  let keys = ['a', 'b'], prev = { a: 0, b: 1 };
+  for (let i = 0; i < 80; i++) { keys = [keys[0], 'n' + i, ...keys.slice(1)]; const v = SM.smOrder(keys, prev); prev = {}; keys.forEach((k, j) => { prev[k] = v[j]; }); }
+  const vals = keys.map(k => prev[k]);
+  check('80 kez aynı araya ekleme: sıra bozulmaz (gerekirse yeniden numaralanır)', vals.every((v, i) => i === 0 || v > vals[i - 1]));
+}
+
+section('iki cihaz aynı anda (B1, B2)');
+/* Aynı başlangıç → iki cihaz kendi düzenlemesini yapar → ikisinin farkı sırayla uygulanır
+   (Firestore'un alan düzeyindeki update'i gibi) → geri kurulan veri. */
+const twoDevices = (mutA, mutB) => {
+  const base = realistic(); delete base.activeTeamId;
+  const docs0 = SM.smToDocs(clone(base));
+  const opsOf = mut => { const d = clone(base); mut(d); return SM.smDiff(docs0, SM.smToDocs(d, docs0)); };
+  const a = opsOf(mutA), b = opsOf(mutB);
+  const r1 = SM.smApply(docs0, a), r2 = SM.smApply(r1.docs, b);
+  return { data: SM.smFromDocs(r2.docs), failed: r1.failed.concat(r2.failed), base };
+};
+const both = (name, mutA, mutB, test) => {
+  const r = twoDevices(mutA, mutB);
+  let ok = false, why = '';
+  try { ok = test(r.data, r); } catch (e) { why = e.message; }
+  check(name, ok, why || 'beklenen sonuç yok');
+};
+const T = d => d.teams[0];
+both('ikisi de ayrı sporcu ekler → ikisi de var',
+  d => T(d).athletes.push({ id: 'ax', name: 'X' }), d => T(d).athletes.push({ id: 'ay', name: 'Y' }),
+  d => ['ax', 'ay'].every(id => T(d).athletes.some(a => a.id === id)) && T(d).athletes.length === 8);
+both('biri test girer, öbürü aynı sporcuya sakatlık ekler',
+  d => { T(d).athletes[0].tests[0].cmj = 77; }, d => { T(d).athletes[0].injuries.push({ id: 'iNew', location: 'ayak' }); },
+  d => T(d).athletes[0].tests[0].cmj === 77 && T(d).athletes[0].injuries.some(i => i.id === 'iNew'));
+both('aynı seansın farklı alanları (ad / süre)',
+  d => { T(d).days[D(1)].sessions[0].name = 'A adı'; }, d => { T(d).days[D(1)].sessions[0].duration = 90; },
+  d => T(d).days[D(1)].sessions[0].name === 'A adı' && T(d).days[D(1)].sessions[0].duration === 90);
+both('aynı sporcunun farklı alanları (ad / mevki)',
+  d => { T(d).athletes[2].name = 'Yeni Ad'; }, d => { T(d).athletes[2].position = 'C'; },
+  d => T(d).athletes[2].name === 'Yeni Ad' && T(d).athletes[2].position === 'C');
+both('aynı ay, aynı sporcuya kimliksiz iki ayrı wellness kaydı → ikisi de var',
+  d => { T(d).athletes[0].wellness.push({ date: D(0), sleep: 1 }); }, d => { T(d).athletes[0].wellness.push({ date: D(0), sleep: 5 }); },
+  d => { const w = T(d).athletes[0].wellness; return w.length === 5 && w.some(x => x.sleep === 1) && w.some(x => x.sleep === 5); });
+both('ikisi de kütüphanenin başına egzersiz ekler → ikisi de var',
+  d => d.exercises.unshift({ id: 'eA', name: 'A' }), d => d.exercises.unshift({ id: 'eB', name: 'B' }),
+  d => d.exercises.length === 7 && d.exercises[0].id[0] === 'e' && ['eA', 'eB'].every(id => d.exercises.slice(0, 2).some(x => x.id === id)));
+both('biri günlük not, öbürü aynı güne seans',
+  d => { T(d).days[D(3)].dailyNotes = 'Not'; }, d => { T(d).days[D(3)].sessions.push({ id: 'sN', name: 'Yeni' }); },
+  d => T(d).days[D(3)].dailyNotes === 'Not' && T(d).days[D(3)].sessions.some(s => s.id === 'sN'));
+both('aynı alan → son yazan kazanır (K6)',
+  d => { T(d).athletes[1].position = 'C'; }, d => { T(d).athletes[1].position = 'PF'; },
+  d => T(d).athletes[1].position === 'PF');
+both('biri seansı siler, öbürü düzenler → silme kalır, düzenleme bildirilir',
+  d => { T(d).days[D(5)].sessions = []; }, d => { T(d).days[D(5)].sessions[0].name = 'x'; },
+  (d, r) => T(d).days[D(5)].sessions.length === 0 && r.failed.length === 1);
+both('çevrimdışı 3 düzenleme + öbür cihazda 2 düzenleme → 5\'i de var',
+  d => { T(d).athletes[0].tests[0].cmj = 11; T(d).athletes[1].position = 'SF'; T(d).days[D(2)].dailyNotes = 'off'; },
+  d => { d.exercises[0].name = 'Squat 2'; T(d).athletes[3].srpeLog[0].scRPE = 9; },
+  d => T(d).athletes[0].tests[0].cmj === 11 && T(d).athletes[1].position === 'SF' && T(d).days[D(2)].dailyNotes === 'off'
+    && d.exercises[0].name === 'Squat 2' && T(d).athletes[3].srpeLog[0].scRPE === 9);
+both('biri sezon değiştirir, öbürü o sırada seans düzenler → ikisi de kalır',
+  d => { const t = T(d); const park = { setup: t.setup, days: t.days, weekOverrides: t.weekOverrides }; const nx = t.seasonData.S1;
+    t.seasonData = { S2: park }; t.activeSeasonId = 'S1'; t.setup = nx.setup; t.days = nx.days; t.weekOverrides = nx.weekOverrides; },
+  d => { T(d).days[D(1)].sessions[0].name = 'Düzenlendi'; },
+  d => T(d).activeSeasonId === 'S1' && T(d).seasonData.S2.days[D(1)].sessions[0].name === 'Düzenlendi');
 
 console.log('\n' + '─'.repeat(64) + '\n  ' + pass + ' geçti, ' + fail + ' kaldı');
 process.exit(fail ? 1 : 0);
