@@ -1655,7 +1655,9 @@ function useCloudSync(data,setData){
     }
   };
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
-    sizeReport:()=>syncSizeReport(dataRef.current),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
+    sizeReport:()=>syncSizeReport(dataRef.current),
+    /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
+    preflight:()=>smPreflightReport(dataRef.current),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),

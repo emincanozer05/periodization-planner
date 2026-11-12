@@ -267,6 +267,7 @@ function SyncDiag({sync,onClose}){
   const[probing,setProbing]=useState(false);
   const[copied,setCopied]=useState(false);
   const[sizeRep,setSizeRep]=useState('');
+  const[pfRep,setPfRep]=useState('');
   const[stProbe,setStProbe]=useState('');
   useEffect(()=>slogSub(()=>bump(n=>n+1)),[]);
   useEffect(()=>{const iv=setInterval(()=>bump(n=>n+1),1000);return()=>clearInterval(iv);},[]);
@@ -294,7 +295,7 @@ function SyncDiag({sync,onClose}){
   const prev=slogPrevText();
   const prevHead=SYNC_LOG_PREV?(L('Önceki oturum','Previous session')+' · '+new Date(SYNC_LOG_PREV.at).toLocaleString()
     +(SYNC_LOG_PREV.clean?'':L(' · düzgün kapanmadı',' · did not close cleanly'))):'';
-  const text=()=>rows.map(r=>r[0]+': '+r[1]).join('\n')+'\n\n'+slogText()+(stProbe?'\n\nBulut depolama: '+stProbe:'')+(sizeRep?'\n\n== Veri boyutu ==\n'+sizeRep:'')+(prev?'\n\n== '+prevHead+' ==\n'+prev:'');
+  const text=()=>rows.map(r=>r[0]+': '+r[1]).join('\n')+'\n\n'+slogText()+(stProbe?'\n\nBulut depolama: '+stProbe:'')+(sizeRep?'\n\n== Veri boyutu ==\n'+sizeRep:'')+(pfRep?'\n\n== Yeni yapı ön kontrolü ==\n'+pfRep:'')+(prev?'\n\n== '+prevHead+' ==\n'+prev:'');
   const copy=()=>{
     const t=text();
     const done=()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);};
@@ -331,6 +332,14 @@ function SyncDiag({sync,onClose}){
         <button className="btn sec sm" style={{flex:1}} onClick={async()=>{setStProbe(L('bakılıyor…','checking…'));
           setStProbe(await storageProbe());}}>{L('Bulut depolamayı sına','Test cloud storage')}</button>
       </div>
+      {/* Senkron geçişi (docs/senkron-gecis-plani.md): bu hesabın yeni yapıda kaç belgeye bölüneceği,
+          en büyük belgeler, Firestore'a yazılamayacak bir şey olup olmadığı. Hiçbir şey yazmaz;
+          kimlikler '*' ile gizlenir, metin kişisel veri taşımaz. */}
+      <button className="btn sec sm" style={{width:'100%',marginTop:8}} onClick={()=>{setPfRep(L('hesaplanıyor…','measuring…'));
+        setTimeout(()=>{try{setPfRep(sync.preflight?sync.preflight():'—');}catch(e){setPfRep('hata: '+(e.message||e));}},30);}}>
+        {L('Yeni yapı ön kontrolü','New structure pre-check')}</button>
+      {pfRep&&<pre style={{marginTop:8,maxHeight:260,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
+        border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'var(--text2)'}}>{pfRep}</pre>}
       {stProbe&&<div style={{marginTop:8,padding:'8px 10px',borderRadius:6,fontSize:11.5,lineHeight:1.5,
         border:'1px solid var(--border)',background:'rgba(0,0,0,.25)',color:'var(--text2)'}}>{L('Bulut depolama','Cloud storage')}: {stProbe}</div>}
       {sizeRep&&<pre style={{marginTop:8,maxHeight:260,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
