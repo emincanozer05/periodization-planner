@@ -42000,6 +42000,106 @@ function smCheckDocs(docs){
 }
 /* </store-map> */
 
+/* <store-io> — Firestore bağlantısı. rules-test/test/store-io.test.js bu bölümü emulator'de, gerçek
+   Firestore'a karşı iki ayrı istemciyle (iki cihaz gibi) çalıştırır. Yalnızca düz JavaScript.
+   fs: firebase.firestore() (compat), K: { FieldPath, FieldValue, uid } — uygulama ve test kendi
+   firebase ad alanından verir. wsPath: 'workspaces/<ws>'. */
+var SM_META=['_at','_by'];         // yazarken eklenir, okurken atılır (fark hesabına girmez)
+var SM_BATCH=400;
+
+/* Eşlemedeki '' (verinin üst düzey alanları) çalışma alanı belgesinin kendisine DEĞİL,
+   state/root'a yazılır: workspaces/{ws} yalnızca kimlik bilgisini (name, ownerUid…) taşır ve
+   kurallar sahipliğin değiştirilmesine izin vermez. */
+var SM_ROOT='state/root';
+function smRef(fs,wsPath,rel){return fs.doc(wsPath+'/'+(rel===''?SM_ROOT:rel));}
+
+/* Yazım listesini Firestore'a uygular. Toplu yazım (batch) atomiktir: içindeki bir update var
+   olmayan belgeye düşerse (başka cihaz silmiş) bütün paket reddedilir. O zaman paketin işlemleri
+   tek tek yeniden denenir; yalnızca düşen update'ler `failed`'a yazılır, gerisi kalır.
+   Yetki ya da ağ hatası olduğu gibi yukarı çıkar (çağıran yeniden dener / kullanıcıya söyler). */
+async function smWrite(fs,wsPath,ops,K){
+  var meta=function(){var m={_at:K.FieldValue.serverTimestamp()};if(K.uid)m._by=K.uid;return m;};
+  var one=function(b,op){
+    var ref=smRef(fs,wsPath,op.path);
+    if(op.op==='set')b.set(ref,Object.assign({},op.data,meta()));
+    else if(op.op==='delete')b.delete(ref);
+    else{
+      var args=[];
+      op.fields.forEach(function(f){args.push(new (Function.prototype.bind.apply(K.FieldPath,[null].concat(f.path)))(),f.del?K.FieldValue.delete():f.value);});
+      var m=meta();Object.keys(m).forEach(function(k){args.push(k,m[k]);});
+      b.update.apply(b,[ref].concat(args));
+    }
+  };
+  var failed=[],written=0;
+  for(var i=0;i<ops.length;i+=SM_BATCH){
+    var chunk=ops.slice(i,i+SM_BATCH);
+    var b=fs.batch();chunk.forEach(function(op){one(b,op);});
+    try{await b.commit();written+=chunk.length;}
+    catch(e){
+      if(!e||e.code!=='not-found')throw e;
+      for(var j=0;j<chunk.length;j++){
+        var b1=fs.batch();one(b1,chunk[j]);
+        try{await b1.commit();written++;}
+        catch(e1){if(e1&&e1.code==='not-found')failed.push(chunk[j].path);else throw e1;}
+      }
+    }
+  }
+  return{written:written,failed:failed};
+}
+
+/* Çalışma alanını canlı dinler: çalışma alanı belgesi, kütüphane koleksiyonları, takımlar ve her
+   takımın düz koleksiyonları (takım başına 10 dinleyici). onDocs(docs, info) her değişiklikte, bütün
+   dinleyiciler ilk cevabını verdikten sonra çağrılır. info: { fromCache, pending }.
+   Dönen işlev bütün dinleyicileri kapatır. */
+var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','measurements','athleteDays','athleteSessions','logs'];
+function smListen(fs,wsPath,onDocs,onError){
+  var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
+  var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
+  var emit=function(){
+    if(queued||dead)return;queued=true;
+    Promise.resolve().then(function(){
+      queued=false;
+      if(dead||Object.keys(waiting).length)return;
+      var copy={};for(var p in docs)copy[p]=docs[p];
+      onDocs(copy,lastInfo);
+    });
+  };
+  var err=function(e){if(onError)onError(e);};
+  var listenCol=function(key,colRel,onFirst){
+    waiting[key]=1;
+    subs[key]=fs.collection(wsPath+'/'+colRel).onSnapshot({includeMetadataChanges:true},function(snap){
+      snap.docChanges().forEach(function(ch){
+        var rel=colRel+'/'+ch.doc.id;
+        if(ch.type==='removed')delete docs[rel];else docs[rel]=strip(ch.doc.data());
+      });
+      lastInfo={fromCache:snap.metadata.fromCache,pending:snap.metadata.hasPendingWrites};
+      if(onFirst)onFirst(snap);
+      delete waiting[key];emit();
+    },err);
+  };
+  var addTeam=function(tid){
+    if(teamSubs[tid])return;teamSubs[tid]=[];
+    SM_TEAM_COLS.forEach(function(c){var k='t:'+tid+':'+c;teamSubs[tid].push(k);listenCol(k,'teams/'+tid+'/'+c);});
+  };
+  var dropTeam=function(tid){
+    (teamSubs[tid]||[]).forEach(function(k){if(subs[k])subs[k]();delete subs[k];delete waiting[k];});
+    delete teamSubs[tid];
+    var pre='teams/'+tid+'/';for(var p in docs)if(p.indexOf(pre)===0)delete docs[p];
+  };
+  waiting.ws=1;
+  subs.ws=fs.doc(wsPath+'/'+SM_ROOT).onSnapshot({includeMetadataChanges:true},function(snap){
+    if(snap.exists)docs['']=strip(snap.data());else delete docs[''];
+    delete waiting.ws;emit();
+  },err);
+  SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
+  listenCol('teams','teams',function(snap){
+    var now={};snap.docs.forEach(function(d){now[d.id]=1;addTeam(d.id);});
+    Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
+  });
+  return function(){dead=true;Object.keys(subs).forEach(function(k){try{subs[k]();}catch(e){}});};
+}
+/* </store-io> */
+
 /* Senkron tanı penceresindeki "Yeni yapı ön kontrolü": belge sayısı, en büyük belgeler,
    sorunlar. Kişisel veri içermez: belge yollarındaki kimlikler '*' ile gizlenir. */
 function smPreflightReport(state){

@@ -1,0 +1,157 @@
+/* Kayıt bazlı senkron — Firestore bağlantısı (senkron Faz 2b-2).
+   src/app/468-store-map.jsx'teki <store-map> ve <store-io> bölümleri, emulator'deki GERÇEK
+   Firestore'a karşı, aynı hesabın iki ayrı istemcisiyle (iki cihaz gibi) sınanır. Kurallar da
+   gerçek: çalışma alanı üyeliği ve roller (firestore.rules) devrede. */
+const { test, before, after, beforeEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const fc = require('firebase/compat/app');
+require('firebase/compat/firestore');
+const { setDoc, doc } = require('firebase/firestore');
+const { getEnv, seed, as } = require('./env');
+
+const src = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'app', '468-store-map.jsx'), 'utf8');
+const cut = (a, b) => src.slice(src.indexOf(a), src.indexOf(b));
+// eslint-disable-next-line no-new-func
+const SM = new Function(cut('/* <store-map>', '/* </store-map> */') + cut('/* <store-io>', '/* </store-io> */')
+  + '; return { smToDocs, smFromDocs, smDiff, smCanon, smWrite, smListen };')();
+
+before(getEnv);
+beforeEach(async () => {
+  await (await getEnv()).clearFirestore();
+  await seed(async s => {
+    await setDoc(doc(s, 'workspaces/alice'), { name: 'Kulüp', ownerUid: 'alice', schemaVersion: 2 });
+    await setDoc(doc(s, 'workspaces/alice/members/alice'), { uid: 'alice', role: 'owner', teams: ['*'] });
+    await setDoc(doc(s, 'workspaces/alice/members/carol'), { uid: 'carol', role: 'viewer', teams: ['*'] });
+  });
+});
+after(async () => (await getEnv()).cleanup());
+
+const WS = 'workspaces/alice';
+const K = uid => ({ FieldPath: fc.firestore.FieldPath, FieldValue: fc.firestore.FieldValue, uid });
+const device = async (uid = 'alice') => (await as(uid)).firestore();
+const clone = o => JSON.parse(JSON.stringify(o));
+const D = n => new Date(Date.UTC(2026, 10, 12) + n * 864e5).toISOString().slice(0, 10);
+
+function sample() {
+  const ses = (id, extra) => Object.assign({ id, name: 'Kuvvet', duration: 60, blocks: [{ id: id + 'b', exercises: [{ name: 'Squat', sets: '4' }] }] }, extra || {});
+  const athletes = [0, 1, 2].map(k => ({
+    id: 'a' + k, name: 'Sporcu ' + k + ' ğüş', position: 'PG', phaseBank: { rows: [['Squat', 3]] },
+    tests: [{ id: 't' + k, date: D(-10), cmj: 40 + k }], injuries: [], measurements: [],
+    wellness: [{ date: D(-1), sleep: 4 }], srpeLog: [{ id: 'r' + k, date: D(-1), scRPE: 6 }], nightLog: [], liftLog: [],
+    days: { [D(1)]: { date: D(1), dailyNotes: '', sessions: [ses('as' + k, { sourceId: 's1' })] } },
+  }));
+  const days = {}; for (let o = -2; o <= 3; o++) days[D(o)] = { date: D(o), dailyNotes: '', sessions: [ses('s' + (o + 3))] };
+  return {
+    teams: [{ id: 'T1', setup: { teamName: 'A' }, days, weekOverrides: {}, athletes, staff: [], seasons: [{ id: 'S1' }], activeSeasonId: 'S1', seasonData: {} }],
+    exercises: [{ id: 'e0', name: 'Squat' }, { id: 'e1', name: 'RDL' }], templates: [], interval: { work: 30 },
+  };
+}
+
+/* İstemcinin gördüğü veri: dinleyiciden gelen belgeler → data. pred sağlanana kadar bekler. */
+function watch(db) {
+  let last = null, waiters = [];
+  const off = SM.smListen(db, WS, docs => { last = docs; waiters = waiters.filter(w => !w(docs)); }, e => { throw e; });
+  return {
+    off,
+    until: (pred, ms = 10000) => new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('bekleme süresi doldu; son veri: ' + (last ? SM.smCanon(SM.smFromDocs(last)).slice(0, 300) : 'yok'))), ms);
+      const w = docs => { try { const d = SM.smFromDocs(docs); if (pred(d, docs)) { clearTimeout(t); res(d); return true; } } catch (e) { /* henüz değil */ } return false; };
+      if (last && w(last)) return; waiters.push(w);
+    }),
+  };
+}
+const same = (a, b) => SM.smCanon(a) === SM.smCanon(b);
+
+/* Başlangıç: A bütün veriyi yazar; döner: belgeler (iki cihazın ortak başlangıcı). */
+async function start(data) {
+  const docs = SM.smToDocs(clone(data));
+  const r = await SM.smWrite(await device(), WS, SM.smDiff({}, docs), K('alice'));
+  assert.deepStrictEqual(r.failed, []);
+  return docs;
+}
+const opsFrom = (docs0, data, mut) => { const d = clone(data); mut(d); return SM.smDiff(docs0, SM.smToDocs(d, docs0)); };
+
+test('gerçek Firestore: yazılan veri öbür cihazda birebir geri kurulur', async () => {
+  const data = sample(); data.ai = { grid: [[1, 2], [3]] };   // iç içe dizi de
+  await start(data);
+  const b = watch(await device());
+  await b.until(d => same(d, data));
+  b.off();
+});
+
+test('canlı güncelleme: A\'nın tek düzenlemesi B\'ye gelir', async () => {
+  const data = sample(); const docs0 = await start(data);
+  const b = watch(await device());
+  await b.until(d => same(d, data));
+  const ops = opsFrom(docs0, data, d => { d.teams[0].athletes[1].tests[0].cmj = 77; });
+  assert.strictEqual(ops.length, 1, 'tek belge yazılmalı');
+  await SM.smWrite(await device(), WS, ops, K('alice'));
+  await b.until(d => d.teams[0].athletes[1].tests[0].cmj === 77);
+  b.off();
+});
+
+test('iki cihaz AYNI ANDA: farklı sporcu ekler, aynı sporcunun farklı alanlarını değiştirir, aynı aya wellness ekler → hepsi kalır', async () => {
+  const data = sample(); const docs0 = await start(data);
+  const opsA = opsFrom(docs0, data, d => {
+    d.teams[0].athletes.push({ id: 'ax', name: 'X' });
+    d.teams[0].athletes[0].name = 'Yeni Ad';
+    d.teams[0].athletes[2].wellness.push({ date: D(0), sleep: 1 });
+    d.teams[0].days[D(1)].sessions[0].name = 'A adı';
+  });
+  const opsB = opsFrom(docs0, data, d => {
+    d.teams[0].athletes.push({ id: 'ay', name: 'Y' });
+    d.teams[0].athletes[0].position = 'C';
+    d.teams[0].athletes[2].wellness.push({ date: D(0), sleep: 5 });
+    d.teams[0].days[D(1)].sessions[0].duration = 90;
+  });
+  const [ra, rb] = await Promise.all([SM.smWrite(await device(), WS, opsA, K('alice')), SM.smWrite(await device(), WS, opsB, K('alice'))]);
+  assert.deepStrictEqual(ra.failed.concat(rb.failed), []);
+  const c = watch(await device());
+  await c.until(d => {
+    const t = d.teams[0], a0 = t.athletes.find(a => a.id === 'a0'), w = t.athletes.find(a => a.id === 'a2').wellness, s = t.days[D(1)].sessions[0];
+    return ['ax', 'ay'].every(id => t.athletes.some(a => a.id === id)) && a0.name === 'Yeni Ad' && a0.position === 'C'
+      && w.some(x => x.sleep === 1) && w.some(x => x.sleep === 5) && s.name === 'A adı' && s.duration === 90;
+  });
+  c.off();
+});
+
+test('silinen seansa gelen düzenleme düşer ve bildirilir; aynı paketteki öbür düzenleme kalır', async () => {
+  const data = sample(); const docs0 = await start(data);
+  await SM.smWrite(await device(), WS, opsFrom(docs0, data, d => { d.teams[0].days[D(2)].sessions = []; }), K('alice'));
+  const opsB = opsFrom(docs0, data, d => { d.teams[0].days[D(2)].sessions[0].name = 'x'; d.exercises[0].name = 'Squat 2'; });
+  const rb = await SM.smWrite(await device(), WS, opsB, K('alice'));
+  assert.deepStrictEqual(rb.failed, ['teams/T1/sessions/s5']);   // D(2) günü → s5
+  const c = watch(await device());
+  await c.until(d => d.teams[0].days[D(2)].sessions.length === 0 && d.exercises[0].name === 'Squat 2');
+  c.off();
+});
+
+test('izleyici (viewer) yazamaz: hata yukarı çıkar, hiçbir şey yazılmaz', async () => {
+  const data = sample(); const docs0 = await start(data);
+  const ops = opsFrom(docs0, data, d => { d.exercises[0].name = 'izinsiz'; });
+  await assert.rejects(SM.smWrite(await device('carol'), WS, ops, K('carol')), e => e.code === 'permission-denied');
+  const c = watch(await device());
+  await c.until(d => d.exercises[0].name === 'Squat');
+  c.off();
+});
+
+test('büyük ilk yazım (900 egzersiz) paketlere bölünür', async () => {
+  const data = sample();
+  data.exercises = Array.from({ length: 900 }, (_, i) => ({ id: 'x' + i, name: 'Egzersiz ' + i }));
+  await start(data);
+  const c = watch(await device());
+  await c.until(d => d.exercises.length === 900 && d.exercises[899].id === 'x899', 20000);
+  c.off();
+});
+
+test('verinin üst düzey alanları state/root\'ta; çalışma alanı belgesi (sahiplik) bozulmaz', async () => {
+  await start(sample());
+  const db = await device();
+  const ws = (await db.doc(WS).get()).data();
+  assert.strictEqual(ws.ownerUid, 'alice');
+  const root = (await db.doc(WS + '/state/root').get()).data();
+  assert.deepStrictEqual(root.interval, { work: 30 });
+  assert.strictEqual(root._by, 'alice');
+});

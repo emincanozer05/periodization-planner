@@ -33,9 +33,8 @@ Tablo ile kod ayrışmasın diye ikisi aynı testle sınanacak (gidiş-dönüş:
 ## 2. Ağaç
 
 ```
-workspaces/{ws}                                  ws = sahibin uid'i
-│  name, ownerUid, schemaVersion: 2, createdAt, migratedAt
-│  + data'nın kalan küçük alanları (interval, ai, customMuscles, testTemplates…)
+workspaces/{ws}                                  ws = sahibin uid'i; YALNIZCA kimlik: name, ownerUid, schemaVersion, createdAt
+├─ state/root                                    data'nın kalan küçük alanları (interval, ai, customMuscles, testTemplates…)
 ├─ members/{uid}                                 role, teams, uid, invite?
 ├─ invites/{token}                               role, teams, usedBy, expiresAt, createdBy
 ├─ exercises/{id}  templates/{id}  customTests/{id}  tryouts/{id}  researches/{id}
@@ -58,7 +57,7 @@ testleri" (Takım Verileri) de tek sorgu olur. Güvenlik kuralı aynı: `teams/{
 
 | Bugünkü yol | Yeni belge | Belge kimliği | Not |
 |---|---|---|---|
-| `data` (aşağıdakiler hariç) | `workspaces/{ws}` | `ws` | Küçük ayarlar burada kalır |
+| `data` (aşağıdakiler hariç) | `workspaces/{ws}/state/root` | | Küçük ayarlar; çalışma alanı belgesi yalnızca kimlik (sahiplik kurallarla korunur) |
 | `data.activeTeamId` | — | — | Cihaza ait, yazılmaz |
 | `data.exercises[]` | `exercises/{id}` | `id` | Kütüphane, kulüpte ortak (K5) |
 | `data.templates[]` | `templates/{id}` | `id` | |
@@ -96,9 +95,12 @@ ama her kayıt kendi alan yolunda (`srpe.<id>.scRPE`) güncellenir; iki kayıt b
 - **İki cihaz:** farklı belgeler ya da aynı belgenin farklı alanları → ikisi de kalır. Aynı alan → son yazan
   kazanır (K6). Biri kaydı siler, öbürü düzenlerse silme kalır; düzenleme (`update` olmayan belgeye)
   reddedilir ve uygulamada bildirilir.
-- Bunların hepsi `store-map-test.js` → "iki cihaz aynı anda" bölümünde, Firestore'un anlamını taklit eden
-  `smApply` ile sınanır. Gerçek Firestore'a karşı aynı senaryolar Faz 2'nin uyumluluk katmanında emulator ile koşacak.
-- Sonraki adımda eklenecek: `updatedAt` (sunucu saati), `updatedBy`.
+- Bunların hepsi `store-map-test.js` → "iki cihaz aynı anda" bölümünde `smApply` ile, ayrıca
+  `rules-test/test/store-io.test.js`'te emulator'deki gerçek Firestore'a karşı, gerçek kurallarla ve iki istemcinin
+  AYNI ANDA yazmasıyla sınanır.
+- Her yazım `_at` (sunucu saati) ve `_by` (yazanın uid'i) taşır; okurken atılır, fark hesabına girmez.
+- Toplu yazım (400'lük paket) atomik: içinde silinmiş belgeye bir düzenleme varsa paket tek tek yeniden
+  denenir; yalnızca düşen düzenleme bildirilir.
 
 ## 5. Erişim (kurallar, özet)
 
