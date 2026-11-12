@@ -81,6 +81,9 @@ Veri hiçbir zaman ödeme yüzünden silinmez ya da gizlenmez (KVKK erişim hakk
 | VERBİS kaydı gerekip gerekmediği | Avukat | ⏳ |
 | Şahıs şirketi, e-arşiv fatura, ETBİS | Mali müşavir | ⏳ (iyzico seçilirse ödeme açılmadan önce şart) |
 | Güvenlik kurallarının dış gözle incelenmesi (senkron Faz 1 sonrası) | Dışarıdan Firebase uzmanı | ⏳ |
+| Kulüple sözleşme: fikrî haklar uygulama sahibinde; kulüp masrafları karşılar, karşılığında münhasır olmayan kullanım lisansı alır; kulübün sporcu verisi kulübündür (FSEK m.18 riskine karşı) | Avukat | ⏳ |
+| "CoachOS" adı ve logosu için marka araştırması + TÜRKPATENT tescili | Sen / marka vekili | ⏳ |
+| GitHub, Firebase projesi, alan adı ve ödeme hesabı uygulama sahibinin adında kalır | Sen | ⏳ |
 
 ## 5. Sıra
 
