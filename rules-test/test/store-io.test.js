@@ -15,7 +15,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'app', '468-
 const cut = (a, b) => src.slice(src.indexOf(a), src.indexOf(b));
 // eslint-disable-next-line no-new-func
 const SM = new Function(cut('/* <store-map>', '/* </store-map> */') + cut('/* <store-io>', '/* </store-io> */')
-  + '; return { smToDocs, smFromDocs, smDiff, smCanon, smWrite, smListen };')();
+  + '; return { smToDocs, smFromDocs, smDiff, smCanon, smWrite, smListen, smController };')();
 
 before(getEnv);
 beforeEach(async () => {
@@ -154,4 +154,75 @@ test('verinin üst düzey alanları state/root\'ta; çalışma alanı belgesi (s
   const root = (await db.doc(WS + '/state/root').get()).data();
   assert.deepStrictEqual(root.interval, { work: 30 });
   assert.strictEqual(root._by, 'alice');
+});
+
+/* ── denetleyici: iki cihaz, her birinin kendi "ekranı" ─────────────────────── */
+async function deviceCtl(uid = 'alice') {
+  const screen = { data: null, status: '', notes: 0, errors: [] };
+  const ctl = SM.smController({
+    fs: await device(uid), wsPath: WS, K: K(uid),
+    getData: () => screen.data, apply: d => { screen.data = d; },
+    prep: d => { const c = Object.assign({}, d); delete c.activeTeamId; return c; },
+    fromDocs: docs => Object.assign(SM.smFromDocs(docs), { activeTeamId: 'T1' }),
+    status: s => { screen.status = s; }, note: n => { screen.notes += n; }, error: e => { screen.errors.push(e); },
+  });
+  ctl.start();
+  /* Ekranda düzenleme: yeni nesne (React gibi), sonra denetleyiciye haber. */
+  const edit = (mut, notify = true) => { const d = clone(screen.data); mut(d); screen.data = d; if (notify) ctl.changed(); };
+  const until = (pred, ms = 10000) => new Promise((res, rej) => {
+    const t0 = Date.now();
+    const tick = () => { let ok = false; try { ok = !!screen.data && pred(screen.data); } catch (e) { /* henüz */ }
+      if (ok) return res(screen.data); if (Date.now() - t0 > ms) return rej(new Error('bekleme doldu: ' + (screen.data ? SM.smCanon(screen.data).slice(0, 200) : 'veri yok')));
+      setTimeout(tick, 50); };
+    tick();
+  });
+  return { screen, ctl, edit, until };
+}
+const A0 = d => d.teams[0].athletes.find(a => a.id === 'a0');
+
+test('denetleyici: iki cihaz açılır, A\'nın düzenlemesi B\'nin ekranına gelir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  a.edit(d => { A0(d).tests[0].cmj = 99; });
+  await b.until(d => A0(d).tests[0].cmj === 99);
+  await a.ctl.idle(); await a.until(() => a.screen.status === 'synced');
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => !!d.teams); await b.until(d => !!d.teams);
+  a.edit(d => { A0(d).name = 'A adı'; d.teams[0].athletes.push({ id: 'ax', name: 'X' }); });
+  b.edit(d => { A0(d).position = 'C'; d.teams[0].athletes.push({ id: 'ay', name: 'Y' }); });
+  const ok = d => A0(d).name === 'A adı' && A0(d).position === 'C' && ['ax', 'ay'].every(id => d.teams[0].athletes.some(x => x.id === id));
+  await a.until(ok); await b.until(ok);
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('denetleyici: ekranda GÖNDERİLMEMİŞ düzenleme varken öbür cihazdan güncelleme gelir → yerel düzenleme ezilmez, gönderilir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => !!d.teams); await b.until(d => !!d.teams);
+  b.edit(d => { d.exercises[0].name = 'B yerel'; }, false);   // B yazdı ama henüz göndermedi
+  a.edit(d => { A0(d).position = 'SF'; });                     // A'nın güncellemesi B'ye gelir
+  await b.until(d => A0(d).position === 'SF' && d.exercises[0].name === 'B yerel');
+  await a.until(d => d.exercises[0].name === 'B yerel');       // B'nin düzenlemesi A'ya da ulaştı
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('denetleyici: silinmiş seansa düzenleme → not düşer, öbür değişiklikler kalır', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => !!d.teams); await b.until(d => !!d.teams);
+  b.ctl.stop();                                                // B çevrimdışı gibi: güncelleme almıyor
+  a.edit(d => { d.teams[0].days[D(3)].sessions = []; });
+  await a.ctl.idle();
+  b.edit(d => { d.teams[0].days[D(3)].sessions[0].name = 'x'; d.exercises[1].name = 'RDL 2'; });
+  await b.ctl.idle();
+  if (b.screen.notes !== 1) throw new Error('not bekleniyordu, notes=' + b.screen.notes);
+  const c = await deviceCtl();
+  await c.until(d => d.teams[0].days[D(3)].sessions.length === 0 && d.exercises[1].name === 'RDL 2');
+  a.ctl.stop(); c.ctl.stop();
 });

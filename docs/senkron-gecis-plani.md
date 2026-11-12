@@ -251,7 +251,9 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 - [x] Eşleme v2: liste belgesi yok, kesirli sıra, takım düzeyinde düz alt koleksiyonlar; `smDiff` (alan düzeyinde yazım farkı) ve iki cihaz senaryoları (`smApply` ile).
 - [x] Senkron tanı penceresinde "Yeni yapı ön kontrolü" (gerçek hesapta belge sayısı, en büyük belgeler, gidiş-dönüş; hiçbir şey yazmaz).
 - [x] Firestore bağlantısı (`468-store-map.jsx` → `<store-io>`): `smWrite` (400'lük paketler, silinen belgeye düşen düzenleme tek tek), `smListen` (takım başına 10 dinleyici). Emulator'de iki istemciyle eşzamanlı testler (`rules-test/test/store-io.test.js`).
-- [ ] Uyumluluk katmanı `src/app/44x-store-v2.jsx`: dinleyiciler → `data`, `setData` farkı → `smWrite`; bayrak arkasında.
+- [x] Denetleyici `smController` (468, React'tan bağımsız): yerel değişiklik her zaman önce gönderilir; gönderilmemiş düzenleme varken gelen güncelleme onu ezmez. Emulator'de iki cihazla 4 test.
+- [x] Uyumluluk katmanı `src/app/455-store-v2.jsx` (`useStoreV2`): `useCloudSync` içinden çağrılır. Bayrak: `workspaces/{uid}` → `schemaVersion: 2` ve `migrated: true` (yalnızca Faz 3'ün taşıma aracı koyar). Etkinken eski dinleyici, yazıcı, sekme kapanırken boşaltma, gözcü ve `writeNow` durur. Taşınmamış hesapta davranış birebir aynı (sync-test, smoke-test).
+- [ ] Gerçek tarayıcıda yeni yapıyla uçtan uca deneme (uygulama emulator'e bağlı, taşınmış test hesabı) — Faz 3'ün taşıma aracıyla birlikte.
 - [ ] Dinleyiciler: çalışma alanı, takımlar, sporcular, seçili sezonun seansları, son N ayın log kovaları;
       eski aylar ihtiyaç olunca.
 - [ ] Firestore çevrimdışı önbellek (`persistentLocalCache`, çoklu sekme).
@@ -435,4 +437,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-12 | 1 | Veri modeli belgesi, `workspaces/**` kuralları ve testleri, eski senkronda `migratedTo` kilidi, hesap silmede çalışma alanı ve üyelikler | #750 |
 | 2026-11-12 | 2 | Eşleme modülü (data ↔ belgeler) ve testleri: gidiş-dönüş birebir (gerçekçi, 18 kenar durum, 200 rastgele), tek düzenleme = tek belge; tanı penceresinde ön kontrol | #751 |
 | 2026-11-12 | 2 | Eşleme v2 (liste belgesi yok, kesirli sıra, düz takım koleksiyonları), alan düzeyinde yazım farkı, 11 iki cihaz senaryosu | #752 |
-| 2026-11-12 | 2 | Firestore bağlantısı (smWrite/smListen), veri kökü state/root; emulator'de 7 test (eşzamanlı iki istemci dahil) | bu PR |
+| 2026-11-12 | 2 | Firestore bağlantısı (smWrite/smListen), veri kökü state/root; emulator'de 7 test (eşzamanlı iki istemci dahil) | #753 |
+| 2026-11-12 | 2 | Denetleyici + uygulama kancası (useStoreV2), bayrak arkasında; eski senkron taşınmış hesapta durur | bu PR |

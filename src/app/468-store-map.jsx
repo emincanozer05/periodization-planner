@@ -499,6 +499,63 @@ function smListen(fs,wsPath,onDocs,onError){
   });
   return function(){dead=true;Object.keys(subs).forEach(function(k){try{subs[k]();}catch(e){}});};
 }
+
+/* Denetleyici: bir cihazın yeni yapıyla senkronu (React'tan bağımsız; emulator testinde iki cihaz
+   olarak çalıştırılır). o: {
+     fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
+     getData()                          ekrandaki güncel veri (nesne kimliği önemli)
+     apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
+     prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
+     fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
+     status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
+   }
+   Kural: yerel değişiklik her zaman ÖNCE gönderilir. Başka cihazdan güncelleme gelirken ekranda
+   henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
+   ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
+function smController(o){
+  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false;
+  var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
+  var send=function(ops){
+    inflight++;report();
+    chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+      if(r.failed.length)o.note(r.failed.length);
+    }).catch(function(e){o.error(e);}).then(function(){inflight--;report();});
+    return chain;
+  };
+  /* Ekrandaki veri en son gönderilenden farklıysa farkı gönder; uygulanan yazım listesini döner. */
+  var flush=function(){
+    var d=o.getData();
+    if(!docs||d===handled)return[];
+    handled=d;
+    var next=smToDocs(o.prep(d),docs);
+    var ops=smDiff(docs,next);
+    docs=next;
+    if(ops.length)send(ops);
+    return ops;
+  };
+  var onDocs=function(incoming,info){
+    lastPending=!!info.pending;
+    var base=docs,local=[];
+    if(base){
+      var d=o.getData();
+      if(d!==handled){local=smDiff(base,smToDocs(o.prep(d),base));handled=d;if(local.length)send(local);}
+    }
+    var merged=local.length?smApply(incoming,local).docs:incoming;
+    docs=merged;
+    var remote=o.fromDocs(merged);
+    var cur=o.getData();
+    if(!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur))){handled=remote;o.apply(remote);}
+    else handled=cur;
+    report();
+  };
+  return{
+    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error);},
+    stop:function(){if(off){off();off=null;}},
+    changed:flush,                      // ekranda veri değişti
+    ready:function(){return docs!==null;},
+    idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
+  };
+}
 /* </store-io> */
 
 /* Senkron tanı penceresindeki "Yeni yapı ön kontrolü": belge sayısı, en büyük belgeler,

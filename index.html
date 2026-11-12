@@ -39229,6 +39229,11 @@ function useCloudSync(data,setData){
   const prevSeen=useRef(null);          // yazım efektinin bir önceki turda gördüğü hâl
   const autoRun=useRef({t:[],trip:0,lastWrite:0,logged:0});
   const[syncWarn,setSyncWarn]=useState('');
+  /* Kayıt bazlı senkron (455-store-v2.jsx). Hesap yeni yapıya taşınmışsa veri oradan dinlenir ve
+     yazılır; aşağıdaki eski dinleyici, yazıcı, boşaltma ve gözcü durur. Taşınmamış hesapta v2On false. */
+  const v2=useStoreV2({user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready});
+  const v2On=v2.active;
+  const v2Ref=useRef(false);v2Ref.current=v2On;
   useEffect(()=>{
     if(typeof window==='undefined'||!window.addEventListener)return;
     const act=()=>{userActAt.current=Date.now();};
@@ -39436,6 +39441,7 @@ function useCloudSync(data,setData){
 
   // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
   const writeNow=async(urgent)=>{
+    if(v2Ref.current)return;   // yeni yapı (455-store-v2): eski manifest artık salt okunur
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current){slog('write: atlandı','ready='+(ready.current?1:0)+' user='+(u?1:0));return;}
@@ -40042,7 +40048,7 @@ function useCloudSync(data,setData){
 
   // CANLI DİNLEYİCİ: manifest + parçalar (+ eski formatlardan tek seferlik geçiş)
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda dinleyici 455-store-v2'de
     /* Dinleyici İKİ sebeple kurulur: hesap değişti (sıfırdan) ya da eskisi ölüp yenisi
        geliyor (yeniden). İkisi aynı şey değil. Yeniden kurarken lastSynced/ancestor'ı
        silmek, o anda gönderilmemiş bir düzenleme varsa onu birleştirilecek tabansız
@@ -40328,7 +40334,7 @@ function useCloudSync(data,setData){
         setStatus('syncing');resub.current=Date.now();});
     return ()=>{clearSettle();if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
       pendSince.current=0;fromPending.current=false;unsub();};
-  },[user,subTick]);
+  },[user,subTick,v2On]);
 
   /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
      Storage kapalıyken çekilen fotoğraf cihazda `local:` tutamağıyla duruyor; bulut
@@ -40395,7 +40401,7 @@ function useCloudSync(data,setData){
 
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda bekleyen yazım yok: her değişiklik anında gider
     const flush=()=>{
       if(timer.current){clearTimeout(timer.current);timer.current=null;}
       /* Sayfa kapanıyor/gizleniyor ve yazım hâlâ sunucu okumasını bekliyor: düzenleme henüz
@@ -40545,7 +40551,7 @@ function useCloudSync(data,setData){
     return()=>{clearInterval(watchdog);document.removeEventListener('visibilitychange',onVis);window.removeEventListener('offline',offline);
       window.removeEventListener('online',resume);window.removeEventListener('pageshow',resume);
       window.removeEventListener('pagehide',onHide);window.removeEventListener('beforeunload',onBeforeUnload);};
-  },[user]);
+  },[user,v2On]);
 
   /* ═══════════════════════════════════════════════════════════════════════
      GÖZCÜ — göstergenin sarıda ÇAKILI KALMASININ panzehiri.
@@ -40584,7 +40590,7 @@ function useCloudSync(data,setData){
   const lastPull=useRef(0);
   const lastResub=useRef(0);
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // gözcü eski dinleyicinin; yeni yapıda Firestore'un kendi bağlantısı
     let reloading=false;
     const RESUB_MS=20000;
     /* Koç bir alana yazıyor ya da az önce dokundu mu? Taşıma değişikliği sayfayı yeniler ve
@@ -40700,7 +40706,7 @@ function useCloudSync(data,setData){
     };
     const iv=setInterval(tick,2000);
     return()=>{clearInterval(iv);window.removeEventListener('pointerdown',touch,true);window.removeEventListener('keydown',touch,true);};
-  },[user]);
+  },[user,v2On]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:
      her yazım, durumun tamamını seri hâle getirip parçalamayı gerektirir (birkaç MB'lık bir
@@ -40725,7 +40731,7 @@ function useCloudSync(data,setData){
   };
   useEffect(()=>{
     const prevData=prevSeen.current;prevSeen.current=data;
-    const fb=FB();if(!fb||!user||!ready.current)return;
+    const fb=FB();if(!fb||!user||!ready.current||v2On)return;   // yeni yapıda yazım 455-store-v2'de
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;lastEditAt.current=Date.now();setStatus('syncing');
@@ -40754,7 +40760,7 @@ function useCloudSync(data,setData){
       if(typeof requestIdleCallback==='function')requestIdleCallback(()=>writeNow(),{timeout:120});
       else writeNow();
     },wait);
-  },[data,user]);
+  },[data,user,v2On]);
 
   /* Panelin okuduğu canlı iç durum. Ref'ler render sırasında okunuyor — teşhis için
      doğru olan da bu: gösterilen şey o anın gerçeği olsun, React'in bir tur gerisi değil. */
@@ -40821,6 +40827,63 @@ function useCloudSync(data,setData){
     }};
 }
 
+/* =========================================================
+   KAYIT BAZLI SENKRON — UYGULAMA KANCASI (senkron Faz 2b-3)
+   =========================================================
+   useCloudSync bunu çağırır. Hesap yeni yapıya TAŞINMIŞSA (workspaces/{uid}: schemaVersion 2 ve
+   migrated: true — bu işaretleri yalnızca Faz 3'ün taşıma aracı koyar) veri dinleme ve yazma
+   buradan yapılır; eski senkronun dinleyicisi, yazıcısı, sekme kapanırken boşaltması ve gözcüsü
+   durur. Taşınmamış hesapta (bugün bütün hesaplar) hiçbir şey değişmez: active hep false.
+
+   Mantık 468-store-map.jsx → smController'da (emulator'de iki cihazla sınanıyor:
+   rules-test/test/store-io.test.js). Burada yalnızca React'e bağlanır.
+
+   Bu parça JSX içermez: sync-test.js 440–460 aralığını düz JavaScript olarak çalıştırır. */
+function useStoreV2(o){
+  const{user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready}=o;
+  const[active,setActive]=useState(false);
+  const ctl=useRef(null);
+  // 1) Bu hesap yeni yapıda mı? Sahip kendi çalışma alanı belgesini okuyabilir (yoksa bile).
+  useEffect(()=>{
+    setActive(false);
+    const fb=FB();if(!fb||!user)return;
+    let fs=null;try{fs=fb.firestore();}catch(e){return;}
+    if(!fs||typeof fs.doc!=='function')return;     // sahte ortam (sync-test) → eski düzen
+    let off=null;
+    try{
+      off=fs.doc('workspaces/'+user.uid).onSnapshot(s=>{
+        const d=s.exists?s.data():null;
+        setActive(!!(d&&d.schemaVersion===2&&d.migrated===true));
+      },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setActive(false);});
+    }catch(e){return;}
+    return()=>{try{off&&off();}catch(e){}};
+  },[user]);
+  // 2) Denetleyici: yeni yapı etkinse dinle ve yaz.
+  useEffect(()=>{
+    if(!active||!user)return;
+    const fb=FB();
+    slog('v2: yeni yapı etkin','uid='+user.uid.slice(0,6));
+    setStatus('syncing');
+    const c=smController({
+      fs:fb.firestore(),wsPath:'workspaces/'+user.uid,
+      K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid:user.uid},
+      getData:()=>dataRef.current,
+      apply:d=>{dataRef.current=d;setData(d);},
+      prep:d=>stripDeviceOnly(d),
+      fromDocs:docs=>migrate(smFromDocs(docs)),
+      status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}},
+      note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
+        setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
+          'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
+      error:e=>{const m=String((e&&(e.code||e.message))||e);slog('v2: hata',m);setStatus('error');setSyncErr(m);},
+    });
+    ctl.current=c;c.start();
+    return()=>{c.stop();ctl.current=null;ready.current=false;};
+  },[active,user]);
+  // 3) Ekrandaki her değişiklik: fark hemen gönderilir (bekletme yok; Firestore yerel önbelleğe anında yazar).
+  useEffect(()=>{if(ctl.current&&ctl.current.ready())ctl.current.changed();},[data]);
+  return{active,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+}
 function LoadingScreen(){
   return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
@@ -42097,6 +42160,63 @@ function smListen(fs,wsPath,onDocs,onError){
     Object.keys(teamSubs).forEach(function(t){if(!now[t])dropTeam(t);});
   });
   return function(){dead=true;Object.keys(subs).forEach(function(k){try{subs[k]();}catch(e){}});};
+}
+
+/* Denetleyici: bir cihazın yeni yapıyla senkronu (React'tan bağımsız; emulator testinde iki cihaz
+   olarak çalıştırılır). o: {
+     fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
+     getData()                          ekrandaki güncel veri (nesne kimliği önemli)
+     apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
+     prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
+     fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
+     status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
+   }
+   Kural: yerel değişiklik her zaman ÖNCE gönderilir. Başka cihazdan güncelleme gelirken ekranda
+   henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
+   ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
+function smController(o){
+  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false;
+  var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
+  var send=function(ops){
+    inflight++;report();
+    chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+      if(r.failed.length)o.note(r.failed.length);
+    }).catch(function(e){o.error(e);}).then(function(){inflight--;report();});
+    return chain;
+  };
+  /* Ekrandaki veri en son gönderilenden farklıysa farkı gönder; uygulanan yazım listesini döner. */
+  var flush=function(){
+    var d=o.getData();
+    if(!docs||d===handled)return[];
+    handled=d;
+    var next=smToDocs(o.prep(d),docs);
+    var ops=smDiff(docs,next);
+    docs=next;
+    if(ops.length)send(ops);
+    return ops;
+  };
+  var onDocs=function(incoming,info){
+    lastPending=!!info.pending;
+    var base=docs,local=[];
+    if(base){
+      var d=o.getData();
+      if(d!==handled){local=smDiff(base,smToDocs(o.prep(d),base));handled=d;if(local.length)send(local);}
+    }
+    var merged=local.length?smApply(incoming,local).docs:incoming;
+    docs=merged;
+    var remote=o.fromDocs(merged);
+    var cur=o.getData();
+    if(!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur))){handled=remote;o.apply(remote);}
+    else handled=cur;
+    report();
+  };
+  return{
+    start:function(){if(!off)off=smListen(o.fs,o.wsPath,onDocs,o.error);},
+    stop:function(){if(off){off();off=null;}},
+    changed:flush,                      // ekranda veri değişti
+    ready:function(){return docs!==null;},
+    idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
+  };
 }
 /* </store-io> */
 
