@@ -248,6 +248,7 @@ yeni testler yeşil; CI yeşil olmadan merge yok. Bir faz bitmeden sonrakine ge�
 
 ### Faz 2 — Uyumluluk katmanı (bayrak arkasında)
 - [x] Belge ↔ `data` eşlemesi: `src/app/468-store-map.jsx` (`smToDocs` / `smFromDocs` / `smCheckDocs`), testi `store-map-test.js` (CI: validator.yml).
+- [x] Eşleme v2: liste belgesi yok, kesirli sıra, takım düzeyinde düz alt koleksiyonlar; `smDiff` (alan düzeyinde yazım farkı) ve iki cihaz senaryoları (`smApply` ile).
 - [x] Senkron tanı penceresinde "Yeni yapı ön kontrolü" (gerçek hesapta belge sayısı, en büyük belgeler, gidiş-dönüş; hiçbir şey yazmaz).
 - [ ] Uyumluluk katmanı `src/app/44x-store-v2.jsx`: dinleyiciler → `data`, `setData` farkı → değişen belgelerin `update()`'i.
 - [ ] Dinleyiciler: çalışma alanı, takımlar, sporcular, seçili sezonun seansları, son N ayın log kovaları;
@@ -431,4 +432,5 @@ Cevaplanınca buraya **tarih + karar** yazılır.
 | 2026-11-12 | — | Kararlar K1–K7, K10 onaylandı | — |
 | 2026-11-12 | 0 | Emulator kural testleri CI'da | #748 |
 | 2026-11-12 | 1 | Veri modeli belgesi, `workspaces/**` kuralları ve testleri, eski senkronda `migratedTo` kilidi, hesap silmede çalışma alanı ve üyelikler | #750 |
-| 2026-11-12 | 2 | Eşleme modülü (data ↔ belgeler) ve testleri: gidiş-dönüş birebir (gerçekçi, 18 kenar durum, 200 rastgele), tek düzenleme = tek belge; tanı penceresinde ön kontrol | bu PR |
+| 2026-11-12 | 2 | Eşleme modülü (data ↔ belgeler) ve testleri: gidiş-dönüş birebir (gerçekçi, 18 kenar durum, 200 rastgele), tek düzenleme = tek belge; tanı penceresinde ön kontrol | #751 |
+| 2026-11-12 | 2 | Eşleme v2 (liste belgesi yok, kesirli sıra, düz takım koleksiyonları), alan düzeyinde yazım farkı, 11 iki cihaz senaryosu | bu PR |

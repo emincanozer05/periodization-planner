@@ -1,6 +1,6 @@
 # Veri Modeli — kayıt bazlı senkron (schemaVersion 2)
 
-> **Durum:** Faz 2 — eşleme kodda: `src/app/468-store-map.jsx`, testi `store-map-test.js` · **Son güncelleme:** 2026-11-12
+> **Durum:** Faz 2 — eşleme kodda: `src/app/468-store-map.jsx` (v2: düz takım koleksiyonları, kesirli sıra, alan düzeyinde fark), testi `store-map-test.js` · **Son güncelleme:** 2026-11-12
 > Üst belgeler: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) §3, [`yayina-hazirlik-plani.md`](yayina-hazirlik-plani.md).
 > Güvenlik kuralları: `firestore.rules` → `workspaces/**`; testleri `rules-test/test/workspaces.test.js`.
 
@@ -15,11 +15,14 @@ Tablo ile kod ayrışmasın diye ikisi aynı testle sınanacak (gidiş-dönüş:
 2. **Kimlikler aynen korunur** (K3): takım, sporcu, seans, test, sezon `id`'leri belge adıdır.
    Çalışma alanı kimliği = hesabın sahibinin `uid`'i. Check-in, Polar ve bildirim koleksiyonları
    (`coachUid`, `teamId`, `athleteId` taşıyanlar) hiç değişmeden çalışır.
-3. **Bir dizi yalnızca bütün elemanları geçerli ve benzersiz bir kimlik taşıyorsa belgelere bölünür.**
-   Kimliksiz ya da tekrarlanan kimlikli bir eleman varsa dizi üst belgede **olduğu gibi** kalır; kimlik
-   uydurulmaz. Aynı kural gün anahtarları (`YYYY-MM-DD`) ve takımlar arası seans kimlikleri için de geçerli.
-   Günlük kayıtlar (sRPE, wellness…) ay kovasında `k_<kimlik>` ile, kimliksiz eski kayıtlar `i_<sıra>` ile durur.
-   Sıra her yerde `_o` alanıyla korunur.
+3. **Bir dizi yalnızca bütün elemanları geçerli ve (takım içinde) benzersiz bir kimlik taşıyorsa
+   belgelere bölünür.** Kimliksiz ya da tekrarlanan kimlikli bir eleman varsa dizi üst belgede **olduğu
+   gibi** kalır; kimlik uydurulmaz. Aynı kural gün anahtarları (`YYYY-MM-DD`) ve seans kimlikleri için de geçerli.
+   **Liste belgesi yok:** takımın sporcuları, kütüphanenin egzersizleri gibi üyelikler koleksiyonun kendisinden
+   okunur; iki cihaz aynı anda farklı kayıt eklerse ikisi de kalır.
+   **Kesirli sıra:** her kaydın `_o` değeri var. Yeri değişmeyen kayıt değerini korur; yeni ya da taşınan
+   kayıt iki komşusunun arasından değer alır (kütüphanenin başına eklemek yalnızca o belgeyi yazar).
+   **Günlük kayıtları** ay kovasında `k_<kimlik>` ile, kimliksiz eski kayıtlar içeriklerinin özetiyle (`h_<özet>`) durur.
 4. **Cihaza ait olan buluta gitmez:** `activeTeamId` (seçili takım), seçili sezon, görünüm tercihleri.
 5. **Belge sınırı 1 MiB.** En büyük belge adayları bir ayın log kovası ve çok seanslı bir sporcu
    belgesi. Taşıma aracının kuru çalıştırması (Faz 3) her belgenin boyutunu ölçer; 900 KB'yi aşan
@@ -35,25 +38,21 @@ workspaces/{ws}                                  ws = sahibin uid'i
 │  + data'nın kalan küçük alanları (interval, ai, customMuscles, testTemplates…)
 ├─ members/{uid}                                 role, teams, uid, invite?
 ├─ invites/{token}                               role, teams, usedBy, expiresAt, createdBy
-├─ exercises/{id}                                data.exercises[]
-├─ templates/{id}                                data.templates[]
-├─ customTests/{id}                              data.customTests[]
-├─ tryouts/{id}                                  data.tryouts[]
-├─ researches/{id}                               data.researches[]
-└─ teams/{teamId}                                data.teams[] (belgede: setup'ın takım alanları, staff,
-   │                                             checkin, indiv, seasons listesi, tallySync…)
-   ├─ seasons/{seasonId}                          aktif sezon: team.setup + weekOverrides
-   │                                             diğerleri: team.seasonData[sid].setup + weekOverrides
-   ├─ days/{seasonId}_{tarih}                     date, dailyNotes
-   ├─ sessions/{sessionId}                        days{tarih}.sessions[] → seasonId, date, order + seans
-   └─ athletes/{athleteId}                        team.athletes[] (profil, phaseBank, programs…)
-      ├─ tests/{testId}                           athlete.tests[]
-      ├─ injuries/{injuryId}                      athlete.injuries[]
-      ├─ measurements/{id}                        athlete.measurements[]
-      ├─ sessions/{sessionId}                     athlete.days{tarih}.sessions[] (sourceId korunur)
-      ├─ days/{tarih}                             athlete.days{tarih} (seanslar hariç)
-      └─ logs/{YYYY-MM}                           srpe{id}, wellness{id}, night{id}, lift{id}
+├─ exercises/{id}  templates/{id}  customTests/{id}  tryouts/{id}  researches/{id}
+└─ teams/{teamId}                                takımın kendi alanları (staff, checkin, indiv, seasons listesi…)
+   ├─ seasons/{seasonId}                          setup + weekOverrides (aktif olan `_active`)
+   ├─ days/{seasonId}_{tarih}                     takım takviminin günü (seanslar hariç)
+   ├─ sessions/{sessionId}                        takım seansı: _season, _date, _o
+   ├─ athletes/{athleteId}                        sporcu profili (phaseBank, programs…)
+   ├─ tests/{id}  injuries/{id}  measurements/{id}  sporcunun kayıtları: _a = sporcu
+   ├─ athleteDays/{athleteId}_{tarih}             sporcu takviminin günü
+   ├─ athleteSessions/{sessionId}                 sporcu seansı: _a, _date (sourceId korunur)
+   └─ logs/{athleteId}_{YYYY-MM}                  ay kovası: srpe{…}, wellness{…}, night{…}, lift{…}
 ```
+
+**Neden alt kayıtlar takım düzeyinde:** sporcu başına alt koleksiyon olsaydı 20 sporculu bir takım için
+120'den fazla canlı dinleyici gerekirdi. Düz koleksiyonlarla takım başına ~10 dinleyici yeter; "takımın bütün
+testleri" (Takım Verileri) de tek sorgu olur. Güvenlik kuralı aynı: `teams/{teamId}/**`.
 
 ## 3. Eşleme tablosu
 
@@ -75,14 +74,15 @@ workspaces/{ws}                                  ws = sahibin uid'i
 | `team.seasonData[sid].days{tarih}.sessions[]` | `sessions/{id}` | seans `id` | Aynı koleksiyon, `seasonId` ile ayrılır |
 | `team.days{tarih}` (seanslar hariç) | `days/{sid}_{tarih}` | | Her günün belgesi var (boş gün de geri kurulabilsin); seans eklemek gün belgesine dokunmaz |
 | `team.athletes[]` (aşağıdakiler hariç) | `athletes/{id}` | `id` | |
-| `athlete.tests[]` | `athletes/{a}/tests/{id}` | `id` | |
-| `athlete.injuries[]` | `…/injuries/{id}` | `id` | |
-| `athlete.measurements[]` | `…/measurements/{id}` | `id` | `srcTest` bağı korunur |
-| `athlete.days{tarih}.sessions[]` | `…/sessions/{id}` | `id` | Takım seansının kopyası `sourceId` taşır |
-| `athlete.srpeLog[]` | `…/logs/{YYYY-MM}.srpe.{id}` | | Ay kovası (aşağıda) |
-| `athlete.wellness[]` | `…/logs/{YYYY-MM}.wellness.{k_id\|i_sıra}` | | Kimliksiz eski kayıtlar sırayla (§1.3) |
-| `athlete.nightLog[]` | `…/logs/{YYYY-MM}.night.{id}` | | |
-| `athlete.liftLog` | `…/logs/{YYYY-MM}.lift.{id}` | | |
+| `athlete.tests[]` | `teams/{t}/tests/{id}` | `id` | `_a` = sporcu |
+| `athlete.injuries[]` | `teams/{t}/injuries/{id}` | `id` | `_a` = sporcu |
+| `athlete.measurements[]` | `teams/{t}/measurements/{id}` | `id` | `_a`; `srcTest` bağı korunur |
+| `athlete.days{tarih}` (seanslar hariç) | `teams/{t}/athleteDays/{a}_{tarih}` | | |
+| `athlete.days{tarih}.sessions[]` | `teams/{t}/athleteSessions/{id}` | `id` | Takım seansının kopyası `sourceId` taşır |
+| `athlete.srpeLog[]` | `teams/{t}/logs/{a}_{YYYY-MM}.srpe.k_{id}` | | Ay kovası (aşağıda) |
+| `athlete.wellness[]` | `…/logs/{a}_{YYYY-MM}.wellness.{k_id\|h_özet}` | | Kimliksiz kayıt içerik özetiyle (§1.3) |
+| `athlete.nightLog[]` | `…/logs/{a}_{YYYY-MM}.night.k_{id}` | | |
+| `athlete.liftLog[]` | `…/logs/{a}_{YYYY-MM}.lift.k_{id}` | | |
 | `athlete.deletedSrpeSrcIds[]` | `athletes/{id}` alanı | | Küçük |
 
 **Neden ay kovası:** sRPE, wellness ve gece verisi küçük ama çok sayıda kayıttan oluşuyor. Her biri ayrı
@@ -91,11 +91,14 @@ ama her kayıt kendi alan yolunda (`srpe.<id>.scRPE`) güncellenir; iki kayıt b
 
 ## 4. Yazım ve çakışma
 
-Plan §3.3'teki kurallar geçerli. Kısaca:
-- Her yazım yalnızca değişen alanları `update()` eder, ayrıca `updatedAt` (sunucu saati) ve `updatedBy` yazılır.
-- Aynı alanda son yazan kazanır (K6).
-- Silme yumuşaktır (`deletedAt`); 30 gün sonra temizlenir.
-- Sıra için `order` sayısı kullanılır; araya eklenen kayıt iki komşunun ortalamasını alır.
+- **Yalnızca fark yazılır** (`smDiff`): yeni belge `set`, kaybolan belge `delete`, değişen belge `update`.
+  `update` alan düzeyinde ve en fazla 3 seviye iç içe nesneye iner (`wellness.h_…`); diziler bütün değer.
+- **İki cihaz:** farklı belgeler ya da aynı belgenin farklı alanları → ikisi de kalır. Aynı alan → son yazan
+  kazanır (K6). Biri kaydı siler, öbürü düzenlerse silme kalır; düzenleme (`update` olmayan belgeye)
+  reddedilir ve uygulamada bildirilir.
+- Bunların hepsi `store-map-test.js` → "iki cihaz aynı anda" bölümünde, Firestore'un anlamını taklit eden
+  `smApply` ile sınanır. Gerçek Firestore'a karşı aynı senaryolar Faz 2'nin uyumluluk katmanında emulator ile koşacak.
+- Sonraki adımda eklenecek: `updatedAt` (sunucu saati), `updatedBy`.
 
 ## 5. Erişim (kurallar, özet)
 
