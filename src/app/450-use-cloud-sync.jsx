@@ -1663,7 +1663,26 @@ function useCloudSync(data,setData){
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
     sizeReport:()=>syncSizeReport(dataRef.current),
     /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
-    preflight:()=>smPreflightReport(dataRef.current),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
+    preflight:()=>smPreflightReport(dataRef.current),
+    /* Senkron Faz 3 — bu hesabı yeni yapıya taşı (468 → smMigrate). Yalnızca eski düzen boştayken:
+       ekrandaki veri, senkronun bildiği son sürüme (curRev) karşılık geliyorsa. Kilit o sürüme karşı
+       iyimser: arada başka cihaz yazdıysa tutmaz, hesap taşınmamış kalır. Önce iki yedek alınır. */
+    dataNow:()=>dataRef.current,
+    migrateV2:async(log)=>{
+      const fb=FB();const u=fb&&fb.auth().currentUser;
+      if(!u)return{ok:false,step:'auth'};
+      if(v2Ref.current)return{ok:true,step:'done',already:true};
+      if(!ready.current||dirty.current||writing.current||curRev.current==null)return{ok:false,step:'busy'};
+      const rev=curRev.current,state=dataRef.current;
+      try{await cloudSnapshotDaily(fb,u.uid,state);}catch(e){/* buluttaki günlük yedek en iyi çaba */}
+      const r=await smMigrate({
+        fs:fb.firestore(),uid:u.uid,data:stripDeviceOnly(state),log,
+        K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid:u.uid},
+        lockLegacy:()=>fb.firestore().collection('kullanici_verileri').doc(u.uid).update({migratedTo:'workspaces/'+u.uid,base:rev}),
+      });
+      slog('taşıma: '+(r.ok?'tamamlandı':'tamamlanmadı'),'adım='+r.step);
+      return r;
+    },authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),

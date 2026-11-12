@@ -556,6 +556,61 @@ function smController(o){
     idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
   };
 }
+
+/* ── TAŞIMA (senkron Faz 3) ─────────────────────────────────────────────────
+   Eski tek-JSON hesabını yeni yapıya taşır. o: {
+     fs, uid, K, data            veri: buluta gidecek hâl (cihaza ait alanlar atılmış), eski manifestin
+                                 `rev`'ine karşılık gelen, ekranda senkronlanmış durum
+     lockLegacy()                eski yapıyı kilitler (manifeste migratedTo); başka cihaz arada yazdıysa
+                                 hata fırlatır (iyimser kilit: base == rev) → taşıma "tamamlanmadı" kalır
+     log(adım, ayrıntı)
+   }
+   Adımlar: ön kontrol → çalışma alanı + sahip üyeliği (migrated:false) → var olanla hedef arasındaki
+   fark yazılır (yarıda kalmış deneme kaldığı yerden sürer) → SUNUCUDAN geri okunup birebir
+   karşılaştırılır → eski yapı kilitlenir → migrated:true. Herhangi bir adım düşerse işaret konmaz,
+   uygulama eski düzende kalır; eski veri hiçbir zaman silinmez. */
+function smReadAll(fs,wsPath){
+  return new Promise(function(res,rej){
+    var off=smListen(fs,wsPath,function(docs,info){if(info.fromCache)return;off();res(docs);},function(e){try{off();}catch(x){}rej(e);});
+  });
+}
+async function smMigrate(o){
+  var wsPath='workspaces/'+o.uid,log=o.log||function(){};
+  var target=smToDocs(o.data);
+  // 1) ön kontrol
+  var chk=smCheckDocs(target);
+  var bad=chk.issues.filter(function(i){return i.kind!=='nested-array';});
+  if(bad.length)return{ok:false,step:'precheck',issues:bad};
+  if(smCanon(smFromDocs(target))!==smCanon(o.data))return{ok:false,step:'precheck',issues:[{kind:'round-trip'}]};
+  log('ön kontrol',chk.count+' belge');
+  // 2) çalışma alanı + sahip üyeliği
+  var wsRef=o.fs.doc(wsPath),ws=await wsRef.get();
+  if(ws.exists&&ws.data().migrated===true)return{ok:true,step:'done',already:true};
+  if(!ws.exists){
+    var b=o.fs.batch();
+    b.set(wsRef,{name:'',ownerUid:o.uid,schemaVersion:SM_VERSION,migrated:false,createdAt:o.K.FieldValue.serverTimestamp()});
+    b.set(o.fs.doc(wsPath+'/members/'+o.uid),{uid:o.uid,role:'owner',teams:['*']});
+    await b.commit();
+    log('çalışma alanı','kuruldu');
+  }
+  // 3) var olanla hedefin farkı (önceki yarım deneme dahil)
+  var existing=await smReadAll(o.fs,wsPath);
+  var ops=smDiff(existing,target);
+  var w=await smWrite(o.fs,wsPath,ops,o.K);
+  log('yazım',w.written+' işlem');
+  if(w.failed.length)return{ok:false,step:'write',failed:w.failed};
+  // 4) sunucudan geri oku, birebir karşılaştır
+  var back=await smReadAll(o.fs,wsPath);
+  if(smCanon(smFromDocs(back))!==smCanon(o.data))return{ok:false,step:'verify'};
+  log('doğrulama','birebir');
+  // 5) eski yapıyı kilitle (arada başka cihaz yazdıysa burada düşer)
+  try{await o.lockLegacy();}catch(e){return{ok:false,step:'lock',error:String((e&&(e.code||e.message))||e)};}
+  log('eski yapı','kilitlendi');
+  // 6) işaret: uygulama yeni yapıya geçer
+  await wsRef.update({migrated:true,migratedAt:o.K.FieldValue.serverTimestamp()});
+  log('işaret','migrated=true');
+  return{ok:true,step:'done',docs:chk.count,written:w.written};
+}
 /* </store-io> */
 
 /* Senkron tanı penceresindeki "Yeni yapı ön kontrolü": belge sayısı, en büyük belgeler,

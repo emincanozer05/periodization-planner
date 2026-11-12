@@ -268,6 +268,10 @@ function SyncDiag({sync,onClose}){
   const[copied,setCopied]=useState(false);
   const[sizeRep,setSizeRep]=useState('');
   const[pfRep,setPfRep]=useState('');
+  const[mgLog,setMgLog]=useState('');
+  const[mgBusy,setMgBusy]=useState(false);
+  /* Taşıma düğmesi yalnızca pilot için: adres ?v2pilot=1 ile açılınca görünür. */
+  const pilot=(()=>{try{return /[?&]v2pilot=1\b/.test(location.search);}catch(e){return false;}})();
   const[stProbe,setStProbe]=useState('');
   useEffect(()=>slogSub(()=>bump(n=>n+1)),[]);
   useEffect(()=>{const iv=setInterval(()=>bump(n=>n+1),1000);return()=>clearInterval(iv);},[]);
@@ -340,6 +344,22 @@ function SyncDiag({sync,onClose}){
         {L('Yeni yapı ön kontrolü','New structure pre-check')}</button>
       {pfRep&&<pre style={{marginTop:8,maxHeight:260,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
         border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'var(--text2)'}}>{pfRep}</pre>}
+      {/* Senkron Faz 3/4 — pilot: bu hesabı yeni yapıya taşı. Önce cihaza tam yedek iner. */}
+      {pilot&&<button className="btn sm" style={{width:'100%',marginTop:8}} disabled={mgBusy} onClick={async()=>{
+        if(!confirm(L('Bu hesap yeni senkron yapısına taşınacak. Önce bütün verinin bir yedeği bu cihaza inecek. Taşıma sırasında başka cihazda düzenleme yapma. Devam edilsin mi?',
+          'This account will be moved to the new sync structure. A full backup will download to this device first. Do not edit on other devices meanwhile. Continue?')))return;
+        setMgBusy(true);const lines=[];const add=(a,b)=>{lines.push(a+(b?': '+b:''));setMgLog(lines.join('\n'));};
+        try{
+          downloadMyData(sync.dataNow?sync.dataNow():null);add(L('yedek','backup'),L('indirildi','downloaded'));
+          const r=await sync.migrateV2(add);
+          add(r.ok?L('TAMAMLANDI — uygulama yeni yapıya geçiyor','DONE — the app is switching to the new structure')
+                  :L('tamamlanmadı','not completed')+' ('+r.step+')'+(r.step==='lock'?L(' — başka bir cihaz arada yazdı; birkaç saniye sonra yeniden dene',' — another device wrote meanwhile; retry in a few seconds'):'')
+                  +(r.step==='busy'?L(' — senkron bitmedi; gösterge yeşil olunca yeniden dene',' — sync is busy; retry when the indicator is green'):''));
+        }catch(e){add(L('hata','error'),String((e&&(e.code||e.message))||e));}
+        setMgBusy(false);
+      }}>{mgBusy?L('Taşınıyor…','Migrating…'):L('Yeni senkrona geç (pilot)','Switch to new sync (pilot)')}</button>}
+      {mgLog&&<pre style={{marginTop:8,maxHeight:200,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
+        border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',color:'var(--text2)'}}>{mgLog}</pre>}
       {stProbe&&<div style={{marginTop:8,padding:'8px 10px',borderRadius:6,fontSize:11.5,lineHeight:1.5,
         border:'1px solid var(--border)',background:'rgba(0,0,0,.25)',color:'var(--text2)'}}>{L('Bulut depolama','Cloud storage')}: {stProbe}</div>}
       {sizeRep&&<pre style={{marginTop:8,maxHeight:260,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
