@@ -178,3 +178,8 @@ test('eski senkron: taşınmış hesapta manifest ve yeni parça yazılamaz, oku
   await assertFails(setDoc(doc(a, 'kullanici_verileri/alice_9_0'), { userId: 'alice', c: 'x' }));
   await assertSucceeds(getDoc(doc(a, 'kullanici_verileri/alice')));
 });
+
+test('sahip kendi (henüz olmayan) çalışma alanı belgesini okuyabilir; başkası okuyamaz', async () => {
+  await assertSucceeds(getDoc(doc(db(await as('zed')), 'workspaces/zed')));
+  await assertFails(getDoc(doc(db(await as('bob')), 'workspaces/zed')));
+});

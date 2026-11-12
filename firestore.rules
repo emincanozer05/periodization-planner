@@ -60,7 +60,9 @@ service cloud.firestore {
     }
 
     match /workspaces/{ws} {
-      allow read: if isMember(ws);
+      // Sahip kendi çalışma alanı belgesini (yoksa bile) okuyabilir: uygulama hesabın yeni yapıya
+      // taşınıp taşınmadığını buradan öğrenir (455-store-v2.jsx). Taşınmamış hesapta belge yok.
+      allow read: if isMember(ws) || (request.auth != null && request.auth.uid == ws);
       // Yalnızca kendi kimliğiyle ve kendisi sahip olarak; sahip üyeliği aynı batch'te yazılır.
       allow create: if request.auth != null && request.auth.uid == ws
         && request.auth.token.firebase.sign_in_provider != 'anonymous'

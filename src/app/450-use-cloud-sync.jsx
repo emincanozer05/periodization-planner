@@ -93,6 +93,11 @@ function useCloudSync(data,setData){
   const prevSeen=useRef(null);          // yazım efektinin bir önceki turda gördüğü hâl
   const autoRun=useRef({t:[],trip:0,lastWrite:0,logged:0});
   const[syncWarn,setSyncWarn]=useState('');
+  /* Kayıt bazlı senkron (455-store-v2.jsx). Hesap yeni yapıya taşınmışsa veri oradan dinlenir ve
+     yazılır; aşağıdaki eski dinleyici, yazıcı, boşaltma ve gözcü durur. Taşınmamış hesapta v2On false. */
+  const v2=useStoreV2({user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready});
+  const v2On=v2.active;
+  const v2Ref=useRef(false);v2Ref.current=v2On;
   useEffect(()=>{
     if(typeof window==='undefined'||!window.addEventListener)return;
     const act=()=>{userActAt.current=Date.now();};
@@ -300,6 +305,7 @@ function useCloudSync(data,setData){
 
   // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
   const writeNow=async(urgent)=>{
+    if(v2Ref.current)return;   // yeni yapı (455-store-v2): eski manifest artık salt okunur
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current){slog('write: atlandı','ready='+(ready.current?1:0)+' user='+(u?1:0));return;}
@@ -906,7 +912,7 @@ function useCloudSync(data,setData){
 
   // CANLI DİNLEYİCİ: manifest + parçalar (+ eski formatlardan tek seferlik geçiş)
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda dinleyici 455-store-v2'de
     /* Dinleyici İKİ sebeple kurulur: hesap değişti (sıfırdan) ya da eskisi ölüp yenisi
        geliyor (yeniden). İkisi aynı şey değil. Yeniden kurarken lastSynced/ancestor'ı
        silmek, o anda gönderilmemiş bir düzenleme varsa onu birleştirilecek tabansız
@@ -1192,7 +1198,7 @@ function useCloudSync(data,setData){
         setStatus('syncing');resub.current=Date.now();});
     return ()=>{clearSettle();if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
       pendSince.current=0;fromPending.current=false;unsub();};
-  },[user,subTick]);
+  },[user,subTick,v2On]);
 
   /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
      Storage kapalıyken çekilen fotoğraf cihazda `local:` tutamağıyla duruyor; bulut
@@ -1259,7 +1265,7 @@ function useCloudSync(data,setData){
 
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda bekleyen yazım yok: her değişiklik anında gider
     const flush=()=>{
       if(timer.current){clearTimeout(timer.current);timer.current=null;}
       /* Sayfa kapanıyor/gizleniyor ve yazım hâlâ sunucu okumasını bekliyor: düzenleme henüz
@@ -1409,7 +1415,7 @@ function useCloudSync(data,setData){
     return()=>{clearInterval(watchdog);document.removeEventListener('visibilitychange',onVis);window.removeEventListener('offline',offline);
       window.removeEventListener('online',resume);window.removeEventListener('pageshow',resume);
       window.removeEventListener('pagehide',onHide);window.removeEventListener('beforeunload',onBeforeUnload);};
-  },[user]);
+  },[user,v2On]);
 
   /* ═══════════════════════════════════════════════════════════════════════
      GÖZCÜ — göstergenin sarıda ÇAKILI KALMASININ panzehiri.
@@ -1448,7 +1454,7 @@ function useCloudSync(data,setData){
   const lastPull=useRef(0);
   const lastResub=useRef(0);
   useEffect(()=>{
-    const fb=FB();if(!fb||!user)return;
+    const fb=FB();if(!fb||!user||v2On)return;   // gözcü eski dinleyicinin; yeni yapıda Firestore'un kendi bağlantısı
     let reloading=false;
     const RESUB_MS=20000;
     /* Koç bir alana yazıyor ya da az önce dokundu mu? Taşıma değişikliği sayfayı yeniler ve
@@ -1564,7 +1570,7 @@ function useCloudSync(data,setData){
     };
     const iv=setInterval(tick,2000);
     return()=>{clearInterval(iv);window.removeEventListener('pointerdown',touch,true);window.removeEventListener('keydown',touch,true);};
-  },[user]);
+  },[user,v2On]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:
      her yazım, durumun tamamını seri hâle getirip parçalamayı gerektirir (birkaç MB'lık bir
@@ -1589,7 +1595,7 @@ function useCloudSync(data,setData){
   };
   useEffect(()=>{
     const prevData=prevSeen.current;prevSeen.current=data;
-    const fb=FB();if(!fb||!user||!ready.current)return;
+    const fb=FB();if(!fb||!user||!ready.current||v2On)return;   // yeni yapıda yazım 455-store-v2'de
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;lastEditAt.current=Date.now();setStatus('syncing');
@@ -1618,7 +1624,7 @@ function useCloudSync(data,setData){
       if(typeof requestIdleCallback==='function')requestIdleCallback(()=>writeNow(),{timeout:120});
       else writeNow();
     },wait);
-  },[data,user]);
+  },[data,user,v2On]);
 
   /* Panelin okuduğu canlı iç durum. Ref'ler render sırasında okunuyor — teşhis için
      doğru olan da bu: gösterilen şey o anın gerçeği olsun, React'in bir tur gerisi değil. */
