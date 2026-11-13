@@ -924,7 +924,14 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
           </div>
         </div>))}
       </div>
-      <div className="help">{L('Uyluk açısı yataya göre ölçülür (yatayın üstü +).','The thigh angle is taken against the horizontal (above it is +).')}</div>
+      <div className="help th-help">
+        <b>{L('Uyluk açısı (°)','Thigh angle (°)')}</b> — {L('kalça ekstansiyon pozisyonunu değerlendirmek için kullanılır.','used to assess the hip extension position.')}
+        <ul>
+          <li><b>{L('Pozitif (+)','Positive (+)')}</b>: {L('Uyluk yatayın üzerinde.','Thigh above the horizontal.')}</li>
+          <li><b>0°</b>: {L('Uyluk yatay seviyede.','Thigh level with the horizontal.')}</li>
+          <li><b>{L('Negatif (−)','Negative (−)')}</b>: {L('Uyluk yatayın altında.','Thigh below the horizontal.')}</li>
+        </ul>
+      </div>
       {obs(L('Lomber kontrol, kompanzasyon…','Lumbar control, compensation…'))}
     </>,'tcard-w2');
   }
