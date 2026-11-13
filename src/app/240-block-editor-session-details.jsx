@@ -492,34 +492,53 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
-/* ---- Card colour, in the block's own header ----------------------------
-   It stands where the assignment button used to (ticking names in the picker below IS
-   the assignment, so the button had nothing left to do). Picking a swatch tints the
-   whole header bar — the change is a CSS transition on background-color, so the bar
-   fades into its new colour rather than snapping. The colour also becomes the session's
-   card colour on the calendar, as it did from the strip it used to live in. */
-/* The palette sits a shade deeper than it first did — the brighter set glared across a
-   whole header bar. Cards saved with the earlier shades are read through CARD_COLOR_OLD,
-   so they deepen with the palette (and still light up their swatch) without rewriting data. */
+/* ---- Card colour: picked on the calendar, by right-clicking the session's card ----
+   It used to stand in each block's header and tint the whole bar; the header is one
+   colour now, and the colour belongs to the calendar card alone. A right-click on a card
+   (week or month view) opens CardColorMenu at the pointer.
+   The palette sits a shade deeper than it first did — the brighter set glared. Cards saved
+   with the earlier shades are read through CARD_COLOR_OLD, so they deepen with the palette
+   (and still light up their swatch) without rewriting data. */
 const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777'];
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
-function CardColorPick({value,onPick}){
+/* The floating menu. `x`/`y` are the pointer's viewport coordinates; the menu keeps
+   itself inside the window. Escape, a click outside, scrolling or resizing closes it. */
+function CardColorMenu({x,y,value,title,onPick,onClose}){
   value=cardCol(value);
-  return(<span className="blk-color">
-    <span className="blk-color-l">{L('Kart Rengi','Card Color')}</span>
-    {CARD_COLORS.map(c=><button key={c} type="button" className={'blk-sw'+(value===c?' on':'')} style={{background:c}}
-      onClick={()=>onPick(c)} title={c}/>)}
-    <input type="color" className="blk-sw-custom" value={value||CARD_COLORS[0]} onChange={e=>onPick(e.target.value)}
-      title={L('Özel renk','Custom color')}/>
-    <button type="button" className={'blk-sw-auto'+(value?'':' on')} onClick={()=>onPick('')}
-      title={L('Varsayılan renge dön','Back to the default colour')}>{L('Otomatik','Auto')}</button>
-  </span>);
+  const ref=useRef(null);
+  const[pos,setPos]=useState({left:x,top:y});
+  useLayoutEffect(()=>{
+    const el=ref.current;if(!el)return;
+    const r=el.getBoundingClientRect(),m=8;
+    setPos({left:Math.max(m,Math.min(x,window.innerWidth-r.width-m)),top:Math.max(m,Math.min(y,window.innerHeight-r.height-m))});
+  },[x,y]);
+  useEffect(()=>{
+    const down=e=>{if(ref.current&&!ref.current.contains(e.target))onClose();};
+    const key=e=>{if(e.key==='Escape')onClose();};
+    const away=()=>onClose();
+    document.addEventListener('mousedown',down,true);
+    document.addEventListener('keydown',key);
+    window.addEventListener('scroll',away,true);
+    window.addEventListener('resize',away);
+    return()=>{document.removeEventListener('mousedown',down,true);document.removeEventListener('keydown',key);
+      window.removeEventListener('scroll',away,true);window.removeEventListener('resize',away);};
+  },[onClose]);
+  const pick=c=>{onPick(c);onClose();};
+  return ReactDOM.createPortal(<div ref={ref} className="ccm" role="menu" style={pos}
+      onClick={e=>e.stopPropagation()} onContextMenu={e=>e.preventDefault()}>
+    <div className="ccm-t">{L('Kart Rengi','Card Color')}{title?<span>{title}</span>:null}</div>
+    <div className="ccm-sws">
+      {CARD_COLORS.map(c=><button key={c} type="button" role="menuitemradio" aria-checked={value===c}
+        className={'ccm-sw'+(value===c?' on':'')} style={{background:c}} onClick={()=>pick(c)} title={c}/>)}
+      <input type="color" className="ccm-custom" value={value||CARD_COLORS[0]} onChange={e=>onPick(e.target.value)}
+        title={L('Özel renk','Custom color')}/>
+    </div>
+    <button type="button" className={'ccm-auto'+(value?'':' on')} onClick={()=>pick('')}
+      title={L('Yük türünün varsayılan rengine dön','Back to the load type\'s default colour')}>{L('Otomatik','Auto')}</button>
+  </div>,document.body);
 }
-/* The header's tint as the block's root carries it: `--blk-c` drives the bar's colour,
-   and a light pick flips the bar's ink to dark so the title stays readable. */
-const blkTint=c=>(c=cardCol(c))?{cls:' tinted'+(tmInk(c)==='#ffffff'?'':' lt'),style:{'--blk-c':c}}:{cls:'',style:undefined};
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">

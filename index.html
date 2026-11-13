@@ -5039,32 +5039,25 @@ header{background:var(--bg2)!important}
 /* Remove says something with its colour and must keep it (red on hover): it sits on the
    same dark plate as the rest, but the plate never recolours it. */
 .iv-block-hd .btn.xs.sec.iv-rmb:hover:not(:disabled){border-color:rgba(239,68,68,.55);color:#f87171}
-/* ---- A block wearing its card colour --------------------------------------
-   The bar's colour is a plain background-color (the shading above it is a fixed overlay),
-   so picking a new one fades the whole header into it instead of snapping. The block's
-   frame follows at a softer strength. A light pick flips the bar's ink to dark. */
-.iv-block{transition:border-color .6s ease}
-.iv-block.tinted{border-color:color-mix(in srgb,var(--blk-c) 55%,var(--border))}
-.iv-block.tinted>.iv-block-hd{--blk-hd-shade:none;
-  --blk-hd-line:color-mix(in srgb,var(--blk-c) 60%,#000)}
-.iv-block.lt>.iv-block-hd{--blk-hd-ink:#0b1320;--blk-hd-ink2:rgba(11,19,32,.74);--blk-hd-ink3:rgba(11,19,32,.5)}
-.iv-block.lt>.iv-block-hd .btn.xs.sec{background:rgba(255,255,255,.5);border-color:rgba(11,19,32,.22);color:#0b1320}
-.iv-block.lt>.iv-block-hd .btn.xs.sec:hover:not(:disabled){background:rgba(255,255,255,.75);border-color:rgba(11,19,32,.4);color:#0b1320}
-.iv-block-hd .iv-block-nm,.iv-block-hd .iv-blockcnt,.iv-block-hd .blk-grip,.iv-block-hd .iv-blockch{transition:color .6s ease}
-.blk-color{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;padding:3px 7px;border-radius:var(--r-sm);
-  background:rgba(9,18,30,.45);border:1px solid rgba(150,196,255,.26);transition:background .6s ease,border-color .6s ease}
-.iv-block.lt>.iv-block-hd .blk-color{background:rgba(255,255,255,.5);border-color:rgba(11,19,32,.22)}
-.blk-color-l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--blk-hd-ink2);margin-right:2px;white-space:nowrap}
-.blk-sw{width:17px;height:17px;border-radius:5px;border:1.5px solid rgba(255,255,255,.35);padding:0;cursor:pointer;transition:transform .12s,box-shadow .12s}
-.blk-sw:hover{transform:scale(1.15)}
-.blk-sw.on{border-color:#fff;box-shadow:0 0 0 2px rgba(9,18,30,.85)}
-.blk-sw-custom{width:22px;height:19px;padding:0;border:1px solid rgba(255,255,255,.35);border-radius:5px;background:transparent;cursor:pointer}
-.blk-sw-custom::-webkit-color-swatch-wrapper{padding:1px}
-.blk-sw-custom::-webkit-color-swatch{border:none;border-radius:4px}
-.blk-sw-auto{background:transparent;border:1px solid rgba(150,196,255,.3);color:var(--blk-hd-ink2);padding:2px 7px;border-radius:5px;cursor:pointer;font-size:10.5px;font-family:inherit;font-weight:600}
-.blk-sw-auto:hover{color:var(--blk-hd-ink);border-color:var(--blk-hd-ink2)}
-.blk-sw-auto.on{color:var(--blk-hd-ink);border-color:var(--blk-hd-ink2)}
-.iv-block.lt>.iv-block-hd .blk-sw-auto{border-color:rgba(11,19,32,.3)}
+/* ---- Card colour menu — right-click on a calendar session card ----------
+   A small floating palette at the pointer (CardColorMenu, 240). It sits on the body,
+   above the calendar and its drawer. */
+.ccm{position:fixed;z-index:10050;min-width:196px;padding:10px 10px 9px;border-radius:var(--r-md,10px);
+  background:var(--panel);border:1px solid var(--border2);box-shadow:0 12px 32px rgba(0,0,0,.4);
+  color:var(--text);font-size:12px;animation:ccm-in .12s ease-out}
+@keyframes ccm-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ccm{animation:none}}
+.ccm-t{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:8px;display:flex;flex-direction:column;gap:2px}
+.ccm-t span{font-size:12px;letter-spacing:0;text-transform:none;color:var(--text);font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccm-sws{display:grid;grid-template-columns:repeat(5,24px);gap:7px;margin-bottom:9px}
+.ccm-sw{width:24px;height:24px;border-radius:6px;border:2px solid transparent;padding:0;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.ccm-sw:hover{transform:scale(1.12)}
+.ccm-sw.on{border-color:var(--text);box-shadow:0 0 0 2px var(--panel) inset}
+.ccm-custom{width:24px;height:24px;padding:0;border:1px dashed var(--border2);border-radius:6px;background:transparent;cursor:pointer}
+.ccm-custom::-webkit-color-swatch-wrapper{padding:2px}
+.ccm-custom::-webkit-color-swatch{border:none;border-radius:4px}
+.ccm-auto{width:100%;background:transparent;border:1px solid var(--border2);color:var(--text2);padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11.5px;font-family:inherit;font-weight:600}
+.ccm-auto:hover,.ccm-auto.on{color:var(--text);border-color:var(--accent)}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:640px;background:transparent;border:1px solid transparent;border-radius:6px;
@@ -7085,11 +7078,7 @@ html,body{overscroll-behavior-y:none}
 :root[data-theme="light"] .iv-toast{box-shadow:0 6px 20px rgba(15,23,42,0.12)}
 :root[data-theme="light"] .iv-pripop{box-shadow:0 10px 30px rgba(15,23,42,0.12)}
 :root[data-theme="light"] .iv-notes{background:rgba(15,23,42,.02)}
-:root[data-theme="light"] .iv-block.lt>.iv-block-hd .btn.xs.sec{background:rgba(15,23,42,.5)}
-:root[data-theme="light"] .iv-block.lt>.iv-block-hd .btn.xs.sec:hover:not(:disabled){background:rgba(15,23,42,.75)}
-:root[data-theme="light"] .iv-block.lt>.iv-block-hd .blk-color{background:rgba(15,23,42,.5)}
-:root[data-theme="light"] .blk-sw{border:1.5px solid rgba(15,23,42,.35)}
-:root[data-theme="light"] .blk-sw-custom{border:1px solid rgba(15,23,42,.35)}
+:root[data-theme="light"] .ccm{box-shadow:0 12px 32px rgba(15,23,42,0.14)}
 :root[data-theme="light"] .blk-sn{box-shadow:0 0 0 2px rgba(15,23,42,.18)}
 :root[data-theme="light"] .blk-phbar{background:rgba(15,23,42,.022)}
 :root[data-theme="light"] .pc0{--ph-bg:rgba(15,23,42,.10);--ph-hd:rgba(15,23,42,.2)}
@@ -19501,9 +19490,7 @@ const tmDim=hex=>{
   const m=v=>Math.max(0,Math.min(255,Math.round(v*0.42+0.58*22)));
   return`#${[m((n>>16)&255),m((n>>8)&255),m(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
 };
-/* Ink for text laid on a colour: dark on the light shades, paper on the dark ones.
-   The block header's card-colour tint (blkTint) reads it — without it, picking a
-   swatch threw and blanked the whole screen. */
+/* Ink for text laid on a colour: dark on the light shades, paper on the dark ones. */
 const tmInk=hex=>{
   const n=parseInt(String(hex||'#5c626c').slice(1),16);
   const lum=(0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255;
@@ -21081,6 +21068,24 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const printMonth=()=>{try{printMonthA4Land(labelOwner||setup?.teamName||'',yr,mo,days);}catch(e){alert('Print error: '+e.message);}};
   // Duplicate / delete a session directly from a calendar card
   const dupSession=(dateK,sid)=>{if(canEdit)moveOrCopy(dateK,sid,dateK,true);};
+  /* Card colour — a right-click on a session card (week or month view) opens the
+     palette at the pointer; the pick is the session's `color`, the calendar card's border
+     and bar. It used to be chosen in each block header of the editor. */
+  const[colorMenu,setColorMenu]=useState(null);
+  const closeColorMenu=useCallback(()=>setColorMenu(null),[]);
+  const openColorMenu=(e,dateK,s)=>{
+    if(!canEdit)return;
+    e.preventDefault();e.stopPropagation();setTipBox(null);
+    setColorMenu({x:e.clientX,y:e.clientY,dateK,sid:s.id});
+  };
+  const setSesColor=(dateK,sid,c)=>{
+    if(!canEdit)return;const day=days[dateK];if(!day?.sessions)return;
+    const oldS=day.sessions;const newS=oldS.map(s=>s.id===sid?{...s,color:c}:s);
+    const nd={...days,[dateK]:{...day,sessions:newS,date:dateK}};
+    if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
+    if(drawerSes&&drawerSes.id===sid)setDrawerSes(x=>x&&{...x,color:c});
+  };
+  const colorMenuSes=colorMenu&&(days[colorMenu.dateK]?.sessions||[]).find(s=>s.id===colorMenu.sid);
   const delSession=(dateK,sid)=>{
     if(!canEdit)return;const day=days[dateK];if(!day?.sessions)return;
     const oldS=day.sessions;const newS=oldS.filter(s=>s.id!==sid);
@@ -21301,6 +21306,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
+              onContextMenu={canEdit?(e=>openColorMenu(e,k,s)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
@@ -21364,7 +21370,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="ch"><span className="d">{d.getDate()}</span>{ss.length>0&&<span className="cn">{ss.length}</span>}</div>
           {ss.length>0&&<div className="csess">
             {ss.slice(0,3).map((s,j)=>(<div key={s.id||j} className="cs-item-wrap">
-                <div className="cs-item" style={{'--sc':sesColor(s)}}>{s.time&&<em>{s.time}</em>}<span>{s.name||L('Seans','Session')}</span></div>
+                <div className="cs-item" style={{'--sc':sesColor(s)}}
+                  onContextMenu={canEdit?(e=>openColorMenu(e,k,s)):undefined}>{s.time&&<em>{s.time}</em>}<span>{s.name||L('Seans','Session')}</span></div>
               </div>))}
             {ss.length>3&&<div className="cs-more">{L(`+${ss.length-3} daha`,`+${ss.length-3} more`)}</div>}
           </div>}
@@ -21378,6 +21385,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       })}
     </div>
     </>)}
+    {colorMenu&&colorMenuSes&&<CardColorMenu x={colorMenu.x} y={colorMenu.y} value={colorMenuSes.color||''}
+      title={colorMenuSes.name||''} onClose={closeColorMenu}
+      onPick={c=>setSesColor(colorMenu.dateK,colorMenu.sid,c)}/>}
     {drawerSes&&layer((<>
       {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
       <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
@@ -21927,16 +21937,14 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
   const kind=sesKind(session);
   const tag=sesKindName(kind);
   const del=()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();};
-  const tint=blkTint(session.color||'');
   return(<div className="sess-ed"><div className="sbody">
-    <div className={'iv-block cal-block sk-card'+tint.cls} style={tint.style}>
+    <div className="iv-block cal-block sk-card">
       <div className="iv-block-hd">
         <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
         <LiveInput className="iv-block-nm" value={session.name||''} placeholder={tag}
           title={L('Seans adı','Session name')} onChange={v=>u({name:v})}/>
         <span className="sk-kind">{tag}</span>
         <span className="iv-blockacts">
-          <CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>
           {total>1&&<>
             <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0} title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
             <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1} title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>}
@@ -22443,34 +22451,53 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
-/* ---- Card colour, in the block's own header ----------------------------
-   It stands where the assignment button used to (ticking names in the picker below IS
-   the assignment, so the button had nothing left to do). Picking a swatch tints the
-   whole header bar — the change is a CSS transition on background-color, so the bar
-   fades into its new colour rather than snapping. The colour also becomes the session's
-   card colour on the calendar, as it did from the strip it used to live in. */
-/* The palette sits a shade deeper than it first did — the brighter set glared across a
-   whole header bar. Cards saved with the earlier shades are read through CARD_COLOR_OLD,
-   so they deepen with the palette (and still light up their swatch) without rewriting data. */
+/* ---- Card colour: picked on the calendar, by right-clicking the session's card ----
+   It used to stand in each block's header and tint the whole bar; the header is one
+   colour now, and the colour belongs to the calendar card alone. A right-click on a card
+   (week or month view) opens CardColorMenu at the pointer.
+   The palette sits a shade deeper than it first did — the brighter set glared. Cards saved
+   with the earlier shades are read through CARD_COLOR_OLD, so they deepen with the palette
+   (and still light up their swatch) without rewriting data. */
 const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777'];
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
-function CardColorPick({value,onPick}){
+/* The floating menu. `x`/`y` are the pointer's viewport coordinates; the menu keeps
+   itself inside the window. Escape, a click outside, scrolling or resizing closes it. */
+function CardColorMenu({x,y,value,title,onPick,onClose}){
   value=cardCol(value);
-  return(<span className="blk-color">
-    <span className="blk-color-l">{L('Kart Rengi','Card Color')}</span>
-    {CARD_COLORS.map(c=><button key={c} type="button" className={'blk-sw'+(value===c?' on':'')} style={{background:c}}
-      onClick={()=>onPick(c)} title={c}/>)}
-    <input type="color" className="blk-sw-custom" value={value||CARD_COLORS[0]} onChange={e=>onPick(e.target.value)}
-      title={L('Özel renk','Custom color')}/>
-    <button type="button" className={'blk-sw-auto'+(value?'':' on')} onClick={()=>onPick('')}
-      title={L('Varsayılan renge dön','Back to the default colour')}>{L('Otomatik','Auto')}</button>
-  </span>);
+  const ref=useRef(null);
+  const[pos,setPos]=useState({left:x,top:y});
+  useLayoutEffect(()=>{
+    const el=ref.current;if(!el)return;
+    const r=el.getBoundingClientRect(),m=8;
+    setPos({left:Math.max(m,Math.min(x,window.innerWidth-r.width-m)),top:Math.max(m,Math.min(y,window.innerHeight-r.height-m))});
+  },[x,y]);
+  useEffect(()=>{
+    const down=e=>{if(ref.current&&!ref.current.contains(e.target))onClose();};
+    const key=e=>{if(e.key==='Escape')onClose();};
+    const away=()=>onClose();
+    document.addEventListener('mousedown',down,true);
+    document.addEventListener('keydown',key);
+    window.addEventListener('scroll',away,true);
+    window.addEventListener('resize',away);
+    return()=>{document.removeEventListener('mousedown',down,true);document.removeEventListener('keydown',key);
+      window.removeEventListener('scroll',away,true);window.removeEventListener('resize',away);};
+  },[onClose]);
+  const pick=c=>{onPick(c);onClose();};
+  return ReactDOM.createPortal(<div ref={ref} className="ccm" role="menu" style={pos}
+      onClick={e=>e.stopPropagation()} onContextMenu={e=>e.preventDefault()}>
+    <div className="ccm-t">{L('Kart Rengi','Card Color')}{title?<span>{title}</span>:null}</div>
+    <div className="ccm-sws">
+      {CARD_COLORS.map(c=><button key={c} type="button" role="menuitemradio" aria-checked={value===c}
+        className={'ccm-sw'+(value===c?' on':'')} style={{background:c}} onClick={()=>pick(c)} title={c}/>)}
+      <input type="color" className="ccm-custom" value={value||CARD_COLORS[0]} onChange={e=>onPick(e.target.value)}
+        title={L('Özel renk','Custom color')}/>
+    </div>
+    <button type="button" className={'ccm-auto'+(value?'':' on')} onClick={()=>pick('')}
+      title={L('Yük türünün varsayılan rengine dön','Back to the load type\'s default colour')}>{L('Otomatik','Auto')}</button>
+  </div>,document.body);
 }
-/* The header's tint as the block's root carries it: `--blk-c` drives the bar's colour,
-   and a light pick flips the bar's ink to dark so the title stays readable. */
-const blkTint=c=>(c=cardCol(c))?{cls:' tinted'+(tmInk(c)==='#ffffff'?'':' lt'),style:{'--blk-c':c}}:{cls:'',style:undefined};
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">
@@ -24002,7 +24029,7 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
    are. The phase bar lists them beside each ready-made phase; picking one adds its exercises
    to that phase of this block. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd,setColor,ses,sesMoves,bank,bankAth}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,ses,sesMoves,bank,bankAth}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -24174,9 +24201,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   const printSession=()=>({...blkSession(),
     name:String((session&&session.name)||'').trim()||blkName});
   /* The block's own card colour; a block that never picked one wears the session's. */
-  const blkColor=block.color!=null?block.color:((session&&session.color)||'');
-  const tint=blkTint(blkColor);
-  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')+tint.cls} style={tint.style}
+  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="iv-block-hd">
@@ -24205,9 +24230,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           phased?' · '+phaseList.map(p=>`${phLbl(p)} ${phaseN(p)}`).join(' · '):''}</span>
       </div>
       <span className="iv-blockacts">
-        {/* The buttons on one line and the card colour on the line under them, so the
-            colour row no longer eats into the width the block's title has to show in.
-            A session's only block is the session: its Remove deletes the session, and
+        {/* The card colour is no longer picked here: right-click the session's card on
+            the calendar. A session's only block is the session: its Remove deletes the session, and
             the first block also carries the session's ↑ ↓. */}
         <span className="cal-acts-row">
           {sesMoves}
@@ -24223,7 +24247,6 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
             onClick={()=>{if(ses&&!ses.multi){ses.remove();return;}if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
             title={ses&&!ses.multi?L('Bu seansı sil','Delete this session'):L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
         </span>
-        {!isTemplate&&setColor&&<CardColorPick value={blkColor} onPick={setColor}/>}
       </span>
     </div>
     {open&&<>
@@ -24745,8 +24768,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   /* A block's card colour. It is also written as the session's, since the session is the
      one card the calendar draws — the last colour picked on any of its blocks is the one
      the calendar wears. */
-  const setBlkColor=(bid,c)=>u({color:c,blocks:(session.blocks||[]).map(b=>b.id===bid?{...b,color:c}:b)});
-  const soloTint=blkTint(session.color||'');
 
   /* The session's own controls. The bar that used to head the card — number, title,
      time, the team badge, ↑ ↓ and Delete — is gone: the title it showed is the block's
@@ -24769,7 +24790,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {/* The details live in the blocks — so a session that has none yet still needs
           somewhere to be named, timed and assigned from. This card stands in until the
           first block is added and takes them over. */}
-      {session.blocks.length===0&&<div className={'iv-block cal-block'+soloTint.cls} style={soloTint.style}>
+      {session.blocks.length===0&&<div className="iv-block cal-block">
         <div className="iv-block-hd">
           {/* TWO TITLES, TWO FIELDS. The bar above names the SESSION — the line the day
               plan, the athletes' calendars and every printout carry. This heading names
@@ -24783,7 +24804,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
             onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
-            {!isTemplate&&<CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>}
             {moveBtns}
             <button type="button" className="btn xs sec iv-rmb" onClick={delSess}
               title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
@@ -24795,7 +24815,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         session={session} printContext={printContext} isTemplate={isTemplate}
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
-        athUpd={ids=>setBlkAthletes(b.id,ids)} setColor={c=>setBlkColor(b.id,c)}
+        athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
         ses={sesCtl} sesMoves={bi===0?moveBtns:null}
         bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}

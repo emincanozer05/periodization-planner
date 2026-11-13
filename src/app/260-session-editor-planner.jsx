@@ -457,8 +457,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   /* A block's card colour. It is also written as the session's, since the session is the
      one card the calendar draws — the last colour picked on any of its blocks is the one
      the calendar wears. */
-  const setBlkColor=(bid,c)=>u({color:c,blocks:(session.blocks||[]).map(b=>b.id===bid?{...b,color:c}:b)});
-  const soloTint=blkTint(session.color||'');
 
   /* The session's own controls. The bar that used to head the card — number, title,
      time, the team badge, ↑ ↓ and Delete — is gone: the title it showed is the block's
@@ -481,7 +479,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {/* The details live in the blocks — so a session that has none yet still needs
           somewhere to be named, timed and assigned from. This card stands in until the
           first block is added and takes them over. */}
-      {session.blocks.length===0&&<div className={'iv-block cal-block'+soloTint.cls} style={soloTint.style}>
+      {session.blocks.length===0&&<div className="iv-block cal-block">
         <div className="iv-block-hd">
           {/* TWO TITLES, TWO FIELDS. The bar above names the SESSION — the line the day
               plan, the athletes' calendars and every printout carry. This heading names
@@ -495,7 +493,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
             onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
-            {!isTemplate&&<CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>}
             {moveBtns}
             <button type="button" className="btn xs sec iv-rmb" onClick={delSess}
               title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
@@ -507,7 +504,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         session={session} printContext={printContext} isTemplate={isTemplate}
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
-        athUpd={ids=>setBlkAthletes(b.id,ids)} setColor={c=>setBlkColor(b.id,c)}
+        athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
         ses={sesCtl} sesMoves={bi===0?moveBtns:null}
         bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}

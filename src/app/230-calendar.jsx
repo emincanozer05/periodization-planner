@@ -500,6 +500,24 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const printMonth=()=>{try{printMonthA4Land(labelOwner||setup?.teamName||'',yr,mo,days);}catch(e){alert('Print error: '+e.message);}};
   // Duplicate / delete a session directly from a calendar card
   const dupSession=(dateK,sid)=>{if(canEdit)moveOrCopy(dateK,sid,dateK,true);};
+  /* Card colour — a right-click on a session card (week or month view) opens the
+     palette at the pointer; the pick is the session's `color`, the calendar card's border
+     and bar. It used to be chosen in each block header of the editor. */
+  const[colorMenu,setColorMenu]=useState(null);
+  const closeColorMenu=useCallback(()=>setColorMenu(null),[]);
+  const openColorMenu=(e,dateK,s)=>{
+    if(!canEdit)return;
+    e.preventDefault();e.stopPropagation();setTipBox(null);
+    setColorMenu({x:e.clientX,y:e.clientY,dateK,sid:s.id});
+  };
+  const setSesColor=(dateK,sid,c)=>{
+    if(!canEdit)return;const day=days[dateK];if(!day?.sessions)return;
+    const oldS=day.sessions;const newS=oldS.map(s=>s.id===sid?{...s,color:c}:s);
+    const nd={...days,[dateK]:{...day,sessions:newS,date:dateK}};
+    if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
+    if(drawerSes&&drawerSes.id===sid)setDrawerSes(x=>x&&{...x,color:c});
+  };
+  const colorMenuSes=colorMenu&&(days[colorMenu.dateK]?.sessions||[]).find(s=>s.id===colorMenu.sid);
   const delSession=(dateK,sid)=>{
     if(!canEdit)return;const day=days[dateK];if(!day?.sessions)return;
     const oldS=day.sessions;const newS=oldS.filter(s=>s.id!==sid);
@@ -720,6 +738,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
+              onContextMenu={canEdit?(e=>openColorMenu(e,k,s)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
@@ -783,7 +802,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="ch"><span className="d">{d.getDate()}</span>{ss.length>0&&<span className="cn">{ss.length}</span>}</div>
           {ss.length>0&&<div className="csess">
             {ss.slice(0,3).map((s,j)=>(<div key={s.id||j} className="cs-item-wrap">
-                <div className="cs-item" style={{'--sc':sesColor(s)}}>{s.time&&<em>{s.time}</em>}<span>{s.name||L('Seans','Session')}</span></div>
+                <div className="cs-item" style={{'--sc':sesColor(s)}}
+                  onContextMenu={canEdit?(e=>openColorMenu(e,k,s)):undefined}>{s.time&&<em>{s.time}</em>}<span>{s.name||L('Seans','Session')}</span></div>
               </div>))}
             {ss.length>3&&<div className="cs-more">{L(`+${ss.length-3} daha`,`+${ss.length-3} more`)}</div>}
           </div>}
@@ -797,6 +817,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       })}
     </div>
     </>)}
+    {colorMenu&&colorMenuSes&&<CardColorMenu x={colorMenu.x} y={colorMenu.y} value={colorMenuSes.color||''}
+      title={colorMenuSes.name||''} onClose={closeColorMenu}
+      onPick={c=>setSesColor(colorMenu.dateK,colorMenu.sid,c)}/>}
     {drawerSes&&layer((<>
       {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
       <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
