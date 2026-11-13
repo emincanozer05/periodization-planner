@@ -65,7 +65,7 @@ const TRYOUT_TR={anthro:'Antropometri',circ:'Çevre Ölçümü',posture:'Statik 
   verticalJump:'Dikey Sıçrama',cmj:'CMJ',lateralCmj:'Lateral CMJ',squatJump:'Skuat Sıçrama',
   horizontalJump:'Yatay Sıçrama',dropJump:'Drop Jump (RSI)',sprint:'20m Sprint',tTest:'T-Test',
   fiveZeroFive:'505 COD',laneAgility:'Lane Agility',shuttleRun:'Shuttle Run',
-  hipRot:'Kalça IR/ER',thomas:'Thomas Testi',tSpine:'T-Spine Rotasyon',accel:'5-10m İvmelenme',
+  hipRot:'Kalça IR/ER',thomas:'Modifiye Thomas Testi',tSpine:'T-Spine Rotasyon',accel:'5-10m İvmelenme',
   pullUp:'Barfiks (Pull-Up)',copenhagen:'Copenhagen Plank',sidePlank:'Yan Plank',backSquat:'Barbell Squat'};
 /* Tests the trial sheet carried before it shared the club's catalog. They are not offered
    any more, but a candidate measured on one still has the number on their sheet — so the

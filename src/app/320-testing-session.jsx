@@ -267,7 +267,7 @@ function CustomStage({theme}){
 
 /* ---- Mockup-style test card helpers ---- */
 const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',curvedRun:'Curved Run Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
-  accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Supine)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
+  accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Supine)',thomas:'Modified Thomas Test',tSpine:'Active T-Spine Rotation',
   benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
 const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',laneAgility:'sec',shuttleRun:'vo2max'};
 const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',curvedRun:'CURVED',laneAgility:'LANE',shuttleRun:'SHUTTLE',
@@ -600,11 +600,12 @@ function MkLR({rows,unit,step,diffHead}){
     </div>))}
   </div>);
 }
-function MkPM({value,onChange,auto,label}){
+/* Var / Yok: "var" kırmızı (bulgu), "yok" yeşil; seçiliye yeniden basmak boşaltır. */
+function MkYN({value,onChange,label}){
   const cur=value||'';
-  return(<div className="fmsl-seg clr mk-pm" role="group" aria-label={label}>
-    <button type="button" className={'neg'+(cur==='neg'?' on':(!cur&&auto==='neg'?' auto':''))} aria-pressed={cur==='neg'} onClick={()=>onChange(cur==='neg'?'':'neg')} title={L('Negatif','Negative')}>−</button>
-    <button type="button" className={'pos'+(cur==='pos'?' on':(!cur&&auto==='pos'?' auto':''))} aria-pressed={cur==='pos'} onClick={()=>onChange(cur==='pos'?'':'pos')} title={L('Pozitif','Positive')}>+</button>
+  return(<div className="fmsl-seg mk-pm mk-yn" role="group" aria-label={label}>
+    <button type="button" className={'neg'+(cur==='no'?' on':'')} aria-pressed={cur==='no'} onClick={()=>onChange(cur==='no'?'':'no')}>{L('Yok','No')}</button>
+    <button type="button" className={'pos'+(cur==='yes'?' on':'')} aria-pressed={cur==='yes'} onClick={()=>onChange(cur==='yes'?'':'yes')}>{L('Var','Yes')}</button>
   </div>);
 }
 
@@ -917,13 +918,13 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
             <div className="mk-field"><div className="mk-flbl">{L('Uyluk açısı','Thigh angle')}</div><MkInput value={raw(s).hip} onChange={v=>setS(s,'hip',v)} unit="°" step="1" sm/></div>
             <div className="mk-field"><div className="mk-flbl">{L('Diz fleksiyonu','Knee flexion')}</div><MkInput value={raw(s).knee} onChange={v=>setS(s,'knee',v)} unit="°" step="1" sm/></div>
           </div>
-          {THOMAS_FIND.map(([k,nm,hint])=>(<div key={k} className="th-find">
-            <div className="th-find-t"><b>{nm}</b><span>{L(hint[0],hint[1])}</span></div>
-            <MkPM value={raw(s)[k]} auto={th[s].res[k]} onChange={v=>setS(s,k,v)} label={nm}/>
-          </div>))}
+          <div className="th-find">
+            <div className="th-find-t"><b>{L('Uyluk abdüksiyonu','Thigh abduction')}</b><span>{L('Uyluk dışa kayıyor mu?','Does the thigh drift out?')}</span></div>
+            <MkYN value={th[s].abd} onChange={v=>onUpdate(t=>({thomas:{...(t.thomas||{}),[s]:{...((t.thomas||{})[s]||{}),abd:v,itb:''}}}))} label={L('Uyluk abdüksiyonu','Thigh abduction')}/>
+          </div>
         </div>))}
       </div>
-      <div className="help">{L('Uyluk açısı yataya göre ölçülür (yatayın üstü +). Açı girildiğinde iliopsoas (açı > 0°) ve rectus femoris (diz < 80°) sonucu kendiliğinden gelir; düğmeyle değiştirilebilir.','The thigh angle is taken against the horizontal (above it is +). With angles entered, the iliopsoas (angle > 0°) and rectus femoris (knee < 80°) calls fill themselves in; the switch overrides them.')}</div>
+      <div className="help">{L('Uyluk açısı yataya göre ölçülür (yatayın üstü +).','The thigh angle is taken against the horizontal (above it is +).')}</div>
       {obs(L('Lomber kontrol, kompanzasyon…','Lumbar control, compensation…'))}
     </>,'tcard-w2');
   }

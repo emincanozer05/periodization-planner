@@ -358,7 +358,7 @@ const makeTest=(period='pre')=>({
   /* Curved Run (s): yay şeklindeki ~18 m parkurun sağdan ve soldan başlanarak alınan süreleri.
      Sağ-sol yüzde farkı otomatik hesaplanır (curvedRunCalc, 040). */
   curvedRun:{right:'',left:''},
-  // Hareket taraması: aktif kalça IR/ER (oturarak, °), Thomas testi (taraf başına), T-spine rotasyonu (°)
+  // Hareket taraması: aktif kalça IR/ER (sırtüstü, °), Modified Thomas Test (taraf başına: uyluk °, diz °, abdüksiyon var/yok), T-spine rotasyonu (°)
   hipRot:{irR:'',irL:'',erR:'',erL:''},
   thomas:{right:{},left:{}},
   tSpine:{right:'',left:''},
@@ -400,7 +400,7 @@ const TEST_CATALOG=[
      record that was screened with it still reads, prints and charts as before. */
   {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR',retired:true},
   {id:'hipRot',        name:'Active Hip IR/ER (Supine)',  short:'Hip IR/ER'},
-  {id:'thomas',        name:'Thomas Test',                short:'Thomas'},
+  {id:'thomas',        name:'Modified Thomas Test',                short:'Thomas'},
   {id:'tSpine',        name:'Active T-Spine Rotation',    short:'T-Spine'},
   {id:'yBalance',      name:'Y Balance Test',             short:'YBT'},
   {id:'verticalJump',  name:'Vertical Jump',              short:'VJ'},
