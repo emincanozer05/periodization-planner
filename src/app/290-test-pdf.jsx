@@ -469,7 +469,8 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       return card('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
         [`<b>${L('Toplam ark','Total arc')}</b>`,{v:`<b>${g(h.totR)}</b>`},{v:`<b>${g(h.totL)}</b>`},{v:h.dTot!=null?`${h.dTot}° (${pct(h.pTot)})`:'—',a:colAsym(h.pTot)}]]));},
     thomas:()=>{const th=thomasCalc(t);const g=v=>v!=null?v+'°':'—';
-      const pos=v=>{const p=THOMAS_POS.find(([k])=>k===v);return p?L(p[1],p[3]):'—';};
+      /* + (thigh above the horizontal) is the short-hip-flexor finding: red; − is the wanted result: green. */
+      const pos=v=>{const p=THOMAS_POS.find(([k])=>k===v);if(!p)return'—';const c=v==='pos'?'#dc2626':v==='neg'?'#16a34a':'';return c?{v:L(p[1],p[3]),a:` style="color:${c};font-weight:600"`}:L(p[1],p[3]);};
       const call=v=>v==='yes'?{v:L('Var','Yes'),a:' style="color:#dc2626"'}:v==='no'?{v:L('Yok','No'),a:' style="color:#16a34a"'}:'—';
       return card('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
         [L('Uyluk pozisyonu','Thigh position'),pos(th.right.hipPos),pos(th.left.hipPos)],
