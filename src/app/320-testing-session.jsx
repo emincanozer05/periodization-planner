@@ -918,20 +918,20 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
             <div className="mk-field"><div className="mk-flbl">{L('Uyluk açısı','Thigh angle')}</div><MkInput value={raw(s).hip} onChange={v=>setS(s,'hip',v)} unit="°" step="1" sm/></div>
             <div className="mk-field"><div className="mk-flbl">{L('Diz fleksiyonu','Knee flexion')}</div><MkInput value={raw(s).knee} onChange={v=>setS(s,'knee',v)} unit="°" step="1" sm/></div>
           </div>
+          <div className="th-sign" role="radiogroup" aria-label={L('Uyluk açısı: pozisyon','Thigh angle: position')}>
+            <div className="th-sign-h">{L('Uyluk pozisyonu','Thigh position')}</div>
+            {THOMAS_POS.map(([k,tr,mean,en])=>{const on=th[s].hipPosSet&&th[s].hipPos===k,auto=!th[s].hipPosSet&&th[s].hipPos===k;
+              return(<button key={k} type="button" role="radio" aria-checked={on} className={'th-sign-o'+(on?' on':'')+(auto?' auto':'')}
+                title={auto?L('Girilen açıdan; işaretlemek için tıkla','From the angle entered; click to mark'):undefined}
+                onClick={()=>setS(s,'hipPos',on?'':k)}><i/><b>{L(tr,en)}</b><span>{L(mean[0],mean[1])}</span></button>);})}
+          </div>
           <div className="th-find">
             <div className="th-find-t"><b>{L('Uyluk abdüksiyonu','Thigh abduction')}</b><span>{L('Uyluk dışa kayıyor mu?','Does the thigh drift out?')}</span></div>
             <MkYN value={th[s].abd} onChange={v=>onUpdate(t=>({thomas:{...(t.thomas||{}),[s]:{...((t.thomas||{})[s]||{}),abd:v,itb:''}}}))} label={L('Uyluk abdüksiyonu','Thigh abduction')}/>
           </div>
         </div>))}
       </div>
-      <div className="help th-help">
-        <b>{L('Uyluk açısı (°)','Thigh angle (°)')}</b> — {L('kalça ekstansiyon pozisyonunu değerlendirmek için kullanılır.','used to assess the hip extension position.')}
-        <ul>
-          <li><b>{L('Pozitif (+)','Positive (+)')}</b>: {L('Uyluk yatayın üzerinde.','Thigh above the horizontal.')}</li>
-          <li><b>0°</b>: {L('Uyluk yatay seviyede.','Thigh level with the horizontal.')}</li>
-          <li><b>{L('Negatif (−)','Negative (−)')}</b>: {L('Uyluk yatayın altında.','Thigh below the horizontal.')}</li>
-        </ul>
-      </div>
+      <div className="help">{L('Uyluk açısı kalça ekstansiyon pozisyonunu değerlendirmek için kullanılır (yataya göre). Açı girilince pozisyon kendiliğinden önerilir (çerçeveli); tıklayarak işaretlenir.','The thigh angle assesses the hip extension position (against the horizontal). With an angle entered the position is suggested (outlined); click to mark it.')}</div>
       {obs(L('Lomber kontrol, kompanzasyon…','Lumbar control, compensation…'))}
     </>,'tcard-w2');
   }

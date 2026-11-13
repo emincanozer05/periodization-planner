@@ -593,14 +593,25 @@ function hipRotCalc(t){
   return{irR,irL,erR,erL,totR,totL,dIr:d(irR,irL),dEr:d(erR,erL),dTot:d(totR,totL),pTot:asymPct(totR,totL,'hi')};
 }
 /* Modified Thomas Test, per side: three parameters — thigh angle (°), knee flexion (°) and
-   whether the thigh drifts into abduction (yes / no). `abd` is 'yes' | 'no' | ''. Records from
+   whether the thigh drifts into abduction (yes / no). `abd` is 'yes' | 'no' | ''.
+   The thigh angle (hip extension position) also carries a marked position, `hipPos`:
+   'pos' (thigh above the horizontal), 'zero' (level) or 'neg' (below). Unmarked, it is read
+   from the sign of the angle; `hipPosSet` says whether the coach marked it.  Records from
    the older form kept that call as `itb` ('pos' / 'neg'); it is read as the abduction answer.
    Their iliopsoas / rectus femoris calls (`psoas`, `rf`) stay in the data but are no longer shown. */
+/* [key, sign, what it means as [tr,en]] — read with L() where it is drawn. */
+const THOMAS_POS=[
+  ['pos','Pozitif (+)',['Uyluk yatayın üzerinde','Thigh above the horizontal'],'Positive (+)'],
+  ['zero','0°',['Uyluk yatay seviyede','Thigh level with the horizontal'],'0°'],
+  ['neg','Negatif (−)',['Uyluk yatayın altında','Thigh below the horizontal'],'Negative (−)'],
+];
 function thomasCalc(t){
   const side=s=>{
     const o=((t&&t.thomas)||{})[s]||{};const hip=tN(o.hip),knee=tN(o.knee);
     const abd=o.abd==='yes'||o.abd==='no'?o.abd:o.itb==='pos'?'yes':o.itb==='neg'?'no':'';
-    return{hip,knee,abd,any:hip!=null||knee!=null||!!abd};
+    const hipPosSet=THOMAS_POS.some(([k])=>k===o.hipPos);
+    const hipPos=hipPosSet?o.hipPos:hip==null?'':hip>0?'pos':hip<0?'neg':'zero';
+    return{hip,knee,abd,hipPos,hipPosSet,any:hip!=null||knee!=null||!!abd||hipPosSet};
   };
   const right=side('right'),left=side('left');
   return{right,left,any:right.any||left.any};

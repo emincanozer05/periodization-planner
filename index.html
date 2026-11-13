@@ -9764,9 +9764,19 @@ td.td-c.none{color:var(--border2)}
 /* −/+ anahtarı; açıdan gelen öneri kesik çizgiyle */
 .mk-pm button{min-width:30px;height:28px}
 .mk-yn button{min-width:46px;font-size:12px}
-.th-help ul{margin:4px 0 0;padding-left:18px}
-.th-help li{margin:1px 0}
-.th-help b{color:var(--text2)}
+/* açık temada otomatik kural seçili "yok"u beyaz zemine beyaz yazıyla bırakıyordu */
+:is(:root,:root[data-theme]) .mk-yn button.neg.on{background:#16a34a;color:#fff}
+:is(:root,:root[data-theme]) .mk-yn button.pos.on{background:#dc2626;color:#fff}
+.th-sign{display:flex;flex-direction:column;gap:1px}
+.th-sign-h{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.th-sign-o{display:flex;align-items:center;gap:8px;width:100%;padding:4px 6px;margin:0 -6px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--text2);font:inherit;font-size:12px;text-align:left;cursor:pointer;transition:background-color .15s}
+.th-sign-o:hover{background:var(--hover,var(--bg2))}
+.th-sign-o:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.th-sign-o i{flex:none;width:14px;height:14px;border:1.5px solid var(--border2);border-radius:3px;background:var(--panel);transition:background-color .15s,border-color .15s,box-shadow .15s}
+.th-sign-o b{flex:none;min-width:74px;font-weight:600;color:var(--text)}
+.th-sign-o span{color:var(--muted);font-size:11.5px}
+.th-sign-o.on i{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 2.5px var(--panel)}
+.th-sign-o.auto i{border-color:var(--accent);border-style:dashed}
 .fmsl-seg.clr button.neg.auto{box-shadow:inset 0 0 0 1.5px #16a34a;color:#16a34a}
 .fmsl-seg.clr button.pos.auto{box-shadow:inset 0 0 0 1.5px #dc2626;color:#dc2626}
 
@@ -12290,14 +12300,25 @@ function hipRotCalc(t){
   return{irR,irL,erR,erL,totR,totL,dIr:d(irR,irL),dEr:d(erR,erL),dTot:d(totR,totL),pTot:asymPct(totR,totL,'hi')};
 }
 /* Modified Thomas Test, per side: three parameters — thigh angle (°), knee flexion (°) and
-   whether the thigh drifts into abduction (yes / no). `abd` is 'yes' | 'no' | ''. Records from
+   whether the thigh drifts into abduction (yes / no). `abd` is 'yes' | 'no' | ''.
+   The thigh angle (hip extension position) also carries a marked position, `hipPos`:
+   'pos' (thigh above the horizontal), 'zero' (level) or 'neg' (below). Unmarked, it is read
+   from the sign of the angle; `hipPosSet` says whether the coach marked it.  Records from
    the older form kept that call as `itb` ('pos' / 'neg'); it is read as the abduction answer.
    Their iliopsoas / rectus femoris calls (`psoas`, `rf`) stay in the data but are no longer shown. */
+/* [key, sign, what it means as [tr,en]] — read with L() where it is drawn. */
+const THOMAS_POS=[
+  ['pos','Pozitif (+)',['Uyluk yatayın üzerinde','Thigh above the horizontal'],'Positive (+)'],
+  ['zero','0°',['Uyluk yatay seviyede','Thigh level with the horizontal'],'0°'],
+  ['neg','Negatif (−)',['Uyluk yatayın altında','Thigh below the horizontal'],'Negative (−)'],
+];
 function thomasCalc(t){
   const side=s=>{
     const o=((t&&t.thomas)||{})[s]||{};const hip=tN(o.hip),knee=tN(o.knee);
     const abd=o.abd==='yes'||o.abd==='no'?o.abd:o.itb==='pos'?'yes':o.itb==='neg'?'no':'';
-    return{hip,knee,abd,any:hip!=null||knee!=null||!!abd};
+    const hipPosSet=THOMAS_POS.some(([k])=>k===o.hipPos);
+    const hipPos=hipPosSet?o.hipPos:hip==null?'':hip>0?'pos':hip<0?'neg':'zero';
+    return{hip,knee,abd,hipPos,hipPosSet,any:hip!=null||knee!=null||!!abd||hipPosSet};
   };
   const right=side('right'),left=side('left');
   return{right,left,any:right.any||left.any};
@@ -26323,8 +26344,10 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
       return card('hipRot',grid(['',R,Lf,L('Fark','Gap')],[[L('İç rotasyon (IR)','Internal rotation (IR)'),g(h.irR),g(h.irL),g(h.dIr)],[L('Dış rotasyon (ER)','External rotation (ER)'),g(h.erR),g(h.erL),g(h.dEr)],
         [`<b>${L('Toplam ark','Total arc')}</b>`,{v:`<b>${g(h.totR)}</b>`},{v:`<b>${g(h.totL)}</b>`},{v:h.dTot!=null?`${h.dTot}° (${pct(h.pTot)})`:'—',a:colAsym(h.pTot)}]]));},
     thomas:()=>{const th=thomasCalc(t);const g=v=>v!=null?v+'°':'—';
+      const pos=v=>{const p=THOMAS_POS.find(([k])=>k===v);return p?L(p[1],p[3]):'—';};
       const call=v=>v==='yes'?{v:L('Var','Yes'),a:' style="color:#dc2626"'}:v==='no'?{v:L('Yok','No'),a:' style="color:#16a34a"'}:'—';
       return card('thomas',grid(['',R,Lf],[[L('Uyluk açısı (yataya göre)','Thigh angle (vs horizontal)'),g(th.right.hip),g(th.left.hip)],[L('Diz fleksiyonu','Knee flexion'),g(th.right.knee),g(th.left.knee)],
+        [L('Uyluk pozisyonu','Thigh position'),pos(th.right.hipPos),pos(th.left.hipPos)],
         [L('Uyluk abdüksiyonu','Thigh abduction'),call(th.right.abd),call(th.left.abd)]]));},
     tSpine:()=>{const x=tSpineCalc(t);return card('tSpine',kv([[R,x.r!=null?x.r+'°':'—'],[Lf,x.l!=null?x.l+'°':'—'],[L('Fark','Gap'),x.diff!=null?x.diff+'°':'—'],[L('Asimetri','Asymmetry'),pct(x.pct),colAsym(x.pct)]]));},
     yBalance:()=>{const d=v=>v==null?{v:'—'}:{v:v.toFixed(1)+' cm',a:` style="color:${v<4?'#16a34a':'#dc2626'}"`};const n=v=>v!=null?v:'—';
@@ -28593,20 +28616,20 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
             <div className="mk-field"><div className="mk-flbl">{L('Uyluk açısı','Thigh angle')}</div><MkInput value={raw(s).hip} onChange={v=>setS(s,'hip',v)} unit="°" step="1" sm/></div>
             <div className="mk-field"><div className="mk-flbl">{L('Diz fleksiyonu','Knee flexion')}</div><MkInput value={raw(s).knee} onChange={v=>setS(s,'knee',v)} unit="°" step="1" sm/></div>
           </div>
+          <div className="th-sign" role="radiogroup" aria-label={L('Uyluk açısı: pozisyon','Thigh angle: position')}>
+            <div className="th-sign-h">{L('Uyluk pozisyonu','Thigh position')}</div>
+            {THOMAS_POS.map(([k,tr,mean,en])=>{const on=th[s].hipPosSet&&th[s].hipPos===k,auto=!th[s].hipPosSet&&th[s].hipPos===k;
+              return(<button key={k} type="button" role="radio" aria-checked={on} className={'th-sign-o'+(on?' on':'')+(auto?' auto':'')}
+                title={auto?L('Girilen açıdan; işaretlemek için tıkla','From the angle entered; click to mark'):undefined}
+                onClick={()=>setS(s,'hipPos',on?'':k)}><i/><b>{L(tr,en)}</b><span>{L(mean[0],mean[1])}</span></button>);})}
+          </div>
           <div className="th-find">
             <div className="th-find-t"><b>{L('Uyluk abdüksiyonu','Thigh abduction')}</b><span>{L('Uyluk dışa kayıyor mu?','Does the thigh drift out?')}</span></div>
             <MkYN value={th[s].abd} onChange={v=>onUpdate(t=>({thomas:{...(t.thomas||{}),[s]:{...((t.thomas||{})[s]||{}),abd:v,itb:''}}}))} label={L('Uyluk abdüksiyonu','Thigh abduction')}/>
           </div>
         </div>))}
       </div>
-      <div className="help th-help">
-        <b>{L('Uyluk açısı (°)','Thigh angle (°)')}</b> — {L('kalça ekstansiyon pozisyonunu değerlendirmek için kullanılır.','used to assess the hip extension position.')}
-        <ul>
-          <li><b>{L('Pozitif (+)','Positive (+)')}</b>: {L('Uyluk yatayın üzerinde.','Thigh above the horizontal.')}</li>
-          <li><b>0°</b>: {L('Uyluk yatay seviyede.','Thigh level with the horizontal.')}</li>
-          <li><b>{L('Negatif (−)','Negative (−)')}</b>: {L('Uyluk yatayın altında.','Thigh below the horizontal.')}</li>
-        </ul>
-      </div>
+      <div className="help">{L('Uyluk açısı kalça ekstansiyon pozisyonunu değerlendirmek için kullanılır (yataya göre). Açı girilince pozisyon kendiliğinden önerilir (çerçeveli); tıklayarak işaretlenir.','The thigh angle assesses the hip extension position (against the horizontal). With an angle entered the position is suggested (outlined); click to mark it.')}</div>
       {obs(L('Lomber kontrol, kompanzasyon…','Lumbar control, compensation…'))}
     </>,'tcard-w2');
   }
