@@ -105,16 +105,37 @@
 :is(:root,:root[data-theme]) .fmsc-ph-g .mk-up-box{width:100%;height:auto;aspect-ratio:1/1.05}
 .fmsc-ph-g .mk-up-cap{text-align:center}
 
+/* Statik Postür: kart tam genişlik ve uzun. Dört fotoğraf kutusu kartın ~%70'ini eşit dört
+   dikey (2:3) sütuna böler; gözlem kutusu sağda kalan alanı fotoğraflarla aynı boyda doldurur.
+   Fotoğraf kırpılmaz (contain): baştan ayağa dizilim görünür kalsın. */
+.tcard-posture .tcard-content{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,3fr);gap:16px;align-items:stretch}
+.tcard-posture .photo-grid2x2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:auto}
+.tcard-posture .mk-up{align-items:stretch}
+:is(:root,:root[data-theme]) .tcard-posture .mk-up-box{width:100%;height:auto;aspect-ratio:2/3}
+.tcard-posture .mk-up-box img{object-fit:contain}
+.tcard-posture .mk-up-add{font-size:12px}
+.tcard-posture .mk-up-cap{text-align:center}
+.tcard-posture .tc-obs{flex:none;min-height:0}
+.tcard-posture .tc-obs textarea{flex:1 1 auto;min-height:150px}
+@media(max-width:760px){.tcard-posture .tcard-content{grid-template-columns:1fr}}
+@media(max-width:480px){.tcard-posture .photo-grid2x2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 /* Sporcu kartı: seçim kutusu yok; altta "Test Sonuçları" ve "Atletik Gelişim Raporu" düğmeleri */
 .ev2-card-acts{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .ev2-card-acts .btn{width:100%;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev2-lrow-acts{flex:none;display:flex;gap:6px}
 @media (max-width:640px){.ev2-lrow-acts{flex-direction:column}}
 
-/* ---- kart başlığında kırmızı ✕: testi kayıttan çıkarır (onaylı) ---- */
+/* ---- kart başlığında sil düğmesi: testi kayıttan çıkarır (onaylı) ----
+   Dinlenirken sönük, ince çizgili bir ✕ (kırmızı değil): kart başlığında dikkat çekmez.
+   Kartın üstüne gelince biraz belirginleşir; düğmenin kendisine gelince ya da klavyeyle
+   odaklanınca hafif kırmızı zemin ve kırmızı simge alır, "sil" olduğu o an anlaşılır. */
 .tcard-x{flex:none;margin-left:2px;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;
-  font:700 13px/1 'Space Grotesk',sans-serif;color:var(--red,#e5322d);background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;
-  transition:background-color .15s,border-color .15s,color .15s}
-.tcard-x:hover,.tcard-x:focus-visible{background:var(--red,#e5322d);border-color:var(--red,#e5322d);color:#fff;outline:none}
+  color:var(--dim);opacity:.55;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;
+  transition:background-color .15s,border-color .15s,color .15s,opacity .15s}
+.tcard-x svg{display:block}
+.tcard:hover .tcard-x{opacity:.9}
+.tcard-x:hover,.tcard-x:focus-visible{opacity:1;color:var(--red,#e5322d);background:color-mix(in srgb,var(--red,#e5322d) 12%,transparent);border-color:color-mix(in srgb,var(--red,#e5322d) 28%,transparent);outline:none}
 .tcard-x:active{transform:scale(.94)}
+@media (hover:none){.tcard-x{opacity:.8}}
 .tcard-hd .fmsl-print+.fms-hd-logo+.tcard-x{margin-left:6px}
