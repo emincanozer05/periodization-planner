@@ -5058,6 +5058,8 @@ header{background:var(--bg2)!important}
 .ccm-custom::-webkit-color-swatch{border:none;border-radius:4px}
 .ccm-auto{width:100%;background:transparent;border:1px solid var(--border2);color:var(--text2);padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11.5px;font-family:inherit;font-weight:600}
 .ccm-auto:hover,.ccm-auto.on{color:var(--text);border-color:var(--accent)}
+.ccm-auto{display:flex;align-items:center;justify-content:center;gap:7px}
+.ccm-auto-dot{width:10px;height:10px;border-radius:3px;flex:none}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:640px;background:transparent;border:1px solid transparent;border-radius:6px;
@@ -16765,10 +16767,10 @@ function fitWeekToPage(w){
 }
 
 /* A session's colour on paper — the calendar's own rule: the card colour the coach
-   picked wins, otherwise the load type's hue (the neuromuscular yellow a shade deeper so
+   picked wins, then the session kind's own colour (sesCardColor), otherwise the load type's hue (the neuromuscular yellow a shade deeper so
    it still reads on white). Shared by the weekly and the monthly sheet. */
 function printSesColor(s){
-  if(s&&s.color)return cardCol(s.color);
+  const c=sesCardColor(s);if(c)return c;
   const t=((s&&s.loadType)||'').toLowerCase();
   if(t.includes('mechanical'))return'#0094ff';
   if(t.includes('metabolic'))return'#5b8cff';
@@ -21141,7 +21143,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
   const goToday=()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});setMonthRef(new Date(today.getFullYear(),today.getMonth(),1));};
   // Session bar colour — identical to the weekly cards (custom s.color, else load-type colour).
-  const sesColor=s=>cardCol(s.color)||ltColor(ltCls(s.loadType));
+  const sesColor=s=>sesCardColor(s)||ltColor(ltCls(s.loadType));
   // Full weeks: pad leading days from the previous month and trailing from the next.
   const monthCells=(()=>{const first=new Date(yr,mo,1);const off=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();const a=[];
     for(let i=off;i>0;i--)a.push({d:new Date(yr,mo,1-i),out:true});
@@ -21300,9 +21302,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <span>{L('Dinlenme','Rest')}</span>
           </div>}
           {ss.map(s=>{
-            return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
+            const scol=sesCardColor(s);
+            return(<div key={s.id} className={`calw-ses ${scol?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
-              style={s.color?{'--sc':cardCol(s.color)}:undefined}
+              style={scol?{'--sc':scol}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
@@ -21386,7 +21389,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     </div>
     </>)}
     {colorMenu&&colorMenuSes&&<CardColorMenu x={colorMenu.x} y={colorMenu.y} value={colorMenuSes.color||''}
-      title={colorMenuSes.name||''} onClose={closeColorMenu}
+      auto={sesTypeColor(colorMenuSes)} title={colorMenuSes.name||''} onClose={closeColorMenu}
       onPick={c=>setSesColor(colorMenu.dateK,colorMenu.sid,c)}/>}
     {drawerSes&&layer((<>
       {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
@@ -22462,9 +22465,29 @@ const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
+/* The colour a card wears on "Otomatik" — each kind of session has its own: a match red,
+   a team practice orange, on-court performance (speed) purple, recovery cyan, strength &
+   power green. Anything else (conditioning, a test day, an unlabelled session) returns ''
+   and keeps the load type's hue. */
+const SES_TYPE_COLORS={match:'#ff3624',tp:'#ff941a',court:'#b55dfe',recovery:'#24e2ff',strength:'#9dff5c'};
+const sesTypeKey=s=>{
+  if(!s)return'';
+  const k=sesKind(s);
+  if(k==='match')return'match';
+  if(k==='tp')return'tp';
+  if(k==='test')return'';
+  const f=sesFocus(s);
+  if(f.includes('Speed'))return'court';
+  if(f.includes('Strength')||f.includes('Power'))return'strength';
+  if(f.includes('Recovery'))return'recovery';
+  return'';
+};
+const sesTypeColor=s=>SES_TYPE_COLORS[sesTypeKey(s)]||'';
+/* The card's colour: the coach's pick, else the session kind's own. '' = load type's hue. */
+const sesCardColor=s=>cardCol(s&&s.color)||sesTypeColor(s);
 /* The floating menu. `x`/`y` are the pointer's viewport coordinates; the menu keeps
    itself inside the window. Escape, a click outside, scrolling or resizing closes it. */
-function CardColorMenu({x,y,value,title,onPick,onClose}){
+function CardColorMenu({x,y,value,auto,title,onPick,onClose}){
   value=cardCol(value);
   const ref=useRef(null);
   const[pos,setPos]=useState({left:x,top:y});
@@ -22495,7 +22518,8 @@ function CardColorMenu({x,y,value,title,onPick,onClose}){
         title={L('Özel renk','Custom color')}/>
     </div>
     <button type="button" className={'ccm-auto'+(value?'':' on')} onClick={()=>pick('')}
-      title={L('Yük türünün varsayılan rengine dön','Back to the load type\'s default colour')}>{L('Otomatik','Auto')}</button>
+      title={L('Seans türünün varsayılan rengine dön','Back to the session type\'s default colour')}>
+      {auto&&<i className="ccm-auto-dot" style={{background:auto}}/>}{L('Otomatik','Auto')}</button>
   </div>,document.body);
 }
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){

@@ -503,9 +503,29 @@ const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
+/* The colour a card wears on "Otomatik" — each kind of session has its own: a match red,
+   a team practice orange, on-court performance (speed) purple, recovery cyan, strength &
+   power green. Anything else (conditioning, a test day, an unlabelled session) returns ''
+   and keeps the load type's hue. */
+const SES_TYPE_COLORS={match:'#ff3624',tp:'#ff941a',court:'#b55dfe',recovery:'#24e2ff',strength:'#9dff5c'};
+const sesTypeKey=s=>{
+  if(!s)return'';
+  const k=sesKind(s);
+  if(k==='match')return'match';
+  if(k==='tp')return'tp';
+  if(k==='test')return'';
+  const f=sesFocus(s);
+  if(f.includes('Speed'))return'court';
+  if(f.includes('Strength')||f.includes('Power'))return'strength';
+  if(f.includes('Recovery'))return'recovery';
+  return'';
+};
+const sesTypeColor=s=>SES_TYPE_COLORS[sesTypeKey(s)]||'';
+/* The card's colour: the coach's pick, else the session kind's own. '' = load type's hue. */
+const sesCardColor=s=>cardCol(s&&s.color)||sesTypeColor(s);
 /* The floating menu. `x`/`y` are the pointer's viewport coordinates; the menu keeps
    itself inside the window. Escape, a click outside, scrolling or resizing closes it. */
-function CardColorMenu({x,y,value,title,onPick,onClose}){
+function CardColorMenu({x,y,value,auto,title,onPick,onClose}){
   value=cardCol(value);
   const ref=useRef(null);
   const[pos,setPos]=useState({left:x,top:y});
@@ -536,7 +556,8 @@ function CardColorMenu({x,y,value,title,onPick,onClose}){
         title={L('Özel renk','Custom color')}/>
     </div>
     <button type="button" className={'ccm-auto'+(value?'':' on')} onClick={()=>pick('')}
-      title={L('Yük türünün varsayılan rengine dön','Back to the load type\'s default colour')}>{L('Otomatik','Auto')}</button>
+      title={L('Seans türünün varsayılan rengine dön','Back to the session type\'s default colour')}>
+      {auto&&<i className="ccm-auto-dot" style={{background:auto}}/>}{L('Otomatik','Auto')}</button>
   </div>,document.body);
 }
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){

@@ -1,8 +1,8 @@
 /* A session's colour on paper — the calendar's own rule: the card colour the coach
-   picked wins, otherwise the load type's hue (the neuromuscular yellow a shade deeper so
+   picked wins, then the session kind's own colour (sesCardColor), otherwise the load type's hue (the neuromuscular yellow a shade deeper so
    it still reads on white). Shared by the weekly and the monthly sheet. */
 function printSesColor(s){
-  if(s&&s.color)return cardCol(s.color);
+  const c=sesCardColor(s);if(c)return c;
   const t=((s&&s.loadType)||'').toLowerCase();
   if(t.includes('mechanical'))return'#0094ff';
   if(t.includes('metabolic'))return'#5b8cff';

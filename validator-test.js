@@ -93,7 +93,7 @@ function loadApp() {
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
-    'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'cardCol', 'CARD_COLORS', 'CardColorMenu',
+    'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'cardCol', 'CARD_COLORS', 'CardColorMenu', 'sesTypeColor', 'sesCardColor', 'SPRESETS',
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
@@ -1430,6 +1430,16 @@ group('16 — Seçilen model gerçekten tele gidiyor');
         A.cardCol('#22C55E') === '#16a34a' && A.cardCol('#123456') === '#123456' && !A.cardCol('') &&
         A.CARD_COLORS.includes(A.cardCol('#0094ff')) && typeof A.CardColorMenu === 'function');
     } catch (e) { cErr = String(e); check('Kart rengi: yardımcılar hatasız', false, cErr); }
+    /* Otomatik renk seans türünden gelir: hazır blokların her biri kendi rengini alır. */
+    let tErr2 = '';
+    try {
+      const byName = n => A.SPRESETS.find(p => p.name === n).d;
+      const col = n => A.sesTypeColor(byName(n));
+      check('Kart rengi: seans türünün varsayılan rengi (Müsabaka, Takım Antrenmanı, Saha İçi, Toparlanma, Kuvvet & Güç)',
+        col('Competition') === '#ff3624' && col('Team Practice') === '#ff941a' && col('On-Court Performance') === '#b55dfe' &&
+        col('Recovery') === '#24e2ff' && col('Strength & Power') === '#9dff5c' && col('Conditioning') === '' && col('Test') === '' &&
+        A.sesCardColor({ ...byName('Competition'), color: '#0070cc' }) === '#0070cc');
+    } catch (e) { tErr2 = String(e); check('Kart rengi: seans türü rengi hatasız', false, tErr2); }
   }
 
   group('Ek — Elle yazılan program: patern tablosu → program → takvim');
