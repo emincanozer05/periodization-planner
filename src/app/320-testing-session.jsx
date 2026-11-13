@@ -267,7 +267,7 @@ function CustomStage({theme}){
 
 /* ---- Mockup-style test card helpers ---- */
 const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',fms:'FMS — Functional Movement Screen',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',lateralCmj:'Lateral CMJ',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'505 COD Test',curvedRun:'Curved Run Test',laneAgility:'Lane Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference',
-  accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Seated)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
+  accel:'5-10m Acceleration',hipRot:'Active Hip IR/ER (Supine)',thomas:'Thomas Test',tSpine:'Active T-Spine Rotation',
   benchPress:'Bench Press',trapBarDL:'Trap Bar Deadlift',pullUp:'Pull-Up',copenhagen:'Short Lever Copenhagen Plank',sidePlank:'Side Plank',backSquat:'Barbell Squat',ift3015:'30-15 Intermittent Fitness Test'};
 const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',laneAgility:'sec',shuttleRun:'vo2max'};
 const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',fms:'FMS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',lateralCmj:'LAT CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'505',curvedRun:'CURVED',laneAgility:'LANE',shuttleRun:'SHUTTLE',
@@ -901,7 +901,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
         {k:'tot',ro:true,label:L('Toplam ark','Total arc'),r:h.totR!=null?h.totR+'°':null,l:h.totL!=null?h.totL+'°':null,diff:h.dTot!=null?h.dTot+'°':null,cls:asymLevel(h.pTot)},
       ]}/>
       <MkAsym pct={h.pTot} extra={L('toplam ark','total arc')}/>
-      {obs(L('Oturarak, kalça-diz 90°; kompanzasyon, uç his…','Seated, hip and knee at 90°; compensation, end feel…'))}
+      {obs(L('Sırtüstü, kalça-diz 90°; kompanzasyon, uç his…','Supine, hip and knee at 90°; compensation, end feel…'))}
     </>);
   }
 

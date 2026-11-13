@@ -399,7 +399,7 @@ const TEST_CATALOG=[
   /* Retired from the picker: the FMS Active Straight-Leg Raise replaces it. Kept here so a
      record that was screened with it still reads, prints and charts as before. */
   {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR',retired:true},
-  {id:'hipRot',        name:'Active Hip IR/ER (Seated)',  short:'Hip IR/ER'},
+  {id:'hipRot',        name:'Active Hip IR/ER (Supine)',  short:'Hip IR/ER'},
   {id:'thomas',        name:'Thomas Test',                short:'Thomas'},
   {id:'tSpine',        name:'Active T-Spine Rotation',    short:'T-Spine'},
   {id:'yBalance',      name:'Y Balance Test',             short:'YBT'},
