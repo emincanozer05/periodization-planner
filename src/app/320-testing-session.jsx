@@ -760,7 +760,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId,onRemove}){
   }
 
   if(id==='posture'){
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard tcard-wide tcard-posture" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-content">
         <div className="tc-fields">
