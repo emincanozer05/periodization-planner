@@ -592,21 +592,26 @@ function hipRotCalc(t){
   const d=(a,b)=>a!=null&&b!=null?+Math.abs(a-b).toFixed(1):null;
   return{irR,irL,erR,erL,totR,totL,dIr:d(irR,irL),dEr:d(erR,erL),dTot:d(totR,totL),pTot:asymPct(totR,totL,'hi')};
 }
-/* Thomas test, per side. Three findings, each a −/+ call; the two angles, when measured, make the
-   call themselves where the coach has not: the thigh resting above the horizontal (hip angle > 0°)
-   reads as short hip flexors (iliopsoas), knee flexion under 80° as a short rectus femoris. */
-/* [key, name, what a positive looks like as [tr,en]] — read with L() where it is drawn. */
-const THOMAS_FIND=[
-  ['psoas','Iliopsoas',['Uyluk masaya inmiyor','Thigh does not reach the table']],
-  ['rf','Rectus femoris',['Diz fleksiyonu < 80°','Knee flexion < 80°']],
-  ['itb','TFL / ITB',['Uyluk abdüksiyona kayıyor','Thigh drifts into abduction']],
+/* Modified Thomas Test, per side: three parameters — thigh angle (°), knee flexion (°) and
+   whether the thigh drifts into abduction (yes / no). `abd` is 'yes' | 'no' | ''.
+   The thigh angle (hip extension position) also carries a marked position, `hipPos`:
+   'pos' (thigh above the horizontal), 'zero' (level) or 'neg' (below). Unmarked, it is read
+   from the sign of the angle; `hipPosSet` says whether the coach marked it.  Records from
+   the older form kept that call as `itb` ('pos' / 'neg'); it is read as the abduction answer.
+   Their iliopsoas / rectus femoris calls (`psoas`, `rf`) stay in the data but are no longer shown. */
+/* [key, sign, what it means as [tr,en]] — read with L() where it is drawn. */
+const THOMAS_POS=[
+  ['pos','Pozitif (+)',['Uyluk yatayın üzerinde','Thigh above the horizontal'],'Positive (+)'],
+  ['zero','0°',['Uyluk yatay seviyede','Thigh level with the horizontal'],'0°'],
+  ['neg','Negatif (−)',['Uyluk yatayın altında','Thigh below the horizontal'],'Negative (−)'],
 ];
 function thomasCalc(t){
   const side=s=>{
     const o=((t&&t.thomas)||{})[s]||{};const hip=tN(o.hip),knee=tN(o.knee);
-    const auto={psoas:hip!=null?(hip>0?'pos':'neg'):'',rf:knee!=null?(knee<80?'pos':'neg'):'',itb:''};
-    const res={};THOMAS_FIND.forEach(([k])=>{res[k]=o[k]==='pos'||o[k]==='neg'?o[k]:auto[k];});
-    return{hip,knee,res,pos:THOMAS_FIND.filter(([k])=>res[k]==='pos').map(([k])=>k),any:hip!=null||knee!=null||THOMAS_FIND.some(([k])=>res[k])};
+    const abd=o.abd==='yes'||o.abd==='no'?o.abd:o.itb==='pos'?'yes':o.itb==='neg'?'no':'';
+    const hipPosSet=THOMAS_POS.some(([k])=>k===o.hipPos);
+    const hipPos=hipPosSet?o.hipPos:hip==null?'':hip>0?'pos':hip<0?'neg':'zero';
+    return{hip,knee,abd,hipPos,hipPosSet,any:hip!=null||knee!=null||!!abd||hipPosSet};
   };
   const right=side('right'),left=side('left');
   return{right,left,any:right.any||left.any};
@@ -734,9 +739,9 @@ const TEST_INFO={
   hipRot:{n:'Active Hip IR/ER (Supine)',
     tr:{w:'Sporcu masaya sırtüstü yatar; kalça ve diz 90° fleksiyondayken bacağını aktif olarak içe ve dışa döndürür, açı gonyometre ya da inklinometre ile ölçülür.',p:'Kalça iç-dış rotasyon hareket açıklığını, toplam rotasyon arkını ve sağ-sol farkını değerlendirmek için kullanılır.'},
     en:{w:'Lying supine on a table with hip and knee at 90°, the athlete actively rotates the leg inwards and outwards; the angle is measured with a goniometer or inclinometer.',p:'Used to assess hip internal and external rotation range, the total rotation arc and the right–left difference.'}},
-  thomas:{n:'Thomas Test',
-    tr:{w:'Sporcu masanın ucunda sırtüstü yatar, bir dizini göğsüne çeker; diğer bacağın uyluk ve diz konumu gözlenir ve açılar ölçülür.',p:'İliopsoas, rectus femoris ve TFL/ITB uzunluğunu, yani kalça fleksörlerindeki kısalığı değerlendirmek için kullanılır.'},
-    en:{w:'Lying back on the end of a table, the athlete hugs one knee to the chest; the position of the other thigh and knee is observed and the angles measured.',p:'Used to assess the length of the iliopsoas, rectus femoris and TFL/ITB — tightness in the hip flexors.'}},
+  thomas:{n:'Modified Thomas Test',
+    tr:{w:'Sporcu masanın ucunda sırtüstü yatar, bir dizini göğsüne çeker; diğer bacakta uyluk açısı ve diz fleksiyonu ölçülür, uyluğun abdüksiyona kayıp kaymadığı (var / yok) not edilir.',p:'Kalça fleksörlerinin (iliopsoas, rectus femoris, TFL/ITB) uzunluğunu değerlendirmek ve sporcuyu uzun vadede izlemek için kullanılır.'},
+    en:{w:'Lying back on the end of a table, the athlete hugs one knee to the chest; on the other leg the thigh angle and knee flexion are measured and whether the thigh drifts into abduction (yes / no) is noted.',p:'Used to assess hip flexor length (iliopsoas, rectus femoris, TFL/ITB) and to track the athlete over time.'}},
   tSpine:{n:'Active T-Spine Rotation',
     tr:{w:'Sporcu oturur, kalça sabitken sopayı omuzlarında tutarak gövdesini aktif olarak iki yana döndürür; rotasyon açısı ölçülür.',p:'Torasik omurga rotasyon mobilitesini ve sağ-sol farkını değerlendirmek için kullanılır.'},
     en:{w:'Seated with the pelvis fixed and a dowel across the shoulders, the athlete actively rotates the trunk to each side; the rotation angle is measured.',p:'Used to assess thoracic rotation mobility and the right–left difference.'}},
