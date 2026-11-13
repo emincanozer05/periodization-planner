@@ -22458,10 +22458,10 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    It used to stand in each block's header and tint the whole bar; the header is one
    colour now, and the colour belongs to the calendar card alone. A right-click on a card
    (week or month view) opens CardColorMenu at the pointer.
-   The palette sits a shade deeper than it first did — the brighter set glared. Cards saved
-   with the earlier shades are read through CARD_COLOR_OLD, so they deepen with the palette
-   (and still light up their swatch) without rewriting data. */
-const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777','#ffffff'];
+   The palette is the five session kinds' own colours (SES_TYPE_COLORS: match, team
+   practice, on-court performance, recovery, strength & power) plus white; any other colour
+   comes from the custom picker. Cards saved with the very first, brighter shades are still
+   read through CARD_COLOR_OLD, so they keep the deeper shade they have shown since. */
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
@@ -22470,6 +22470,7 @@ const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
    power green. Anything else (conditioning, a test day, an unlabelled session) returns ''
    and keeps the load type's hue. */
 const SES_TYPE_COLORS={match:'#ff3624',tp:'#ff941a',court:'#b55dfe',recovery:'#24e2ff',strength:'#9dff5c'};
+const CARD_COLORS=[...Object.values(SES_TYPE_COLORS),'#ffffff'];
 const sesTypeKey=s=>{
   if(!s)return'';
   const k=sesKind(s);
