@@ -573,7 +573,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
   const goToday=()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});setMonthRef(new Date(today.getFullYear(),today.getMonth(),1));};
   // Session bar colour — identical to the weekly cards (custom s.color, else load-type colour).
-  const sesColor=s=>cardCol(s.color)||ltColor(ltCls(s.loadType));
+  const sesColor=s=>sesCardColor(s)||ltColor(ltCls(s.loadType));
   // Full weeks: pad leading days from the previous month and trailing from the next.
   const monthCells=(()=>{const first=new Date(yr,mo,1);const off=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();const a=[];
     for(let i=off;i>0;i--)a.push({d:new Date(yr,mo,1-i),out:true});
@@ -732,9 +732,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <span>{L('Dinlenme','Rest')}</span>
           </div>}
           {ss.map(s=>{
-            return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
+            const scol=sesCardColor(s);
+            return(<div key={s.id} className={`calw-ses ${scol?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
-              style={s.color?{'--sc':cardCol(s.color)}:undefined}
+              style={scol?{'--sc':scol}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onMouseEnter={sesTip?(ev=>showTip(ev,s)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
@@ -818,7 +819,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     </div>
     </>)}
     {colorMenu&&colorMenuSes&&<CardColorMenu x={colorMenu.x} y={colorMenu.y} value={colorMenuSes.color||''}
-      title={colorMenuSes.name||''} onClose={closeColorMenu}
+      auto={sesTypeColor(colorMenuSes)} title={colorMenuSes.name||''} onClose={closeColorMenu}
       onPick={c=>setSesColor(colorMenu.dateK,colorMenu.sid,c)}/>}
     {drawerSes&&layer((<>
       {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
