@@ -499,7 +499,7 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    The palette sits a shade deeper than it first did — the brighter set glared. Cards saved
    with the earlier shades are read through CARD_COLOR_OLD, so they deepen with the palette
    (and still light up their swatch) without rewriting data. */
-const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777'];
+const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777','#ffffff'];
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
   '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
 const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
