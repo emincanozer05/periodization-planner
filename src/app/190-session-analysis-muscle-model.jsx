@@ -448,9 +448,7 @@ const tmDim=hex=>{
   const m=v=>Math.max(0,Math.min(255,Math.round(v*0.42+0.58*22)));
   return`#${[m((n>>16)&255),m((n>>8)&255),m(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
 };
-/* Ink for text laid on a colour: dark on the light shades, paper on the dark ones.
-   The block header's card-colour tint (blkTint) reads it — without it, picking a
-   swatch threw and blanked the whole screen. */
+/* Ink for text laid on a colour: dark on the light shades, paper on the dark ones. */
 const tmInk=hex=>{
   const n=parseInt(String(hex||'#5c626c').slice(1),16);
   const lum=(0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255;

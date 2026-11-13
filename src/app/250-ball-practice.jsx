@@ -717,7 +717,7 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
    are. The phase bar lists them beside each ready-made phase; picking one adds its exercises
    to that phase of this block. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd,setColor,ses,sesMoves,bank,bankAth}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,ses,sesMoves,bank,bankAth}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -889,9 +889,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   const printSession=()=>({...blkSession(),
     name:String((session&&session.name)||'').trim()||blkName});
   /* The block's own card colour; a block that never picked one wears the session's. */
-  const blkColor=block.color!=null?block.color:((session&&session.color)||'');
-  const tint=blkTint(blkColor);
-  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')+tint.cls} style={tint.style}
+  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="iv-block-hd">
@@ -920,9 +918,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           phased?' · '+phaseList.map(p=>`${phLbl(p)} ${phaseN(p)}`).join(' · '):''}</span>
       </div>
       <span className="iv-blockacts">
-        {/* The buttons on one line and the card colour on the line under them, so the
-            colour row no longer eats into the width the block's title has to show in.
-            A session's only block is the session: its Remove deletes the session, and
+        {/* The card colour is no longer picked here: right-click the session's card on
+            the calendar. A session's only block is the session: its Remove deletes the session, and
             the first block also carries the session's ↑ ↓. */}
         <span className="cal-acts-row">
           {sesMoves}
@@ -938,7 +935,6 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
             onClick={()=>{if(ses&&!ses.multi){ses.remove();return;}if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
             title={ses&&!ses.multi?L('Bu seansı sil','Delete this session'):L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
         </span>
-        {!isTemplate&&setColor&&<CardColorPick value={blkColor} onPick={setColor}/>}
       </span>
     </div>
     {open&&<>

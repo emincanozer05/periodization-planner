@@ -355,16 +355,14 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
   const kind=sesKind(session);
   const tag=sesKindName(kind);
   const del=()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();};
-  const tint=blkTint(session.color||'');
   return(<div className="sess-ed"><div className="sbody">
-    <div className={'iv-block cal-block sk-card'+tint.cls} style={tint.style}>
+    <div className="iv-block cal-block sk-card">
       <div className="iv-block-hd">
         <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
         <LiveInput className="iv-block-nm" value={session.name||''} placeholder={tag}
           title={L('Seans adı','Session name')} onChange={v=>u({name:v})}/>
         <span className="sk-kind">{tag}</span>
         <span className="iv-blockacts">
-          <CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>
           {total>1&&<>
             <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0} title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
             <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1} title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>}

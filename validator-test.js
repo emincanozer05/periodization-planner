@@ -93,7 +93,7 @@ function loadApp() {
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
-    'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint',
+    'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'cardCol', 'CARD_COLORS', 'CardColorMenu',
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
@@ -1422,13 +1422,14 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const rd = A.scRead(A.SC_TECH, { handling: { s: 4 }, shooting: { s: 2 }, passing: { s: 3 }, defOn: { s: '' } });
     check('Teknik-Taktik: ortalama, güçlü yönler (3–4) ve gelişim alanları (1–2)',
       rd.avg === 3 && rd.strong.map(r => r.it.k).join() === 'handling,passing' && rd.develop.map(r => r.it.k).join() === 'shooting');
-    /* Kart rengi seçmek blok başlığını boyar; blkTint tanımsız bir yardımcıya düşerse
-       seçim anında ekran kararır. Koyu renkte beyaz yazı, açık renkte koyu yazı. */
-    let tDark = null, tLight = null, tNone = null, tErr = '';
-    try { tDark = A.blkTint('#0070cc'); tLight = A.blkTint('#e0b020'); tNone = A.blkTint(''); } catch (e) { tErr = String(e); }
-    check('Kart rengi: blok başlığı tonu hatasız hesaplanır (koyu → beyaz yazı, açık → koyu yazı)',
-      !tErr && tDark && tDark.cls === ' tinted' && tDark.style['--blk-c'] === '#0070cc' &&
-      tLight && tLight.cls === ' tinted lt' && tNone && tNone.cls === '', tErr);
+    /* Kart rengi artık takvimde, seans kartına sağ tıkla seçilir (CardColorMenu); blok
+       başlığı tek renk kalır. Eski açık tonlarla kaydedilmiş kartlar paletin koyu tonuna okunur. */
+    let cErr = '';
+    try {
+      check('Kart rengi: eski ton paletteki karşılığına okunur, palet dışı renk ve boş değer korunur',
+        A.cardCol('#22C55E') === '#16a34a' && A.cardCol('#123456') === '#123456' && !A.cardCol('') &&
+        A.CARD_COLORS.includes(A.cardCol('#0094ff')) && typeof A.CardColorMenu === 'function');
+    } catch (e) { cErr = String(e); check('Kart rengi: yardımcılar hatasız', false, cErr); }
   }
 
   group('Ek — Elle yazılan program: patern tablosu → program → takvim');
