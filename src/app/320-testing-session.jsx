@@ -615,7 +615,9 @@ function MkPM({value,onChange,auto,label}){
 function MkRemove({onRemove,name}){
   if(!onRemove)return null;
   const t=L('Bu testi kayıttan sil','Remove this test from the record');
-  return(<button type="button" className="tcard-x" title={t} aria-label={t+': '+name} onClick={onRemove}>✕</button>);
+  return(<button type="button" className="tcard-x" title={t} aria-label={t+': '+name} onClick={onRemove}>
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+  </button>);
 }
 
 function FmsPartCard({item,test,ath,onUpdate,onRemove}){

@@ -9963,12 +9963,18 @@ td.td-c.none{color:var(--border2)}
 .ev2-lrow-acts{flex:none;display:flex;gap:6px}
 @media (max-width:640px){.ev2-lrow-acts{flex-direction:column}}
 
-/* ---- kart başlığında kırmızı ✕: testi kayıttan çıkarır (onaylı) ---- */
+/* ---- kart başlığında sil düğmesi: testi kayıttan çıkarır (onaylı) ----
+   Dinlenirken sönük, ince çizgili bir ✕ (kırmızı değil): kart başlığında dikkat çekmez.
+   Kartın üstüne gelince biraz belirginleşir; düğmenin kendisine gelince ya da klavyeyle
+   odaklanınca hafif kırmızı zemin ve kırmızı simge alır, "sil" olduğu o an anlaşılır. */
 .tcard-x{flex:none;margin-left:2px;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;
-  font:700 13px/1 'Space Grotesk',sans-serif;color:var(--red,#e5322d);background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;
-  transition:background-color .15s,border-color .15s,color .15s}
-.tcard-x:hover,.tcard-x:focus-visible{background:var(--red,#e5322d);border-color:var(--red,#e5322d);color:#fff;outline:none}
+  color:var(--dim);opacity:.55;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;
+  transition:background-color .15s,border-color .15s,color .15s,opacity .15s}
+.tcard-x svg{display:block}
+.tcard:hover .tcard-x{opacity:.9}
+.tcard-x:hover,.tcard-x:focus-visible{opacity:1;color:var(--red,#e5322d);background:color-mix(in srgb,var(--red,#e5322d) 12%,transparent);border-color:color-mix(in srgb,var(--red,#e5322d) 28%,transparent);outline:none}
 .tcard-x:active{transform:scale(.94)}
+@media (hover:none){.tcard-x{opacity:.8}}
 .tcard-hd .fmsl-print+.fms-hd-logo+.tcard-x{margin-left:6px}
 /* ═══════════════════════════════════════════════════════════════════════════
    ATLETİK GELİŞİM RAPORU — sayfa (`dr-*`). Koyu, ışıklı başlık bandı (her iki temada
@@ -28286,7 +28292,9 @@ function MkPM({value,onChange,auto,label}){
 function MkRemove({onRemove,name}){
   if(!onRemove)return null;
   const t=L('Bu testi kayıttan sil','Remove this test from the record');
-  return(<button type="button" className="tcard-x" title={t} aria-label={t+': '+name} onClick={onRemove}>✕</button>);
+  return(<button type="button" className="tcard-x" title={t} aria-label={t+': '+name} onClick={onRemove}>
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+  </button>);
 }
 
 function FmsPartCard({item,test,ath,onUpdate,onRemove}){
