@@ -8477,6 +8477,45 @@ main .panel,main .ap-head{animation:none}
 .atp-xf i,.atp-ex-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
 .atp-ex-dot{margin-right:7px;vertical-align:1px}
 @media (prefers-reduced-motion:reduce){.atp-xcat-bar button,.atp-xcat-leg button{transition:none}}
+
+/* ---- Profili Düzenle penceresi (`ep-*`): geniş, bölümlere ayrılmış form. Başlıkta sporcunun
+   fotoğrafı ve özeti; gövde kayar, başlık ve alt çubuk sabit. Her bölüm: küçük büyük harfli başlık
+   + açıklama, altında 6 sütunlu ızgara (s1..s6 genişlik). Düz yüzey, gradyan yok. ---- */
+:is(:root,:root[data-theme]) .modal.ep-modal{width:min(880px,95vw);max-width:880px;max-height:92vh;overflow:hidden;
+  background:var(--panel);-webkit-backdrop-filter:none;backdrop-filter:none}
+.ep-head{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--border);flex:none}
+.ep-av{flex:none;width:48px;height:48px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:var(--elevated);border:1px solid var(--border2);color:var(--text2);font-weight:700;font-size:15px;letter-spacing:.02em}
+.ep-av img{width:100%;height:100%;object-fit:cover}
+.ep-ttl{flex:1;min-width:0}
+.ep-ttl h2{margin:0;font-size:20px;font-weight:700;line-height:1.2;color:var(--text)}
+.ep-sub{margin-top:3px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-head .x-btn{margin-left:auto}
+.ep-body{flex:1;min-height:0;overflow-y:auto;padding:6px 24px 8px}
+.ep-sec{padding:20px 0;border-bottom:1px solid var(--border)}
+.ep-sec:last-child{border-bottom:0}
+.ep-sec-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-bottom:14px}
+.ep-sec-h b{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text);
+  padding-left:10px;border-left:3px solid var(--accent);line-height:1.1}
+.ep-sec-h span{font-size:12.5px;color:var(--dim)}
+.ep-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px 16px}
+.ep-f{min-width:0}
+.ep-f.s1{grid-column:span 1}.ep-f.s2{grid-column:span 2}.ep-f.s3{grid-column:span 3}.ep-f.s6{grid-column:1/-1}
+.ep-modal .ep-f input,.ep-modal .ep-f select{width:100%;height:44px;font-size:15px}
+.ep-modal textarea{width:100%;font-size:14.5px;line-height:1.5;resize:vertical;min-height:64px}
+.ep-polar .pl-mini>label{display:none}
+.ep-polar .pl-mini-box{padding:14px 16px}
+.ep-polar .pl-mini-sub{font-size:13px}
+.ep-foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;
+  border-top:1px solid var(--border);background:var(--bg2)}
+.ep-foot span{font-size:12.5px;color:var(--dim)}
+.ep-foot .btn{min-width:110px;height:38px;justify-content:center;text-align:center}
+@media (max-width:640px){
+  .ep-head{padding:14px 16px}.ep-body{padding:4px 16px 8px}.ep-foot{padding:12px 16px}
+  .ep-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .ep-f.s1,.ep-f.s2{grid-column:span 1}.ep-f.s3,.ep-f.s6{grid-column:1/-1}
+  .ep-foot span{display:none}.ep-foot .btn{flex:1}
+}
 /* ---- The pattern table ---------------------------------------------------
    "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
    grid. Used by the calendar's block editor and by the individualization brief (PlanTable).
@@ -30387,7 +30426,7 @@ function TryoutsView({data,setData,teams,activeTeamId}){
       cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses,parents].filter(Boolean).join('\n');
     const a={id:uid(),name:nm,number:'',position:cur.position||positions[0],
       dateOfBirth:cur.dateOfBirth||'',height:cur.height||'',weight:cur.weight||'',
-      phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,
+      phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,school:cur.school||'',
       notes:notes+(notes?'\n':'')+Lx('Seçmelerden geldi','From tryouts')+(cur.date?` (${fd(cur.date)})`:''),
       trainingAge:'',somatotype:'',constraints:'',constraintTags:[],levelTag:'',
       injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};
@@ -33215,30 +33254,57 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
+    {/* Profili Düzenle: bölümlere ayrılmış geniş pencere — Kimlik, Okul ve Adres, Polar
+        bağlantısı, Notlar. Her alan yazıldığı anda kaydedilir; "Bitti" yalnızca kapatır.
+        Okul ve adres sporcuda düz metin (`school`, `address`); eski kayıtlarda yoksa boş görünür. */}
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
-      <div className="modal" style={{maxWidth:680,width:'95vw',background:'#15181e',backdropFilter:'none',WebkitBackdropFilter:'none'}} onClick={e=>e.stopPropagation()}>
-        <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Profili Düzenle','Edit Profile')}</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
-        <div style={{padding:'18px 22px'}}>
-          <div className="grid cols-3">
-            <div><label>{L('Ad Soyad','Full name')}</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-            <div><label>{L('Forma No','Jersey #')}</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-            <div><label>{L('Mevki','Position')}</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+      <div className="modal ep-modal" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
+        <div className="ep-head">
+          <div className="ep-av">{ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}</div>
+          <div className="ep-ttl">
+            <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
+            <div className="ep-sub">{[ath.name||L('Adsız Sporcu','Unnamed Athlete'),ath.number&&'#'+ath.number,ath.position&&(POS_FULL[ath.position]||ath.position)].filter(Boolean).join(' · ')}</div>
           </div>
-          <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div>
-              <div style={{marginTop:12}}><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
+          <button className="x-btn" onClick={()=>setEditProfileOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+        </div>
+        <div className="ep-body">
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Kimlik','Identity')}</b><span>{L('Ad, forma, mevki ve doğum bilgisi','Name, jersey, position and birth details')}</span></div>
+            <div className="ep-grid">
+              <div className="ep-f s3"><label htmlFor="ep-name">{L('Ad Soyad','Full name')}</label><input id="ep-name" value={ath.name||''} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
+              <div className="ep-f s1"><label htmlFor="ep-num">{L('Forma No','Jersey #')}</label><input id="ep-num" inputMode="numeric" value={ath.number||''} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
+              <div className="ep-f s2"><label htmlFor="ep-pos">{L('Mevki','Position')}</label><select id="ep-pos" value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+              <div className="ep-f s3"><label htmlFor="ep-dob">{L('Doğum tarihi','Date of birth')}</label><input id="ep-dob" type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/>
+                <div className="help">{L('gün / ay / yıl','day / month / year')}{apAge!=null&&<> · {L(`${apAge} yaş`,`${apAge} yrs`)}</>}</div></div>
+              <div className="ep-f s3"><label htmlFor="ep-sex">{L('Cinsiyet','Sex')}</label><select id="ep-sex" value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
                 <option value="">{L('— girilmemiş','— not set')}</option>
                 <option value="M">{L('Erkek','Male')}</option>
                 <option value="F">{L('Kadın','Female')}</option>
-              </select></div></div>
-            {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
-                burada (cep telefonu alanının yerinde) — durum, davet linki, senkron ve bağlantıyı
-                kesme aynı yerde. Sporcunun telefonu hiçbir yerde kullanılmıyordu; alan kalktı,
-                kayıtlı numara silinmedi. */}
-            <div style={{gridColumn:'span 2'}}><PolarConnect ath={ath} teamId={teamId}/></div>
-          </div>
-          <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/></div>
-          <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>
+              </select></div>
+            </div>
+          </section>
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Okul ve Adres','School and Address')}</b><span>{L('Okul planlaması ve ulaşım için','For school schedules and travel')}</span></div>
+            <div className="ep-grid">
+              <div className="ep-f s6"><label htmlFor="ep-school">{L('Okul','School')}</label><input id="ep-school" value={ath.school||''} placeholder={L('ör. Atatürk Anadolu Lisesi · 10. sınıf','e.g. Central High School · Grade 10')} onChange={e=>updAth(ath.id,{school:e.target.value})}/></div>
+              <div className="ep-f s6"><label htmlFor="ep-addr">{L('Adres','Address')}</label><textarea id="ep-addr" rows={2} value={ath.address||''} placeholder={L('Mahalle, sokak, no · ilçe / il','Street, number · district / city')} onChange={e=>updAth(ath.id,{address:e.target.value})}/></div>
+            </div>
+          </section>
+          {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
+              burada — durum, davet linki, senkron ve bağlantıyı kesme aynı yerde. Bileşenin kendi
+              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
+          <section className="ep-sec ep-polar">
+            <div className="ep-sec-h"><b>{L('Polar Bağlantısı','Polar Connection')}</b><span>{L('Saat / göğüs bandı verisi','Watch / chest strap data')}</span></div>
+            <PolarConnect ath={ath} teamId={teamId}/>
+          </section>
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Notlar','Notes')}</b><span>{L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}</span></div>
+            <textarea aria-label={L('Notlar','Notes')} rows={3} value={ath.notes||''} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
+          </section>
+        </div>
+        <div className="ep-foot">
+          <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
+          <button className="btn" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button>
         </div>
       </div>
     </div>}

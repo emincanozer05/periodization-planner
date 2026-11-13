@@ -110,30 +110,57 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
+    {/* Profili Düzenle: bölümlere ayrılmış geniş pencere — Kimlik, Okul ve Adres, Polar
+        bağlantısı, Notlar. Her alan yazıldığı anda kaydedilir; "Bitti" yalnızca kapatır.
+        Okul ve adres sporcuda düz metin (`school`, `address`); eski kayıtlarda yoksa boş görünür. */}
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
-      <div className="modal" style={{maxWidth:680,width:'95vw',background:'#15181e',backdropFilter:'none',WebkitBackdropFilter:'none'}} onClick={e=>e.stopPropagation()}>
-        <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Profili Düzenle','Edit Profile')}</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
-        <div style={{padding:'18px 22px'}}>
-          <div className="grid cols-3">
-            <div><label>{L('Ad Soyad','Full name')}</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-            <div><label>{L('Forma No','Jersey #')}</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-            <div><label>{L('Mevki','Position')}</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+      <div className="modal ep-modal" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
+        <div className="ep-head">
+          <div className="ep-av">{ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}</div>
+          <div className="ep-ttl">
+            <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
+            <div className="ep-sub">{[ath.name||L('Adsız Sporcu','Unnamed Athlete'),ath.number&&'#'+ath.number,ath.position&&(POS_FULL[ath.position]||ath.position)].filter(Boolean).join(' · ')}</div>
           </div>
-          <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div>
-              <div style={{marginTop:12}}><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
+          <button className="x-btn" onClick={()=>setEditProfileOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+        </div>
+        <div className="ep-body">
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Kimlik','Identity')}</b><span>{L('Ad, forma, mevki ve doğum bilgisi','Name, jersey, position and birth details')}</span></div>
+            <div className="ep-grid">
+              <div className="ep-f s3"><label htmlFor="ep-name">{L('Ad Soyad','Full name')}</label><input id="ep-name" value={ath.name||''} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
+              <div className="ep-f s1"><label htmlFor="ep-num">{L('Forma No','Jersey #')}</label><input id="ep-num" inputMode="numeric" value={ath.number||''} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
+              <div className="ep-f s2"><label htmlFor="ep-pos">{L('Mevki','Position')}</label><select id="ep-pos" value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+              <div className="ep-f s3"><label htmlFor="ep-dob">{L('Doğum tarihi','Date of birth')}</label><input id="ep-dob" type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/>
+                <div className="help">{L('gün / ay / yıl','day / month / year')}{apAge!=null&&<> · {L(`${apAge} yaş`,`${apAge} yrs`)}</>}</div></div>
+              <div className="ep-f s3"><label htmlFor="ep-sex">{L('Cinsiyet','Sex')}</label><select id="ep-sex" value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
                 <option value="">{L('— girilmemiş','— not set')}</option>
                 <option value="M">{L('Erkek','Male')}</option>
                 <option value="F">{L('Kadın','Female')}</option>
-              </select></div></div>
-            {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
-                burada (cep telefonu alanının yerinde) — durum, davet linki, senkron ve bağlantıyı
-                kesme aynı yerde. Sporcunun telefonu hiçbir yerde kullanılmıyordu; alan kalktı,
-                kayıtlı numara silinmedi. */}
-            <div style={{gridColumn:'span 2'}}><PolarConnect ath={ath} teamId={teamId}/></div>
-          </div>
-          <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/></div>
-          <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>
+              </select></div>
+            </div>
+          </section>
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Okul ve Adres','School and Address')}</b><span>{L('Okul planlaması ve ulaşım için','For school schedules and travel')}</span></div>
+            <div className="ep-grid">
+              <div className="ep-f s6"><label htmlFor="ep-school">{L('Okul','School')}</label><input id="ep-school" value={ath.school||''} placeholder={L('ör. Atatürk Anadolu Lisesi · 10. sınıf','e.g. Central High School · Grade 10')} onChange={e=>updAth(ath.id,{school:e.target.value})}/></div>
+              <div className="ep-f s6"><label htmlFor="ep-addr">{L('Adres','Address')}</label><textarea id="ep-addr" rows={2} value={ath.address||''} placeholder={L('Mahalle, sokak, no · ilçe / il','Street, number · district / city')} onChange={e=>updAth(ath.id,{address:e.target.value})}/></div>
+            </div>
+          </section>
+          {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
+              burada — durum, davet linki, senkron ve bağlantıyı kesme aynı yerde. Bileşenin kendi
+              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
+          <section className="ep-sec ep-polar">
+            <div className="ep-sec-h"><b>{L('Polar Bağlantısı','Polar Connection')}</b><span>{L('Saat / göğüs bandı verisi','Watch / chest strap data')}</span></div>
+            <PolarConnect ath={ath} teamId={teamId}/>
+          </section>
+          <section className="ep-sec">
+            <div className="ep-sec-h"><b>{L('Notlar','Notes')}</b><span>{L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}</span></div>
+            <textarea aria-label={L('Notlar','Notes')} rows={3} value={ath.notes||''} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
+          </section>
+        </div>
+        <div className="ep-foot">
+          <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
+          <button className="btn" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button>
         </div>
       </div>
     </div>}

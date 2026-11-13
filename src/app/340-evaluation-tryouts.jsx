@@ -228,7 +228,7 @@ function TryoutsView({data,setData,teams,activeTeamId}){
       cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses,parents].filter(Boolean).join('\n');
     const a={id:uid(),name:nm,number:'',position:cur.position||positions[0],
       dateOfBirth:cur.dateOfBirth||'',height:cur.height||'',weight:cur.weight||'',
-      phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,
+      phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,school:cur.school||'',
       notes:notes+(notes?'\n':'')+Lx('Seçmelerden geldi','From tryouts')+(cur.date?` (${fd(cur.date)})`:''),
       trainingAge:'',somatotype:'',constraints:'',constraintTags:[],levelTag:'',
       injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};
