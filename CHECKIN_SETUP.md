@@ -5,14 +5,16 @@ Sporcuların dolduracağı iki form uygulamanın kendi içinde:
 | Form | Ne zaman | Ne sorar |
 |---|---|---|
 | **İçsel Yük (sRPE)** | antrenman/maç sonrası | top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk (1-10) + süre |
-| **Wellness** | sabah | dinlenik KAH (opsiyonel), uyku, zihinsel yorgunluk, fiziksel yorgunluk, kas ağrısı (1-5) ve ağrı bölgesi haritası |
+| **Wellness** | sabah | uyku, zihinsel yorgunluk, fiziksel yorgunluk (1-5) ve ağrı bölgesi haritası |
 
-Wellness formunun dört puanlı sorusu (1 kötü · 5 iyi):
+Wellness formunun üç puanlı sorusu (1 kötü · 5 iyi):
 
 1. Uyku kaliten nasıldı? — zorunlu
 2. Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun? (Zihinsel Yorgunluk) — zorunlu
 3. Fiziksel olarak ne kadar yorgun hissediyorsun? (Fiziksel Yorgunluk) — zorunlu
-4. Kaslarında ne düzeyde ağrı/sertlik hissediyorsun? (Kas Ağrısı) — opsiyonel
+
+Kas ağrısı (1-5) sorusu kaldırıldı; ağrıyı ağrı haritası soruyor. Eski kayıtlardaki
+Kas Ağrısı puanı uygulamada görünmeye devam eder, yeni kayıtlarda boş kalır.
 
 **Ağrı haritası (opsiyonel):** sporcu çevirebildiği gerçekçi bir 3D insan modelinde
 ağrıyan bölgeye dokunur ve şiddetini seçer (Hafif · Orta · Yüksek). Manken vitrin
