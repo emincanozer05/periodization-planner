@@ -60,6 +60,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19k-dev-report.css` | Atletik Gelişim Raporu sayfası (`dr-*`): koyu ışıklı başlık bandı (fotoğraf, gelişim halkası, dört sayı), test yolculuğu, gelişen/geriye düşen ölçümler, kategori trend kartları ve tabloları, önce/sonra fotoğraf kaydırıcısı; az-hareket korumalı |
 | `19z-kinexon.css` | Kinexon tarzı son stil katmanı. Koyu tema varsayılan (Kinexon Perform): kömür grisi zemin, siyaha yakın üst çubuk ve büyük harfli kenar menüsü, köşesiz paneller, mavi büyük harfli panel başlıkları, koyu başlık satırlı (küçük büyük harfli gri sütun adları) çizgili tablolar, alt çizgili sekmeler, düz mavi ana / gri ikincil düğme. Açık tema (Kinexon web raporu): lacivert menü, açık gri zemin, yuvarlak beyaz kartlar. Köşe ölçüleri temaya göre `--r-sm` / `--r-md`. Gradyan yok |
 | `19l-monitoring.css` | Sporcu İzleme (`mon-*`): nötr renkler (risk anlamlı yeşil-sarı-kırmızı yok), tek vurgu: kişisel aralık dışı değer (mavi aksan) ve Kategori A işareti (menekşe); 19z'den sonra yüklenir |
+| `19m-session-kinds.css` | Takım Antrenmanı / Müsabaka / Test kartı (`sk-*`, 235): kutusuz seans adı + saat aralığı ve oyuncu sayısı, tek panelli ölçü şeridi (Saat · Süre · Hedef Yoğunluk · Ort. HR Zone; üst kenar rengi, 10 adımlı RPE ölçeği, Polar bölge şeridi), sönük / dolgulu oyuncu çipleri; 19l'den sonra yüklenir |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -86,7 +87,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/210-team-insights-report.jsx` | — |
 | `app/220-team-insights-board.jsx` | — |
 | `app/230-calendar.jsx` | CALENDAR (reusable for team & athlete) |
-| `app/235-session-kinds.jsx` | TRAINING BLOCK BAR · TEAM PRACTICE / MATCH / TEST WINDOWS |
+| `app/235-session-kinds.jsx` | TRAINING BLOCK BAR · TEAM PRACTICE / MATCH / TEST WINDOWS · Takım antrenmanının Ort. HR Zone'u katılan oyuncuların Polar antrenmanlarından (`skPolarHr`, `SkHrZone`) |
 | `app/240-block-editor-session-details.jsx` | BLOCK EDITOR (now with exercise description row) · SESSION DETAILS — carried by every block |
 | `app/242-pattern-plan-table.jsx` | THE PATTERN TABLE — antrenmanın elle yazıldığı tablo (`PlanTable`); takvim bloğu adaptörü `CalPlanGrid`, bireyselleştirmedeki karşılığı `DiPatternPlan` (610) |
 | `app/250-ball-practice.jsx` | BALL PRACTICE — the court, and the drills drawn on it |
