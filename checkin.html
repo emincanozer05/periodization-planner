@@ -39,10 +39,12 @@
      Wellness formu açılınca yüklüyor; RPE formu bu dosyadan hiçbir şey indirmiyor. -->
 <script src="pain-body.js?v=5"></script>
 <style>
-/* Formun dili: tek zemin, tek vurgu rengi, tek yazı ailesi.
-   - Renk yalnızca sporcunun kendi cevabını gösteriyor (seçili basamak, dolan ray,
-     Gönder düğmesi). Skalanın yönünü renk değil, basamakların altındaki sözler ve
-     dolan çubuk anlatıyor — gökkuşağı rozetler yok.
+/* Formun dili: tek zemin, tek yazı ailesi, renk yerine BEYAZ.
+   - Sporcunun kendi cevabı beyazla gösteriliyor (seçili basamak, dolan ray, Gönder
+     düğmesi); mavi vurgu yok. Skalanın yönünü renk değil, basamakların altındaki
+     sözler ve dolan çubuk anlatıyor — gökkuşağı rozetler yok.
+   - Sayfadaki tek renk bir şeyin eksik ya da ters gittiğini söylüyor: boş geçilen
+     zorunlu soru (sarı ray), gönderilemeyen form (kırmızı çerçeve).
    - Simge / emoji yok; durum yazıyla ve hareketle söyleniyor.
    - Yazı tipi uygulamanınki (Archivo, sitenin kendi fonts/ klasöründen).
    Ağrı haritası (pb-*) bu katmanın dışında: kendi kuralları aşağıda olduğu gibi duruyor. */
@@ -54,12 +56,16 @@
   --bg:#141414;--bg2:#1b1b1b;--panel:#1f1f1f;--elevated:#292929;--hover:#242424;
   --border:#2e2e2e;--border2:#444444;
   --text:#f2f2f2;--text2:#cfcfcf;--muted:#a0a0a0;--dim:#878787;
-  --accent:#3aa0e6;--accent2:#6ab8ef;--accent-bg:rgba(58,160,230,.16);
-  /* Vurgu renginin üstüne gelen yazı: beyaz bu mavide okunmuyor, koyu mürekkep okunuyor. */
-  --ink:#06131d;
-  --grad:#3aa0e6;
-  /* Yalnızca ağrı haritasının şiddet ölçeği ve gerçek hata mesajı kullanıyor. */
+  /* Vurgu beyaz: seçilen basamak, dolan ray, Gönder düğmesi. Saf #fff koyu zeminde
+     göz alıyor; bir ton kırığı aynı beyaz okunuyor ama parlamıyor. */
+  --accent:#f1f1ef;--accent2:#ffffff;--accent-bg:rgba(255,255,255,.12);
+  /* Beyazın üstüne gelen yazı. */
+  --ink:#121212;
+  --grad:#f1f1ef;
+  /* Ağrı haritasının şiddet ölçeği ve gerçek hata mesajı. */
   --low-t:#46d6a0;--med-t:#fcd34d;--high-t:#ff6b5b;
+  /* Boş geçilen zorunlu soru: beyaz artık "cevaplandı" demek, eksik olan sarı. */
+  --warn:#f2c14e;
   --ease:cubic-bezier(.22,.8,.24,1);
   --r:13px;
 }
@@ -124,14 +130,15 @@ header.plain h1{margin-top:34px;font-size:27px}
    Kart yok: her soru sayfanın üstünde durur, solunda ince bir ray taşır. Ray
    cevaplanınca yukarıdan aşağı vurgu rengiyle dolar — dolan soruları taramak için
    yeterli, ayrıca bir onay işareti gerekmiyor. Zorunlu bir soru boş geçilip Gönder'e
-   basılırsa ray beyaza döner ve blok bir kez yerinden oynar. */
+   basılırsa ray sarıya döner ve blok bir kez yerinden oynar (beyaz ray "cevaplandı"
+   demek; eksik olanın ondan ayrılması gerekiyor). */
 .blk{position:relative;padding-left:18px;margin-bottom:36px}
 .blk::before,.blk::after{content:'';position:absolute;left:0;top:3px;bottom:2px;width:2px;border-radius:2px}
-.blk::before{background:#383838;transition:background .25s}
+.blk::before{background:#343434;transition:background .25s}
 .blk::after{background:var(--accent);transform:scaleY(0);transform-origin:top;transition:transform .55s var(--ease)}
 .blk.filled::after{transform:scaleY(1)}
-.blk.need::before{background:var(--text)}
-.blk.need .req{color:var(--text)}
+.blk.need::before{background:var(--warn)}
+.blk.need .req{color:var(--warn)}
 .blk.need{animation:nudge .44s var(--ease)}
 @keyframes nudge{0%,100%{transform:none}28%{transform:translateX(6px)}62%{transform:translateX(-3px)}}
 @media (max-width:359px){.blk{padding-left:14px}}
@@ -148,42 +155,52 @@ header.plain h1{margin-top:34px;font-size:27px}
 
 /* ── Ölçek ve seçenekler ────────────────────────────────────────────────────
    Basamaklar tek bir parçanın bölmeleri: aralarında 1px çizgi, dışında tek çerçeve.
-   Ölçekte (.meter) seçilen basamak dolu vurgu rengini alır, solundakiler de soluk
-   bir tonla dolar — sporcu cevabını rakamı okumadan, çubuğun boyundan görür. Dolgu
-   basamak basamak ilerler (--d: JS, eski seçimden yenisine doğru sıralar).
-   Süre seçeneklerinde (.opts) yalnız seçilen dolar: onlar bir çubuk değil, liste. */
+   Ölçekte (.meter) seçilen basamak beyaza döner, rakamı koyu mürekkeple yazılır;
+   solundakiler seçilene yaklaştıkça açılan gri tonlarla dolar — sporcu cevabını
+   rakamı okumadan, çubuğun boyundan görür. Dolgu basamak basamak ilerler (--d: JS,
+   eski seçimden yenisine doğru sıralar; --a: JS, basamağın tonu).
+   Süre seçeneklerinde (.opts) yalnız seçilen beyaza döner: onlar bir çubuk değil, liste. */
 .meter,.opts{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);
-  border-radius:var(--r);overflow:hidden}
+  border-radius:var(--r);overflow:hidden;transition:border-color .3s var(--ease)}
 .meter{grid-template-columns:repeat(var(--n),minmax(0,1fr))}
 .opts{grid-template-columns:repeat(5,minmax(0,1fr))}
+/* Cevap verilince çerçeve bir ton açılıyor: dolu ölçek boş olandan bakışta ayrılıyor. */
+.meter.set,.opts.set{border-color:var(--border2)}
 .cell{position:relative;appearance:none;-webkit-appearance:none;border:0;border-radius:0;padding:0;margin:0;
-  height:50px;min-width:0;background:var(--bg2);color:var(--text2);cursor:pointer;
-  font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;
+  height:54px;min-width:0;background:var(--bg2);color:var(--text2);cursor:pointer;
+  font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;
+  touch-action:manipulation;
   transition:color .22s var(--ease) var(--d,0ms),background .15s}
-.opts .cell{height:46px;font-size:15px}
+.opts .cell{height:48px;font-size:15.5px}
+/* Cevap verildikten sonra seçilenin sağında kalan basamaklar bir ton çekiliyor
+   (hâlâ basılabiliyorlar): göz dolu kısımda kalıyor. */
+.meter.set .cell:not(.on):not(.in){color:var(--dim)}
 .cell::before{content:'';position:absolute;inset:0;background:var(--accent);opacity:0;
   transition:opacity .3s var(--ease) var(--d,0ms)}
 .cell span{position:relative;display:inline-block;transition:transform .14s var(--ease)}
 .cell:active span{transform:scale(.86)}
 .cell.in{color:var(--text)}
-.cell.in::before{opacity:var(--a,.16)}
-.cell.on{color:var(--ink)}
+.cell.in::before{opacity:var(--a,.14)}
+.cell.on{color:var(--ink);font-weight:700}
 .cell.on::before{opacity:1}
 .cell.on span{animation:pick .36s var(--ease) var(--d,0ms) both}
 @keyframes pick{0%{transform:scale(.8)}55%{transform:scale(1.16)}100%{transform:scale(1)}}
 .cell:focus-visible{outline:2px solid var(--text);outline-offset:-3px;z-index:1}
-@media (hover:hover){.cell:not(.on):not(.in):hover{background:var(--hover);color:var(--text)}}
-@media (max-width:359px){.meter .cell{font-size:14.5px}}
+/* Beyaz bölmede beyaz odak çizgisi görünmez. */
+.cell.on:focus-visible{outline-color:var(--ink)}
+@media (hover:hover){.meter .cell:not(.on):not(.in):hover,.opts .cell:not(.on):hover{background:var(--hover);color:var(--text)}}
+@media (max-width:359px){.meter .cell{font-size:15px}}
 
 /* Her basamağın sözle karşılığı, ölçeğin altında ve kendi basamağının hizasında.
-   Seçilenin sözü beyaza döner. */
-.lbls{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:1px;margin-top:9px;padding:0 1px}
-.slbl{font-size:11px;line-height:1.25;text-align:center;color:var(--dim);padding:0 2px;
+   Seçilenin sözü beyaza döner ve kalınlaşır; seçim yapılınca ötekiler bir ton çekilir. */
+.lbls{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:1px;margin-top:10px;padding:0 1px}
+.slbl{font-size:11.5px;line-height:1.25;text-align:center;color:var(--muted);padding:0 2px;
   overflow-wrap:anywhere;hyphens:auto;transition:color .25s}
-.slbl.on{color:var(--text)}
-@media (max-width:359px){.slbl{font-size:10px}}
+.lbls.set .slbl{color:var(--dim)}
+.lbls.set .slbl.on{color:var(--text);font-weight:600}
+@media (max-width:359px){.slbl{font-size:10.5px}}
 /* 1-10 ölçeğinde her basamağa söz sığmıyor; iki ucun ne demek olduğu yeterli. */
-.ends{display:flex;justify-content:space-between;margin-top:9px;font-size:11.5px;color:var(--dim);padding:0 2px}
+.ends{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted);padding:0 2px}
 
 .lbl{font-size:13px;color:var(--muted);margin:20px 0 9px;line-height:1.35}
 .lbl .req{display:none;color:var(--text);margin-left:8px;font-size:12px}
@@ -198,17 +215,18 @@ select{appearance:none;-webkit-appearance:none;padding-right:42px;text-overflow:
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23a0a0a0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 15px center}
 input[type=date]{min-height:52px}
-input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+input:focus,select:focus{outline:none;border-color:var(--muted);box-shadow:0 0 0 3px var(--accent-bg)}
 input::placeholder{color:var(--dim)}
 /* Henüz seçim yapılmamış liste: yazısı bir yer tutucu gibi soluk. */
 select.empty{color:var(--muted)}
 /* "Diğer": seçeneklerin son bölmesi. Bir değer yazılınca seçili bölme gibi dolar. */
-.opts input{border:0;border-radius:0;height:46px;padding:0 8px;text-align:center;font-size:16px;font-weight:600;
+.opts input{border:0;border-radius:0;height:48px;padding:0 8px;text-align:center;font-size:16px;font-weight:600;
   font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
 .opts input::-webkit-outer-spin-button,.opts input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .opts input::placeholder{font-weight:400}
 .opts input:focus{box-shadow:inset 0 0 0 2px var(--accent)}
-.opts input.on{background-color:var(--accent);color:var(--ink)}
+.opts input.on{background-color:var(--accent);color:var(--ink);font-weight:700}
+.opts input.on:focus{box-shadow:inset 0 0 0 2px var(--ink)}
 
 /* ── Ağrı haritası: 3D model ────────────────────────────────────────────────
    Sahne (model + üstündeki düğmeler) ve hemen altındaki seçim paneli tek bir
@@ -260,7 +278,8 @@ select.empty{color:var(--muted)}
 .pb-zones button:active{transform:scale(.95)}
 .pb-zones button.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
 .pb-stage.nogl .pb-zonebar{display:none}
-@media (max-width:360px){.pb-zonebar-l{display:none}}
+/* Telefonda "Yakınlaş" başlığına yer yok: beş düğme sığmıyor, GÖVDE ve BACAK kesiliyordu. */
+@media (max-width:480px){.pb-zonebar-l{display:none}}
 .pb-tip{position:absolute;left:0;top:0;z-index:3;pointer-events:none;padding:5px 9px;border-radius:7px;
   background:rgba(10,12,16,.92);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:600;
   white-space:nowrap;opacity:0;transition:opacity .12s}
@@ -350,8 +369,8 @@ html.pb-lock,html.pb-lock body{overflow:hidden}
 
 /* ── Gönder çubuğu ──────────────────────────────────────────────────────────
    Sayfanın altına yapışır. İlerleme ayrı bir şeritte değil, düğmenin kendisinde:
-   zorunlu adımlar tamamlandıkça düğme soldan sağa dolar, hepsi bitince tam vurgu
-   rengine geçer ve üstünden bir kez ışık geçer. */
+   zorunlu adımlar tamamlandıkça düğme soldan sağa gri bir tonla dolar, hepsi bitince
+   bembeyaz olur (yazısı koyuya döner) ve üstünden bir kez ışık geçer. */
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:15;
   padding:12px 20px calc(12px + env(safe-area-inset-bottom));
   background:rgba(20,20,20,.84);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -361,28 +380,31 @@ button.send{position:relative;overflow:hidden;width:100%;height:54px;padding:0 1
   background:var(--elevated);color:var(--text);font-size:16px;font-weight:600;cursor:pointer;
   display:flex;align-items:baseline;justify-content:center;gap:10px;line-height:54px;
   transition:color .35s var(--ease),transform .16s var(--ease)}
-button.send .fill{position:absolute;inset:0;background:var(--accent);opacity:.3;
+button.send .fill{position:absolute;inset:0;background:var(--accent);opacity:.2;
   transform:scaleX(var(--p,0));transform-origin:left;
   transition:transform .65s var(--ease),opacity .4s var(--ease)}
 button.send .t,button.send .left{position:relative}
 button.send .left{font-size:13px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
-button.send.ready{color:var(--ink)}
+button.send.ready{color:var(--ink);font-weight:700}
 button.send.ready .fill{opacity:1}
+button.send.ready .left{color:var(--ink)}
+button.send:focus-visible{outline-offset:3px}
 button.send.ready::after{content:'';position:absolute;top:0;bottom:0;left:0;width:42%;pointer-events:none;
-  background:linear-gradient(100deg,rgba(255,255,255,0),rgba(255,255,255,.34),rgba(255,255,255,0));
+  background:linear-gradient(100deg,rgba(0,0,0,0),rgba(0,0,0,.1),rgba(0,0,0,0));
   transform:translateX(-110%);animation:sheen .95s var(--ease) .25s 1 both}
 @keyframes sheen{to{transform:translateX(250%)}}
 button.send:active{transform:scale(.985)}
 button.send[disabled]{cursor:default}
 button.send.busy .fill{animation:breathe 1.1s ease-in-out infinite}
 button.send.busy::after{display:none}
-@keyframes breathe{50%{opacity:.55}}
-@media (hover:hover){button.send.ready:not([disabled]):hover .fill{filter:brightness(1.08)}}
+@keyframes breathe{50%{opacity:.6}}
+@media (hover:hover){button.send.ready:not([disabled]):hover .fill{background:var(--accent2)}}
 
-/* Mesajlar. Eksik bir cevap uyarısı (warn) renksiz; yalnızca gerçek bir hata
-   (bad: gönderilemedi, form açılamadı) kırmızı bir çerçeve taşıyor. */
+/* Mesajlar. Eksik bir cevap uyarısı (warn) eksik sorunun rayıyla aynı sarıyı,
+   gerçek bir hata (bad: gönderilemedi, form açılamadı) kırmızı bir çerçeve taşıyor. */
 .msg{padding:12px 14px;border-radius:11px;font-size:13.5px;margin-bottom:12px;line-height:1.5;
   background:var(--panel);border:1px solid var(--border2);color:var(--text)}
+.msg.warn{border-color:rgba(242,193,78,.5)}
 .msg.bad{border-color:rgba(255,107,91,.55);color:var(--text2)}
 .msg b{color:var(--text);font-weight:600}
 .bar .msg{animation:rise .3s var(--ease) both}
@@ -799,7 +821,7 @@ function chipRow(field,values,opts){
   var wrap=el('div',{class:'ctl'});
   var grid=el('div',{class:opts.meter?'meter':'opts',role:'group'});
   if(opts.meter)grid.style.setProperty('--n',values.length);
-  var custom=null,cells=[],labels=[],prev=-1;
+  var custom=null,cells=[],labels=[],prev=-1,lb=null;
   values.forEach(function(v,i){
     var b=el('button',{type:'button',class:'cell','aria-pressed':'false',onclick:function(){
       A[field]=(A[field]===v)?null:v;
@@ -812,7 +834,7 @@ function chipRow(field,values,opts){
   wrap.appendChild(grid);
   // Sözler ölçekle aynı sütunlarda ayrı bir sıra: her biri kendi basamağının altında.
   if(opts.labels){
-    var lb=el('div',{class:'lbls','aria-hidden':'true'});
+    lb=el('div',{class:'lbls','aria-hidden':'true'});
     lb.style.setProperty('--n',values.length);
     opts.labels.forEach(function(t){var n=el('span',{class:'slbl',text:t});labels.push(n);lb.appendChild(n);});
     wrap.appendChild(lb);
@@ -843,11 +865,14 @@ function chipRow(field,values,opts){
       }
       b.style.setProperty('--d',Math.max(0,d)+'ms');
       // Soluk dolgu seçilene yaklaştıkça koyulaşıyor.
-      if(inn)b.style.setProperty('--a',(0.1+0.16*(i+1)/(idx+1)).toFixed(3));
+      if(inn)b.style.setProperty('--a',(0.07+0.17*(i+1)/idx).toFixed(3));
       b.classList.toggle('on',on);b.classList.toggle('in',inn);
       b.setAttribute('aria-pressed',on?'true':'false');
     });
     prev=idx;
+    // Cevap verildi mi: çerçeve açılıyor, seçilmeyen sözler bir ton çekiliyor.
+    grid.classList.toggle('set',A[field]!=null);
+    if(lb)lb.classList.toggle('set',idx>=0);
     labels.forEach(function(n,i){n.classList.toggle('on',i===idx);});
     if(custom){
       var own=A[field]!=null&&idx===-1;
