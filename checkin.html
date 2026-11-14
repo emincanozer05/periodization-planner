@@ -176,16 +176,28 @@ header.plain h1{margin-top:34px;font-size:27px}
 /* Cevap verildikten sonra seçilenin sağında kalan basamaklar bir ton çekiliyor
    (hâlâ basılabiliyorlar): göz dolu kısımda kalıyor. */
 .meter.set .cell:not(.on):not(.in){color:var(--dim)}
-.cell::before{content:'';position:absolute;inset:0;background:var(--accent);opacity:0;
-  transition:opacity .3s var(--ease) var(--d,0ms)}
-.cell span{position:relative;display:inline-block;transition:transform .14s var(--ease)}
+/* Bölmenin iki katmanı var; rakam ikisinin de üstünde.
+   ::before  iz (soluk dolgu): soldan sağa süpürülerek gelir, sola çekilerek gider;
+             basamaklar sırayla (--d) dolduğu için çubuk bir dalga gibi ilerler.
+   ::after   seçim (beyaz): parmağın değdiği noktadan (--x / --y: JS) daire olarak
+             açılıp bölmeyi doldurur. Seçim kalkınca daire geri kapanmaz, solar.
+   Hareketler yalnızca sporcu dokununca oynar (.anim: ilk dokunuşta konur); form dil
+   değişip yeniden çizildiğinde seçili bölmeler baştan canlanmaz. */
+.cell::before,.cell::after{content:'';position:absolute;inset:0;background:var(--accent);pointer-events:none}
+.cell::before{opacity:var(--a,.14);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s var(--ease) var(--d,0ms),opacity .3s var(--ease)}
+.cell::after{opacity:0;transition:opacity .2s ease}
+.cell span{position:relative;z-index:1;display:inline-block;transition:transform .14s var(--ease)}
+.cell:active{background:var(--elevated)}
 .cell:active span{transform:scale(.86)}
 .cell.in{color:var(--text)}
-.cell.in::before{opacity:var(--a,.14)}
+.cell.in::before{transform:scaleX(1)}
 .cell.on{color:var(--ink);font-weight:700}
-.cell.on::before{opacity:1}
-.cell.on span{animation:pick .36s var(--ease) var(--d,0ms) both}
-@keyframes pick{0%{transform:scale(.8)}55%{transform:scale(1.16)}100%{transform:scale(1)}}
+.cell.on::after{opacity:1;transition:none}
+.anim .cell.on::after{animation:flood .48s var(--ease) both}
+.anim .cell.on span{animation:pick .4s var(--ease) both}
+@keyframes flood{from{clip-path:circle(0 at var(--x,50%) var(--y,50%))}to{clip-path:circle(150% at var(--x,50%) var(--y,50%))}}
+@keyframes pick{0%{transform:scale(.78)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
 .cell:focus-visible{outline:2px solid var(--text);outline-offset:-3px;z-index:1}
 /* Beyaz bölmede beyaz odak çizgisi görünmez. */
 .cell.on:focus-visible{outline-color:var(--ink)}
@@ -199,6 +211,9 @@ header.plain h1{margin-top:34px;font-size:27px}
   overflow-wrap:anywhere;hyphens:auto;transition:color .25s}
 .lbls.set .slbl{color:var(--dim)}
 .lbls.set .slbl.on{color:var(--text);font-weight:600}
+/* Seçilen basamağın sözü alttan yerine oturur. */
+.anim .slbl.on{animation:lblin .32s var(--ease) both}
+@keyframes lblin{from{opacity:.25;transform:translateY(5px)}to{opacity:1;transform:none}}
 @media (max-width:359px){.slbl{font-size:10.5px}}
 /* 1-10 ölçeğinde her basamağa söz sığmıyor; iki ucun ne demek olduğu yeterli. */
 .ends{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted);padding:0 2px}
@@ -390,14 +405,27 @@ button.send.ready{color:var(--ink);font-weight:700}
 button.send.ready .fill{opacity:1}
 button.send.ready .left{color:var(--ink)}
 button.send:focus-visible{outline-offset:3px}
-button.send.ready::after{content:'';position:absolute;top:0;bottom:0;left:0;width:42%;pointer-events:none;
-  background:linear-gradient(100deg,rgba(0,0,0,0),rgba(0,0,0,.1),rgba(0,0,0,0));
-  transform:translateX(-110%);animation:sheen .95s var(--ease) .25s 1 both}
+/* Son zorunlu adım tamamlandığı an (.pop: JS, yalnızca o geçişte): düğme bir kez
+   kabarır ve üstünden bir ışık geçer. */
+button.send.pop{animation:readypop .5s var(--ease)}
+@keyframes readypop{40%{transform:scale(1.025)}}
+button.send.pop::after{content:'';position:absolute;top:0;bottom:0;left:0;width:42%;pointer-events:none;
+  background:linear-gradient(100deg,rgba(0,0,0,0),rgba(0,0,0,.12),rgba(0,0,0,0));
+  transform:translateX(-110%);animation:sheen .95s var(--ease) .2s 1 both}
 @keyframes sheen{to{transform:translateX(250%)}}
+/* "N adım kaldı": sayı değişince yazı alttan yenilenir. */
+button.send .left.tick{animation:tick .3s var(--ease) both}
+@keyframes tick{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+/* Dokunulan noktadan yayılan halka (Gönder ve "Yeni gönderim yap"). Rengi düğmenin
+   yazı rengi: koyu düğmede açık, beyaz düğmede koyu. */
+.rip{position:absolute;border-radius:50%;background:currentColor;pointer-events:none;
+  opacity:.2;transform:scale(0);animation:rip .6s var(--ease) forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
 button.send:active{transform:scale(.985)}
 button.send[disabled]{cursor:default}
 button.send.busy .fill{animation:breathe 1.1s ease-in-out infinite}
 button.send.busy::after{display:none}
+button.send.busy .t{animation:breathe 1.1s ease-in-out infinite}
 @keyframes breathe{50%{opacity:.6}}
 @media (hover:hover){button.send.ready:not([disabled]):hover .fill{background:var(--accent2)}}
 
@@ -418,7 +446,8 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
    aynısı olan beş bölmeli çubuk skor kadar dolar. */
 .done{padding:34px 0 0}
 .done .rule{margin-top:22px;background:var(--border2)}
-.done h2{margin:28px 0 10px;font-size:34px;line-height:1.06;letter-spacing:-.025em}
+.done h2{margin:28px 0 4px;padding-bottom:6px;font-size:34px;line-height:1.06;letter-spacing:-.025em;overflow:hidden}
+.done h2 span{display:block}
 .done p{color:var(--muted);font-size:15px;line-height:1.5;max-width:36ch}
 .done .quote{max-width:44ch;margin-top:38px;padding-left:18px;box-shadow:inset 2px 0 0 var(--border2)}
 .done .quote-text{color:var(--text2);font-size:16px;line-height:1.6}
@@ -432,7 +461,7 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
 .score-m i::after{content:'';display:block;height:100%;background:var(--accent);transform-origin:left;
   animation:fillx .55s var(--ease) calc(.5s + var(--i)*110ms) both}
 @keyframes fillx{from{transform:scaleX(0)}to{transform:scaleX(var(--f,0))}}
-.again{margin-top:40px;height:48px;padding:0 20px;border-radius:var(--r);border:1px solid var(--border2);background:none;
+.again{position:relative;overflow:hidden;margin-top:40px;height:48px;padding:0 20px;border-radius:var(--r);border:1px solid var(--border2);background:none;
   color:var(--text);font-size:15px;font-weight:600;cursor:pointer;transition:background .18s,border-color .18s,transform .16s var(--ease)}
 .again:active{transform:scale(.97)}
 @media (hover:hover){.again:hover{background:var(--bg2);border-color:var(--muted)}}
@@ -449,6 +478,19 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
   animation:rise .55s var(--ease) calc(var(--o,0)*45ms) both}
 .intro .rule{animation:draw .8s var(--ease) calc(var(--o,0)*45ms) both}
 .bar{animation:rise .5s var(--ease) .3s both}
+/* Teşekkür başlığı solarak değil, bir maskenin arkasından yükselerek gelir. */
+.intro .done h2{animation:none}
+.intro .done h2 span{animation:lift .75s var(--ease) calc(var(--o,0)*45ms) both}
+@keyframes lift{from{transform:translateY(110%)}to{transform:none}}
+
+/* ── Çıkış ve dil geçişi ────────────────────────────────────────────────────
+   Gönderim tamamlanınca form yukarı çekilerek solar, Gönder çubuğu aşağı iner;
+   teşekkür ekranı onların ardından gelir. Dil değişince içerik kısa bir solmayla
+   yenilenir. */
+#root.leave{opacity:0;transform:translateY(-14px);transition:opacity .2s ease,transform .24s var(--ease)}
+.bar.leave{opacity:0;transform:translateY(100%);transition:opacity .2s ease,transform .24s var(--ease)}
+#root.swap{animation:swap .3s ease both}
+@keyframes swap{from{opacity:.2}to{opacity:1}}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;
@@ -720,6 +762,29 @@ function el(tag,attrs,kids){
 function calm(){
   try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}
 }
+/* Dokunulan noktadan yayılan halka. Düğmenin dolgusunun (.fill) üstünde, yazısının
+   altında durur; işi bitince kendini kaldırır. */
+function ripple(btn,e){
+  if(calm()||!e||e.clientX==null)return;
+  var r=btn.getBoundingClientRect(),d=Math.max(r.width,r.height)*2.2;
+  var n=el('i',{class:'rip','aria-hidden':'true'});
+  n.style.width=n.style.height=d+'px';
+  n.style.left=(e.clientX-r.left-d/2)+'px';
+  n.style.top=(e.clientY-r.top-d/2)+'px';
+  var fill=btn.querySelector('.fill');
+  btn.insertBefore(n,fill?fill.nextSibling:btn.firstChild);
+  var gone=function(){if(n.parentNode)n.parentNode.removeChild(n);};
+  n.addEventListener('animationend',gone);
+  setTimeout(gone,900);
+}
+/* Bir ekrandan ötekine: eldeki ekran yukarı çekilerek solar, sonra `fn` yenisini kurar. */
+function leave(fn){
+  var r=$('#root'),bar=document.querySelector('.bar');
+  if(calm()||!r){fn();return;}
+  r.classList.remove('intro');r.classList.add('leave');
+  if(bar){bar.style.animation='none';bar.classList.add('leave');}
+  setTimeout(function(){r.classList.remove('leave');fn();},250);
+}
 function reveal(node){
   try{node.scrollIntoView({behavior:calm()?'auto':'smooth',block:'center'});}catch(e){}
 }
@@ -820,11 +885,20 @@ function chipRow(field,values,opts){
   if(opts.meter)grid.style.setProperty('--n',values.length);
   var custom=null,cells=[],labels=[],prev=-1,lb=null;
   values.forEach(function(v,i){
-    var b=el('button',{type:'button',class:'cell','aria-pressed':'false',onclick:function(){
+    var b=el('button',{type:'button',class:'cell','aria-pressed':'false',onclick:function(e){
+      // Klavyeyle seçimde (detail 0) beyaz dolgu bölmenin ortasından açılır.
+      if(e&&e.detail===0){b.style.removeProperty('--x');b.style.removeProperty('--y');}
       A[field]=(A[field]===v)?null:v;
       if(custom)custom.value='';
+      wrap.classList.add('anim');
       paintRow();refreshAll();
     }},[el('span',{text:String(v)})]);
+    // Beyaz dolgunun açılacağı nokta: parmağın / farenin bölmeye değdiği yer.
+    b.addEventListener('pointerdown',function(e){
+      var r=b.getBoundingClientRect();
+      b.style.setProperty('--x',(e.clientX-r.left).toFixed(1)+'px');
+      b.style.setProperty('--y',(e.clientY-r.top).toFixed(1)+'px');
+    });
     if(opts.labels&&opts.labels[i])b.setAttribute('aria-label',v+' — '+opts.labels[i]);
     cells.push(b);grid.appendChild(b);
   });
@@ -855,10 +929,11 @@ function chipRow(field,values,opts){
     cells.forEach(function(b,i){
       var on=i===idx,inn=!!opts.meter&&i<idx;
       // Dolgunun sırası: büyürken eski seçimden yenisine doğru, küçülürken geriye doğru.
+      // Seçilen basamağın kendisi beklemez: dokunuşun cevabı anında gelir.
       var d=0;
-      if(opts.meter){
-        if(idx>prev)d=i>prev?(i-prev-1)*26:0;
-        else if(idx<prev)d=i>=idx?(prev-i)*26:0;
+      if(opts.meter&&!on){
+        if(idx>prev)d=i>prev?(i-prev-1)*30:0;
+        else if(idx<prev)d=i>=idx?(prev-i)*30:0;
       }
       b.style.setProperty('--d',Math.max(0,d)+'ms');
       // Soluk dolgu seçilene yaklaştıkça koyulaşıyor.
@@ -1528,12 +1603,12 @@ function submit(ui){
   // sporcuyu dönen bir düğmenin başında bekletmenin anlamı yok.
   var timer=setTimeout(function(){
     if(settled)return;settled=true;
-    done(true);
+    leave(function(){done(true);});
   },7000);
   write.then(function(ref){
     // Gönderim sunucuya ulaştı: işlenmesini tetikleyiciye bırakmadan kendimiz de iste.
     kickServer(ref&&ref.id);
-    if(settled)return;settled=true;clearTimeout(timer);done(false);
+    if(settled)return;settled=true;clearTimeout(timer);leave(function(){done(false);});
   }).catch(function(e){
     if(settled)return;settled=true;clearTimeout(timer);
     btn.disabled=false;btn.classList.remove('busy');
@@ -1608,10 +1683,10 @@ function done(queued){
   var kids=[
     el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
     el('div',{class:'rule'}),
-    el('h2',{text:T(queued?'queued_h':'done_h')}),
+    el('h2',null,[el('span',{text:T(queued?'queued_h':'done_h')})]),
     el('p',{text:T(queued?'queued_p':'done_p')})
   ].concat(rewardNodes(),[
-    el('div',null,[el('button',{type:'button',class:'again',text:T('again'),onclick:function(){location.reload();}})])
+    el('div',null,[el('button',{type:'button',class:'again',text:T('again'),onpointerdown:function(e){ripple(this,e);},onclick:function(){setTimeout(function(){location.reload();},calm()?0:180);}})])
   ]);
   kids.forEach(function(n,i){n.style.setProperty('--o',i*2);});
   r.appendChild(el('div',{class:'done'},kids));
@@ -1642,6 +1717,8 @@ function render(){
   ui.err.style.display='none';
   ui.btn=el('button',{class:'send',type:'button'},[ui.fill,ui.label,ui.left]);
   ui.btn.addEventListener('click',function(){submit(ui);});
+  ui.btn.addEventListener('pointerdown',function(e){if(!ui.btn.disabled)ripple(ui.btn,e);});
+  var wasReady=null,lastLeft=null;
   var bar=el('div',{class:'bar'},[el('div',{class:'bar-in'},[ui.err,ui.btn])]);
   if(!first)bar.style.animation='none';
   document.body.appendChild(bar);
@@ -1652,9 +1729,19 @@ function render(){
     var rem=st.length-done;
     ui.btn.style.setProperty('--p',(done/st.length).toFixed(3));
     ui.btn.classList.toggle('ready',!rem);
+    // Hazır olma hareketi yalnızca son adım tamamlandığı an oynar; form zaten hazırken
+    // yeniden çizilirse (dil değişimi) oynamaz.
+    if(wasReady===false&&!rem){ui.btn.classList.remove('pop');void ui.btn.offsetWidth;ui.btn.classList.add('pop');}
+    if(rem)ui.btn.classList.remove('pop');
+    wasReady=!rem;
     if(ui.btn.disabled)return;   // gönderim sürüyor: yazıya dokunma
     ui.label.textContent=T('send');
-    ui.left.textContent=rem?(rem===1&&I18N[LANG].left1?T('left1'):T('left').replace('{n}',rem)):'';
+    var leftText=rem?(rem===1&&I18N[LANG].left1?T('left1'):T('left').replace('{n}',rem)):'';
+    if(leftText!==lastLeft){
+      ui.left.textContent=leftText;
+      if(lastLeft!==null&&leftText){ui.left.classList.remove('tick');void ui.left.offsetWidth;ui.left.classList.add('tick');}
+      lastLeft=leftText;
+    }
     if(!rem&&ui.err.className==='msg warn')ui.err.style.display='none';
   });
   refreshAll();
@@ -1675,7 +1762,11 @@ function drawLang(){
         try{localStorage.setItem(LS_LANG,LANG);}catch(e){}
         document.documentElement.lang=LANG;
         drawLang();
-        if(VIEW)VIEW();
+        if(VIEW){
+          VIEW();
+          var r=$('#root');
+          if(r&&!calm()){r.classList.remove('swap');void r.offsetWidth;r.classList.add('swap');}
+        }
         else{var b=$('#boot');if(b)b.textContent=T('loading');}
       }}));
   });
