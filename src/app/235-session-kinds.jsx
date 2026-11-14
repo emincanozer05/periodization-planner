@@ -47,15 +47,118 @@ const sesKindLine=s=>{
   if(k==='test'){const n=((s&&s.tests)||[]).length+(String((s&&s.testsOther)||'').trim()?1:0);return n?L(`${n} test`,`${n} tests`):'';}
   return'';
 };
-/* Average heart-rate zone of a team practice — typed by hand, as the five-zone scale
-   (% of HRmax) every HR monitor reports in. */
+/* Average heart-rate zone of a team practice, on the five-zone scale (% of HRmax) every
+   HR monitor reports in. The colours are Polar Flow's zone colours (PW_ZONE_COL, 429) so
+   the practice's zone reads the same here as on the Wellness and load screens. */
 const HR_ZONES=[
-  {v:'1',c:'#94a3b8',tr:'Z1 · %50–60 · Çok hafif',en:'Z1 · 50–60% · Very light'},
-  {v:'2',c:'#38bdf8',tr:'Z2 · %60–70 · Hafif',en:'Z2 · 60–70% · Light'},
-  {v:'3',c:'#22c55e',tr:'Z3 · %70–80 · Orta',en:'Z3 · 70–80% · Moderate'},
-  {v:'4',c:'#f97316',tr:'Z4 · %80–90 · Zor',en:'Z4 · 80–90% · Hard'},
-  {v:'5',c:'#ef4444',tr:'Z5 · %90–100 · Maksimal',en:'Z5 · 90–100% · Maximal'},
+  {v:'1',c:'#9ca3af',pct:'50–60',tr:'Çok hafif',en:'Very light'},
+  {v:'2',c:'#3b82f6',pct:'60–70',tr:'Hafif',en:'Light'},
+  {v:'3',c:'#22c55e',pct:'70–80',tr:'Orta',en:'Moderate'},
+  {v:'4',c:'#eab308',pct:'80–90',tr:'Zor',en:'Hard'},
+  {v:'5',c:'#ef4444',pct:'90–100',tr:'Maksimal',en:'Maximal'},
 ];
+const hrZoneLbl=h=>L(`Z${h.v} · %${h.pct} · ${h.tr}`,`Z${h.v} · ${h.pct}% · ${h.en}`);
+/* The practice's average HR zone, worked out from the participants' own Polar sessions.
+   For each player taking part, the Polar sessions recorded on the practice's day that
+   overlap its time window (start → start + duration, 30 minutes' slack either side, so a
+   watch started early or stopped late still counts; a morning S&C session on the same day
+   does not) — or, with no time set, every session that day. A player's zone seconds are
+   summed over those sessions, the team figure is the mean of the players who have data
+   (a player with no watch does not drag it to zero), and the zone is the minute-weighted
+   average of that mean, rounded to 1…5. Returns null when nobody has zone data. */
+const skHm=t=>{const m=/(\d{1,2}):(\d{2})/.exec(String(t||''));return m?(+m[1])*60+(+m[2]):null;};
+function skPolarHr(session,dateKey,ids,polar){
+  const s=session||{};
+  const t0=skHm(s.time),dur=Number(s.duration)||90;
+  const byId=new Map((polar||[]).map(p=>[String(p.athleteId),p]));
+  const per=[],hrs=[];
+  ids.forEach(id=>{
+    const p=byId.get(String(id));if(!p)return;
+    const ex=(p.exercises||[]).filter(e=>{
+      if(!e||e.date!==dateKey)return false;
+      if(t0==null)return true;
+      const es=skHm(String(e.startTime||'').split('T')[1]);if(es==null)return true;
+      const ee=es+(Number(e.durationSec)||0)/60;
+      return es<t0+dur+30&&ee>t0-30;
+    }).map(e=>({e,z:pwZoneSec(e)})).filter(x=>x.z);
+    if(!ex.length)return;
+    per.push([0,1,2,3,4].map(i=>ex.reduce((a,x)=>a+x.z[i],0)));
+    const w=ex.filter(x=>pwNum(x.e.hrAvg));
+    const wt=w.reduce((a,x)=>a+(Number(x.e.durationSec)||1),0);
+    if(wt)hrs.push(w.reduce((a,x)=>a+x.e.hrAvg*(Number(x.e.durationSec)||1),0)/wt);
+  });
+  if(!per.length)return null;
+  const z=pwZoneMean(per);const avg=pwZAvg(z);if(!avg)return null;
+  return{z,avg,zone:String(Math.max(1,Math.min(5,Math.round(avg)))),n:per.length,of:ids.length,
+    hr:hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):null,
+    min:Math.round(pwZTot(z)/60)};
+}
+/* The HR zone box of a team practice. With Polar data for the day it fills itself — the
+   zone, a Z1→Z5 strip of where the minutes went, the average heart rate and how many of
+   the players it comes from — and stays in step with the watches: a later sync changes it.
+   It is worked out each time it is shown, never stored, so two devices cannot argue over
+   it. Before the practice it says it will fill in; with no Polar (signed out, nobody
+   linked, nothing recorded) it falls back to the hand-picked zone it always had. */
+function SkHrZone({session,dateKey,ids,teamOk,readOnly,onPatch}){
+  const s=session||{};
+  const todayK=fmt(new Date());
+  const future=!dateKey||dateKey>todayK;
+  const teamId=teamOk&&typeof liveTeam==='string'?liveTeam:'';
+  const R=usePolarTeamRange(teamId,dateKey,dateKey,['exercises']);
+  /* Polar can answer at all: a team, a signed-in coach. (`R.off` is also true for a date
+     still to come, which is not the same as having no Polar.) */
+  const fb=FB();const usr=fb&&fb.auth&&fb.auth().currentUser;
+  const polar=!!teamId&&!!usr&&!usr.isAnonymous;
+  const res=polar&&!future?skPolarHr(s,dateKey,ids,R.athletes):null;
+  const manual=HR_ZONES.find(h=>h.v===String(s.hrZone||''));
+  const hz=res?HR_ZONES[+res.zone-1]:manual;
+  const ac=hz?hz.c:'#ef4444';
+  let body,sub;
+  if(res){
+    body=<div className="sk-st-v sk-hz-v"><b style={{color:ac}}>Z{res.zone}</b><span>{L(hz.tr,hz.en)}</span></div>;
+    sub=<>
+      <span className="sk-hz-bar" role="img" aria-label={res.z.map((v,i)=>`Z${i+1} ${Math.round(v/60)} ${L('dk','min')}`).join(', ')}>
+        {res.z.map((v,i)=>v>0?<i key={i} style={{flexGrow:v,background:HR_ZONES[i].c}} title={`Z${i+1} · ${Math.round(v/60)} ${L('dk','min')} · %${Math.round(v/(res.min*60||1)*100)}`}/>:null)}</span>
+      <span className="sk-st-sub" title={L('Katılan oyuncuların Polar antrenmanlarından, antrenman saatiyle örtüşen kayıtlar','From the participants\' Polar sessions that overlap the practice time')}>
+        {L(`ort. ${res.avg.toFixed(1)}`,`avg ${res.avg.toFixed(1)}`)}{res.hr?` · ${res.hr} bpm`:''} · {L(`${res.n}/${res.of} oyuncu`,`${res.n}/${res.of} players`)}<em className="sk-auto">Polar</em></span>
+    </>;
+  }else{
+    const loading=polar&&!future&&!R.loaded;
+    body=readOnly||(polar&&future)||loading
+      ?<div className="sk-st-v sk-hz-v">{hz?<><b style={{color:ac}}>Z{hz.v}</b><span>{L(hz.tr,hz.en)}</span></>:<b className="dim">—</b>}</div>
+      :<select className="dw-inp dw-sel sk-hz-sel" value={String(s.hrZone||'')} onChange={e=>onPatch({hrZone:e.target.value})}
+          title={L('Polar verisi yokken elle seçilir','Picked by hand while there is no Polar data')}>
+          <option value="">—</option>
+          {HR_ZONES.map(h=><option key={h.v} value={h.v}>{hrZoneLbl(h)}</option>)}
+        </select>;
+    sub=<span className="sk-st-sub">{!polar?L('elle seçilir','picked by hand')
+      :future?<>{L('antrenmandan sonra dolar','fills in after the practice')}<em className="sk-auto">Polar</em></>
+      :loading?L('Polar okunuyor…','reading Polar…')
+      :R.err?L('Polar okunamadı · elle seç','Polar unavailable · pick by hand')
+      :L('Polar kaydı yok · elle seç','no Polar data · pick by hand')}</span>;
+  }
+  return<SkStat k={L('Ort. HR Zone','Avg HR Zone')} ac={ac} ic={<SkIcHeart/>} sub={sub}>{body}</SkStat>;
+}
+/* One cell of the session's stat strip: label and icon on top, the value, and a line under
+   it (a hint, a scale, a split). `ac` colours the cell's top edge and its icon. */
+function SkStat({k,ac,ic,sub,children}){
+  return(<div className="sk-st" style={{'--dm-ac':ac}}>
+    <div className="sk-st-k"><span className="sk-st-ic">{ic}</span>{k}</div>
+    {children}
+    {sub!=null&&<div className="sk-st-ft">{sub}</div>}
+  </div>);
+}
+/* Target intensity as a ten-step scale: the steps up to the target are lit in its band's
+   colour, and a click on a step sets it. */
+function SkRpeScale({value,onPick,readOnly}){
+  const v=Number(value)||0;
+  return(<span className="sk-scale" role={readOnly?'img':'group'} aria-label={L(`Hedef RPE ${v}/10`,`Target RPE ${v}/10`)}>
+    {[1,2,3,4,5,6,7,8,9,10].map(n=>{const on=n<=v;const c=rpeZone(n).c;
+      return readOnly?<i key={n} className={on?'on':''} style={on?{background:c}:null}/>
+        :<button key={n} type="button" className={on?'on':''} style={on?{background:c}:null}
+          title={`${n}/10 · ${L(rpeZone(n).tr,rpeZone(n).en)}`} aria-pressed={n===v} onClick={()=>onPick(n)}/>;})}
+  </span>);
+}
 const skInit=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
 const SkIcClock=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg>;
 const SkIcTimer=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2.5h4"/><path d="M12 13l2.6-2.6"/><circle cx="12" cy="14" r="7.5"/></svg>;
@@ -79,7 +182,7 @@ function SkPlayerPick({athletes,selected,onChange,max,readOnly}){
   return(<div className="sk-pick">
     <div className="sk-pick-h">
       <span className={'sk-pick-n'+(max&&n>=max?' full':'')}>{n}{max?` / ${max}`:` / ${athletes.length}`}
-        {max?<span className="sk-pick-bar" aria-hidden="true"><i style={{width:`${Math.min(100,n/max*100)}%`}}/></span>:null}</span>
+        <span className="sk-pick-bar" aria-hidden="true"><i style={{width:`${Math.min(100,n/(max||athletes.length||1)*100)}%`}}/></span></span>
       {!readOnly&&<>
         {!max&&<button type="button" className="btn xs sec" onClick={()=>onChange(athletes.map(a=>a.id))}>{L('Tümünü seç','Select all')}</button>}
         <button type="button" className="btn xs sec" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>
@@ -175,26 +278,33 @@ function SkSec({title,sub,children}){
    `onPatch` merges into the session. `roster` is the team's athletes (absent on a
    personal calendar); `rpe` reads and writes their ratings (absent in the day editor,
    where the ratings are not collected). */
+/* "13:30" — when a practice that starts at `time` and runs `duration` minutes ends. */
+const skEnd=s=>{const t=skHm(s&&s.time),d=Number(s&&s.duration)||0;if(t==null||!d)return'';
+  const m=(t+d)%1440;return`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;};
+const skHrs=m=>{const h=Math.floor(m/60),r=m%60;return h?L(`${h} sa${r?` ${r} dk`:''}`,`${h} h${r?` ${r} min`:''}`):L(`${r} dk`,`${r} min`);};
 function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
   const kind=sesKind(session);
   const s=session||{};
   const u=onPatch;
   const team=Array.isArray(roster);
   const fromTeam=!!s.sourceId;
-  const tile=(k,ac,ic,body)=><div className="dw-dm white" style={{'--dm-ac':ac}}>
-    <div className="dm-top"><span className="k">{k}</span><span className="dm-ic">{ic}</span></div>{body}</div>;
-  const timeTile=tile(L('Saat','Time'),'#22d3ee',<SkIcClock/>,readOnly
-    ?<div className="v">{s.time||'—'}</div>
-    :<input type="time" className="dw-inp" value={s.time||''} onChange={e=>u({time:e.target.value})}/>);
+  const timeTile=<SkStat k={L('Saat','Time')} ac="#22d3ee" ic={<SkIcClock/>}
+    sub={kind==='tp'?<span className="sk-st-sub">{skEnd(s)?L(`bitiş ${skEnd(s)}`,`ends ${skEnd(s)}`):L('başlangıç saati','start time')}</span>:null}>
+    {readOnly?<div className="sk-st-v">{s.time||'—'}</div>
+      :<input type="time" className="dw-inp sk-st-in" value={s.time||''} onChange={e=>u({time:e.target.value})}/>}
+  </SkStat>;
   const setDur=raw0=>{
     const raw=String(raw0).replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));
     const patch={duration:d};
     if(!s.auManual&&s.sRPE!==''&&s.sRPE!=null)patch.au=Math.round(Number(s.sRPE)*(Number(d)||0));
     u(patch);
   };
-  const durTile=tile(L('Süre','Duration'),'#a78bfa',<SkIcTimer/>,readOnly
-    ?<div className="v">{Number(s.duration)||0}<span className="dw-unit"> {L('dk','min')}</span></div>
-    :<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'2.6em'}} value={s.duration??''} onChange={e=>setDur(e.target.value)}/><span className="dw-unit">{L('dk','min')}</span></div>);
+  const durTile=<SkStat k={L('Süre','Duration')} ac="#a78bfa" ic={<SkIcTimer/>}
+    sub={<span className="sk-st-sub">{Number(s.duration)>0?skHrs(Number(s.duration)):L('dakika','minutes')}</span>}>
+    {readOnly?<div className="sk-st-v">{Number(s.duration)||0}<span className="dw-unit"> {L('dk','min')}</span></div>
+      :<div className="sk-st-v"><input type="number" min="0" inputMode="numeric" className="dw-inp sk-st-in sk-st-num" value={s.duration??''}
+          onChange={e=>setDur(e.target.value)} aria-label={L('Süre (dk)','Duration (min)')}/><span className="dw-unit">{L('dk','min')}</span></div>}
+  </SkStat>;
   const notes=<SkSec title={L('Notlar','Notes')}>
     {readOnly?<div className="plan-note-view">{s.planNote||'—'}</div>
       :<LiveTextarea className="sk-ta" value={s.planNote||''} onChange={v=>u({planNote:v})} placeholder={L('Notlar…','Notes…')}/>}
@@ -202,25 +312,17 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
 
   if(kind==='tp'){
     const rT=sesRpeTarget(s);const z=rpeZone(rT);
-    const hz=HR_ZONES.find(h=>h.v===String(s.hrZone||''));
     const parts=team?((s.athletes||[]).map(id=>roster.find(a=>a.id===id)).filter(Boolean)):[];
     const rpeList=parts.length?parts:(roster||[]);
+    const hrIds=team?rpeList.map(a=>a.id):[];
     return(<div className="sk">
-      <div className="dw-meta">
+      <div className="sk-stats">
         {timeTile}{durTile}
-        {tile(L('Hedef Yoğunluk','Target Intensity'),z.c,<SkIcGauge/>,readOnly
-          ?<div className="dw-inrow"><span className="v" style={{marginTop:0}}>{rT}</span><span className="dw-unit">/10 · {L(z.tr,z.en)}</span></div>
-          :<div className="dw-inrow"><select className="dw-inp dw-sel" style={{width:'2.4em'}} value={rT} onChange={e=>u({rpeTarget:Number(e.target.value)})}
-              title={L('Hedeflenen RPE (10 üzerinden)','Target RPE (out of 10)')}>
-              {[1,2,3,4,5,6,7,8,9,10].map(v=><option key={v} value={v}>{v}</option>)}
-            </select><span className="dw-unit">/10 · {L(z.tr,z.en)}</span></div>)}
-        {tile(L('Ort. HR Zone','Avg HR Zone'),hz?hz.c:'#f43f5e',<SkIcHeart/>,readOnly
-          ?<div className="v sk-hz">{hz?L(hz.tr,hz.en):'—'}</div>
-          :<select className="dw-inp dw-sel sk-hz-sel" value={String(s.hrZone||'')} onChange={e=>u({hrZone:e.target.value})}
-              title={L('Antrenmanın ortalama kalp atım bölgesi — elle girilir','The practice\'s average heart-rate zone — entered by hand')}>
-              <option value="">—</option>
-              {HR_ZONES.map(h=><option key={h.v} value={h.v}>{L(h.tr,h.en)}</option>)}
-            </select>)}
+        <SkStat k={L('Hedef Yoğunluk','Target Intensity')} ac={z.c} ic={<SkIcGauge/>}
+          sub={<SkRpeScale value={rT} readOnly={readOnly} onPick={n=>u({rpeTarget:n})}/>}>
+          <div className="sk-st-v"><b style={{color:z.c}}>{rT}</b><span className="dw-unit">/10</span><span className="sk-st-tag" style={{color:z.c}}>{L(z.tr,z.en)}</span></div>
+        </SkStat>
+        <SkHrZone session={s} dateKey={dateKey} ids={hrIds} teamOk={team} readOnly={readOnly} onPatch={u}/>
       </div>
       {team&&!fromTeam&&<SkSec title={L('Katılan Oyuncular','Participants')}
         sub={L('Seçilenlerin kişisel takvimine eklenir','Added to the chosen players\' own calendars')}>
@@ -328,8 +430,8 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
     const toggle=id=>u({tests:set.has(id)?picked.filter(x=>x!==id):[...picked,id]});
     const list=TEST_CATALOG.filter(c=>!c.retired||set.has(c.id));
     return(<div className="sk">
-      <div className="dw-meta">
-        {tile(L('Test Günü','Test Day'),'#94a3b8',<SkIcCal/>,<div className="v sk-hz">{dateKey?fdLong(dateKey):'—'}</div>)}
+      <div className="sk-stats">
+        <SkStat k={L('Test Günü','Test Day')} ac="#94a3b8" ic={<SkIcCal/>}><div className="sk-st-v sk-st-txt">{dateKey?fdLong(dateKey):'—'}</div></SkStat>
         {timeTile}
       </div>
       <SkSec title={L('Alınan Testler','Tests Taken')} sub={L(`${picked.length} test`,`${picked.length} tests`)}>
@@ -354,6 +456,10 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
   const fromTeam=!!session.sourceId;
   const kind=sesKind(session);
   const tag=sesKindName(kind);
+  /* The practice at a glance beside its name: when it runs and how many take part. */
+  const nP=(session.athletes||[]).length;
+  const sum=[session.time?(skEnd(session)?`${session.time}–${skEnd(session)}`:session.time):'',
+    Array.isArray(athletes)&&nP?L(`${nP} oyuncu`,`${nP} players`):''].filter(Boolean).join(' · ');
   const del=()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();};
   return(<div className="sess-ed"><div className="sbody">
     <div className="iv-block cal-block sk-card">
@@ -362,6 +468,7 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
         <LiveInput className="iv-block-nm" value={session.name||''} placeholder={tag}
           title={L('Seans adı','Session name')} onChange={v=>u({name:v})}/>
         <span className="sk-kind">{tag}</span>
+        {kind==='tp'&&sum&&<span className="sk-hd-sum">{sum}</span>}
         <span className="iv-blockacts">
           {total>1&&<>
             <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0} title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
@@ -369,7 +476,7 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
           <button type="button" className="btn xs sec iv-rmb" onClick={del} title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
         </span>
       </div>
-      <div style={{padding:'4px 2px 2px'}}>
+      <div className="sk-card-b">
         <SesKindForm session={session} dateKey={dateKey} onPatch={u} roster={athletes} teamName={teamName}/>
       </div>
     </div>

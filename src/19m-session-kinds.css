@@ -1,0 +1,102 @@
+/* =========================================================
+   TAKIM ANTRENMANI · MÜSABAKA · TEST KARTI (`sk-*`, 235-session-kinds.jsx)
+   Son stil katmanı (19z ve 19l'den sonra). Koyu temanın genel `input`/`select`/`textarea`
+   kuralı çok yüksek özgüllükte (:root:not(...) + dört :not), bu yüzden kutusuz alanlar
+   birkaç `!important` taşıyor.
+   · Başlık: seans adı kutusuz (yalnız üzerine gelince / odakta çerçeve), yanında saat
+     aralığı ve oyuncu sayısı.
+   · Ölçü şeridi (`sk-stats`): Saat · Süre · Hedef Yoğunluk · Ort. HR Zone tek panelde,
+     1 px ayraçlı; her hücrenin üst kenarı kendi rengi, altında bir satır (bitiş saati,
+     10 adımlı RPE ölçeği, Polar bölge dağılımı).
+   · Oyuncu çipleri: seçili olan dolgulu ve tikli, seçili olmayan sönük; mavi çerçeve
+     ızgarası yok.
+   Düz yüzey, gradyan yok; az-hareket korumalı.
+   ========================================================= */
+
+/* ---- Başlık ---- */
+.sk-card .iv-block-hd{padding:12px 16px;gap:12px}
+.sk-card .iv-block-nm{font-size:22px;padding:4px 8px;
+  background:transparent!important;border:1px solid transparent!important;color:var(--blk-hd-ink)!important}
+.sk-card .iv-block-nm:hover{border-color:rgba(160,205,255,.32)!important}
+.sk-card .iv-block-nm:focus{background:rgba(9,18,30,.45)!important;border-color:var(--accent)!important}
+.sk-card .sk-kind{color:var(--blk-hd-ink);background:rgba(9,18,30,.35);border-color:rgba(150,196,255,.42)}
+.sk-hd-sum{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--blk-hd-ink2);
+  letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sk-card-b{padding:16px 16px 14px}
+
+/* ---- Ölçü şeridi ---- */
+.sk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:1px;margin:0 0 20px;
+  background:var(--border);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.sk-st{position:relative;display:flex;flex-direction:column;gap:7px;min-width:0;padding:13px 15px 12px;
+  background:var(--bg2);transition:background-color .2s ease}
+.sk-st::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--dm-ac,var(--accent))}
+.sk-st:focus-within{background:color-mix(in srgb,var(--dm-ac,var(--accent)) 7%,var(--bg2))}
+.sk-st-k{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.sk-st-ic{display:flex;color:var(--dm-ac,var(--accent))}
+.sk-st-v{display:flex;align-items:baseline;gap:6px;min-height:31px;font-size:26px;font-weight:700;line-height:1.15;
+  letter-spacing:-.01em;color:var(--text);font-variant-numeric:tabular-nums}
+.sk-st-v b{font-weight:700}
+.sk-st-v b.dim{color:var(--dim)}
+.sk-st-v .dw-unit{font-size:11px}
+.sk-st-txt{font-size:16px;line-height:1.3;align-items:center}
+.sk-st-tag{margin-left:2px;font-size:12px;font-weight:700;letter-spacing:.02em}
+.sk-st .sk-st-in{width:100%;margin:0!important;padding:0 0 1px!important;font-size:26px!important;font-weight:700;line-height:1.15;
+  color:var(--text)!important;background-color:transparent!important;border:0!important;border-bottom:1px dashed transparent!important;
+  border-radius:0!important;box-shadow:none!important;font-variant-numeric:tabular-nums}
+.sk-st .sk-st-in:hover{border-bottom-color:var(--border2)!important}
+.sk-st .sk-st-in:focus{border-bottom-color:var(--dm-ac,var(--accent))!important;outline:none}
+.sk-st .sk-st-num{width:3.2ch;field-sizing:content;min-width:1.2ch;max-width:4ch}
+.sk-st-ft{display:flex;flex-direction:column;gap:7px;margin-top:auto}
+.sk-st-sub{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:10.5px;color:var(--dim);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.sk-auto{font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:var(--r-sm);padding:1px 5px;line-height:1.3}
+
+/* Hedef yoğunluk: 10 adımlı ölçek (adım = düğme; görünen çubuk 6 px, tıklama alanı 16 px) */
+.sk-scale{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.sk-scale>*{display:block;height:16px;min-height:0;margin:0;padding:5px 0;border:0;border-radius:0;font-size:0;
+  background:var(--border2);background-clip:content-box;transition:background-color .15s ease,padding .15s ease}
+.sk-scale button{cursor:pointer}
+.sk-scale button:hover{padding:3px 0}
+.sk-scale button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* Ort. HR Zone: bölge + adı, Z1→Z5 dağılım şeridi, Polar özeti */
+.sk-hz-v span{font-size:14px;font-weight:600;color:var(--text2);letter-spacing:0}
+.sk-hz-bar{display:flex;gap:1px;height:6px;overflow:hidden;background:var(--border)}
+.sk-hz-bar i{display:block;height:100%;min-width:2px;animation:sk-hz-in .45s var(--ease-out,ease-out) both}
+@keyframes sk-hz-in{from{opacity:0;transform:scaleX(.6);transform-origin:left}to{opacity:1;transform:none}}
+.sk-st .sk-hz-sel{width:100%;margin:0!important;padding:2px 16px 2px 0!important;min-height:31px;font-size:15px!important;font-weight:700;
+  color:var(--text)!important;background-color:transparent!important;border:0!important;border-bottom:1px dashed var(--border2)!important;border-radius:0!important}
+.sk-st .sk-hz-sel:focus{border-bottom-color:var(--dm-ac,var(--accent))!important;outline:none}
+
+/* ---- Bölümler, oyuncu çipleri, metin alanları ---- */
+.sk .sk-sec{margin-top:18px}
+.sk .sk-pick-h{margin-bottom:10px}
+.sk .sk-pp{padding:5px 10px 5px 5px;background:transparent;border-color:var(--border)}
+.sk .sk-pp:hover{background:var(--hover);border-color:var(--border2)}
+.sk .sk-pp-av{transition:filter .15s ease,opacity .15s ease;filter:grayscale(1);opacity:.55}
+.sk .sk-pp-nm{color:var(--muted);font-weight:600}
+.sk .sk-pp.on{background:var(--accent-bg);border-color:color-mix(in srgb,var(--accent) 38%,transparent)}
+.sk .sk-pp.on:hover{border-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+.sk .sk-pp.on .sk-pp-av{filter:none;opacity:1}
+.sk .sk-pp.on .sk-pp-nm{color:var(--text)}
+.sk .sk-pp-ck{position:relative;width:16px;height:16px}
+.sk .sk-pp.on .sk-pp-ck{background:var(--accent);border-color:var(--accent);box-shadow:none}
+.sk .sk-pp.on .sk-pp-ck::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.sk .sk-ta{padding:10px 12px;font-size:13px;line-height:1.5;border-radius:var(--r-sm);
+  background-color:var(--bg2)!important;border:1px solid var(--border)!important}
+.sk .sk-ta:hover{border-color:var(--border2)!important}
+.sk .sk-ta:focus{border-color:var(--accent)!important;outline:none}
+
+@media (max-width:640px){
+  .sk-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sk-st{padding:11px 12px 10px}
+  .sk-st-v,.sk-st .sk-st-in{font-size:22px!important}
+  .sk-hd-sum{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .sk-hz-bar i{animation:none}
+  .sk-st,.sk-scale>*,.sk .sk-pp-av{transition:none}
+}
