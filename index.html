@@ -11615,7 +11615,7 @@ const SPRESETS=[
    dTr:'Antrenman ve müsabaka sonrası fiziksel toparlanmayı destekleyen düşük yoğunluklu çalışmalar, mobilite ve rejeneratif uygulamalar.',
    dEn:'Low-intensity work, mobility and regenerative practices that support physical recovery after training and competition.',
    d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
-  {name:'Team Practice',tr:'Takım Antrenmanı',trName:'Takım Antrenmanı',
+  {name:'Team Practice',tr:'Basketbol',trName:'Basketbol',
    dTr:'Takımın teknik, taktik ve oyun içi becerilerini geliştirmeye yönelik basketbol antrenmanları.',
    dEn:'Basketball practices that develop the team\'s technical, tactical and in-game skills.',
    d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Team Offense, Team Defense',focus:['Technical / Tactical'],sub:['Team Offense','Team Defense'],duration:90,bl:[],kind:'tp',rpeCat:'tp'}},
@@ -22130,7 +22130,7 @@ function BlockAddBar({onAdd,onPaste,athId,variant}){
 
 /* The kind's name, and the short line a week card shows for it in place of the goals —
    who the match is against and how it ended, how many tests the day held. */
-const sesKindName=k=>k==='tp'?L('Takım Antrenmanı','Team Practice'):k==='match'?L('Müsabaka','Competition'):k==='test'?L('Test','Test'):'';
+const sesKindName=k=>k==='tp'?L('Basketbol','Team Practice'):k==='match'?L('Müsabaka','Competition'):k==='test'?L('Test','Test'):'';
 const sesKindLine=s=>{
   const k=sesKind(s);
   if(k==='match'){
@@ -22562,7 +22562,8 @@ const sesTypeOf=s=>{
 const sesConvert=(s,name)=>{
   const p=SPRESETS.find(x=>x.name===name);if(!p)return s;
   const d=p.d;const nm=String((s&&s.name)||'').trim();
-  const isDefault=!nm||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
+  /* 'Takım Antrenmanı': türün eski Türkçe adı (artık 'Basketbol'); o adla kaydedilmiş seanslar da varsayılan sayılır. */
+  const isDefault=!nm||nm==='Takım Antrenmanı'||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
   const ld=String(d.loadType||'').toLowerCase();
   return{...s,loadType:d.loadType,focus:[...d.focus],sub:[...d.sub],purpose:d.purpose,
     kind:d.kind||'sc',rpeCat:d.rpeCat||((ld.includes('mechanical')||ld.includes('neuromuscular'))?'sc':'tp'),
@@ -23120,7 +23121,7 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    colour now, and the colour belongs to the calendar card alone. A right-click on a card
    (week or month view) opens CardColorMenu at the pointer.
    The palette is the five session kinds' own colours (SES_TYPE_COLORS: match, team
-   practice, on-court performance, recovery, strength & power) plus white; any other colour
+   practice, on-court performance, recovery, strength & power) plus pink and white; any other colour
    comes from the custom picker. Cards saved with the very first, brighter shades are still
    read through CARD_COLOR_OLD, so they keep the deeper shade they have shown since. */
 const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
@@ -23131,7 +23132,7 @@ const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
    power green. Anything else (conditioning, a test day, an unlabelled session) returns ''
    and keeps the load type's hue. */
 const SES_TYPE_COLORS={match:'#ff3624',tp:'#ff941a',court:'#b55dfe',recovery:'#24e2ff',strength:'#9dff5c'};
-const CARD_COLORS=[...Object.values(SES_TYPE_COLORS),'#ffffff'];
+const CARD_COLORS=[...Object.values(SES_TYPE_COLORS),'#ff4fb4','#ffffff'];
 const sesTypeKey=s=>{
   if(!s)return'';
   const k=sesKind(s);
@@ -34261,7 +34262,7 @@ function AthRpeScores({ath,updAth,onClose}){
    sorted into team practice, strength & conditioning (the Strength & Power and On-Court
    Performance blocks, read off their focus) and matches; conditioning, recovery and test
    sessions are not counted. Only days up to today count — a plan is not yet a miss. */
-const INJ_MISS_KINDS=[{id:'tp',tr:'Takım Antrenmanı',en:'Team Practice'},
+const INJ_MISS_KINDS=[{id:'tp',tr:'Basketbol',en:'Team Practice'},
   {id:'sc',tr:'Kuvvet & Kondisyon',en:'Strength & Conditioning'},{id:'match',tr:'Müsabaka',en:'Competition'}];
 function injSesKind(s){
   const k=sesKind(s);

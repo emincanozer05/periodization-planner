@@ -520,7 +520,7 @@ const SPRESETS=[
    dTr:'Antrenman ve müsabaka sonrası fiziksel toparlanmayı destekleyen düşük yoğunluklu çalışmalar, mobilite ve rejeneratif uygulamalar.',
    dEn:'Low-intensity work, mobility and regenerative practices that support physical recovery after training and competition.',
    d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
-  {name:'Team Practice',tr:'Takım Antrenmanı',trName:'Takım Antrenmanı',
+  {name:'Team Practice',tr:'Basketbol',trName:'Basketbol',
    dTr:'Takımın teknik, taktik ve oyun içi becerilerini geliştirmeye yönelik basketbol antrenmanları.',
    dEn:'Basketball practices that develop the team\'s technical, tactical and in-game skills.',
    d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Team Offense, Team Defense',focus:['Technical / Tactical'],sub:['Team Offense','Team Defense'],duration:90,bl:[],kind:'tp',rpeCat:'tp'}},
