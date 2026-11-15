@@ -154,6 +154,33 @@ function sesTipLines(s){
   }));
   return out;
 }
+/* The monotony card's scale: Foster's four bands on one bar (0 → 2.5+), the target
+   (< 1.50) bracketed above it and a marker at this week's value, so the card says where
+   the week sits rather than only which band's name it earned. */
+const CWS_MONO_MAX=2.5;
+const CWS_MONO_BANDS=[
+  {from:0,to:1,c:'#3b82f6',tr:'Düşük',en:'Low'},
+  {from:1,to:1.5,c:'#2dd4a7',tr:'Normal',en:'Normal'},
+  {from:1.5,to:2,c:'#f59e0b',tr:'İzle',en:'Watch'},
+  {from:2,to:CWS_MONO_MAX,c:'#f43f5e',tr:'Yüksek',en:'High'},
+];
+function CwsMonoScale({v}){
+  const pct=x=>`${Math.min(100,Math.max(0,x/CWS_MONO_MAX*100))}%`;
+  const has=v>0;
+  return(<div className="cwm" aria-hidden="true">
+    <div className="cwm-tgt" style={{width:pct(1.5)}}><span>{L('hedef < 1.50','target < 1.50')}</span></div>
+    <div className="cwm-bar">
+      {CWS_MONO_BANDS.map(b=><i key={b.tr} className={has&&v>=b.from&&(v<b.to||b.to===CWS_MONO_MAX)?'on':''}
+        style={{left:pct(b.from),width:pct(b.to-b.from),background:b.c}}/>)}
+      {has&&<b className="cwm-mk" style={{left:pct(v)}}/>}
+    </div>
+    <div className="cwm-tk">
+      {[0,1,1.5,2].map(t=><span key={t} style={{left:pct(t)}}>{t===0?'0':t.toFixed(1)}</span>)}
+      <span style={{left:'100%'}}>2.5+</span>
+    </div>
+    <div className="cwm-lg">{CWS_MONO_BANDS.map(b=><span key={b.tr}><i style={{background:b.c}}/>{L(b.tr,b.en)}</span>)}</div>
+  </div>);
+}
 function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
@@ -645,7 +672,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-s">{L('Hedef aralık: 5–7','Target band: 5–7')}</div>
         </div>
       </div>
-      <div className="cws" title={athMode
+      <div className="cws cws-mono" title={athMode
         ?L('Haftalık monotoni (Foster) = sporcunun bu haftaki 7 günlük yükünün ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Weekly monotony (Foster) = the mean of the athlete\'s 7 daily loads this week ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')
         :L('Bu haftanın takım monotonluğu (Foster) = takımın 7 günlük yükünün (her günün altındaki Günlük Yük) ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week (Foster) = the mean of the team\'s 7 daily loads (the Daily Load under each day) ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
         <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
@@ -653,7 +680,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-k">{athMode?L('Haftalık Monotoni','Weekly Monotony'):L('Takım Monotonluğu','Team Monotony')}</div>
           <div className="cws-v">{weekMonoV?weekMonoV.toFixed(2):'—'}
             <em className="band" style={{color:weekMonoZ.dot,borderColor:weekMonoZ.dot}}>{exLabel(weekMonoZ.t)}</em></div>
-          <div className="cws-s">{L('Hedef aralık: < 1.50','Target band: < 1.50')}</div>
+          <CwsMonoScale v={weekMonoV}/>
         </div>
       </div>
     </div>
