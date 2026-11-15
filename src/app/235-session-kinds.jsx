@@ -35,7 +35,7 @@ function BlockAddBar({onAdd,onPaste,athId,variant}){
 
 /* The kind's name, and the short line a week card shows for it in place of the goals —
    who the match is against and how it ended, how many tests the day held. */
-const sesKindName=k=>k==='tp'?L('Takım Antrenmanı','Team Practice'):k==='match'?L('Müsabaka','Competition'):k==='test'?L('Test','Test'):'';
+const sesKindName=k=>k==='tp'?L('Basketbol','Team Practice'):k==='match'?L('Müsabaka','Competition'):k==='test'?L('Test','Test'):'';
 const sesKindLine=s=>{
   const k=sesKind(s);
   if(k==='match'){
@@ -467,7 +467,8 @@ const sesTypeOf=s=>{
 const sesConvert=(s,name)=>{
   const p=SPRESETS.find(x=>x.name===name);if(!p)return s;
   const d=p.d;const nm=String((s&&s.name)||'').trim();
-  const isDefault=!nm||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
+  /* 'Takım Antrenmanı': türün eski Türkçe adı (artık 'Basketbol'); o adla kaydedilmiş seanslar da varsayılan sayılır. */
+  const isDefault=!nm||nm==='Takım Antrenmanı'||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
   const ld=String(d.loadType||'').toLowerCase();
   return{...s,loadType:d.loadType,focus:[...d.focus],sub:[...d.sub],purpose:d.purpose,
     kind:d.kind||'sc',rpeCat:d.rpeCat||((ld.includes('mechanical')||ld.includes('neuromuscular'))?'sc':'tp'),

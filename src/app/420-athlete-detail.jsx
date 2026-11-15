@@ -400,7 +400,7 @@ function AthRpeScores({ath,updAth,onClose}){
    sorted into team practice, strength & conditioning (the Strength & Power and On-Court
    Performance blocks, read off their focus) and matches; conditioning, recovery and test
    sessions are not counted. Only days up to today count — a plan is not yet a miss. */
-const INJ_MISS_KINDS=[{id:'tp',tr:'Takım Antrenmanı',en:'Team Practice'},
+const INJ_MISS_KINDS=[{id:'tp',tr:'Basketbol',en:'Team Practice'},
   {id:'sc',tr:'Kuvvet & Kondisyon',en:'Strength & Conditioning'},{id:'match',tr:'Müsabaka',en:'Competition'}];
 function injSesKind(s){
   const k=sesKind(s);
