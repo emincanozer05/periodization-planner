@@ -267,13 +267,17 @@ function WeeklyPlanTab({team,updateTeam,plan,periods,focusWeek}){
 }
 
 /* ---- Monthly calendar: a rough draft of the season ---------------------------
-   Training types (name + colour, editable) dropped onto days: what the month is meant
-   to look like before any session is written. Lives in team.setup.roughPlan, so it moves
-   with the season. Types are referenced by id, so renaming or recolouring one updates
-   every day that carries it. Three ways to place one: drag it from the palette onto a
-   day, pick it as a brush and click days, or the day's own "+" menu. A placed box can be
-   dragged to another day or removed with its ×. Each row starts with its week's plan
-   (phase · focus · load) from the weekly cards, and fixtures show on their day. */
+   Training boxes placed on days: what the month is meant to look like before any
+   session is written. Lives in team.setup.roughPlan, so it moves with the season.
+   A box is added from the day's "+" menu, which lists the training types (name + colour,
+   edited from the same menu). A placed box starts as its type and can then be made its
+   own: a right-click (a long press on a touch screen, or Enter / the menu key on a
+   focused box) opens its editor — name, colour, time and location. It is drawn like a
+   session card on the Calendar tab (`calw-ses`), so both calendars read the same. Boxes
+   drag between days; each row starts with its week's plan (phase · focus · load) from
+   the weekly cards, and fixtures show on their day.
+   A day holds a list of boxes: a type id (a box never edited — older saves are all of
+   this shape), or {t, name, color, time, loc} once edited. */
 const RP_COLORS=['#ef4444','#f97316','#f59e0b','#facc15','#a3e635','#22c55e','#2dd4a7','#38bdf8','#3b82f6','#6366f1','#a78bfa','#ec4899','#94a3b8'];
 const RP_DEFAULT_TYPES=[
   {id:'str',n:['Kuvvet','Strength'],c:'#ef4444'},
@@ -286,6 +290,11 @@ const RP_DEFAULT_TYPES=[
 function rpTypes(s){const rp=s&&s.roughPlan;
   if(rp&&Array.isArray(rp.types))return rp.types;
   return RP_DEFAULT_TYPES.map(t=>({id:t.id,name:L(t.n[0],t.n[1]),color:t.c}));}
+const rpBox=e=>typeof e==='string'?{t:e}:(e&&typeof e==='object'?e:null);
+/* A box as it shows: its own name / colour, else its type's. */
+const rpView=(e,typeBy)=>{const b=rpBox(e);if(!b)return null;const t=typeBy[b.t];
+  if(!t&&!b.name)return null;
+  return{...b,name:b.name||(t&&t.name)||L('Antrenman','Training'),color:b.color||(t&&t.color)||'#94a3b8',type:t||null};};
 function RpAddMenu({types,onPick,onEdit,onClose,alignRight,up}){
   const ref=useRef(null);
   useDDOutside([ref],true,onClose);
@@ -294,8 +303,66 @@ function RpAddMenu({types,onPick,onEdit,onClose,alignRight,up}){
     <div className="rp-menu-h">{L('Antrenman ekle','Add training')}</div>
     {types.map(t=><button key={t.id} type="button" role="menuitem" className="rp-menu-i" style={{'--tc':t.color}} onClick={()=>onPick(t.id)}>
       <i/>{t.name||L('Adsız','Untitled')}</button>)}
+    {types.length===0&&<div className="rp-menu-none">{L('Henüz antrenman türü yok.','No training types yet.')}</div>}
     <button type="button" className="rp-menu-e" onClick={onEdit}>{L('Türleri düzenle…','Edit types…')}</button>
   </div>);
+}
+/* The box editor, opened at the pointer. Typing is kept here until the editor closes —
+   by Kaydet, Enter or a click outside — so a half-typed name is not written; Escape
+   leaves without saving. A colour is part of the same draft. */
+function RpBoxEditor({x,y,box,type,onSave,onDelete,onClose}){
+  const ref=useRef(null);
+  const[pos,setPos]=useState({left:x,top:y});
+  const[d,setD]=useState({name:box.name||'',color:box.color||'',time:box.time||'',loc:box.loc||''});
+  const dRef=useRef(d);dRef.current=d;
+  const done=useRef(false);
+  const save=()=>{if(done.current)return;done.current=true;onSave(dRef.current);onClose();};
+  const cancel=()=>{done.current=true;onClose();};
+  useLayoutEffect(()=>{const el=ref.current;if(!el)return;const r=el.getBoundingClientRect(),m=8;
+    setPos({left:Math.max(m,Math.min(x,window.innerWidth-r.width-m)),top:Math.max(m,Math.min(y,window.innerHeight-r.height-m))});},[x,y]);
+  useEffect(()=>{
+    const down=e=>{if(ref.current&&!ref.current.contains(e.target))save();};
+    const key=e=>{if(e.key==='Escape'){e.stopPropagation();cancel();}};
+    document.addEventListener('mousedown',down,true);document.addEventListener('keydown',key,true);
+    const t=setTimeout(()=>{const i=ref.current&&ref.current.querySelector('input');if(i)i.focus();},30);
+    return()=>{clearTimeout(t);document.removeEventListener('mousedown',down,true);document.removeEventListener('keydown',key,true);};
+  },[]);
+  const set=(k,v)=>setD(o=>({...o,[k]:v}));
+  const col=d.color||(type&&type.color)||'#94a3b8';
+  const enter=e=>{if(e.key==='Enter'){e.preventDefault();save();}};
+  return ReactDOM.createPortal(<div ref={ref} className="rpe" role="dialog" aria-label={L('Antrenmanı düzenle','Edit training')} style={{...pos,'--tc':col}}
+      onClick={e=>e.stopPropagation()} onContextMenu={e=>e.preventDefault()}>
+    <div className="rpe-h"><i/>{L('Antrenmanı düzenle','Edit training')}
+      {type&&<span title={L('Türü','Its type')}>{type.name}</span>}</div>
+    <label className="rpe-f"><span>{L('İsim','Name')}</span>
+      <input value={d.name} maxLength={40} placeholder={(type&&type.name)||L('Antrenman adı','Training name')}
+        onChange={e=>set('name',e.target.value)} onKeyDown={enter}/></label>
+    <div className="rpe-row">
+      <label className="rpe-f rpe-t"><span>{L('Saat','Time')}</span>
+        <input type="time" value={d.time} onChange={e=>set('time',e.target.value)} onKeyDown={enter}/></label>
+      <label className="rpe-f"><span>{L('Lokasyon','Location')}</span>
+        <input value={d.loc} maxLength={40} placeholder={L('ör. Ağırlık salonu','e.g. Weight room')}
+          onChange={e=>set('loc',e.target.value)} onKeyDown={enter}/></label>
+    </div>
+    <div className="rpe-f"><span>{L('Renk','Colour')}</span>
+      <div className="rpe-sws" role="radiogroup" aria-label={L('Renk','Colour')}>
+        {RP_COLORS.map(c=><button key={c} type="button" role="radio" aria-checked={col===c} aria-label={c}
+          className={'rpe-sw'+(col===c?' on':'')} style={{background:c}} onClick={()=>set('color',c)}/>)}
+        <label className={'rpe-sw rpe-cust'+(RP_COLORS.includes(col)?'':' on')} title={L('Özel renk','Custom colour')}>
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(col)?col:'#94a3b8'} onChange={e=>set('color',e.target.value)}/></label>
+      </div>
+      {d.color&&type&&<button type="button" className="rpe-reset" onClick={()=>set('color','')}>
+        <i style={{background:type.color}}/>{L('Türün rengine dön','Back to the type\'s colour')}</button>}
+    </div>
+    <div className="rpe-act">
+      <button type="button" className="rpe-del" onClick={()=>{done.current=true;onDelete();onClose();}}>
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        {L('Sil','Delete')}</button>
+      <span style={{flex:1}}/>
+      <button type="button" className="btn xs sec" onClick={cancel}>{L('Vazgeç','Cancel')}</button>
+      <button type="button" className="btn xs" onClick={save}>{L('Kaydet','Save')}</button>
+    </div>
+  </div>,document.body);
 }
 function RoughCalendar({team,updateTeam,rows}){
   const s=team.setup;
@@ -306,11 +373,10 @@ function RoughCalendar({team,updateTeam,rows}){
     if(s.seasonStart&&s.seasonEnd&&tk>=s.seasonStart.slice(0,7)&&tk<=s.seasonEnd.slice(0,7))return tk;
     return(s.seasonStart||fmt(today)).slice(0,7);});
   const[menu,setMenu]=useState(null);       // day key whose "+" menu is open
-  const[brush,setBrush]=useState(null);     // type id painted with a click
   const[editing,setEditing]=useState(false);
   const[over,setOver]=useState(null);       // day key under a drag
-  useEffect(()=>{if(!brush)return;const k=e=>{if(e.key==='Escape')setBrush(null);};
-    window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[brush]);
+  const[boxEd,setBoxEd]=useState(null);     // {k,i,x,y}: the box whose editor is open
+  const press=useRef(null);
   const y=+mk.slice(0,4),m=+mk.slice(5,7)-1;
   const first=new Date(y,m,1),last=new Date(y,m+1,0);
   const wkStarts=[];for(let c=sow(first);c<=last;c=addD(c,7))wkStarts.push(c);
@@ -325,6 +391,11 @@ function RoughCalendar({team,updateTeam,rows}){
   const setDay=(k,list)=>{const nd={...dayMap};if(list.length)nd[k]=list;else delete nd[k];setDays(nd);};
   const add=(k,tid)=>setDay(k,[...(dayMap[k]||[]),tid]);
   const removeAt=(k,i)=>setDay(k,(dayMap[k]||[]).filter((_,j)=>j!==i));
+  /* A box with nothing of its own left goes back to being just its type id. */
+  const editAt=(k,i,draft)=>{const b=rpBox((dayMap[k]||[])[i]);if(!b)return;
+    const n={t:b.t};['name','color','time','loc'].forEach(f=>{const v=String(draft[f]||'').trim();if(v)n[f]=v;});
+    const t=typeBy[b.t];if(t&&n.name===t.name)delete n.name;if(t&&n.color===t.color)delete n.color;
+    setDay(k,(dayMap[k]||[]).map((e,j)=>j===i?(Object.keys(n).length>1?n:b.t):e));};
   const move=(from,i,to)=>{if(from===to)return;const a=[...(dayMap[from]||[])];const t=a.splice(i,1)[0];if(!t)return;
     const nd={...dayMap};if(a.length)nd[from]=a;else delete nd[from];nd[to]=[...(nd[to]||[]),t];setDays(nd);};
   const copyWeek=ws=>{const nx=addD(ws,7);
@@ -332,29 +403,32 @@ function RoughCalendar({team,updateTeam,rows}){
     if(has&&!confirm(L('Sonraki haftada yerleştirilmiş antrenmanlar var. Bu haftanın düzeniyle değiştirilsin mi?',
       'The next week already has trainings placed. Replace them with this week\'s layout?')))return;
     const nd={...dayMap};
-    for(let d=0;d<7;d++){const src=dayMap[fmt(addD(ws,d))],dst=fmt(addD(nx,d));if(src&&src.length)nd[dst]=[...src];else delete nd[dst];}
+    for(let d=0;d<7;d++){const src=dayMap[fmt(addD(ws,d))],dst=fmt(addD(nx,d));if(src&&src.length)nd[dst]=src.map(e=>typeof e==='string'?e:{...e});else delete nd[dst];}
     setDays(nd);
     /* The copy usually lands in the next month's first week: follow it there. */
     if(fmt(nx).slice(0,7)>mk&&fmt(addD(nx,6)).slice(0,7)>mk)setMk(fmt(nx).slice(0,7));};
   const onDrop=(e,k)=>{e.preventDefault();setOver(null);let d=null;
     try{d=JSON.parse(e.dataTransfer.getData('text/plain'));}catch(err){return;}
-    if(!d)return;if(d.t&&typeBy[d.t])add(k,d.t);else if(d.from)move(d.from,d.i,k);};
-  const drag=(e,payload)=>{e.dataTransfer.effectAllowed=payload.t?'copy':'move';e.dataTransfer.setData('text/plain',JSON.stringify(payload));};
-  const counts={};Object.entries(dayMap).forEach(([k,l])=>{if(k.slice(0,7)===mk)(l||[]).forEach(t=>{counts[t]=(counts[t]||0)+1;});});
-  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    if(d&&d.from)move(d.from,d.i,k);};
+  const openEd=(k,i,px,py)=>{setMenu(null);setBoxEd({k,i,x:px,y:py});};
+  const pressStart=(e,k,i)=>{const t=e.touches&&e.touches[0];if(!t)return;clearTimeout(press.current);
+    press.current=setTimeout(()=>openEd(k,i,t.clientX,t.clientY),550);};
+  const pressEnd=()=>clearTimeout(press.current);
+  useEffect(()=>()=>clearTimeout(press.current),[]);
+  let total=0;Object.entries(dayMap).forEach(([k,l])=>{if(k.slice(0,7)===mk)total+=(l||[]).filter(e=>rpView(e,typeBy)).length;});
   const updType=(id,patch)=>save({types:types.map(t=>t.id===id?{...t,...patch}:t)});
   const addType=()=>{const used=new Set(types.map(t=>t.color));
     save({types:[...types,{id:uid(),name:L('Yeni tür','New type'),color:RP_COLORS.find(c=>!used.has(c))||RP_COLORS[0]}]});};
-  const delType=t=>{const n=Object.values(dayMap).reduce((a,l)=>a+(l||[]).filter(x=>x===t.id).length,0);
+  const delType=t=>{const n=Object.values(dayMap).reduce((a,l)=>a+(l||[]).filter(x=>(rpBox(x)||{}).t===t.id).length,0);
     if(n&&!confirm(L(`"${t.name}" takvimde ${n} yerde kullanılıyor. Tür ve bu kutucuklar silinsin mi?`,
       `"${t.name}" is placed ${n} time${n>1?'s':''} on the calendar. Delete the type and those boxes?`)))return;
-    const nd={};Object.entries(dayMap).forEach(([k,l])=>{const a=(l||[]).filter(x=>x!==t.id);if(a.length)nd[k]=a;});
-    if(brush===t.id)setBrush(null);
+    const nd={};Object.entries(dayMap).forEach(([k,l])=>{const a=(l||[]).filter(x=>(rpBox(x)||{}).t!==t.id);if(a.length)nd[k]=a;});
     save({types:types.filter(x=>x.id!==t.id),days:nd});};
   const clearMonth=()=>{if(!total)return;
     if(!confirm(L(`${MNF[m]} ${y} ayındaki ${total} kutucuk silinsin mi?`,`Delete the ${total} boxes placed in ${MNF[m]} ${y}?`)))return;
     const nd={};Object.entries(dayMap).forEach(([k,l])=>{if(k.slice(0,7)!==mk)nd[k]=l;});setDays(nd);};
-  return(<div className={'rp'+(brush?' brushing':'')}>
+  const edBox=boxEd&&rpBox((dayMap[boxEd.k]||[])[boxEd.i]);
+  return(<div className="rp">
     <div className="rp-top">
       <div className="rp-nav">
         <button type="button" className="rp-nb" onClick={()=>shift(-1)} aria-label={L('Önceki ay','Previous month')}>‹</button>
@@ -367,19 +441,10 @@ function RoughCalendar({team,updateTeam,rows}){
         {total>0&&<button type="button" className="btn xs sec" onClick={clearMonth}>{L('Ayı temizle','Clear month')}</button>}
       </div>
     </div>
-    <div className="rp-pal">
-      <div className="rp-pal-l">
-        {types.map(t=><button key={t.id} type="button" draggable className={'rp-pt'+(brush===t.id?' on':'')} style={{'--tc':t.color}}
-          aria-pressed={brush===t.id} onDragStart={e=>drag(e,{t:t.id})} onClick={()=>setBrush(b=>b===t.id?null:t.id)}
-          title={L('Güne sürükle ya da seçip günlere tıkla','Drag onto a day, or pick it and click days')}>
-          <i/>{t.name||L('Adsız','Untitled')}{counts[t.id]?<em>{counts[t.id]}</em>:null}</button>)}
-        {types.length===0&&<span className="rp-hint">{L('Henüz antrenman türü yok.','No training types yet.')}</span>}
-      </div>
-      <button type="button" className={'btn xs sec rp-edit'+(editing?' on':'')} aria-expanded={editing} onClick={()=>setEditing(v=>!v)}>
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        {editing?L('Bitti','Done'):L('Türleri düzenle','Edit types')}</button>
-    </div>
     {editing&&<div className="rp-ed">
+      <div className="rp-ed-h"><b>{L('Antrenman türleri','Training types')}</b>
+        <span>{L('Günün + menüsünde listelenir. Yeni eklenen kutucuk türün adını ve rengini alır.','Listed in a day\'s + menu. A new box takes its type\'s name and colour.')}</span>
+        <button type="button" className="btn xs sec" onClick={()=>setEditing(false)}>{L('Bitti','Done')}</button></div>
       {types.map(t=><div key={t.id} className="rp-ed-row" style={{'--tc':t.color}}>
         <span className="rp-ed-sw" aria-hidden="true"/>
         <input className="rp-ed-n" defaultValue={t.name} maxLength={28} aria-label={L('Tür adı','Type name')}
@@ -397,11 +462,8 @@ function RoughCalendar({team,updateTeam,rows}){
       </div>)}
       <button type="button" className="rp-ed-add" onClick={addType}>+ {L('Yeni tür ekle','Add a type')}</button>
     </div>}
-    <div className="rp-hintbar">{brush&&typeBy[brush]
-      ?<><span className="rp-brush" style={{'--tc':typeBy[brush].color}}><i/>{typeBy[brush].name}</span>
-        {L('eklemek için günlere tıkla','click days to add it')} · <button type="button" className="rp-link" onClick={()=>setBrush(null)}>{L('Bitir (Esc)','Done (Esc)')}</button></>
-      :L('Bir türü güne sürükle, seçip günlere tıkla ya da günün + düğmesini kullan. Kutucukları günler arasında sürükleyerek taşıyabilirsin.',
-        'Drag a type onto a day, pick it and click days, or use a day\'s + button. Drag boxes between days to move them.')}</div>
+    <div className="rp-hintbar">{L('Günün + düğmesiyle antrenman ekle. Kutucuğa sağ tıklayarak adını, rengini, saatini ve lokasyonunu düzenle; sürükleyerek başka güne taşı.',
+      'Add a training with a day\'s + button. Right-click a box to edit its name, colour, time and location; drag it to move it to another day.')}</div>
     <div className="rp-scroll">
       <div className="rp-grid">
         <div className="rp-hd rp-hd-w">{L('Hafta','Week')}</div>
@@ -426,20 +488,33 @@ function RoughCalendar({team,updateTeam,rows}){
               return(<div key={k} className={'rp-day'+(out?' out':'')+(inSeason(k)?'':' off')+(isT?' today':'')+(over===k?' over':'')+(i>4?' we':'')+(isOpen?' open':'')}
                 onDragOver={e=>{e.preventDefault();if(over!==k)setOver(k);}} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setOver(o=>o===k?null:o);}}
                 onDrop={e=>onDrop(e,k)}
-                onClick={e=>{if(e.target.closest('button,.rp-chip,.rp-menu'))return;if(brush)add(k,brush);else setMenu(isOpen?null:k);}}>
+                onClick={e=>{if(e.target.closest('button,.rp-ses,.rp-menu'))return;setMenu(isOpen?null:k);}}>
                 <div className="rp-day-h">
                   <span className="rp-num">{d.getDate()}</span>
                   <button type="button" className="rp-add" aria-label={L(`${fd(k)} için antrenman ekle`,`Add training on ${fd(k)}`)}
-                    aria-expanded={isOpen} onClick={()=>{if(brush)add(k,brush);else setMenu(isOpen?null:k);}}>+</button>
+                    aria-expanded={isOpen} onClick={()=>setMenu(isOpen?null:k)}>+</button>
                 </div>
                 <div className="rp-chips">
                   {games.map((c,gi)=><span key={'g'+gi} className="rp-match" title={[c.opponent||c.name,c.comp].filter(Boolean).join(' · ')}>
                     {L('Maç','Game')}{(c.opponent||c.name)?` · ${c.opponent||c.name}`:''}</span>)}
-                  {list.map((tid,ci)=>{const t=typeBy[tid];if(!t)return null;return(
-                    <span key={ci} className="rp-chip" draggable style={{'--tc':t.color}} onDragStart={e=>drag(e,{from:k,i:ci})} title={t.name}>
-                      <span className="rp-chip-t">{t.name}</span>
-                      <button type="button" className="rp-chip-x" onClick={()=>removeAt(k,ci)} aria-label={L(`${t.name} kaldır`,`Remove ${t.name}`)}>×</button>
-                    </span>);})}
+                  {list.map((e,ci)=>{const v=rpView(e,typeBy);if(!v)return null;
+                    const meta=[v.time,v.loc].filter(Boolean);
+                    return(<div key={ci} className={'calw-ses rp-ses'+(boxEd&&boxEd.k===k&&boxEd.i===ci?' editing':'')} draggable
+                      style={{'--sc':v.color}} tabIndex={0} role="button" aria-haspopup="dialog"
+                      title={[v.name,...meta].join(' · ')+'\n'+L('Sağ tık: düzenle','Right-click: edit')}
+                      onDragStart={ev=>{ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',JSON.stringify({from:k,i:ci}));}}
+                      onContextMenu={ev=>{ev.preventDefault();ev.stopPropagation();openEd(k,ci,ev.clientX,ev.clientY);}}
+                      onKeyDown={ev=>{if(ev.key==='Enter'||ev.key==='ContextMenu'||(ev.shiftKey&&ev.key==='F10')){ev.preventDefault();
+                        const rc=ev.currentTarget.getBoundingClientRect();openEd(k,ci,rc.left,rc.bottom+4);}
+                        else if(ev.key==='Delete'||ev.key==='Backspace'){ev.preventDefault();removeAt(k,ci);}}}
+                      onTouchStart={ev=>pressStart(ev,k,ci)} onTouchEnd={pressEnd} onTouchMove={pressEnd} onTouchCancel={pressEnd}>
+                      <div className="calw-ses-act" onClick={ev=>ev.stopPropagation()}>
+                        <button type="button" className="del" title={L('Kaldır','Remove')} aria-label={L(`${v.name} kaldır`,`Remove ${v.name}`)}
+                          onClick={ev=>{ev.stopPropagation();removeAt(k,ci);}}>✕</button>
+                      </div>
+                      <div className="nm">{v.name}</div>
+                      {meta.length>0&&<div className="mt">{v.time&&<span>{v.time}</span>}{v.time&&v.loc&&<span className="sep"/>}{v.loc&&<span className="rp-loc">{v.loc}</span>}</div>}
+                    </div>);})}
                 </div>
                 {isOpen&&<RpAddMenu types={types} alignRight={i>3} up={wi>=2&&wi>=wkStarts.length-2} onClose={()=>setMenu(null)}
                   onPick={tid=>{add(k,tid);setMenu(null);}} onEdit={()=>{setMenu(null);setEditing(true);}}/>}
@@ -447,6 +522,8 @@ function RoughCalendar({team,updateTeam,rows}){
           </React.Fragment>);})}
       </div>
     </div>
+    {boxEd&&edBox&&<RpBoxEditor key={boxEd.k+':'+boxEd.i} x={boxEd.x} y={boxEd.y} box={edBox} type={typeBy[edBox.t]||null}
+      onSave={dr=>editAt(boxEd.k,boxEd.i,dr)} onDelete={()=>removeAt(boxEd.k,boxEd.i)} onClose={()=>setBoxEd(null)}/>}
   </div>);
 }
 
