@@ -10950,10 +10950,10 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 
 /* ── Hafta kartı ──────────────────────────────────────────────────────────────── */
 .sp-wk{position:relative;display:flex;flex-direction:column;min-width:0;padding:10px 11px 10px;background:var(--sp-card);
-  border:1px solid var(--sp-line);border-top:3px solid var(--pc);border-radius:var(--sp-r);transition:border-color .15s ease,box-shadow .15s ease}
-.sp-wk:hover{border-color:var(--sp-line2);border-top-color:var(--pc)}
+  border:1px solid color-mix(in srgb,var(--pc) 60%,transparent);border-radius:var(--sp-r);transition:border-color .15s ease,box-shadow .15s ease}
+.sp-wk:hover{border-color:var(--pc)}
 .sp-wk:focus-within{z-index:5}
-.sp-wk.cur{border-color:color-mix(in srgb,var(--accent) 70%,transparent);border-top-color:var(--pc);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 70%,transparent)}
+.sp-wk.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .sp-wk.sp-flash{animation:spFlash 1.4s ease}
 @keyframes spFlash{0%,40%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 70%,transparent)}}
 .sp-wk-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
@@ -11116,7 +11116,8 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 /* Yerleştirilen antrenman: Takvim sekmesinin seans kartı (`calw-ses`, 19b'deki Kinexon biçimi):
    kartın renginde ince çerçeve ve isim, altında saat · lokasyon. Ay hücresine göre biraz sıkı. */
 .rp-chips{display:flex;flex-direction:column;gap:6px;min-width:0}
-:is(:root,:root[data-theme]) .rp-chips>.calw-ses.rp-ses{border-radius:3px}
+/* Yalnız çerçeve renkli, içi boş (Takvim kartının açık tonlu zemini burada yok). */
+:is(:root,:root[data-theme]) .rp-chips>.calw-ses.rp-ses{border-radius:3px;background:transparent}
 .rp-chips>.calw-ses.rp-ses{padding:6px 8px;cursor:grab;animation:rpIn .18s cubic-bezier(.2,.7,.3,1)}
 @keyframes rpIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 .rp-chips>.calw-ses.rp-ses:active{cursor:grabbing}
@@ -18711,26 +18712,15 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
 /* =========================================================
    SEASON PLAN (with customizable periods)
    ========================================================= */
-/* ---- The three choices a week is planned with -------------------------------
-   1 Training Phase — where the week sits in the block; 2 Weekly Focus — the quality it
-   builds; 3 Weekly Load — how hard the week is meant to be. Each option carries its own
+/* ---- The choices a week is planned with ------------------------------------
+   Training Phase — where the week sits in the season (the four macrocycle periods);
+   Primary and Secondary Focus — the qualities it builds; Weekly Load — how hard the week
+   is meant to be. Each option carries its own
    explanation in both languages, shown under the open list. A load level also carries a
    target factor (`f`, × the season's "normal week" load) and the volume / intensity
    profile (`v`, `i`) the Planned Microcycles chart draws. */
-const WLT_STEPS=[
-  {key:'phase',label:['Antrenman Fazı','Training Phase'],opts:[
-    {id:'base',c:'#38bdf8',l:['Temel','Foundation'],d:['Genel fiziksel kapasitenin, aerobik kapasitenin, iş kapasitesinin ve temel hareket/kuvvet altyapısının oluşturulduğu dönem.',
-      'The period in which general physical capacity, aerobic capacity, work capacity and the basic movement/strength foundation are built.']},
-    {id:'accumulation',c:'#3b82f6',l:['Birikim','Accumulation'],d:['Antrenman hacminin ve temel fiziksel kapasitelerin biriktirildiği dönem. Kuvvet, hipertrofi, aerobik kapasite ve iş kapasitesi geliştirilebilir.',
-      'The period in which training volume and basic physical capacities are accumulated. Strength, hypertrophy, aerobic capacity and work capacity can be developed.']},
-    {id:'intensification',c:'#f59e0b',l:['Yoğunlaştırma','Intensification'],d:['Hacmin görece azaltılıp yoğunluğun artırıldığı dönem. Maksimal kuvvet, kuvvet üretimi ve yüksek kaliteli güç çalışmaları önem kazanır.',
-      'The period in which volume is relatively reduced and intensity is raised. Max strength, force production and high-quality power work gain importance.']},
-    {id:'realization',c:'#ef4444',l:['Gerçekleştirme','Realization'],d:['Önceki dönemlerde geliştirilen kapasitelerin performansa dönüştürüldüğü dönem. Sürat, güç, patlayıcılık ve özgüllük artar.',
-      'The period in which the capacities built earlier are turned into performance. Speed, power, explosiveness and specificity increase.']},
-    {id:'transition',c:'#2dd4a7',l:['Geçiş','Transition'],d:['Bir sezon veya antrenman döneminden diğerine geçiş dönemi. Toparlanma, düşük yük ve yeni döneme hazırlık ön plandadır.',
-      'The bridge from one season or training block to the next. Recovery, low load and preparing for the next block come first.']},
-  ]},
-  {key:'emphasis',label:['Haftanın Odağı','Weekly Focus'],opts:[
+/* The qualities a week can build — the same list for the primary and the secondary focus. */
+const WLT_FOCUS_OPTS=[
     {id:'aerobic',c:'#22c55e',l:['İş Kapasitesi','Work Capacity'],d:['Aerobik kapasiteyi, kondisyonu ve sporcunun antrenman yükünü tolere etme kapasitesini geliştirmeye odaklanır.',
       'Develops aerobic capacity, conditioning and the athlete\'s capacity to tolerate training load.']},
     {id:'hypertrophy',c:'#a78bfa',l:['Hipertrofi / Yapısal Kapasite','Hypertrophy / Structural Capacity'],d:['Kas kütlesi, kas kesit alanı ve sporcunun yapısal kapasitesini geliştirmeye odaklanır.',
@@ -18743,7 +18733,21 @@ const WLT_STEPS=[
       'Develops sprint capacity, including initial acceleration and maximal velocity.']},
     {id:'mixed',c:'#94a3b8',l:['Karma','Mixed'],d:['Birden fazla kalite aynı hafta içinde birlikte çalışılır; tek bir baskın vurgu yoktur. Müsabaka haftaları ve geçiş blokları için uygundur.',
       'Several qualities are trained in the same week with no single dominant emphasis. Suits competition weeks and bridging blocks.']},
+  ];
+const WLT_STEPS=[
+  {key:'phase',label:['Antrenman Fazı','Training Phase'],opts:[
+    {id:'gp',c:'#3b6ef5',l:['Temel Hazırlık','General Preparation'],d:['Sezon öncesi hazırlığın ilk aşaması: temel kuvvet, aerobik dayanıklılık, mobilite ve hareket kalitesi geliştirilir; hacim kademeli artırılarak yoğun yüklenmelere altyapı kurulur.',
+      'The first stage of pre-season preparation: base strength, aerobic endurance, mobility and movement quality are developed; volume rises gradually, building the base for heavier loading.']},
+    {id:'sp',c:'#facc15',l:['Özel Hazırlık','Specific Preparation'],d:['Sezon öncesi hazırlığın son aşaması: maksimal kuvvet, patlayıcı güç, sürat, çeviklik ve branşa özgü kondisyon geliştirilir; antrenmanın özgüllüğü artar.',
+      'The last stage of pre-season preparation: maximal strength, explosive power, speed, agility and sport-specific conditioning are developed; training becomes more specific.']},
+    {id:'perf',c:'#f43f5e',l:['Performans','Competition / Performance'],d:['Müsabaka dönemi: kazanılan fiziksel özellikler korunur, performans sürdürülür; yükler maç takvimine göre düzenlenir.',
+      'The competition period: the qualities gained are maintained and performance sustained; loads are arranged around the match calendar.']},
+    {id:'trans',c:'#2dd4a7',l:['Geçiş','Transition'],d:['Sezon sonu ve sezonlar arası: fiziksel ve psikolojik toparlanma, aktif dinlenme ve bireysel eksikliklere yönelik çalışma.',
+      'End of season and between seasons: physical and psychological recovery, active rest and work on individual weaknesses.']},
   ]},
+  {key:'emphasis',label:['Birincil Odak','Primary Focus'],opts:WLT_FOCUS_OPTS},
+  {key:'emphasis2',label:['İkincil Odak','Secondary Focus'],opts:[...WLT_FOCUS_OPTS,
+    {id:'none',c:'#64748b',l:['Yok','None'],d:['Bu hafta ikincil bir odak yok; hafta tek bir kaliteye ayrılır.','No secondary focus this week; the week is given to one quality.']}]},
   {key:'load',label:['Haftanın Yükü','Weekly Load'],opts:[
     {id:'low',c:'#38bdf8',f:.8,v:60,i:60,l:['Düşük','Low'],d:['Yükün normalin altında tutulduğu hafta: yeni bir bloğa giriş, yoğun maç takvimi ya da kontrollü yüklenme için. Hedef, normal haftanın %80\'i.',
       'A week held below the usual load: easing into a new block, a busy fixture list or controlled loading. Target: 80% of a normal week.']},
@@ -18758,26 +18762,23 @@ const WLT_STEPS=[
   ]},
 ];
 const wltOpt=(key,id)=>{const st=WLT_STEPS.find(x=>x.key===key);return st?st.opts.find(o=>o.id===id)||null:null;};
-const wltLbl=(key,id)=>{const o=wltOpt(key,id);return o?L(o.l[0],o.l[1]):'';};
+const wltLbl=(key,id)=>{const o=wltOpt(key,id);return o&&o.id!=='none'?L(o.l[0],o.l[1]):'';};
 /* Weeks saved before the third choice became the week's load carried a "microcycle
    objective"; each one reads as the load level closest to it. */
 const WLT_OBJ_LOAD={preparation:'low',loading:'moderate',overreaching:'high',deload:'deload',peaking:'peaking',competition:'moderate'};
-/* What a week reads as before the coach has chosen anything: derived from the focus the
-   periodization model gave it, its period, a taper and the games that fall in it. */
-const WLT_FOCUS_PHASE={'Base + aerobic':'base','General':'base','Accumulation':'accumulation','Hi-volume wave':'accumulation',
-  'Transmutation':'intensification','Sport-specific':'intensification','Hi-intensity wave':'intensification','Max-effort':'intensification',
-  'Realization':'realization','Maintain & peak':'realization','Dynamic-effort':'realization','Peak':'realization',
-  'Active recovery':'transition','Deload':'transition',
-  'Aerobic emphasis':'base','Intensity-first':'intensification','Strength emphasis':'intensification',
-  'Power emphasis':'realization','Speed emphasis':'realization'};
-const WLT_PERIOD_PHASE={gp:'base',sp:'accumulation',comp:'realization',trans:'transition'};
-const WLT_PHASE_EMPH={base:'aerobic',accumulation:'hypertrophy',intensification:'maxStrength',realization:'power',transition:'aerobic'};
+/* What a week reads as before the coach has chosen anything: its phase is the period it
+   falls in; the two focuses follow the phase; the load follows a taper, the transition
+   period and a period's first week. Weeks saved with the older five-step phase scale
+   (Foundation … Transition) read as the period that phase belongs to. */
+const WLT_PERIOD_PHASE={gp:'gp',sp:'sp',comp:'perf',trans:'trans'};
+const WLT_OLD_PHASE={base:'gp',accumulation:'gp',intensification:'sp',realization:'perf',transition:'trans'};
+const WLT_PHASE_EMPH={gp:['aerobic','hypertrophy'],sp:['maxStrength','power'],perf:['power','speed'],trans:['aerobic','none']};
 function wltDefaults(w,firstOfPeriod,games){
-  const phase=w.taper?'realization':(WLT_FOCUS_PHASE[w.focus]||WLT_PERIOD_PHASE[w.period]||'base');
-  const emphasis=games>0&&!w.taper?'mixed':(WLT_PHASE_EMPH[phase]||'aerobic');
+  const phase=WLT_PERIOD_PHASE[w.period]||'gp';
+  const[emphasis,emphasis2]=WLT_PHASE_EMPH[phase]||['aerobic','none'];
   const load=w.taper?'peaking':(w.period==='trans'||w.focus==='Deload'||w.focus==='Active recovery')?'deload'
     :firstOfPeriod?'low':'moderate';
-  return{phase,emphasis,load};
+  return{phase,emphasis,emphasis2,load};
 }
 const nfAU=n=>Math.round(Number(n)||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
 const spPct=n=>REPORT_LANG==='tr'?`%${n}`:`${n}%`;
@@ -18803,10 +18804,11 @@ function wltRows(team,weeks){
     const o=ov[w.week]||{};
     const has=(k,v)=>!!wltOpt(k,v);
     const oLoad=o.load||WLT_OBJ_LOAD[o.objective];
-    const steps={phase:has('phase',o.phase)?o.phase:def.phase,emphasis:has('emphasis',o.emphasis)?o.emphasis:def.emphasis,
-      load:has('load',oLoad)?oLoad:def.load};
+    const oPhase=WLT_OLD_PHASE[o.phase]||o.phase;
+    const steps={phase:has('phase',oPhase)?oPhase:def.phase,emphasis:has('emphasis',o.emphasis)?o.emphasis:def.emphasis,
+      emphasis2:has('emphasis2',o.emphasis2)?o.emphasis2:def.emphasis2,load:has('load',oLoad)?oLoad:def.load};
     const hand=Number(o.target)>0?Math.round(Number(o.target)):null;
-    return{...w,idx:i,end,au,ses,games,steps,set:{phase:has('phase',o.phase),emphasis:has('emphasis',o.emphasis),load:has('load',oLoad)},
+    return{...w,idx:i,end,au,ses,games,steps,set:{phase:has('phase',oPhase),emphasis:has('emphasis',o.emphasis),emphasis2:has('emphasis2',o.emphasis2),load:has('load',oLoad)},
       hand,current:tk>=w.week&&tk<=end,past:end<tk,edited:!!ov[w.week]};
   });
   const ref=Number(team.setup&&team.setup.loadRef)>0?Math.round(Number(team.setup.loadRef)):null;
@@ -18869,7 +18871,7 @@ function WeeklyPlanTab({team,updateTeam,plan,periods,focusWeek}){
   const ov=team.weekOverrides||{};
   const s=team.setup;
   const{rows,ref,autoRef}=plan;
-  const[filter,setFilter]=useState('all');   // all | current | future
+  const[filter,setFilter]=useState('current');   // all | current | future — opens on this period
   const refs=useRef({});
   const setWeek=(k,patch)=>{const n={...(ov[k]||{}),...patch};Object.keys(n).forEach(x=>{if(n[x]==null)delete n[x];});
     updateTeam(team.id,{weekOverrides:{...ov,[k]:n}});};
@@ -19203,13 +19205,14 @@ function RoughCalendar({team,updateTeam,rows}){
         <div className="rp-hd rp-hd-w">{L('Hafta','Week')}</div>
         {[0,1,2,3,4,5,6].map(i=><div key={i} className={'rp-hd'+(i>4?' we':'')}>{DN[i]}</div>)}
         {wkStarts.map((ws,wi)=>{const wk=fmt(ws),r=rowBy[wk];
-          const ph=r&&wltOpt('phase',r.steps.phase),em=r&&wltOpt('emphasis',r.steps.emphasis),ld=r&&wltOpt('load',r.steps.load);
+          const ph=r&&wltOpt('phase',r.steps.phase),em=r&&wltOpt('emphasis',r.steps.emphasis),em2=r&&wltOpt('emphasis2',r.steps.emphasis2),ld=r&&wltOpt('load',r.steps.load);
           return(<React.Fragment key={wk}>
             <div className={'rp-wk'+(r&&r.current?' cur':'')} style={{'--pc':r?PHASE_COL[r.period]||'#64748b':'transparent'}}>
               {r?<>
                 <b>{L('H','W')}{r.idx+1}</b>
                 <span style={{'--oc':ph.c}}><i/>{L(ph.l[0],ph.l[1])}</span>
                 <span style={{'--oc':em.c}}><i/>{L(em.l[0],em.l[1])}</span>
+                {em2&&em2.id!=='none'&&<span style={{'--oc':em2.c}}><i/>{L(em2.l[0],em2.l[1])}</span>}
                 <span style={{'--oc':ld.c}}><i/>{L(ld.l[0],ld.l[1])}</span>
               </>:<b className="none">{L('Sezon dışı','Off-season')}</b>}
             </div>
@@ -19271,7 +19274,7 @@ function MicrocycleChart({rows,months,initialMonth}){
   const cw=view!=='month'||!cur?rows:rows.filter(w=>w.week.slice(0,7)===cur||w.end.slice(0,7)===cur);
   const labels=cw.map(w=>[`${L('H','W')}${w.idx+1}`,fd(w.week).slice(0,5)]);
   const title=items=>{const w=cw[items[0].dataIndex];return w?`${L('H','W')}${w.idx+1} · ${fd(w.week).slice(0,5)} – ${fd(w.end).slice(0,5)}`:'';};
-  const after=items=>{const w=cw[items[0].dataIndex];return w?WLT_STEPS.map(st=>wltLbl(st.key,w.steps[st.key])).join(' · '):'';};
+  const after=items=>{const w=cw[items[0].dataIndex];return w?WLT_STEPS.map(st=>wltLbl(st.key,w.steps[st.key])).filter(Boolean).join(' · '):'';};
   const legend={position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:12,weight:'600',family:"'Archivo','Space Grotesk',sans-serif"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}};
   const xs={...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:view!=='month',maxRotation:0,font:{size:10}}};
   const pt=c=>({pointRadius:view==='month'?4:0,pointBackgroundColor:c,pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:c,pointHoverBorderColor:'#fff',pointHoverBorderWidth:2});
@@ -19396,7 +19399,7 @@ function SeasonPlanning({team,updateTeam,weeks,periods,months,initialMonth,dates
         title={L('Bu haftanın kartına git','Go to this week\'s card')}>
         <span className="sp-cur-k">{L('Bu hafta','This week')}</span>
         <b>{L('H','W')}{cur.idx+1}</b>
-        <span className="sp-cur-v">{WLT_STEPS.map(st=>wltLbl(st.key,cur.steps[st.key])).join(' · ')}</span>
+        <span className="sp-cur-v">{WLT_STEPS.map(st=>wltLbl(st.key,cur.steps[st.key])).filter(Boolean).join(' · ')}</span>
         {cur.ratio!=null&&<span className="sp-cur-p">{spPct(cur.ratio)}</span>}
       </button>}
     </div>
