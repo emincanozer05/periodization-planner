@@ -569,9 +569,6 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
       <i>{open?'▼':'▶'}</i>{L('Antrenman Özellikleri','Training Details')}
     </button>
     {open&&<div className="blk-details-b sk">
-      {showPicker&&<AthletePicker athletes={athletes}
-        selected={block?blkAthIds(session,block):(session.athletes||[])}
-        onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
       {/* What the block IS, as the same stat strip the team practice card wears (235):
           when it runs, how long, how hard — then a second strip for what it trains and
           how. The target intensity is set on the ten-step scale (the band ±1 around it is
@@ -618,6 +615,10 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
           </SkStat>
         </div>
       </>;})()}
+      {/* Who takes part, under the block's settings. */}
+      {showPicker&&<AthletePicker athletes={athletes}
+        selected={block?blkAthIds(session,block):(session.athletes||[])}
+        onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
     </div>}
   </div>);
 }

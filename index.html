@@ -10633,8 +10633,9 @@ td.td-c.none{color:var(--border2)}
      10 adımlı RPE ölçeği, Polar bölge dağılımı).
    · Oyuncu çipleri: seçili olan dolgulu ve tikli, seçili olmayan sönük; mavi çerçeve
      ızgarası yok.
-   Aynı şerit ve çipler S&C / top bloğunun "Antrenman Özellikleri" bölümünde (240: oyuncular,
-   Saat · Süre · Hedef Yoğunluk, ikinci şeritte Seans Odağı · Hedef Bölge · Antrenman Metodu)
+   Aynı şerit ve çipler S&C / top bloğunun "Antrenman Özellikleri" bölümünde (240: önce
+   Saat · Süre · Hedef Yoğunluk, ikinci şeritte Seans Odağı · Hedef Bölge · Antrenman Metodu,
+   altında oyuncular)
    ve takvimin seans çekmecesinde (230: Saat · Süre · Hedef · Yoğunluk) de kullanılır.
    Düz yüzey, gradyan yok; az-hareket korumalı.
    ========================================================= */
@@ -10722,7 +10723,7 @@ td.td-c.none{color:var(--border2)}
 /* S&C / top bloğunun "Antrenman Özellikleri" gövdesi: oyuncular + iki şerit */
 .blk-details-b.sk{gap:12px;padding-top:4px}
 .blk-details-b .sk-stats{margin:0}
-.ath-pick.sk .sk-sec{margin-top:6px}
+.ath-pick.sk .sk-sec{margin-top:8px}
 
 /* Takvim çekmecesi: düğme satırının altındaki şerit, ve başlıktaki seans adı kutusuz */
 .dw-b>.sk-stats{margin:14px 0 20px}
@@ -22757,9 +22758,6 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
       <i>{open?'▼':'▶'}</i>{L('Antrenman Özellikleri','Training Details')}
     </button>
     {open&&<div className="blk-details-b sk">
-      {showPicker&&<AthletePicker athletes={athletes}
-        selected={block?blkAthIds(session,block):(session.athletes||[])}
-        onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
       {/* What the block IS, as the same stat strip the team practice card wears (235):
           when it runs, how long, how hard — then a second strip for what it trains and
           how. The target intensity is set on the ten-step scale (the band ±1 around it is
@@ -22806,6 +22804,10 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
           </SkStat>
         </div>
       </>;})()}
+      {/* Who takes part, under the block's settings. */}
+      {showPicker&&<AthletePicker athletes={athletes}
+        selected={block?blkAthIds(session,block):(session.athletes||[])}
+        onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
     </div>}
   </div>);
 }
