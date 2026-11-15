@@ -137,7 +137,7 @@ function WltSelect({step,value,onChange,edited}){
     <div className="sp-fl">{L(step.label[0],step.label[1])}
       {edited&&<i title={L('Elle seçildi','Chosen by hand')}/>}</div>
     <button type="button" className="sp-sel" style={{'--oc':cur.c}} aria-haspopup="listbox" aria-expanded={open}
-      title={L(cur.d[0],cur.d[1])} onClick={()=>{setHov(null);setOpen(o=>!o);}}>
+      title={`${L(cur.l[0],cur.l[1])} — ${L(cur.d[0],cur.d[1])}`} onClick={()=>{setHov(null);setOpen(o=>!o);}}>
       <span className="sp-dot"/><span className="sp-sel-v">{L(cur.l[0],cur.l[1])}</span><SpChev/>
     </button>
     {open&&<div className="sp-menu" role="listbox" aria-label={L(step.label[0],step.label[1])} onMouseLeave={()=>setHov(null)}>
@@ -238,24 +238,27 @@ function WeeklyPlanTab({team,updateTeam,plan,periods,focusWeek}){
               </div>
               <div className="sp-loads">
                 <div className="sp-lc">
-                  <div className="sp-lc-l">{L('Hedeflenen yük','Target load')}</div>
+                  <div className="sp-lc-l" title={L('Hedeflenen yük','Target load')}>{L('Hedef','Target')}</div>
                   <SpNumInput className={'sp-tgt'+(w.hand==null?' sug':'')} value={w.hand} placeholder={w.sug!=null?String(w.sug):'—'}
                     onCommit={n=>setWeek(w.week,{target:n})} ariaLabel={L(`H${w.idx+1} hedeflenen yük (AU)`,`W${w.idx+1} target load (AU)`)}/>
                   <div className="sp-lc-s">{w.hand!=null?L('AU · Düzenlenebilir','AU · Editable')
                     :w.sug!=null?L('AU · Öneri','AU · Suggested'):L('AU · Hedef gir','AU · Enter a target')}</div>
                 </div>
                 <div className="sp-lc">
-                  <div className="sp-lc-l">{L('Gerçekleşen yük','Actual load')}</div>
+                  <div className="sp-lc-l" title={L('Gerçekleşen yük','Actual load')}>{L('Gerçekleşen','Actual')}</div>
                   <div className={'sp-act'+(w.au?'':' none')}>{w.au?<>{nfAU(w.au)} <small>AU</small></>:'—'}</div>
                   <div className="sp-lc-s">{L('sRPE verilerinden','From sRPE data')}</div>
                 </div>
               </div>
               <div className={'sp-prog'+(over?' over':'')} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
                 aria-label={L('Hedef gerçekleşme oranı','Target completion')}><i style={{width:pct+'%'}}/></div>
-              <div className="sp-ratio"><span>{L('Hedef gerçekleşme oranı','Target completion')}</span><b>{r==null?'—':spPct(r)}</b></div>
-              <div className={'sp-left'+(over?' over':'')}>{left==null?L('Hedef belirlenmedi','No target set')
-                :left>=0?<>{L('Hedefe kalan','Left to target')}: <b>{nfAU(left)} AU</b></>
-                :<>{L('Hedef aşıldı','Over target')}: <b>+{nfAU(-left)} AU</b></>}</div>
+              {/* One row under the bar: what is left (or how far over), and the completion rate. */}
+              <div className={'sp-ratio'+(over?' over':'')}>
+                <span>{left==null?L('Hedef belirlenmedi','No target set')
+                  :left>=0?<>{L('Hedefe kalan','Left to target')}: <em>{nfAU(left)} AU</em></>
+                  :<>{L('Hedef aşıldı','Over target')}: <em>+{nfAU(-left)} AU</em></>}</span>
+                <b title={L('Hedef gerçekleşme oranı','Target completion')}>{r==null?'—':spPct(r)}</b>
+              </div>
             </article>);})}
         </div>
       </section>);})}
