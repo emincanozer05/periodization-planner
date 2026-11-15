@@ -309,8 +309,10 @@ function RpAddMenu({types,onPick,onEdit,onClose,alignRight,up}){
 }
 /* The box editor, opened at the pointer. Typing is kept here until the editor closes —
    by Kaydet, Enter or a click outside — so a half-typed name is not written; Escape
-   leaves without saving. A colour is part of the same draft. */
-function RpBoxEditor({x,y,box,type,onSave,onDelete,onClose}){
+   leaves without saving. A colour is part of the same draft. Locations typed before are
+   offered in a list under the field (filtered by what is typed); each has an × that
+   drops it from the list — the boxes that use it keep it. */
+function RpBoxEditor({x,y,box,type,locs,onDelLoc,onSave,onDelete,onClose}){
   const ref=useRef(null);
   const[pos,setPos]=useState({left:x,top:y});
   const[d,setD]=useState({name:box.name||'',color:box.color||'',time:box.time||'',loc:box.loc||''});
@@ -318,11 +320,13 @@ function RpBoxEditor({x,y,box,type,onSave,onDelete,onClose}){
   const done=useRef(false);
   const save=()=>{if(done.current)return;done.current=true;onSave(dRef.current);onClose();};
   const cancel=()=>{done.current=true;onClose();};
+  const[locOpen,setLocOpen]=useState(false);
+  const locOpenRef=useRef(false);locOpenRef.current=locOpen;
   useLayoutEffect(()=>{const el=ref.current;if(!el)return;const r=el.getBoundingClientRect(),m=8;
     setPos({left:Math.max(m,Math.min(x,window.innerWidth-r.width-m)),top:Math.max(m,Math.min(y,window.innerHeight-r.height-m))});},[x,y]);
   useEffect(()=>{
     const down=e=>{if(ref.current&&!ref.current.contains(e.target))save();};
-    const key=e=>{if(e.key==='Escape'){e.stopPropagation();cancel();}};
+    const key=e=>{if(e.key!=='Escape')return;e.stopPropagation();if(locOpenRef.current)setLocOpen(false);else cancel();};
     document.addEventListener('mousedown',down,true);document.addEventListener('keydown',key,true);
     const t=setTimeout(()=>{const i=ref.current&&ref.current.querySelector('input');if(i)i.focus();},30);
     return()=>{clearTimeout(t);document.removeEventListener('mousedown',down,true);document.removeEventListener('keydown',key,true);};
@@ -340,9 +344,30 @@ function RpBoxEditor({x,y,box,type,onSave,onDelete,onClose}){
     <div className="rpe-row">
       <label className="rpe-f rpe-t"><span>{L('Saat','Time')}</span>
         <input type="time" value={d.time} onChange={e=>set('time',e.target.value)} onKeyDown={enter}/></label>
-      <label className="rpe-f"><span>{L('Lokasyon','Location')}</span>
-        <input value={d.loc} maxLength={40} placeholder={L('ör. Ağırlık salonu','e.g. Weight room')}
-          onChange={e=>set('loc',e.target.value)} onKeyDown={enter}/></label>
+      <div className="rpe-f"><span>{L('Lokasyon','Location')}</span>
+        {(()=>{const q=d.loc.trim().toLocaleLowerCase('tr');
+          const list=(locs||[]).filter(l=>!q||l.toLocaleLowerCase('tr').includes(q));
+          return(<div className={'rpe-loc'+(locOpen?' open':'')}>
+            <input value={d.loc} maxLength={40} placeholder={L('ör. Ağırlık salonu','e.g. Weight room')} aria-label={L('Lokasyon','Location')}
+              role="combobox" aria-expanded={locOpen} aria-autocomplete="list"
+              onChange={e=>{set('loc',e.target.value);setLocOpen(true);}} onFocus={()=>setLocOpen(true)}
+              onKeyDown={e=>{if(e.key==='ArrowDown'){e.preventDefault();setLocOpen(true);
+                const b=e.currentTarget.parentNode.querySelector('.rpe-loc-i');if(b)b.focus();}else enter(e);}}/>
+            {(locs||[]).length>0&&<button type="button" className="rpe-loc-car" tabIndex={-1} aria-label={L('Kayıtlı lokasyonlar','Saved locations')}
+              onClick={()=>setLocOpen(o=>!o)}><SpChev/></button>}
+            {locOpen&&list.length>0&&<div className="rpe-loc-l" role="listbox">
+              {list.map(l=><div key={l} className={'rpe-loc-r'+(l===d.loc?' on':'')}>
+                <button type="button" role="option" aria-selected={l===d.loc} className="rpe-loc-i"
+                  onClick={()=>{set('loc',l);setLocOpen(false);}}
+                  onKeyDown={e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();
+                    const r=e.currentTarget.parentNode[e.key==='ArrowDown'?'nextSibling':'previousSibling'];
+                    const b=r&&r.querySelector('.rpe-loc-i');if(b)b.focus();}}}>{l}</button>
+                <button type="button" className="rpe-loc-x" aria-label={L(`${l} lokasyonunu listeden sil`,`Remove ${l} from the list`)}
+                  title={L('Listeden sil','Remove from the list')} onClick={()=>onDelLoc(l)}>×</button>
+              </div>)}
+            </div>}
+          </div>);})()}
+      </div>
     </div>
     <div className="rpe-f"><span>{L('Renk','Colour')}</span>
       <div className="rpe-sws" role="radiogroup" aria-label={L('Renk','Colour')}>
@@ -368,7 +393,7 @@ function RoughCalendar({team,updateTeam,rows}){
   const s=team.setup;
   const types=rpTypes(s);
   const dayMap=(s.roughPlan&&s.roughPlan.days)||{};
-  const save=patch=>updateTeam(team.id,{setup:{...s,roughPlan:{types,days:dayMap,...patch}}});
+  const save=patch=>updateTeam(team.id,{setup:{...s,roughPlan:{...(s.roughPlan||{}),types,days:dayMap,...patch}}});
   const[mk,setMk]=useState(()=>{const tk=fmt(today).slice(0,7);
     if(s.seasonStart&&s.seasonEnd&&tk>=s.seasonStart.slice(0,7)&&tk<=s.seasonEnd.slice(0,7))return tk;
     return(s.seasonStart||fmt(today)).slice(0,7);});
@@ -386,6 +411,12 @@ function RoughCalendar({team,updateTeam,rows}){
   const rowBy={};rows.forEach(r=>{rowBy[r.week]=r;});
   const compsBy={};((s.competitions)||[]).forEach(c=>{if(c&&c.date)(compsBy[c.date]=compsBy[c.date]||[]).push(c);});
   const typeBy={};types.forEach(t=>{typeBy[t.id]=t;});
+  /* Saved locations: kept in roughPlan.locs once there is one; before that, read off the
+     boxes already carrying a location. */
+  const locs=(s.roughPlan&&Array.isArray(s.roughPlan.locs))?s.roughPlan.locs
+    :[...new Set(Object.values(dayMap).flatMap(l=>(l||[]).map(e=>(rpBox(e)||{}).loc).filter(Boolean)))];
+  const sortLocs=a=>[...a].sort((p,q)=>p.localeCompare(q,REPORT_LANG==='tr'?'tr':'en'));
+  const delLoc=l=>save({locs:locs.filter(x=>x!==l)});
   const inSeason=k=>(!s.seasonStart||k>=s.seasonStart)&&(!s.seasonEnd||k<=s.seasonEnd);
   const setDays=nd=>save({days:nd});
   const setDay=(k,list)=>{const nd={...dayMap};if(list.length)nd[k]=list;else delete nd[k];setDays(nd);};
@@ -395,7 +426,9 @@ function RoughCalendar({team,updateTeam,rows}){
   const editAt=(k,i,draft)=>{const b=rpBox((dayMap[k]||[])[i]);if(!b)return;
     const n={t:b.t};['name','color','time','loc'].forEach(f=>{const v=String(draft[f]||'').trim();if(v)n[f]=v;});
     const t=typeBy[b.t];if(t&&n.name===t.name)delete n.name;if(t&&n.color===t.color)delete n.color;
-    setDay(k,(dayMap[k]||[]).map((e,j)=>j===i?(Object.keys(n).length>1?n:b.t):e));};
+    const nd={...dayMap,[k]:(dayMap[k]||[]).map((e,j)=>j===i?(Object.keys(n).length>1?n:b.t):e)};
+    const known=n.loc&&locs.some(l=>l.toLocaleLowerCase('tr')===n.loc.toLocaleLowerCase('tr'));
+    save({days:nd,...(n.loc&&!known?{locs:sortLocs([...locs,n.loc])}:{})});};
   const move=(from,i,to)=>{if(from===to)return;const a=[...(dayMap[from]||[])];const t=a.splice(i,1)[0];if(!t)return;
     const nd={...dayMap};if(a.length)nd[from]=a;else delete nd[from];nd[to]=[...(nd[to]||[]),t];setDays(nd);};
   const copyWeek=ws=>{const nx=addD(ws,7);
@@ -523,6 +556,7 @@ function RoughCalendar({team,updateTeam,rows}){
       </div>
     </div>
     {boxEd&&edBox&&<RpBoxEditor key={boxEd.k+':'+boxEd.i} x={boxEd.x} y={boxEd.y} box={edBox} type={typeBy[edBox.t]||null}
+      locs={locs} onDelLoc={delLoc}
       onSave={dr=>editAt(boxEd.k,boxEd.i,dr)} onDelete={()=>removeAt(boxEd.k,boxEd.i)} onClose={()=>setBoxEd(null)}/>}
   </div>);
 }
