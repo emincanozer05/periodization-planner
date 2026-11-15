@@ -154,9 +154,26 @@ function sesTipLines(s){
   }));
   return out;
 }
-/* The monotony card's scale: Foster's four bands on one bar (0 → 2.5+), the target
-   (< 1.50) bracketed above it and a marker at this week's value, so the card says where
-   the week sits rather than only which band's name it earned. */
+/* ---- The four week cards' visuals ------------------------------------------------
+   Each card carries one small picture of the number above it, read off the same week:
+   the seven daily loads as bars, the sessions per day as cells, and RPE / monotony as a
+   banded scale with the target bracketed above it and this week's value as a marker. */
+/* A banded scale: `bands` [{from,to,c,tr,en}], `tgt` [from,to,label], `ticks` values. */
+function CwsScale({v,max,bands,tgt,ticks,fmtT}){
+  const pct=x=>`${Math.min(100,Math.max(0,x/max*100))}%`;
+  const has=v!=null&&v>0;
+  const last=bands.length-1;
+  return(<div className="cwm" aria-hidden="true">
+    {tgt&&<div className="cwm-tgt" style={{left:pct(tgt[0]),width:`calc(${pct(tgt[1])} - ${pct(tgt[0])})`}}><span>{tgt[2]}</span></div>}
+    <div className="cwm-bar">
+      {bands.map((b,i)=><i key={i} className={(has&&v>=b.from&&(v<b.to||i===last)?'on':'')+(i===0?' f':'')+(i===last?' l':'')}
+        style={{left:pct(b.from),width:`calc(${pct(b.to)} - ${pct(b.from)})`,background:b.c}}/>)}
+      {has&&<b className="cwm-mk" style={{left:pct(v)}}/>}
+    </div>
+    <div className="cwm-tk">{ticks.map((t,i)=><span key={t} className={i===0?'f':i===ticks.length-1?'l':''} style={{left:pct(t)}}>{fmtT?fmtT(t,i):t}</span>)}</div>
+    <div className="cwm-lg">{bands.map((b,i)=><span key={i}><i style={{background:b.c}}/>{L(b.tr,b.en)}</span>)}</div>
+  </div>);
+}
 const CWS_MONO_MAX=2.5;
 const CWS_MONO_BANDS=[
   {from:0,to:1,c:'#3b82f6',tr:'Düşük',en:'Low'},
@@ -164,21 +181,32 @@ const CWS_MONO_BANDS=[
   {from:1.5,to:2,c:'#f59e0b',tr:'İzle',en:'Watch'},
   {from:2,to:CWS_MONO_MAX,c:'#f43f5e',tr:'Yüksek',en:'High'},
 ];
-function CwsMonoScale({v}){
-  const pct=x=>`${Math.min(100,Math.max(0,x/CWS_MONO_MAX*100))}%`;
-  const has=v>0;
-  return(<div className="cwm" aria-hidden="true">
-    <div className="cwm-tgt" style={{width:pct(1.5)}}><span>{L('hedef < 1.50','target < 1.50')}</span></div>
-    <div className="cwm-bar">
-      {CWS_MONO_BANDS.map(b=><i key={b.tr} className={has&&v>=b.from&&(v<b.to||b.to===CWS_MONO_MAX)?'on':''}
-        style={{left:pct(b.from),width:pct(b.to-b.from),background:b.c}}/>)}
-      {has&&<b className="cwm-mk" style={{left:pct(v)}}/>}
-    </div>
-    <div className="cwm-tk">
-      {[0,1,1.5,2].map(t=><span key={t} style={{left:pct(t)}}>{t===0?'0':t.toFixed(1)}</span>)}
-      <span style={{left:'100%'}}>2.5+</span>
-    </div>
-    <div className="cwm-lg">{CWS_MONO_BANDS.map(b=><span key={b.tr}><i style={{background:b.c}}/>{L(b.tr,b.en)}</span>)}</div>
+const CwsMonoScale=({v})=><CwsScale v={v} max={CWS_MONO_MAX} bands={CWS_MONO_BANDS}
+  tgt={[0,1.5,L('hedef < 1.50','target < 1.50')]} ticks={[0,1,1.5,2,2.5]}
+  fmtT={(t,i)=>i===0?'0':i===4?'2.5+':t.toFixed(1)}/>;
+/* Same bands and colours as the card's own Low / Normal / High pill (rpeBand). */
+const CWS_RPE_BANDS=[
+  {from:0,to:5,c:'#3b82f6',tr:'Düşük',en:'Low'},
+  {from:5,to:7,c:'#22c55e',tr:'Normal',en:'Normal'},
+  {from:7,to:10,c:'#f97316',tr:'Yüksek',en:'High'},
+];
+const CwsRpeScale=({v})=><CwsScale v={v} max={10} bands={CWS_RPE_BANDS}
+  tgt={[5,7,L('hedef 5–7','target 5–7')]} ticks={[0,5,7,10]}/>;
+/* Seven bars, one per day (rest days stay as an empty track); the heaviest day is lit. */
+function CwsDayBars({vals,tip}){
+  const max=Math.max(1,...vals);const top=vals.indexOf(Math.max(...vals));
+  return(<div className="cwd" aria-hidden="true">
+    {vals.map((v,i)=><div key={i} className={'cwd-c'+(v>0&&i===top?' top':'')} title={tip?tip(v,i):undefined}>
+      <span className="cwd-t"><i style={{height:v>0?`${Math.max(6,v/max*100)}%`:'0%'}}/></span>
+      <em>{DN[i]}</em></div>)}
+  </div>);
+}
+/* Seven day cells with the day's session count; an empty day is a dashed outline. */
+function CwsDayCells({vals}){
+  return(<div className="cwd cwd-n" aria-hidden="true">
+    {vals.map((v,i)=><div key={i} className="cwd-c">
+      <span className={'cwd-b'+(v>0?' on':'')+(v>1?' x':'')}>{v>0?v:''}</span>
+      <em>{DN[i]}</em></div>)}
   </div>);
 }
 function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
@@ -575,9 +603,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     for(let i=0;i<7;i++){load+=at(addD(weekStart,i));prev+=at(addD(weekStart,i-7));}
     // How many sessions, and which kind: a session carrying a ball block is court work.
     let court=0,floor=0;
-    const rpes=[];
+    const rpes=[];const daily=[],sesDays=[];
     for(let i=0;i<7;i++){
       const k=fmt(addD(weekStart,i));
+      daily.push(at(addD(weekStart,i)));
+      sesDays.push(((days[k]||{}).sessions||[]).length);
       ((days[k]||{}).sessions||[]).forEach(ss=>{
         if((ss.blocks||[]).some(b=>blkKind(b)==='ball'))court++;else floor++;
       });
@@ -587,7 +617,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
     return{load,prev,
       delta:prev>0?Math.round((load-prev)/prev*100):null,
-      court,floor,sessions:court+floor,rpe};
+      court,floor,sessions:court+floor,rpe,daily,sesDays};
   },[days,athletes,teamDaily,weekStart,teamMode,athMode,ownerAth]);
   /* The planned band is 5-7: under it the week is too easy to adapt to, over it the squad
      is being asked for more than a week of training should ask. */
@@ -652,7 +682,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 :L('Önceki haftanın toplam takım yüküne göre değişim','Change against the previous week\'s total team load')}>
               {weekSum.delta>=0?'↑':'↓'} %{Math.abs(weekSum.delta)}</em>}
           </div>
-          <div className="cws-s">{L('Önceki haftaya göre','Against the previous week')}</div>
+          <CwsDayBars vals={weekSum.daily} tip={(v,i)=>`${DN[i]} · ${v} AU`}/>
+          <div className="cws-s">{weekSum.prev>0?L(`Önceki hafta ${weekSum.prev} AU`,`Previous week ${weekSum.prev} AU`):L('Önceki haftada yük yok','No load the previous week')}</div>
         </div>
       </div>
       <div className="cws">
@@ -660,6 +691,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         <div className="cws-tx">
           <div className="cws-k">{L('Toplam Seans','Total Sessions')}</div>
           <div className="cws-v">{weekSum.sessions}</div>
+          <CwsDayCells vals={weekSum.sesDays}/>
           <div className="cws-s">{L(`${weekSum.floor} antrenman + ${weekSum.court} saha`,`${weekSum.floor} training + ${weekSum.court} court`)}</div>
         </div>
       </div>
@@ -669,10 +701,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-k">{L('Ortalama RPE','Average RPE')}</div>
           <div className="cws-v">{weekSum.rpe!=null?weekSum.rpe.toFixed(1):'—'}
             <em className="band" style={{color:rpeBand.c,borderColor:rpeBand.c}}>{rpeBand.t}</em></div>
-          <div className="cws-s">{L('Hedef aralık: 5–7','Target band: 5–7')}</div>
+          <CwsRpeScale v={weekSum.rpe}/>
         </div>
       </div>
-      <div className="cws cws-mono" title={athMode
+      <div className="cws" title={athMode
         ?L('Haftalık monotoni (Foster) = sporcunun bu haftaki 7 günlük yükünün ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Weekly monotony (Foster) = the mean of the athlete\'s 7 daily loads this week ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')
         :L('Bu haftanın takım monotonluğu (Foster) = takımın 7 günlük yükünün (her günün altındaki Günlük Yük) ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week (Foster) = the mean of the team\'s 7 daily loads (the Daily Load under each day) ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
         <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
