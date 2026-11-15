@@ -1426,10 +1426,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
        başlığı tek renk kalır. Eski açık tonlarla kaydedilmiş kartlar paletin koyu tonuna okunur. */
     let cErr = '';
     try {
-      check('Kart rengi: menü paleti beş seans türü rengi + beyaz; eski ton koyu karşılığına okunur, palet dışı renk ve boş değer korunur',
+      check('Kart rengi: menü paleti beş seans türü rengi + pembe + beyaz; eski ton koyu karşılığına okunur, palet dışı renk ve boş değer korunur',
         A.cardCol('#22C55E') === '#16a34a' && A.cardCol('#123456') === '#123456' && !A.cardCol('') &&
         A.cardCol('#0094ff') === '#0070cc' && typeof A.CardColorMenu === 'function' &&
-        A.CARD_COLORS.join() === '#ff3624,#ff941a,#b55dfe,#24e2ff,#9dff5c,#ffffff');
+        A.CARD_COLORS.join() === '#ff3624,#ff941a,#b55dfe,#24e2ff,#9dff5c,#ff4fb4,#ffffff');
     } catch (e) { cErr = String(e); check('Kart rengi: yardımcılar hatasız', false, cErr); }
     /* Otomatik renk seans türünden gelir: hazır blokların her biri kendi rengini alır. */
     let tErr2 = '';
