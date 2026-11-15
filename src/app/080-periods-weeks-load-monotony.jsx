@@ -101,7 +101,10 @@ function teamLoadStats(athletes,teamLoadAt,ref,teamFirst){
   const w=loadWindows(teamLoadAt,ref,teamFirst);
   return{acute:w.ac/7,chronic:w.ch/(w.weeks*7),acwr:w.ch>0?w.ac/(w.ch/w.weeks):0,n:0};}
 function weekMono(loads){const a=loads.map(l=>l.load);const m=a.reduce((s,v)=>s+v,0)/a.length;if(m===0)return{mean:0,sd:0,monotony:0,strain:0,total:0};
-  const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);return{mean:m,sd,monotony:mono,strain:total*mono,total};}
+  const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);
+  /* Strain = toplam × monotoni, monotoni ekranda yazıldığı gibi (iki ondalık): takvimin
+     "3595 AU × 1.46 = 5249" kartı, Yük Takibi'nin Zorlanma kutusu, raporlar hep aynı sayı. */
+  return{mean:m,sd,monotony:mono,strain:total*(Math.round(mono*100)/100),total};}
 /* ACWR = acute load (the last 7 days' total, ref included) ÷ chronic load (the last 28
    days' weekly average: the 28-day total ÷ 4). The same ratio as the 7-day daily mean
    over the 28-day daily mean.
