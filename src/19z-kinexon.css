@@ -1,29 +1,30 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KINEXON TARZI — tüm sekmelerin son stil katmanı
 
-   İki görünüm, Kinexon ekranlarından:
-     • KOYU (varsayılan, Kinexon Perform): kömür grisi zemin, siyaha yakın üst çubuk ve kenar
-       menüsü, köşesiz düz paneller, panel başlıkları mavi ve büyük harfli, tablolarda koyu
-       başlık satırı (küçük büyük harfli gri sütun adları, altında çizgi) + çizgili koyu satırlar
-       — eski beyaz başlık şeridi koyu panelde kopuk duruyordu —, alt çizgili sekmeler, düz mavi
-       ana düğme, gri ikincil düğme. Vurgu renkleri: mavi #3aa0e6, kırmızı #e5322d, yeşil #4caf50.
-     • AÇIK (Kinexon web raporu): lacivert kenar menüsü, açık gri zemin, yuvarlak köşeli beyaz
-       kartlar, koyu kalın başlıklar, mavi bağlantılar, sade gri tablo başlıkları.
+   Tek tasarım, iki renk takımı. Yapı (köşesiz paneller, büyük harfli kenar menüsü, mavi büyük
+   harfli panel başlıkları, koyu/gri başlık satırlı çizgili tablolar, alt çizgili sekmeler, düz
+   mavi ana / gri ikincil düğme) İKİ TEMADA AYNI; temalar yalnızca aşağıdaki --k-* renk
+   değişkenleriyle ayrılır:
+     • KOYU (varsayılan, Kinexon Perform): kömür grisi zemin, siyaha yakın üst çubuk ve menü.
+       Vurgu renkleri: mavi #3aa0e6, kırmızı #e5322d, yeşil #4caf50.
+     • AÇIK (Kinexon Perform, açık): üst çubuk ve menü koyu kalır (kabuk iki temada aynı),
+       içerik yumuşak gri: zemin #dde0e4, paneller kırık beyaz #eceef1 — saf beyaz (#fff) yüzey
+       yok, göz yormasın diye en açık yüzey (giriş alanları) #f4f5f7.
    Gradyan, parlama, ışık lekesi, desen yok. Hiçbir öğe gizlenmez ya da kaldırılmaz; yalnızca
    görünüm değişir (dekoratif ışık/desen katmanları hariç).
 
-   Köşe ölçüleri 10-styles.css'teki --r-sm / --r-md değişkenlerinden okunur; burada temaya göre
-   yeniden tanımlanıyor (koyu: köşesiz, açık: yuvarlak). Daireler ve haplar kendi değerinde.
+   Köşe ölçüleri 10-styles.css'teki --r-sm / --r-md değişkenlerinden okunur; burada iki temada
+   da köşesiz tanımlanıyor. Daireler ve haplar kendi değerinde.
 
    Özgüllük: önceki katmanlar :is(:root,:root[data-theme]) önekini kullanıyor; burada aynı önek
-   (+ tema seçicisi) kullanılıyor ve bu dosya en son yüklendiği için kazanıyor. 10-styles.css'te
-   !important olan birkaç zemin (.sidebar, .team-sw, .panel) ancak !important ile geçilir.
+   kullanılıyor ve bu dosya en son yüklendiği için kazanıyor. 10-styles.css'te !important olan
+   birkaç zemin (.sidebar, .team-sw, .panel) ancak !important ile geçilir.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═════════════ ORTAK ═════════════ */
 :root{
   --k-blue:#3aa0e6;--k-blue-d:#1f7cc2;--k-red:#e5322d;--k-green:#4caf50;
-  --k-navy:#1c2431;--k-navy-2:#252f3e;--k-navy-line:#2e3949;
+  --r-sm:2px;--r-md:0px;
 }
 
 /* ═════════════ KOYU — RENKLER ═════════════ */
@@ -36,44 +37,64 @@
   --grad:#3aa0e6;--grad-soft:rgba(58,160,230,.16);
   --red:#e5322d;--green:#4caf50;
   --shadow:none;--shadow-glow:0 0 0 1px rgba(58,160,230,.4);
-  --r-sm:2px;--r-md:0px;
   --k-chrome:#101010;--k-side:#121212;--k-line:#2b2b2b;
-  --k-th-bg:#1c1c1c;--k-th-t:#a6a6a6;--k-row:#282828;--k-row-alt:#2e2e2e;
+  --k-ctl:#1e1e1e;--k-ctl-line:#363636;
+  --k-panel-line:#2e2e2e;--k-title:var(--k-blue);--k-tab-on:#fff;
+  --k-th-bg:#1c1c1c;--k-th-t:#a6a6a6;--k-row:#282828;--k-row-alt:#2e2e2e;--k-td-line:#2a2a2a;
+  --k-card:#2a2a2a;--k-card-line:#353535;--k-chip:#2a2a2a;
+  --k-btn:#1f7cc2;--k-btn-h:#2a8fd8;
+  --k-btn2:#383838;--k-btn2-line:#454545;--k-btn2-t:#f2f2f2;--k-btn2-h:#424242;--k-btn2-hl:#505050;
+  --k-inp:#1c1c1c;--k-inp-line:#424242;
+  --k-empty:rgba(255,255,255,.02);--k-empty-line:#454545;
 }
 
 /* ═════════════ AÇIK — RENKLER ═════════════ */
+/* Yumuşak gri; en soluk yazı (--dim) zeminde bile 4.5:1 kontrastı geçer. */
 :root[data-theme="light"]{
-  --bg:#f2f3f5;--bg2:#f7f8f9;--panel:#ffffff;--elevated:#f6f7f9;--hover:#eef0f3;
-  --border:#e1e4e8;--border2:#cbd0d7;
-  --text:#14181d;--text2:#3a414b;--muted:#5d6570;--dim:#68707b;
-  --accent:#1a8ad4;--accent2:#1574b3;--accent-bg:#e6f3fc;
-  --grad:#1a8ad4;--grad-soft:#e6f3fc;
-  --shadow:none;--shadow-glow:0 0 0 1px rgba(26,138,212,.3);
-  --r-sm:6px;--r-md:12px;
-  --k-chrome:var(--k-navy);--k-side:var(--k-navy);--k-line:var(--k-navy-line);
+  --bg:#dde0e4;--bg2:#e3e6e9;--panel:#eceef1;--elevated:#e4e7eb;--hover:#dadee3;
+  --border:#cbd0d6;--border2:#b6bdc6;
+  --text:#15191e;--text2:#323840;--muted:#4f5761;--dim:#59616b;
+  --accent:#1569ad;--accent2:#11568e;--accent-bg:rgba(21,105,173,.12);
+  --grad:#1569ad;--grad-soft:rgba(21,105,173,.12);
+  --low:rgba(11,138,100,.14);--med:rgba(190,120,6,.15);--high:rgba(197,53,38,.13);--peak:rgba(47,95,208,.13);
+  --shadow:none;--shadow-glow:0 0 0 1px rgba(21,105,173,.35);
+  --k-chrome:#1c1f23;--k-side:#1c1f23;--k-line:#2c3036;
+  --k-ctl:#272b31;--k-ctl-line:#3a3f46;
+  --k-panel-line:#d3d7dc;--k-title:#1569ad;--k-tab-on:var(--text);
+  --k-th-bg:#dfe2e6;--k-th-t:#555d67;--k-row:#eceef1;--k-row-alt:#e5e8ec;--k-td-line:#d6dade;
+  --k-card:#f0f2f4;--k-card-line:#d0d5db;--k-chip:#e4e7eb;
+  --k-btn:#1569ad;--k-btn-h:#1a78c2;
+  --k-btn2:#d8dce1;--k-btn2-line:#c0c6ce;--k-btn2-t:#15191e;--k-btn2-h:#ced3d9;--k-btn2-hl:#b3bac3;
+  --k-inp:#f2f4f6;--k-inp-line:#bcc3cb;
+  --k-empty:rgba(0,0,0,.02);--k-empty-line:#b6bdc6;
 }
 :is(:root,:root[data-theme]) body{background:var(--bg)}
 
 /* ═════════════ KABUK (masaüstü) ═════════════ */
 @media(min-width:1025px){
-  /* Koyu: üst çubuk boydan boya siyaha yakın. Açık: logo kutusu lacivert (menünün devamı), çubuğun
-     geri kalanı beyaz. */
-  :root:not([data-theme="light"]) .topbar{background:var(--k-chrome);border-bottom:1px solid var(--k-line);color:var(--text)}
-  :root[data-theme="light"] .topbar{background:var(--panel);border-bottom:1px solid var(--border)}
-  :root[data-theme="light"] .tb-logo{background:var(--k-navy);height:var(--tb-h);padding-top:16px;padding-bottom:16px;filter:none}
+  /* Üst çubuk ve menü iki temada da koyu (Kinexon kabuğu). Açık temada içlerindeki öğeler
+     (takım seçici, dil, senkron) koyu zemine göre renk alsın diye değişkenler burada koyuya çekilir. */
+  :root[data-theme="light"] :is(.topbar,.sidebar){
+    --panel:#23272d;--elevated:#2a2e34;--hover:#30353c;--border:#30353c;--border2:#3a3f46;
+    --text:#eef0f2;--text2:#c9ced4;--muted:#a3a9b1;--dim:#8e959e;--accent:#3aa0e6;
+    --k-inp:transparent;--k-inp-line:transparent;color-scheme:dark}
+  :is(:root,:root[data-theme]) .topbar{background:var(--k-chrome);border-bottom:1px solid var(--k-line);color:var(--text)}
+  :is(:root,:root[data-theme]) .tb-logo,
+  :is(:root,:root[data-theme]) .sidebar .brand-logo{filter:none;background:transparent}
   :is(:root,:root[data-theme]) .app .sidebar{background:var(--k-side)!important;border-right:1px solid var(--k-line)}
 
-  :root:not([data-theme="light"]) .tb-club,
-  :root:not([data-theme="light"]) .topbar .brand-team .bt-label{color:var(--dim)}
-  :root:not([data-theme="light"]) .topbar .bt-row.team-sel,
-  :root:not([data-theme="light"]) .topbar .lang-inline{background:#1e1e1e;border:1px solid #363636;border-radius:var(--r-sm)}
-  :is(:root,:root[data-theme]) .topbar select option{color:#14181d;background:#fff}
+  :is(:root,:root[data-theme]) .tb-club,
+  :is(:root,:root[data-theme]) .topbar .brand-team .bt-label{color:var(--dim)}
+  :is(:root,:root[data-theme]) .topbar .bt-row.team-sel,
+  :is(:root,:root[data-theme]) .topbar .lang-inline{background:var(--k-ctl);border:1px solid var(--k-ctl-line);border-radius:var(--r-sm)}
+  :is(:root,:root[data-theme]) .topbar :is(select,.bt-row select){color:var(--text)}
+  :is(:root,:root[data-theme]) .topbar select option{color:#14181d;background:#eceef1}
   :is(:root,:root[data-theme]) .topbar .tb-sync .team-sw.sync-chip{background:transparent!important;border-color:transparent!important}
 
-  /* Menü (iki temada koyu zemin). Koyu temada Kinexon gibi büyük harfli satırlar. */
+  /* Menü: Kinexon gibi büyük harfli satırlar. */
   :is(:root,:root[data-theme]) .sidebar .nav-glabel{color:#7a7f87;font-size:10px;letter-spacing:.14em}
-  :is(:root,:root[data-theme]) .sidebar .nav-item{color:#c3c8cf;border:0;border-radius:var(--r-sm);font-weight:500}
-  :root:not([data-theme="light"]) .sidebar .nav-item{text-transform:uppercase;font-size:12px;letter-spacing:.04em;padding:9px 12px}
+  :is(:root,:root[data-theme]) .sidebar .nav-item{color:#c3c8cf;border:0;border-radius:var(--r-sm);font-weight:500;
+    text-transform:uppercase;font-size:12px;letter-spacing:.04em;padding:9px 12px}
   :is(:root,:root[data-theme]) .sidebar .nav-item .ni-ic{color:#8b9099}
   :is(:root,:root[data-theme]) .sidebar .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
   :is(:root,:root[data-theme]) .sidebar .nav-item.active{background:rgba(255,255,255,.09);color:#fff;font-weight:700;box-shadow:inset 3px 0 0 var(--k-blue)}
@@ -112,84 +133,90 @@
 :is(:root,:root[data-theme]) .calw-stats{border-radius:var(--r-md);box-shadow:none}
 :is(:root,:root[data-theme]) .su-hero{background:var(--panel)}
 .rsf-card::before,.rec-card::before,.pda-card::before{height:2px;border-radius:0;opacity:1}
-/* Koyu: paneller zeminden yalnız tonla ayrılır (Kinexon), çerçeve çok silik. */
-:root:not([data-theme="light"]) .panel{background:var(--panel)!important;border-color:#2e2e2e}
-:root:not([data-theme="light"]) .stat{background:var(--panel)!important}
+/* Paneller zeminden yalnız tonla ayrılır (Kinexon), çerçeve çok silik. */
+:is(:root,:root[data-theme]) .panel{background:var(--panel)!important;border-color:var(--k-panel-line)}
+:is(:root,:root[data-theme]) .stat{background:var(--panel)!important}
+:is(:root,:root[data-theme]) :is(.panel,.stat):hover{box-shadow:none}
 
-/* Bölüm başlıkları: aksan çubuğu yok. Koyu temada Kinexon'un mavi büyük harfli panel başlığı,
-   açık temada koyu ve kalın. Başlığın yanındaki açıklama her iki temada normal yazı. */
+/* Bölüm başlıkları: aksan çubuğu yok; iki temada Kinexon'un mavi büyük harfli panel başlığı
+   (--k-title). Başlığın yanındaki açıklama normal yazı. */
 .panel h2::before,.mc-title::before,.lb-title::before,.it-head-t b::before,.ck-head-t b::before,.lm-title::before{display:none}
 .tib-h1 i{display:none}
 .panel h2,.mc-title,.lb-title,.it-head-t b,.ck-head-t b,.ck-head-t b.ck-h-lg,.tib-h1,.su-eq-hd-l h2,.cmp-h b,.lm-title{
   font-size:15px;font-weight:700;letter-spacing:-.005em}
 .panel h2{gap:8px}
-:root:not([data-theme="light"]) :is(.panel h2,.mc-title,.lb-title,.it-head-t b,.ck-head-t b,.ck-head-t b.ck-h-lg,.tib-h1,.su-eq-hd-l h2,.cmp-h b,.lm-title){
-  color:var(--k-blue);text-transform:uppercase;font-size:13.5px;font-weight:600;letter-spacing:.04em}
-:root:not([data-theme="light"]) :is(.mc-title .mc-sub,.lb-title .lb-sub,.panel h2 small,.panel h2 span:not([class*="badge"]),.panel h2 em){
+:is(:root,:root[data-theme]) :is(.panel h2,.mc-title,.lb-title,.it-head-t b,.ck-head-t b,.ck-head-t b.ck-h-lg,.tib-h1,.su-eq-hd-l h2,.cmp-h b,.lm-title){
+  color:var(--k-title);text-transform:uppercase;font-size:13.5px;font-weight:600;letter-spacing:.04em}
+:is(:root,:root[data-theme]) :is(.mc-title .mc-sub,.lb-title .lb-sub,.panel h2 small,.panel h2 span:not([class*="badge"]),.panel h2 em){
   text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400}
 
 /* Sayılar sütunda hizalı. */
 .stat .v,.cws-v,.metric .v,.td-kpi b,.wv-hero b{font-variant-numeric:tabular-nums}
 
 /* ═════════════ TABLOLAR ═════════════ */
-/* Koyu: başlık satırı satırlardan bir ton koyu, sütun adları küçük, büyük harfli, gri; altında
-   tek ince çizgi. Satırlar çizgili koyu gri. Beyaz şerit yok: koyu panelin içinde zemini aynı
-   aileden kalır, sütun adları rengiyle değil konumuyla ve yazı biçimiyle ayrılır. */
-:root:not([data-theme="light"]) main table thead th,
-:root:not([data-theme="light"]) .modal table thead th{background:var(--k-th-bg);color:var(--k-th-t);font-size:10.5px;font-weight:600;
+/* Başlık satırı satırlardan bir ton farklı, sütun adları küçük, büyük harfli, gri; altında tek
+   ince çizgi. Satırlar çizgili (koyu: koyu gri, açık: gri tonları). Beyaz şerit yok: başlık
+   panelin içinde zeminle aynı aileden kalır, sütun adları konumuyla ve yazı biçimiyle ayrılır. */
+:is(:root,:root[data-theme]) main table thead th,
+:is(:root,:root[data-theme]) .modal table thead th{background:var(--k-th-bg);color:var(--k-th-t);font-size:10.5px;font-weight:600;
   text-transform:uppercase;letter-spacing:.06em;border-color:var(--k-line);border-bottom:1px solid var(--border2);box-shadow:none}
-:root:not([data-theme="light"]) main table tbody tr:nth-child(odd)>td,
-:root:not([data-theme="light"]) .modal table tbody tr:nth-child(odd)>td{background-color:var(--k-row)}
-:root:not([data-theme="light"]) main table tbody tr:nth-child(even)>td,
-:root:not([data-theme="light"]) .modal table tbody tr:nth-child(even)>td{background-color:var(--k-row-alt)}
-:root:not([data-theme="light"]) main table td{border-color:#2a2a2a}
-/* Açık: sade gri, küçük başlıklar (Kinexon web raporu). */
-:root[data-theme="light"] main th{font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
+:is(:root,:root[data-theme]) main table tbody tr:nth-child(odd)>td,
+:is(:root,:root[data-theme]) .modal table tbody tr:nth-child(odd)>td{background-color:var(--k-row)}
+:is(:root,:root[data-theme]) main table tbody tr:nth-child(even)>td,
+:is(:root,:root[data-theme]) .modal table tbody tr:nth-child(even)>td{background-color:var(--k-row-alt)}
+:is(:root,:root[data-theme]) main table td{border-color:var(--k-td-line)}
 
 /* ═════════════ DÜĞMELER VE ALANLAR ═════════════ */
 :is(:root,:root[data-theme]) .btn,
 :is(:root,:root[data-theme]) .rost-add,
 :is(:root,:root[data-theme]) .calm-share{border-radius:var(--r-sm);font-weight:600}
-/* Koyu: düz mavi ana düğme beyaz yazıyla, gri ikincil düğme (Kinexon "Start new session" / "Export"). */
-:root:not([data-theme="light"]) .btn:not(.sec):not(.white):not(.outline):not(.ghost):not(.danger),
-:root:not([data-theme="light"]) .rost-add,
-:root:not([data-theme="light"]) .calm-share{background:var(--k-blue-d);border-color:var(--k-blue-d);color:#fff}
-:root:not([data-theme="light"]) .btn:not(.sec):not(.white):not(.outline):not(.ghost):not(.danger):hover,
-:root:not([data-theme="light"]) .rost-add:hover,
-:root:not([data-theme="light"]) .calm-share:hover{background:#2a8fd8;border-color:#2a8fd8;color:#fff}
-:root:not([data-theme="light"]) :is(.btn.sec,.btn.white,.btn.outline){background:#383838;border-color:#454545;color:#f2f2f2}
-:root:not([data-theme="light"]) :is(.btn.sec,.btn.white,.btn.outline):hover{background:#424242;border-color:#505050}
+/* Düz mavi ana düğme beyaz yazıyla, gri ikincil düğme (Kinexon "Start new session" / "Export"). */
+:is(:root,:root[data-theme]) .btn:not(.sec):not(.white):not(.outline):not(.ghost):not(.danger),
+:is(:root,:root[data-theme]) .rost-add,
+:is(:root,:root[data-theme]) .calm-share{background:var(--k-btn);border-color:var(--k-btn);color:#fff}
+:is(:root,:root[data-theme]) .btn:not(.sec):not(.white):not(.outline):not(.ghost):not(.danger):hover,
+:is(:root,:root[data-theme]) .rost-add:hover,
+:is(:root,:root[data-theme]) .calm-share:hover{background:var(--k-btn-h);border-color:var(--k-btn-h);color:#fff}
+:is(:root,:root[data-theme]) :is(.btn.sec,.btn.white,.btn.outline){background:var(--k-btn2);border-color:var(--k-btn2-line);color:var(--k-btn2-t)}
+:is(:root,:root[data-theme]) :is(.btn.sec,.btn.white,.btn.outline):hover{background:var(--k-btn2-h);border-color:var(--k-btn2-hl);color:var(--k-btn2-t)}
 :is(:root,:root[data-theme]) .btn.danger{background:var(--k-red);border-color:var(--k-red);color:#fff}
-:root:not([data-theme="light"]) input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
-:root:not([data-theme="light"]) select,
-:root:not([data-theme="light"]) textarea{background-color:#1c1c1c;border-color:#424242}
+:is(:root,:root[data-theme]) input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+:is(:root,:root[data-theme]) select,
+:is(:root,:root[data-theme]) textarea{background-color:var(--k-inp);border-color:var(--k-inp-line)}
 :is(:root,:root[data-theme]) input:focus,
 :is(:root,:root[data-theme]) select:focus,
 :is(:root,:root[data-theme]) textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
 
-/* ═════════════ SEKMELER: alt çizgili (koyu) ═════════════ */
+/* ═════════════ SEKMELER: alt çizgili ═════════════ */
 /* Görünüm değiştiriciler ve sporcu sekmeleri Kinexon'un üst sekmeleri gibi: kutusuz, seçili olan
-   beyaz yazı + mavi alt çizgi. Değer seçiciler (RPE, FMS puanı...) kutulu kalır. */
-:root:not([data-theme="light"]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs){
+   koyu temada beyaz, açık temada koyu yazı + mavi alt çizgi. Değer seçiciler (RPE, FMS puanı...) kutulu kalır. */
+:is(:root,:root[data-theme]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs){
   background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0;box-shadow:none;gap:2px;padding:0}
-:root:not([data-theme="light"]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button{
+:is(:root,:root[data-theme]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button{
   background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;box-shadow:none;color:var(--muted);margin-bottom:-1px}
-:root:not([data-theme="light"]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button:hover{background:transparent;color:var(--text)}
-:root:not([data-theme="light"]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button.on{
-  background:transparent;color:#fff;border-bottom-color:var(--k-blue);box-shadow:none}
+:is(:root,:root[data-theme]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button:hover{background:transparent;color:var(--text)}
+:is(:root,:root[data-theme]) :is(.lb-seg,.calm-seg,.ath-seg,.atc-seg,.rlang-seg,.ev2-vt,.rost-view,.ath-tabs) button.on{
+  background:transparent;color:var(--k-tab-on);border-bottom-color:var(--k-blue);box-shadow:none}
 
 /* ═════════════ BAŞLIK BANTLARI (Wellness, Takım Verileri, Gelişim Raporu) ═════════════ */
 :is(:root,:root[data-theme]) .wv-hero,
 :is(:root,:root[data-theme]) .td-hero,
 :is(:root,:root[data-theme]) .dr-hero{border-radius:var(--r-md);box-shadow:none}
-:root:not([data-theme="light"]) :is(.wv-hero,.td-hero,.dr-hero){background:var(--panel);border:1px solid #2e2e2e}
-:root[data-theme="light"] :is(.wv-hero,.td-hero,.dr-hero){background:var(--k-navy);border:0}
+:is(:root,:root[data-theme]) :is(.wv-hero,.td-hero,.dr-hero){background:var(--panel);border:1px solid var(--k-panel-line)}
+/* Açık temada bantlar kabuk gibi koyu kalır: içlerindeki yazı, halka ve kutular koyu zemine göre
+   çizilmiş. Değişkenler bandın içinde koyuya çekilir (düğmeler, tarih seçici, kutular uyumlu). */
+:root[data-theme="light"] :is(.wv-hero,.td-hero,.dr-hero){
+  --panel:#23272d;--elevated:#2a2e34;--hover:#30353c;--border:#3a3f46;--border2:#454b53;
+  --text:#eef0f2;--text2:#c9ced4;--muted:#a3a9b1;--dim:#8e959e;--accent:#3aa0e6;
+  --k-panel-line:#23272d;--k-btn2:#383c42;--k-btn2-line:#4a4f56;--k-btn2-t:#f2f2f2;--k-btn2-h:#42464c;--k-btn2-hl:#555a61;
+  --k-inp:#1e2227;--k-inp-line:#3a3f46;--k-card:#2a2e34;--k-card-line:#383c42;--k-chip:#2a2e34;
+  color-scheme:dark}
 .wv-glow,.wv-dots,.td-hero-glow,.dr-hero::before,.dr-hero::after{display:none}
 
-/* ═════════════ KARTLAR (koyu): Kinexon oyuncu kartı tonu ═════════════ */
-:root:not([data-theme="light"]) :is(.rc,.ex-card,.tcard,.rr,.ev2-card,.ev2-tile,.tp-card2,.type-card,.wlt-card,.ath-card,.ath-tile){background:#2a2a2a;border-color:#353535}
-:root:not([data-theme="light"]) :is(.cws,.ath-stat,.metric-card,.mono-chip,.lmix-row){background:#2a2a2a}
-:root:not([data-theme="light"]) .empty-st{background:rgba(255,255,255,.02);border-color:#454545}
+/* ═════════════ KARTLAR: Kinexon oyuncu kartı tonu ═════════════ */
+:is(:root,:root[data-theme]) :is(.rc,.ex-card,.tcard,.rr,.ev2-card,.ev2-tile,.tp-card2,.type-card,.wlt-card,.ath-card,.ath-tile){background:var(--k-card);border-color:var(--k-card-line)}
+:is(:root,:root[data-theme]) :is(.cws,.ath-stat,.metric-card,.mono-chip,.lmix-row){background:var(--k-chip)}
+:is(:root,:root[data-theme]) .empty-st{background:var(--k-empty);border-color:var(--k-empty-line)}
 
 /* ═════════════ HAREKET: kartlar yükselmez ═════════════ */
 :is(:root,:root[data-theme]) :is(.atc-ev,.atc-ses,.ath-card-v,.ath-card,.ath-tile,.btn,.cal-day,.calm-cell,.calw-ses,.ck-copy,
@@ -197,3 +224,11 @@
   .rs-card2,.rsf-card,.shw-card,.stat,.stf-c,.tib-al,.tl-seg,.tp-card2,.tpc,.tpl-cat,.tryo-add,.tryo-statcard,.type-card,
   .wlt-card,.wv-cal-d,.wv-day,.wv-ma):hover{transform:none}
 :is(:root,:root[data-theme]) .wv-day.sel{transform:none}
+
+/* ═════════════ AÇIK: koyu zemin için yazılmış yarı saydam siyah yüzeyler ═════════════ */
+/* Seans çekmecesinin sağ sütunu, egzersiz adımları ve bireyselleştirme değer kutusu koyu temada
+   %18-34 siyahla koyulaşıyordu; açık gri zeminde bu çamurlu bir gri bırakıyordu. */
+:root[data-theme="light"] :is(.dw-right-panel,.wlt3-steps){background:rgba(21,25,30,.035)}
+:root[data-theme="light"] .di-conval{background:rgba(21,25,30,.05)}
+:root[data-theme="light"] .di-conval:focus{background:rgba(21,25,30,.08)}
+:root[data-theme="light"] :is(.dw-right-panel .tc-box,.dw-right-panel .mm-notes){background:var(--panel)}
