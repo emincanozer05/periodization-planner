@@ -262,10 +262,10 @@ function TeamReports({team,weeks,selected,setSelected}){
         <div className="lac-vsub">{L('her sporcunun akut ÷ kronik oranı, sonra ortalama','each athlete\'s acute ÷ chronic, averaged')}</div>
         <AcwrBar value={lmLoad.acwr}/>
         <div className="lm-mini">
-          <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m" title={L(`Foster · takımın 7 günlük yükü (ort. ÷ SS) · ${exLabel(lmMonoZone.t||'')}`,`Foster · the team's 7 daily loads (mean ÷ SD) · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
-          <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m"><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m"><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m" title={L(`Foster · takımın 7 günlük yükü (ort. ÷ SS) · ${exLabel(lmMonoZone.t||'')}`,`Foster · the team's 7 daily loads (mean ÷ SD) · ${lmMonoZone.t||''}`)}><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
+          <div className="m"><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
       <div className="lm-trend-card">
