@@ -737,11 +737,80 @@ const PHASE_INFO=[
     en:{t:'Transition',w:'End of season and between seasons.',
     d:'Physical and psychological recovery comes first. Loads are reduced, and active rest plus work on individual weaknesses supports preparation for the new season.'}},
 ];
+/* ===== Competition Dates — month view =====
+   The same fixture list laid out as a month: Monday-first grid, every fixture a chip on
+   its day (opponent, then the score and result once written, else the league). It opens
+   on the current month when it holds a fixture, otherwise on the next month that does.
+   Clicking a chip hands the row back to the list (onPick) so it can be edited there; the
+   + on an empty day adds a fixture on that date (onAdd). */
+function CompMonthCal({list,ourAbbr,onPick,onAdd,month:mk,setMonth:setMk}){
+  const byDay=useMemo(()=>{const m={};(list||[]).forEach((c,i)=>{if(c&&c.date)(m[c.date]=m[c.date]||[]).push({c,i});});return m;},[list]);
+  const keys=useMemo(()=>[...new Set(Object.keys(byDay).map(d=>d.slice(0,7)))].sort(),[byDay]);
+  const tk=fmt(today),tm=tk.slice(0,7);
+  const def=keys.includes(tm)?tm:(keys.find(k=>k>tm)||keys[keys.length-1]||tm);
+  const cur=mk||def;
+  const y=Number(cur.slice(0,4)),mo=Number(cur.slice(5,7))-1;
+  const shift=n=>{const d=new Date(y,mo+n,1);setMk(fmt(d).slice(0,7));};
+  const first=new Date(y,mo,1),lead=(first.getDay()+6)%7,dim=new Date(y,mo+1,0).getDate();
+  const cells=[];for(let i=0;i<lead;i++)cells.push(null);
+  for(let d=1;d<=dim;d++)cells.push(fmt(new Date(y,mo,d)));
+  while(cells.length%7)cells.push(null);
+  const inMonth=(list||[]).filter(c=>c&&c.date&&c.date.slice(0,7)===cur);
+  const tally={w:0,l:0,d:0};inMonth.forEach(c=>{const r=compResult(c);if(r)tally[r.k]++;});
+  const MNL=REPORT_LANG==='tr'?MN_TR:MN_EN;
+  return(<div className="cmc">
+    <div className="cmc-bar">
+      <button type="button" className="cmc-nav" onClick={()=>shift(-1)} aria-label={L('Önceki ay','Previous month')}>‹</button>
+      <b className="cmc-title">{MNL[mo]} {y}</b>
+      <button type="button" className="cmc-nav" onClick={()=>shift(1)} aria-label={L('Sonraki ay','Next month')}>›</button>
+      <span className="cmc-sum">{L(`${inMonth.length} maç`,`${inMonth.length} fixtures`)}
+        {(tally.w+tally.l+tally.d)>0&&<em>{L(`${tally.w}G · ${tally.l}M${tally.d?` · ${tally.d}B`:''}`,`${tally.w}W · ${tally.l}L${tally.d?` · ${tally.d}D`:''}`)}</em>}</span>
+      {cur!==tm&&<button type="button" className="btn sec sm cmc-today" onClick={()=>setMk(tm)}>{L('Bugün','Today')}</button>}
+    </div>
+    {keys.length>1&&<div className="pm-months cmc-months">
+      {keys.map(k=>{const n=(list||[]).filter(c=>c&&c.date&&c.date.slice(0,7)===k).length;
+        return(<button key={k} type="button" className={`pm-month${k===cur?' on':''}`} onClick={()=>setMk(k)}>
+          {MN[Number(k.slice(5,7))-1]}<small>{k.slice(2,4)} · {n}</small></button>);})}
+    </div>}
+    <div className="cmc-grid" role="grid" aria-label={`${MNL[mo]} ${y}`}>
+      {[0,1,2,3,4,5,6].map(i=><div key={'h'+i} className="cmc-dn">{DN[i]}</div>)}
+      {cells.map((d,i)=>{
+        if(!d)return<div key={'e'+i} className="cmc-cell out"/>;
+        const evs=byDay[d]||[];
+        return(<div key={d} className={'cmc-cell'+(d===tk?' today':'')+(evs.length?' has':'')}>
+          <div className="cmc-dh"><span className="cmc-dnum">{Number(d.slice(8))}</span>
+            <button type="button" className="cmc-add" onClick={()=>onAdd(d)}
+              title={L('Bu güne müsabaka ekle','Add a fixture on this day')} aria-label={L('Bu güne müsabaka ekle','Add a fixture on this day')}>+</button></div>
+          {evs.map(({c,i:idx})=>{const r=compResult(c);const opp=c.opponent||c.name||L('Müsabaka','Fixture');
+            const oppA=c.oppAbbr||compAbbr(c.opponent||c.name)||L('RAK','OPP');
+            const hasScore=String(c.scoreFor??'').trim()!==''&&String(c.scoreAgainst??'').trim()!=='';
+            const tip=[opp,c.comp,c.location,hasScore?`${ourAbbr} ${c.scoreFor}–${c.scoreAgainst} ${oppA}`:''].filter(Boolean).join(' · ');
+            return(<button key={c.srcId||idx} type="button" className={'cmc-ev'+(r?' '+r.k:'')+(d<tk&&!hasScore?' past':'')}
+              onClick={()=>onPick(idx)} title={tip}>
+              <span className="cmc-opp">{opp}</span><span className="cmc-oppa">{oppA}</span>
+              {hasScore
+                ?<span className="cmc-sc"><i>{ourAbbr}</i> {c.scoreFor}–{c.scoreAgainst} <i>{oppA}</i>{r&&<b className={'cmp-res '+r.k}>{r.t}</b>}</span>
+                :(c.comp||c.location)&&<span className="cmc-meta">{c.comp||c.location}</span>}
+            </button>);})}
+        </div>);})}
+    </div>
+  </div>);
+}
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
   // The fixture list is a long read-only-most-of-the-time list, so it opens folded.
   const[compOpen,setCompOpen]=useState(false);
+  /* List or month view of the fixtures; the choice is remembered on this device. A chip
+     clicked in the month view opens the list on that row and flashes it. */
+  const[compView,setCompViewS]=useState(()=>{try{return localStorage.getItem('cmpView')==='cal'?'cal':'list';}catch(e){return'list';}});
+  const setCompView=v=>{setCompViewS(v);try{localStorage.setItem('cmpView',v);}catch(e){}};
+  const[compFlash,setCompFlash]=useState(null);
+  const[compMonth,setCompMonth]=useState(null);   // month shown in the month view, kept across list ↔ month
+  useEffect(()=>{if(compFlash==null||compView!=='list')return;
+    const el=document.getElementById('cmp-row-'+compFlash);
+    if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'});
+    const t=setTimeout(()=>setCompFlash(null),1800);return()=>clearTimeout(t);},[compFlash,compView]);
   /* The season runs from the first period's start to the last period's end — General
      Preparation opens it, Transition closes it. Editing a period date therefore moves the
      season window with it, so the stat row, the weeks and both charts can't drift apart
@@ -886,11 +955,23 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           <em>{L(`${s.competitions.length} maç`,`${s.competitions.length} fixtures`)}</em></span>
       </button>
       {compOpen&&<div className="cmp-b">
-        {s.competitions.length===0
+        {s.competitions.length>0&&<div className="cmp-tools">
+          <div className="pm-seg" role="tablist" aria-label={L('Görünüm','View')}>
+            <button type="button" className={compView==='list'?'on':''} onClick={()=>setCompView('list')}>{L('Liste','List')}</button>
+            <button type="button" className={compView==='cal'?'on':''} onClick={()=>setCompView('cal')}>{L('Aylık Takvim','Month')}</button>
+          </div>
+        </div>}
+        {s.competitions.length>0&&compView==='cal'
+          ?<CompMonthCal list={s.competitions} ourAbbr={s.teamAbbr||ourAbbrAuto} month={compMonth} setMonth={setCompMonth}
+              onPick={i=>{setCompView('list');setCompFlash(i);}}
+              onAdd={d=>{const n=s.competitions.length;
+                u('competitions',[...s.competitions,{date:d,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}]);
+                setCompView('list');setCompFlash(n);}}/>
+        :s.competitions.length===0
           ?<div className="empty-st">{L('Henüz müsabaka yok — takvimde bir seansın odağını Müsabaka yap, gün buraya kendiliğinden düşsün; ya da aşağıdan elle ekle.',
               'No fixtures yet — set a session\'s focus to Competition on the calendar and the day lands here by itself, or add one by hand below.')}</div>
           :<div className="cmp-list">
-            {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
+            {s.competitions.map((c,i)=><div key={c.srcId||i} id={'cmp-row-'+i} className={'cmp-row'+(compFlash===i?' flash':'')}>
               <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
                 <DateDMY long value={c.date} onChange={v=>uc(i,'date',v)}/></div>
               <div className="cmp-f grow"><label>{L('Rakip','Opponent')}</label>
