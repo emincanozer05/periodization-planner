@@ -905,37 +905,34 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               })}
             </div>);
           })()}
-          <div className="dw-meta">
-            <div className="dw-dm white" style={{'--dm-ac':'#22d3ee'}}>
-              <div className="dm-top"><span className="k">{L('Saat','Time')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg></span></div>
+          {/* The same stat strip as the team practice card (235): time, duration, what the
+              session is for (one goal or several, picked from the nine qualities the focus
+              tree names — the coach's intent, not read off the exercises) and how hard it is
+              planned to be, on the 1-10 RPE scale the whole app speaks (the same rpeTarget
+              the editor and the printed program show). */}
+          <div className="sk-stats">
+            <SkStat k={L('Saat','Time')} ac="#22d3ee" ic={<SkIcClock/>}
+              sub={<span className="sk-st-sub">{skEnd(drawerSes)?L(`bitiş ${skEnd(drawerSes)}`,`ends ${skEnd(drawerSes)}`):L('başlangıç saati','start time')}</span>}>
               {canEdit
-                ?<input type="time" className="dw-inp" value={drawerSes.time||''} onChange={e=>drwUpd({time:e.target.value})}/>
-                :<div className="v">{drawerSes.time||'—'}</div>}
-            </div>
-            <div className="dw-dm white" style={{'--dm-ac':'#a78bfa'}}>
-              <div className="dm-top"><span className="k">{L('Süre','Duration')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2.5h4"/><path d="M12 13l2.6-2.6"/><circle cx="12" cy="14" r="7.5"/></svg></span></div>
+                ?<input type="time" className="dw-inp sk-st-in" value={drawerSes.time||''} onChange={e=>drwUpd({time:e.target.value})}/>
+                :<div className="sk-st-v">{drawerSes.time||'—'}</div>}
+            </SkStat>
+            <SkStat k={L('Süre','Duration')} ac="#a78bfa" ic={<SkIcTimer/>}
+              sub={<span className="sk-st-sub">{Number(drawerSes.duration)>0?skHrs(Number(drawerSes.duration)):L('dakika','minutes')}</span>}>
               {canEdit
-                ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'2.6em'}} value={drawerSes.duration??''} onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));const patch={duration:d};if(!drawerSes.auManual&&drawerSes.sRPE!==''&&drawerSes.sRPE!=null)patch.au=Math.round(Number(drawerSes.sRPE)*(Number(d)||0));drwUpd(patch);}}/><span className="dw-unit">{L('dk','min')}</span></div>
-                :<div className="v">{Number(drawerSes.duration)||0}<span className="dw-unit"> {L('dk','min')}</span></div>}
-            </div>
-            {/* What the session is for — one goal or several, picked by hand from the nine
-                qualities the focus tree names rather than read off the exercises, so the
-                bar states the coach's intent for the day. */}
-            <div className="dw-dm white" style={{'--dm-ac':FOCUS_BY[drwGoals[0]]?.c||'#22c55e'}}>
-              <div className="dm-top"><span className="k">{L('Hedef','Goal')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span></div>
-              <GoalPicker value={drwGoals} onChange={setDrwGoals} readOnly={!canEdit}/>
-            </div>
-            {/* How hard the day is planned to be, on the 1-10 RPE scale the whole app
-                speaks — the same rpeTarget the session editor's gauge and the printed
-                program show, so the three never disagree. */}
-            <div className="dw-dm" style={{'--dm-ac':drwZone.c}}>
-              <div className="dm-top"><span className="k">{L('Yoğunluk','Intensity')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 14.5 16 9.5"/></svg></span></div>
-              {canEdit
-                ?<div className="dw-inrow"><select className="dw-inp dw-sel" style={{width:'2.4em'}} value={drwRpeT} onChange={e=>drwUpd({rpeTarget:Number(e.target.value)})} title={L('Antrenman yoğunluğu — 10 üzerinden hedef RPE','Session intensity — target RPE out of 10')}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(v=><option key={v} value={v}>{v}</option>)}
-                  </select><span className="dw-unit">/10 · {L(drwZone.tr,drwZone.en)}</span></div>
-                :<div className="dw-inrow"><span className="v" style={{marginTop:0}}>{drwRpeT}</span><span className="dw-unit">/10 · {L(drwZone.tr,drwZone.en)}</span></div>}
-            </div>
+                ?<div className="sk-st-v"><input type="number" min="0" inputMode="numeric" className="dw-inp sk-st-in sk-st-num" value={drawerSes.duration??''} aria-label={L('Süre (dk)','Duration (min)')}
+                    onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));const patch={duration:d};if(!drawerSes.auManual&&drawerSes.sRPE!==''&&drawerSes.sRPE!=null)patch.au=Math.round(Number(drawerSes.sRPE)*(Number(d)||0));drwUpd(patch);}}/><span className="dw-unit">{L('dk','min')}</span></div>
+                :<div className="sk-st-v">{Number(drawerSes.duration)||0}<span className="dw-unit">{L('dk','min')}</span></div>}
+            </SkStat>
+            <SkStat k={L('Hedef','Goal')} ac={FOCUS_BY[drwGoals[0]]?.c||'#22c55e'}
+              ic={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>}
+              sub={<span className="sk-st-sub">{drwGoals.length?L(`${drwGoals.length} hedef`,`${drwGoals.length} goal${drwGoals.length===1?'':'s'}`):L('hedef seçilmedi','no goal picked')}</span>}>
+              <div className="sk-st-goal"><GoalPicker value={drwGoals} onChange={setDrwGoals} readOnly={!canEdit}/></div>
+            </SkStat>
+            <SkStat k={L('Yoğunluk','Intensity')} ac={drwZone.c} ic={<SkIcGauge/>}
+              sub={<SkRpeScale value={drwRpeT} readOnly={!canEdit} onPick={n=>drwUpd({rpeTarget:n})}/>}>
+              <div className="sk-st-v"><b style={{color:drwZone.c}}>{drwRpeT}</b><span className="dw-unit">/10</span><span className="sk-st-tag" style={{color:drwZone.c}}>{L(drwZone.tr,drwZone.en)}</span></div>
+            </SkStat>
           </div>
           {(drawerSes.blocks||[]).length===0&&<div className="dw-empty">{L('Egzersiz bloğu yok','No exercise blocks')}</div>}
           {(drawerSes.blocks||[]).map(b=>{
