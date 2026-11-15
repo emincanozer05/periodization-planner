@@ -454,7 +454,7 @@ function RoughCalendar({team,updateTeam,rows}){
    The season (or one month) week by week: target vs actual load, or the volume ×
    intensity profile the load levels set. */
 function MicrocycleChart({rows,months,initialMonth}){
-  const[view,setView]=useState('year');
+  const[view,setView]=useState('month');
   const[mode,setMode]=useState('load');
   const[mon,setMon]=useState(initialMonth);
   const keys=months.map(x=>x.k);
@@ -475,7 +475,7 @@ function MicrocycleChart({rows,months,initialMonth}){
       {label:L('Hacim','Volume'),data:cw.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,...pt('#3b6ef5')},
       {label:L('Şiddet','Intensity'),data:cw.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,...pt('#f59e0b')}]};
   const opts={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
-    scales:{x:xs,y:mode==='load'?{...CHART_DARK.scales.y,ticks:{...CHART_DARK.scales.y.ticks,callback:v=>nfAU(v)}}:{...CHART_DARK.scales.y,suggestedMax:110}},
+    scales:{x:xs,y:mode==='load'?{...CHART_DARK.scales.y,suggestedMax:1000,ticks:{...CHART_DARK.scales.y.ticks,precision:0,callback:v=>nfAU(v)}}:{...CHART_DARK.scales.y,suggestedMax:110}},
     plugins:{legend,tooltip:{mode:'index',intersect:false,callbacks:{title,afterTitle:after,
       label:i=>mode==='load'?`${i.dataset.label}: ${nfAU(i.parsed.y)} AU`:`${i.dataset.label}: ${i.parsed.y}%`}}}};
   return(<div className="sp-mc">
@@ -485,8 +485,8 @@ function MicrocycleChart({rows,months,initialMonth}){
         <button type="button" className={mode==='vi'?'on':''} aria-pressed={mode==='vi'} onClick={()=>setMode('vi')}>{L('Hacim · Şiddet','Volume · Intensity')}</button>
       </div>
       <div className="sp-seg" role="group" aria-label={L('Dönem','Range')}>
-        <button type="button" className={view==='year'?'on':''} aria-pressed={view==='year'} onClick={()=>setView('year')}>{L('Yıllık','Yearly')}</button>
         <button type="button" className={view==='month'?'on':''} aria-pressed={view==='month'} onClick={()=>setView('month')}>{L('Aylık','Monthly')}</button>
+        <button type="button" className={view==='year'?'on':''} aria-pressed={view==='year'} onClick={()=>setView('year')}>{L('Yıllık','Yearly')}</button>
       </div>
     </div>
     {view==='month'&&<div className="pm-months">
@@ -606,7 +606,8 @@ function SeasonPlanning({team,updateTeam,weeks,periods,months,initialMonth,dates
     </div>
   </div>);
 }
-/* What each macrocycle phase is for — shown from the "?" on the Season Macrocycle card. */
+/* What each macrocycle phase is for — shown when the pointer rests on a period's name in
+   Season Planning → Period Dates. */
 const PHASE_INFO=[
   {id:'gp',tr:{t:'Genel Hazırlık',w:'Sezon öncesi hazırlığın ilk aşaması.',
     d:'Temel kuvvet, aerobik dayanıklılık, mobilite ve hareket kalitesinin geliştirilmesi hedeflenir. Antrenman hacmi kademeli artırılarak daha yoğun yüklenmelere fiziksel altyapı oluşturulur.'},
@@ -677,9 +678,6 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     while(cur<=end){a.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
     return a;},[s.seasonStart,s.seasonEnd]);
   const athleteCount=(team.athletes||[]).length;
-  const[phInfoOpen,setPhInfoOpen]=useState(false);
-  useEffect(()=>{if(!phInfoOpen)return;const k=e=>{if(e.key==='Escape')setPhInfoOpen(false);};
-    window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[phInfoOpen]);
   const months=useMemo(()=>monthTicks.map(d=>({k:fmt(d).slice(0,7),label:MN[d.getMonth()],year:d.getFullYear()})),[monthTicks]);
   const thisMonth=fmt(today).slice(0,7);
   const initialMonth=months.some(x=>x.k===thisMonth)?thisMonth:((months[0]||{}).k||'');
@@ -739,64 +737,6 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       <button className="btn sec sm" onClick={renameSeason}>{L('Yeniden adlandır','Rename')}</button>
       {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>{L('Sil','Delete')}</button>}
     </PageHero>
-    {(()=>{
-      /* The chart used to start at today, which chopped off whatever a phase had already
-         spent — a General Preparation running Jul 20–Aug 16 drew as a stub on Aug 3. The
-         window is the macrocycle itself now: General Preparation's start to Transition's
-         end, with TODAY marked wherever it actually falls inside it. */
-      const tk=fmt(today);
-      const winStart=periods.length?periods[0].start:s.seasonStart;
-      const winEnd=periods.length?periods[periods.length-1].end:s.seasonEnd;
-      const span=Math.max(1,diffD(winStart,winEnd));
-      const pctOf=ds=>{const d=Math.max(0,Math.min(span,diffD(winStart,ds)));return d/span*100;};
-      const todayPct=(tk>=winStart&&tk<=winEnd)?pctOf(tk):null;
-      const phModels=[...new Set(SEASON_PHASES.map(ph=>phaseModel(s,ph.id)))];
-      const modelName=phModels.length===1?modelLabel(modelOf(phModels[0])):L('Aşamaya göre model','Model by phase');
-      const fmd=ds=>{const d=parseD(ds);return MN[d.getMonth()]+' '+d.getDate();};
-      const ticks=[];let cur=new Date(parseD(winStart).getFullYear(),parseD(winStart).getMonth()+1,1);const endD=parseD(winEnd);
-      while(cur<=endD){ticks.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
-      return(<div className="panel mc-panel">
-        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div>
-          <button className="mc-help" onClick={()=>setPhInfoOpen(true)} aria-label={L('Faz bilgisi','Phase info')} title={L('Faz bilgisi','Phase info')}>?</button></div>
-        <div className="mc-gantt">
-          <div className="mc-axis">
-            <div/>
-            <div className="mc-axis-tr">
-              {todayPct!=null&&<div className="mc-today" style={{left:`${todayPct}%`}}><span>{L('BUGÜN','TODAY')}</span></div>}
-              {ticks.map((d,i)=><span key={i} className="mc-mtick" style={{left:`${pctOf(fmt(d))}%`}}>{MN[d.getMonth()]}</span>)}
-            </div>
-          </div>
-          {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));
-            const nm=exLabel(PHASE_NAME[p.id]||p.name),col=PHASE_COL[p.id]||'#64748b';return(
-            <div key={p.id} className="mc-row">
-              <div className="mc-lbl" title={nm}>
-                <span className="mc-dot" style={{background:col}}/>
-                <div className="mc-lbl-tx"><b>{nm}</b><i>{L(`${wk} hf · ${fmd(p.start)}–${fmd(p.end)}`,`${wk} wk · ${fmd(p.start)}–${fmd(p.end)}`)}</i></div>
-              </div>
-              <div className="mc-track">
-                {ticks.map((d,i)=><div key={'g'+i} className="mc-grid" style={{left:`${pctOf(fmt(d))}%`}}/>)}
-                {todayPct!=null&&<div className="mc-todayline" style={{left:`${todayPct}%`}}/>}
-                <div className="mc-bar" title={L(`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} hf`,`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`)}
-                  style={{left:`${l}%`,width:`${Math.max(.6,r-l)}%`,backgroundColor:col,animationDelay:(pi*80)+'ms'}}/>
-              </div>
-            </div>);})}
-        </div>
-        {phInfoOpen&&<div className="modal-bg" onClick={()=>setPhInfoOpen(false)}>
-          <div className="modal mc-info" role="dialog" aria-label={L('Faz bilgisi','Phase info')} onClick={e=>e.stopPropagation()}>
-            <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Sezon Fazları','Season Phases')}</h2>
-              <span style={{flex:1}}/><button className="x-btn" onClick={()=>setPhInfoOpen(false)}>✕</button></div>
-            <div className="mc-info-body">
-              {PHASE_INFO.map((ph,i)=>{const x=REPORT_LANG==='tr'?ph.tr:ph.en;return(
-                <div key={ph.id} className="mc-info-ph">
-                  <div className="mc-info-t"><span className="mc-dot" style={{background:PHASE_COL[ph.id]}}/>{i+1}. {x.t}</div>
-                  <div className="mc-info-w"><b>{L('Dönem','Period')}:</b> {x.w}</div>
-                  <p>{x.d}</p>
-                </div>);})}
-            </div>
-          </div>
-        </div>}
-      </div>);
-    })()}
     {/* Season Planning: the weekly plan, a monthly rough calendar, the planned
         microcycles, the period dates and the periodization model, one tab at a time.
         The model and the period dates sit here because they write every week's default
@@ -814,7 +754,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         <div className="sp-table">
         <table><thead><tr><th>{L('Faz','Period')}</th><th>{L('Başlangıç (gg/aa/yyyy)','Start (dd/mm/yyyy)')}</th><th>{L('Bitiş (gg/aa/yyyy)','End (dd/mm/yyyy)')}</th><th>{L('Süre','Duration')}</th></tr></thead><tbody>
           {periods.map(p=><tr key={p.id}>
-            <td><strong style={{color:'var(--text)'}}><span style={{display:'inline-block',width:9,height:9,borderRadius:'50%',marginRight:8,verticalAlign:'middle',background:PHASE_COL[p.id]||'#64748b'}}/>{exLabel(p.name)}</strong></td>
+            <td title={(()=>{const x=PHASE_INFO.find(i=>i.id===p.id);const y=x&&(REPORT_LANG==='tr'?x.tr:x.en);return y?`${y.w} ${y.d}`:'';})()}><strong style={{color:'var(--text)'}}><span style={{display:'inline-block',width:9,height:9,borderRadius:'50%',marginRight:8,verticalAlign:'middle',background:PHASE_COL[p.id]||'#64748b'}}/>{exLabel(p.name)}</strong></td>
             <td><DateDMY value={p.start} onChange={v=>updPeriod(p.id,'start',v)} style={{width:160}}/></td>
             <td><DateDMY value={p.end} onChange={v=>updPeriod(p.id,'end',v)} style={{width:160}}/></td>
             <td><strong>{diffD(p.start,p.end)+1}</strong> {L('gün','days')} <span className="sp-dim">· {L(`${Math.max(1,Math.round((diffD(p.start,p.end)+1)/7))} hafta`,`${Math.max(1,Math.round((diffD(p.start,p.end)+1)/7))} wk`)}</span></td>
