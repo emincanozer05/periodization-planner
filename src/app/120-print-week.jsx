@@ -94,12 +94,9 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const rDay=dayLoads.map(v=>Math.round(v||0));
   const rTotal=rDay.reduce((a,b)=>a+b,0);
   /* Foster monotony — from teamWeekMono, the same helper the calendar's chip and the
-     Load Monitoring card read, so all three report one number for a week. This used to
-     recompute mean/SD over the TEAM's daily totals, which is a different statistic:
-     collapsing the roster into one curve first smooths away the very day-to-day
-     variation monotony measures, and it printed 1.51 where the calendar said 1.29.
-     mean/SD/strain come from the helper too, so the printed "Mean / SD" still divides
-     out to the printed monotony. */
+     Load Monitoring card read, so all three report one number for a week: the mean of
+     the team's seven daily loads (the bars below) ÷ their SD, so the printed
+     "Mean / SD" divides out to the printed monotony and matches the chart. */
   const wkMono=teamWeekMono(days,athletes,weekStart);
   const meanLoad=wkMono.mean,sd=wkMono.sd,monotony=wkMono.monotony,strain=wkMono.strain;
   // The bar chart plots the TEAM's daily totals, so its mean line stays a team mean.

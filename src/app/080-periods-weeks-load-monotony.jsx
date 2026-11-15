@@ -71,26 +71,21 @@ function teamDailyLoadMap(days,athletes){
     if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
   return m;}
 /* ---- Team monotony for one Mon–Sun week ------------------------------------------
-   Computed the standard way: each athlete's OWN weekly monotony first
-   (their mean daily load ÷ the SD of their daily loads), then the plain average of
-   those values across the squad. Collapsing the roster into one average load curve
-   first and taking the monotony of that curve is a different — and wrong — number,
-   because averaging smooths away exactly the day-to-day variation monotony measures.
-   Athletes with no load logged in the week are skipped, so the mean isn't dragged
-   down by players who simply didn't train or log. mean / sd / strain are averaged the
-   same way, so the Load Monitoring card's mini stats stay per-athlete too.
-   With no logs at all the week falls back to the planned team-plan daily loads, so a
-   purely planned week still reads instead of showing "no data". */
+   Foster's monotony of the team's SEVEN DAILY LOADS — exactly the "Günlük Yük" figures
+   under each calendar column (teamDailyLoadMap, rounded the same way), rest days 0:
+   mean daily load ÷ population SD of those seven values. The week's total, mean, SD and
+   monotony are therefore all read off the same seven numbers the coach sees, and anyone
+   can check the chip by hand (e.g. 540·985·699·593·0·0·0 → 402.43 ÷ 371.95 = 1.08).
+   The old per-athlete-then-averaged figure (0.69 for that week) did not match the curve
+   on screen and could not be verified from it. `n` = athletes with any load logged in
+   the week, kept for the "how many logged" captions. */
 function athWeekLoads(a,weekStartKey){
   return Array.from({length:7},(_,i)=>({load:athDayLoad(a,fmt(addD(parseD(weekStartKey),i)))}));}
 function teamWeekMono(days,athletes,weekStartKey){
-  const per=(athletes||[]).map(a=>weekMono(athWeekLoads(a,weekStartKey))).filter(r=>r.monotony>0);
-  if(per.length){
-    const avg=k=>per.reduce((s,r)=>s+r[k],0)/per.length;
-    return{mean:avg('mean'),sd:avg('sd'),monotony:avg('monotony'),strain:avg('strain'),total:avg('total'),n:per.length};
-  }
-  const m=plannedDayLoadMap(days);
-  return{...weekMono(Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)}))),n:0};}
+  const m=teamDailyLoadMap(days,athletes);
+  const loads=Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)}));
+  const n=(athletes||[]).filter(a=>athWeekLoads(a,weekStartKey).some(l=>l.load>0)).length;
+  return{...weekMono(loads),n};}
 /* Squad acute / chronic / ACWR at a reference day, the same per-athlete way as the
    monotony above: each athlete's own 7-day mean, 28-day mean and ACWR first, then the
    plain average across the athletes who have any load in the 28-day window. Reading

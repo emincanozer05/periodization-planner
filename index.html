@@ -6116,6 +6116,55 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .tib-tbl td.rk{font-size:11px;color:var(--dim)}
 .tib-sr .tib-tbl td.d{max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tib-sr .tib-mini{width:54px}
+/* ---- Team sRPE Table v2 (`tsr-*`) ----
+   Three summary figures, a pinned column header, then one row per athlete: rank,
+   photo, name with jersey · position, the week's load as a bar on a shared scale with
+   the squad mean drawn as a thin line across every bar, and the Δ to the mean as a
+   coloured pill. Athletes without load are dimmed and sink to the bottom. */
+.tsr-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:-2px 0 12px;flex:none;
+  background:var(--border);border:1px solid var(--border);border-radius:var(--r-sm,6px);overflow:hidden}
+.tsr-sum>div{background:var(--bg2);padding:8px 11px;min-width:0}
+.tsr-sum span{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.tsr-sum b{display:flex;align-items:baseline;gap:4px;margin-top:3px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tsr-sum b u{text-decoration:none;font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.06em}
+.tsr-hd,.tsr-r{display:grid;grid-template-columns:20px 32px minmax(0,1fr) auto 60px;align-items:center;gap:0 10px}
+.tsr-hd{flex:none;padding:0 8px 6px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border)}
+.tsr-hd>span:nth-child(2){grid-column:2/4}
+.tsr-hd .r{text-align:right}
+.tsr-list{display:flex;flex-direction:column;gap:2px;padding-top:4px!important}
+.tsr-r{grid-template-areas:"rk av nm v d" "rk av bar bar d";row-gap:6px;padding:7px 8px;border-radius:var(--r-sm,6px);transition:background-color .18s ease}
+.tsr-r:hover{background:rgba(255,255,255,.04)}
+.tsr-r.off{opacity:.5}
+.tsr-rk{grid-area:rk;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--dim);text-align:center}
+.tsr-r.top .tsr-rk{color:var(--text)}
+.tsr-av{grid-area:av;width:32px;height:32px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--elevated);
+  border:1px solid var(--border2);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--text2)}
+.tsr-av img{width:100%;height:100%;object-fit:cover}
+.tsr-nm{grid-area:nm;min-width:0;display:flex;align-items:baseline;gap:7px;line-height:1.2}
+.tsr-nm b{min-width:0;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tsr-nm u{flex:none;text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);white-space:nowrap}
+.tsr-v{grid-area:v;justify-self:end;display:flex;align-items:baseline;gap:3px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tsr-v u{text-decoration:none;font-size:8.5px;font-weight:600;color:var(--dim);letter-spacing:.05em}
+.tsr-bar{grid-area:bar;display:block;min-width:0}
+.tsr-bar .trk{position:relative;display:block;height:6px;border-radius:4px;background:rgba(255,255,255,.06)}
+.tsr-bar .trk i{display:block;height:100%;width:0;border-radius:4px;transition:width .8s cubic-bezier(.22,.61,.36,1)}
+.tsr-bar .trk::after{content:"";position:absolute;top:-3px;bottom:-3px;left:var(--tsr-mean,50%);width:2px;margin-left:-1px;
+  border-radius:1px;background:var(--text2);opacity:.75}
+.tsr-d{grid-area:d;justify-self:end;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:700;white-space:nowrap;
+  padding:2px 7px;border:1px solid;border-radius:999px;font-variant-numeric:tabular-nums}
+.tsr-r.off .tsr-d{font-weight:500}
+.tsr-leg{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;flex:none}
+.tsr-leg span{display:inline-flex;align-items:center;gap:5px}
+.tsr-leg i{width:8px;height:8px;border-radius:2px;flex:none}
+.tsr-leg .mn i{width:2px;height:11px;border-radius:1px;background:var(--text2)}
+.tsr-leg .au{margin-left:auto}
+:root[data-theme="light"] .tsr-bar .trk{background:rgba(15,23,42,.08)}
+:root[data-theme="light"] .tsr-r:hover{background:rgba(15,23,42,.04)}
+@media (prefers-reduced-motion:reduce){.tsr-bar .trk i,.tsr-r{transition:none}}
 /* ---- Load Trend ---- */
 /* The chart grows into the height the column hands it, but only so far: four bars drawn
    700px tall is a skyscraper, not a trend. Past the cap the legend drops to the bottom of
@@ -8507,6 +8556,77 @@ main .panel,main .ap-head{animation:none}
   .ep-f.s1,.ep-f.s2{grid-column:span 1}.ep-f.s3,.ep-f.s6{grid-column:1/-1}
   .ep-foot span{display:none}.ep-foot .btn{flex:1}
 }
+
+/* ---- Profili Düzenle v2 (`ep2`, AthEditProfile): ekranın neredeyse tamamı ----
+   Solda sabit bir sütun: kare, büyük fotoğraf (tıkla → değiştir), ad, forma / mevki /
+   kategori çipleri ve özet bilgiler. Sağda başlıklara ayrılmış kartlar iki sütunlu
+   ızgarada (Kişisel Bilgiler ve Kulüp ve Takım tam genişlik). Düz yüzey, gradyan yok. */
+:is(:root,:root[data-theme]) .modal.ep-modal.ep2{width:min(1600px,94vw);max-width:1600px;height:min(920px,92vh);max-height:92vh;
+  display:flex;flex-direction:column;padding:0}
+.ep2 .ep-head{padding:16px 24px}
+.ep2-wrap{flex:1;min-height:0;display:grid;grid-template-columns:300px minmax(0,1fr)}
+.ep2-side{min-height:0;overflow-y:auto;padding:22px 22px 24px;border-right:1px solid var(--border);background:var(--bg2);
+  display:flex;flex-direction:column;gap:18px}
+.ep2-photo{position:relative;display:block;width:100%;aspect-ratio:1/1;padding:0;margin:0;border:1px solid var(--border2);
+  border-radius:var(--r-sm,6px);overflow:hidden;background:var(--elevated);cursor:pointer;color:var(--text2)}
+.ep2-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.ep2-photo .ini{display:grid;place-items:center;width:100%;height:100%;font-size:64px;font-weight:800;letter-spacing:.02em;color:var(--dim)}
+.ep2-photo-cta{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 8px;background:rgba(0,0,0,.62);color:#fff;font-size:12.5px;font-weight:600;
+  transform:translateY(100%);transition:transform .2s ease}
+.ep2-photo:hover .ep2-photo-cta,.ep2-photo:focus-visible .ep2-photo-cta{transform:none}
+.ep2-photo:hover img{transform:scale(1.03)}
+.ep2-photo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ep2-id{display:flex;flex-direction:column;gap:8px}
+.ep2-nm{font-size:20px;font-weight:800;line-height:1.2;color:var(--text);word-break:break-word}
+.ep2-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ep2-chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.03em;
+  padding:3px 9px;border:1px solid var(--border2);border-radius:999px;color:var(--text2);background:var(--panel)}
+.ep2-chip.num{color:#fff;background:var(--accent);border-color:var(--accent)}
+.ep2-facts{margin:0;display:flex;flex-direction:column;border-top:1px solid var(--border)}
+.ep2-fact{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.ep2-fact dt{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);flex:none}
+.ep2-fact dd{margin:0;font-size:13px;font-weight:600;color:var(--text);text-align:right;min-width:0;overflow-wrap:anywhere}
+.ep2-fact dd.na{color:var(--dim);font-weight:500}
+.ep2-fact dd.cons.yes{color:#22c55e}.ep2-fact dd.cons.internal{color:#f59e0b}.ep2-fact dd.cons.no{color:#ef4444}
+.ep2-main.ep-body{padding:20px 24px 24px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-content:start}
+.ep2-sec{min-width:0;border:1px solid var(--border);border-radius:var(--r-sm,6px);background:var(--panel);padding:16px 18px 18px}
+.ep2-sec.wide,.ep2-sec.ep-polar{grid-column:1/-1}
+.ep2-sec-h{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.ep2-sec-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm,6px);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.ep2-sec-h b{display:block;font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text);line-height:1.2}
+.ep2-sec-h span{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+.ep-grid.ep2-g4{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 16px}
+.ep-grid.ep2-g2{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.ep2 .ep-f.s2{grid-column:span 2}.ep2 .ep-f.s1{grid-column:span 1}
+.ep2 .ep-f>label{display:block;margin-bottom:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ep2 .ep-f input,.ep2 .ep-f select{width:100%;height:42px;font-size:14.5px}
+.ep2 .ep-f .help{margin-top:5px;font-size:11.5px;color:var(--dim)}
+.ep2 .dmy{display:flex;width:100%}
+.ep2 .dmy .dmy-t{flex:1;min-width:0}
+.ep2-ph{display:flex;gap:8px}
+.ep2 .ep2-ph select{flex:0 0 118px;width:118px}
+.ep2 .ep2-ph input{flex:1;min-width:0}
+.ep2-hint{padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.ep2-hint:hover{text-decoration-style:solid}
+.ep2 .ep2-sec textarea{width:100%;min-height:96px}
+@media (max-width:1100px){
+  .ep2-wrap{grid-template-columns:240px minmax(0,1fr)}
+  .ep2-main.ep-body{grid-template-columns:minmax(0,1fr)}
+  .ep-grid.ep2-g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  :is(:root,:root[data-theme]) .modal.ep-modal.ep2{width:100vw;height:100vh;max-height:100vh;border-radius:0}
+  .ep2-wrap{display:block;overflow-y:auto}
+  .ep2-side{border-right:0;border-bottom:1px solid var(--border);padding:16px;overflow:visible}
+  .ep2-photo{width:160px;margin:0 auto}
+  .ep2-main.ep-body{overflow:visible;padding:16px}
+  .ep-grid.ep2-g4,.ep-grid.ep2-g2{grid-template-columns:minmax(0,1fr)}
+  .ep2 .ep-f.s1,.ep2 .ep-f.s2{grid-column:1/-1}
+  .ep2 .ep-head,.ep2 .ep-foot{padding-left:16px;padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){.ep2-photo img,.ep2-photo-cta{transition:none}}
 /* ---- The pattern table ---------------------------------------------------
    "Egzersiz Ekle" opens a row and its Kategori box files it; every category is a group of the
    grid. Used by the calendar's block editor and by the individualization brief (PlanTable).
@@ -10761,6 +10881,37 @@ td.td-c.none{color:var(--border2)}
   .sk-hz-bar i{animation:none}
   .sk-st,.sk-scale>*,.sk .sk-pp-av{transition:none}
 }
+
+/* ---- Blok başlığı: kraliyet mavisi bant, beyaz düğmeler ----
+   S&C / top bloğunun (ve aynı başlığı taşıyan bütün blokların) başlık bandı düz #0e3dc6;
+   sağdaki eylem düğmeleri (↑ ↓, Çoğalt, Yazdır, Görselle Yazdır, Kaldır) beyaz zemin,
+   siyah yazı. Seans numarası rozeti bandın mavisine karışmasın diye beyaz halkalı. */
+.iv-block-hd{background-color:#0e3dc6!important;background-image:none!important;border-bottom-color:rgba(255,255,255,.16)!important;
+  --blk-hd-ink:#fff;--blk-hd-ink2:rgba(255,255,255,.82);--blk-hd-ink3:rgba(255,255,255,.6)}
+.iv-block-hd .blk-sn{background:#fff;color:#0e3dc6;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.iv-block-hd .iv-block-nm:focus{background:rgba(0,0,0,.18)!important;border-color:#fff!important}
+.iv-block-hd .btn.xs.sec,.iv-block-hd .btn.xs.sec.iv-rmb{background:#fff!important;border:1px solid #fff!important;color:#000!important}
+.iv-block-hd .btn.xs.sec:hover:not(:disabled){background:#e6ebf7!important;border-color:#e6ebf7!important;color:#000!important}
+.iv-block-hd .btn.xs.sec.iv-rmb:hover:not(:disabled){background:#fff!important;border-color:#fecaca!important;color:#b91c1c!important}
+.iv-block-hd .btn.xs.sec:disabled{opacity:.45}
+.iv-block-hd .btn.xs.sec:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+/* ---- Seans türü seçici (`SesTypeSelect`, 235) ----
+   Takım antrenmanı / müsabaka / test kartının başlığında tür rozeti artık bir açılır
+   kutu; seans çekmecesinin alt başlığında da aynısı. Seçince seans o türe çevrilir. */
+select.ses-type-sel{-webkit-appearance:none;appearance:none;cursor:pointer;min-height:0;width:auto;max-width:100%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;background-position:right 8px center!important;background-size:9px 6px!important}
+select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;letter-spacing:0;font-family:inherit}
+.iv-block-hd select.ses-type-sel.sk-kind{background-color:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.55)!important;
+  color:#fff!important;padding:4px 24px 4px 10px!important;font-size:10px!important;height:auto!important;border-radius:999px!important}
+.iv-block-hd select.ses-type-sel.sk-kind:hover{background-color:rgba(255,255,255,.22)!important}
+.dw-h select.ses-type-sel.dw-type{background-color:transparent!important;border:0!important;border-bottom:1px dashed var(--border2,rgba(255,255,255,.3))!important;
+  border-radius:0!important;color:inherit!important;font:inherit!important;padding:0 18px 1px 0!important;height:auto!important;
+  background-position:right 2px center!important}
+.dw-h select.ses-type-sel.dw-type:hover{border-bottom-color:var(--accent)!important}
+:root[data-theme="light"] .dw-h select.ses-type-sel.dw-type{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23334155' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")!important}
+:root[data-theme="light"] select.ses-type-sel option{background:#fff;color:#111}
 </style>
 </head>
 <body>
@@ -10928,11 +11079,11 @@ const FOCUS_TREE=[
    sub:['Foundational Strength','Maximal Strength','Hypertrophy','Strength Endurance','Eccentric Strength','Isometric Strength','Unilateral Strength','Core Strength']},
   {id:'Power', tr:'Güç', c:'#a3e635',
    sub:['Strength-Speed','Speed-Strength','Explosive Strength','Reactive Strength','Rate of Force Development','Ballistic Power']},
-  {id:'Speed', tr:'Hız', c:'#c000ff',
+  {id:'Speed', tr:'Hız & Çeviklik', c:'#c000ff',
    sub:['Acceleration','Max Velocity','Deceleration','Change of Direction','Reactive Agility','Speed Endurance','Sprint Technique']},
   {id:'Conditioning', tr:'Kondisyon', c:'#00ffd5',
    sub:['Aerobic Capacity','Aerobic Power','Anaerobic Capacity','Anaerobic Power','Repeated Sprint Ability','Lactate Tolerance','Tempo / Extensive']},
-  {id:'Movement', tr:'Hareket', c:'#38bdf8',
+  {id:'Movement', tr:'Hareket Kalitesi', c:'#38bdf8',
    sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception']},
   {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
    sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage']},
@@ -11123,7 +11274,9 @@ const sesFocus=s=>uniq(sesFocusRaw(s).map(f=>FOCUS_BY[f]?f:FOCUS_L1_FROM_LEGACY[
 /* A focus value in the coach's own language — the tree carries the Turkish for every
    stage-1 quality, so "Strength" reads "Kuvvet" on a Turkish screen and stays "Strength"
    on an English one. The stored value never changes; only what is shown does. */
-const focusLabel=f=>L(FOCUS_BY[f]?.tr||f,f);
+/* Stage-1 focuses read from FOCUS_TREE (Güç, Hız & Çeviklik, Hareket Kalitesi…); anything
+   else — a sub-focus — goes through the shared term list. */
+const focusLabel=f=>FOCUS_BY[f]?L(FOCUS_BY[f].tr,f):exLabel(f);
 /* Sub-focus (stage 2). Stored on the session as `sub: []`; a session written before the
    tree existed derives one from whichever retired focus values named a capacity. */
 const sesSubFocus=s=>{
@@ -14339,26 +14492,21 @@ function teamDailyLoadMap(days,athletes){
     if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
   return m;}
 /* ---- Team monotony for one Mon–Sun week ------------------------------------------
-   Computed the standard way: each athlete's OWN weekly monotony first
-   (their mean daily load ÷ the SD of their daily loads), then the plain average of
-   those values across the squad. Collapsing the roster into one average load curve
-   first and taking the monotony of that curve is a different — and wrong — number,
-   because averaging smooths away exactly the day-to-day variation monotony measures.
-   Athletes with no load logged in the week are skipped, so the mean isn't dragged
-   down by players who simply didn't train or log. mean / sd / strain are averaged the
-   same way, so the Load Monitoring card's mini stats stay per-athlete too.
-   With no logs at all the week falls back to the planned team-plan daily loads, so a
-   purely planned week still reads instead of showing "no data". */
+   Foster's monotony of the team's SEVEN DAILY LOADS — exactly the "Günlük Yük" figures
+   under each calendar column (teamDailyLoadMap, rounded the same way), rest days 0:
+   mean daily load ÷ population SD of those seven values. The week's total, mean, SD and
+   monotony are therefore all read off the same seven numbers the coach sees, and anyone
+   can check the chip by hand (e.g. 540·985·699·593·0·0·0 → 402.43 ÷ 371.95 = 1.08).
+   The old per-athlete-then-averaged figure (0.69 for that week) did not match the curve
+   on screen and could not be verified from it. `n` = athletes with any load logged in
+   the week, kept for the "how many logged" captions. */
 function athWeekLoads(a,weekStartKey){
   return Array.from({length:7},(_,i)=>({load:athDayLoad(a,fmt(addD(parseD(weekStartKey),i)))}));}
 function teamWeekMono(days,athletes,weekStartKey){
-  const per=(athletes||[]).map(a=>weekMono(athWeekLoads(a,weekStartKey))).filter(r=>r.monotony>0);
-  if(per.length){
-    const avg=k=>per.reduce((s,r)=>s+r[k],0)/per.length;
-    return{mean:avg('mean'),sd:avg('sd'),monotony:avg('monotony'),strain:avg('strain'),total:avg('total'),n:per.length};
-  }
-  const m=plannedDayLoadMap(days);
-  return{...weekMono(Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)}))),n:0};}
+  const m=teamDailyLoadMap(days,athletes);
+  const loads=Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)}));
+  const n=(athletes||[]).filter(a=>athWeekLoads(a,weekStartKey).some(l=>l.load>0)).length;
+  return{...weekMono(loads),n};}
 /* Squad acute / chronic / ACWR at a reference day, the same per-athlete way as the
    monotony above: each athlete's own 7-day mean, 28-day mean and ACWR first, then the
    plain average across the athletes who have any load in the 28-day window. Reading
@@ -16490,12 +16638,9 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const rDay=dayLoads.map(v=>Math.round(v||0));
   const rTotal=rDay.reduce((a,b)=>a+b,0);
   /* Foster monotony — from teamWeekMono, the same helper the calendar's chip and the
-     Load Monitoring card read, so all three report one number for a week. This used to
-     recompute mean/SD over the TEAM's daily totals, which is a different statistic:
-     collapsing the roster into one curve first smooths away the very day-to-day
-     variation monotony measures, and it printed 1.51 where the calendar said 1.29.
-     mean/SD/strain come from the helper too, so the printed "Mean / SD" still divides
-     out to the printed monotony. */
+     Load Monitoring card read, so all three report one number for a week: the mean of
+     the team's seven daily loads (the bars below) ÷ their SD, so the printed
+     "Mean / SD" divides out to the printed monotony and matches the chart. */
   const wkMono=teamWeekMono(days,athletes,weekStart);
   const meanLoad=wkMono.mean,sd=wkMono.sd,monotony=wkMono.monotony,strain=wkMono.strain;
   // The bar chart plots the TEAM's daily totals, so its mean line stays a team mean.
@@ -19451,7 +19596,7 @@ function TrainContent({session,onPatch,readOnly}){
         <div className="tc-k">{L('Seans Odağı','Session Focus')}</div>
         {focus.length||sub.length
           ?<div className="tc-focus">
-            {focus.map(f=><span key={'f-'+f} className="tc-chip on">{exLabel(f)}</span>)}
+            {focus.map(f=><span key={'f-'+f} className="tc-chip on">{focusLabel(f)}</span>)}
             {sub.map(f=><span key={'s-'+f} className="tc-chip">{exLabel(f)}</span>)}
           </div>
           :<div className="tc-empty">{L('Odak seçilmedi','No focus set')}</div>}
@@ -20653,34 +20798,47 @@ function TeamInsights({days,athletes,refDate,setup}){
       </div>
 
       <div className="tib-col">
-      {/* ---- Team sRPE table ---- */}
-      <div className="tib-card" style={card()}>
+      {/* ---- Team sRPE table ----
+          Each athlete is one row: rank, photo, name and position, the week's sRPE load
+          as a bar on a shared scale (the thin line across every bar is the squad mean,
+          so "above / below the squad" reads without the number), and the Δ against the
+          mean as a coloured pill. Three summary figures head the list. */}
+      <div className="tib-card tib-srpe" style={card()}>
         <div className="tib-chead">
           <div><div className="tib-ct">{L('Takım sRPE Tablosu','Team sRPE Table')}</div>
             <div className="tib-cs">{L('Haftanın toplam sRPE yükü, yüksekten aza','This week’s total sRPE load, highest to lowest')}</div></div>
-          <span className="tib-tot">{tibNum(srpe.total)}<u>AU</u></span>
         </div>
         {srpe.n===0
           ?<div className="tib-none">{L('Bu hafta sıralanacak sporcu yükü yok.','No athlete load this week to rank.')}</div>
           :<>
-            <div className="tib-sr">
-            <table className="tib-tbl">
-              <thead><tr><th className="rk">#</th><th>{L('Sporcu','Athlete')}</th>
-                <th className="r">sRPE</th><th className="r">Δ</th></tr></thead>
-              <tbody>{srpe.rows.map((r,i)=><tr key={r.a.id}>
-                <td className="rk">{i+1}</td>
-                <td className="d">{r.a.name||'—'}</td>
-                <td className="r ac">{r.load?tibNum(r.load):'—'}
-                  <span className="tib-mini"><i className="a" style={{...grow(r.load/srpe.max*100),background:tibDevCol(r.d,15)}}/></span></td>
-                <td className="r"><span className="tib-d" style={{color:tibDevCol(r.d,15)}}>
-                  {r.load?tibPct(r.d):L('yük yok','no load')}</span></td>
-              </tr>)}</tbody>
-            </table>
+            <div className="tsr-sum">
+              <div><span>{L('Toplam','Total')}</span><b>{tibNum(srpe.total)}<u>AU</u></b></div>
+              <div><span>{L('Ortalama','Mean')}</span><b>{tibNum(srpe.mean)}<u>AU</u></b></div>
+              <div><span>{L('Yük giren','Logged')}</span><b>{srpe.n}<u>/ {srpe.rows.length}</u></b></div>
+            </div>
+            <div className="tsr-hd"><span>#</span><span>{L('Sporcu','Athlete')}</span><span className="r">{L('Haftalık yük','Weekly load')}</span><span className="r">Δ {L('ort.','mean')}</span></div>
+            <div className="tib-sr tsr-list" style={{'--tsr-mean':`${Math.min(100,srpe.mean/srpe.max*100)}%`}}>
+              {srpe.rows.map((r,i)=>{const col=r.load?tibDevCol(r.d,15):'var(--dim)';return(
+                <div key={r.a.id} className={'tsr-r'+(r.load?'':' off')+(i<3&&r.load?' top':'')}>
+                  <span className="tsr-rk">{r.load?i+1:'–'}</span>
+                  <span className="tsr-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</span>
+                  <span className="tsr-nm"><b title={r.a.name||''}>{r.a.name||'—'}</b>
+                    <u>{[r.a.number!=null&&r.a.number!==''?'#'+r.a.number:'',tibPosLabel(r.a.position)].filter(Boolean).join(' · ')||'—'}</u></span>
+                  <span className="tsr-v">{r.load?tibNum(r.load):'—'}{r.load?<u>AU</u>:null}</span>
+                  <span className="tsr-bar"><span className="trk"><i style={{...grow(r.load/srpe.max*100),background:col}}/></span></span>
+                  <span className="tsr-d" style={{color:col,borderColor:r.load?col:'var(--border)'}}>{r.load?tibPct(r.d):L('yük yok','no load')}</span>
+                </div>);})}
             </div>
             {/* Outside the scroller, so the reading of the table stays pinned to the
                 bottom of the card instead of scrolling away with the last athlete. */}
-            <div className="tib-legend">{L(`Takım ortalaması ${tibNum(srpe.mean)} AU · ${srpe.n} sporcu · AU = sRPE × dakika`,
-              `Squad mean ${tibNum(srpe.mean)} AU · ${srpe.n} athletes · AU = sRPE × minutes`)}</div>
+            <div className="tib-legend tsr-leg">
+              <span><i style={{background:'#2dd4a7'}}/>{L('ort. ±%15','mean ±15%')}</span>
+              <span><i style={{background:'#f59e0b'}}/>{L('üstünde','above')}</span>
+              <span><i style={{background:'#f43f5e'}}/>{L('> %25 üstü','> 25% above')}</span>
+              <span><i style={{background:'#5cb8ff'}}/>{L('altında','below')}</span>
+              <span className="mn"><i/>{L('takım ortalaması','squad mean')}</span>
+              <span className="au">AU = sRPE × {L('dk','min')}</span>
+            </div>
           </>}
       </div>
       </div>
@@ -21340,7 +21498,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </div>
       <div className="cws" title={athMode
         ?L('Haftalık monotoni (Foster) = sporcunun bu haftaki 7 günlük yükünün ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Weekly monotony (Foster) = the mean of the athlete\'s 7 daily loads this week ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')
-        :L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
+        :L('Bu haftanın takım monotonluğu (Foster) = takımın 7 günlük yükünün (her günün altındaki Günlük Yük) ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week (Foster) = the mean of the team\'s 7 daily loads (the Daily Load under each day) ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
         <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
         <div className="cws-tx">
           <div className="cws-k">{athMode?L('Haftalık Monotoni','Weekly Monotony'):L('Takım Monotonluğu','Team Monotony')}</div>
@@ -21524,7 +21682,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {canEdit
               ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwRename(e.target.value)} title={L('Seans adını değiştir','Rename the session')}/>
               :<div className="ti">{drawerSes.name}</div>}
-            <div className="su">{drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose}</div>
+            <div className="su">{canEdit
+              /* The type can be changed after the fact — a session added as a team
+                 practice by mistake turns back into Kuvvet & Güç here. */
+              ?<><SesTypeSelect session={drawerSes} onPick={ns=>drwUpd(ns)} className="dw-type"/> · {fdLong(drwDateKey)}</>
+              :(drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose)}</div>
           </div>
           {/* No assignment button here any more. Assigning is a per-BLOCK decision — the
               guards and the forwards get different work on the same day — and this one
@@ -21870,6 +22032,8 @@ const SkIcTimer=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 const SkIcGauge=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 14.5 16 9.5"/></svg>;
 const SkIcHeart=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>;
 const SkIcPin=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>;
+/* Hedef Bölge: konum iğnesi değil, vücut — seçilen şey bir yer değil, vücut bölgesi. */
+const SkIcBody=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M5 9.5l7-1.5 7 1.5"/><path d="M12 8v6"/><path d="M8.5 22l3.5-8 3.5 8"/></svg>;
 const SkIcCal=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>;
 
 /* Players as a grid of chips — who took part in a practice, who made the match squad —
@@ -22153,6 +22317,48 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
   return null;
 }
 
+/* ---- Seans türü, sonradan değiştirilebilir ---------------------------------------
+   Bir seans hangi düğmeyle eklendiyse o tür olarak kalıyordu: yanlışlıkla "Takım
+   Antrenmanı" diye eklenen bir Kuvvet & Güç seansı geri çevrilemiyordu. `sesTypeOf`
+   seansın şu anki türünü (SPRESETS adı) okur; `sesConvert` seansı başka bir türe çevirir:
+   odağı, alt odağı, yük türünü, `kind`'ı ve RPE yuvasını yeni türün değerleriyle yazar.
+   Seansın adı türün varsayılan adıysa (ya da boşsa) yeni türün adını alır; elle verilmiş
+   bir ad korunur. Saat, süre, katılımcılar, egzersizler, notlar ve yük hiç değişmez. */
+const sesTypeOf=s=>{
+  const k=sesKind(s);
+  if(k==='tp')return'Team Practice';if(k==='match')return'Competition';if(k==='test')return'Test';
+  const f=sesFocus(s).join('|');
+  const p=SPRESETS.find(x=>!x.d.kind&&x.d.focus.join('|')===f);
+  return p?p.name:'';
+};
+const sesConvert=(s,name)=>{
+  const p=SPRESETS.find(x=>x.name===name);if(!p)return s;
+  const d=p.d;const nm=String((s&&s.name)||'').trim();
+  const isDefault=!nm||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
+  const ld=String(d.loadType||'').toLowerCase();
+  return{...s,loadType:d.loadType,focus:[...d.focus],sub:[...d.sub],purpose:d.purpose,
+    kind:d.kind||'sc',rpeCat:d.rpeCat||((ld.includes('mechanical')||ld.includes('neuromuscular'))?'sc':'tp'),
+    ...(isDefault?{name:L(p.trName||d.name,d.name)}:{})};
+};
+/* The kind as a dropdown: the same nine types the "add a training block" bar offers. */
+function SesTypeSelect({session,onPick,className}){
+  const cur=sesTypeOf(session);
+  return(<select className={'ses-type-sel'+(className?' '+className:'')} value={cur}
+    title={L('Seans türünü değiştir','Change the session type')} aria-label={L('Seans türü','Session type')}
+    onChange={e=>{const v=e.target.value;if(!v||v===cur)return;
+      /* A team practice / match / test window shows no exercise list: say so before the
+         written exercises disappear behind it (they are kept, and come back if the
+         session is turned back into an S&C type). */
+      const nEx=((session&&session.blocks)||[]).reduce((t,b)=>t+((b&&b.exercises)||[]).length,0);
+      const to=SPRESETS.find(x=>x.name===v);
+      if(to&&to.d.kind&&nEx>0&&!confirm(L(`Bu seanstaki ${nEx} egzersiz "${spLabel(to)}" görünümünde gösterilmez (silinmez; türü geri çevirince yeniden görünür). Devam edilsin mi?`,
+        `The ${nEx} exercise(s) in this session are not shown in the "${spLabel(to)}" view (they are kept and return if you change the type back). Continue?`)))return;
+      onPick(sesConvert(session,v));}}>
+    {!cur&&<option value="">{L('Tür seç…','Pick type…')}</option>}
+    {SPRESETS.map(p=><option key={p.name} value={p.name}>{spLabel(p)}</option>)}
+  </select>);
+}
+
 /* The card a team practice, match or test day gets in the day editor — the same fields
    as its window, under the editor's own header (number, title, moves, remove), and no
    block / exercise list under them. */
@@ -22172,7 +22378,7 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
         <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
         <LiveInput className="iv-block-nm" value={session.name||''} placeholder={tag}
           title={L('Seans adı','Session name')} onChange={v=>u({name:v})}/>
-        <span className="sk-kind">{tag}</span>
+        <SesTypeSelect session={session} onPick={ns=>onUpdate(ns)} className="sk-kind"/>
         {kind==='tp'&&sum&&<span className="sk-hd-sum">{sum}</span>}
         <span className="iv-blockacts">
           {total>1&&<>
@@ -22793,7 +22999,7 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
               onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
               onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/></div>
           </SkStat>
-          <SkStat k={L('Hedef Bölge','Target Region')} ac="#64748b" ic={<SkIcPin/>}>
+          <SkStat k={L('Hedef Bölge','Target Region')} ac="#64748b" ic={<SkIcBody/>}>
             <select className="sf-in sk-st-sel" value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
               <option value="">{L('Bölge seç…','Select region…')}</option>
               {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
@@ -24601,7 +24807,7 @@ function useDDOutside(refs,open,close){
 const FxOpt=({v,on,tog,c})=>(
   <label className={`focus-opt${on?' on':''}`} style={c?{'--fo-c':c}:undefined}>
     <input type="checkbox" checked={on} onChange={()=>tog(v)}/>
-    <span>{exLabel(v)}</span>
+    <span>{focusLabel(v)}</span>
   </label>);
 /* A stage, with the heading that says which question it is answering. `n` drives the
    step badge and the stagger, so the panels arrive in reading order. */
@@ -24648,7 +24854,7 @@ function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
   };
   const toggleSub=s=>onSubChange(subSel.includes(s)?subSel.filter(x=>x!==s):[...subSel,s]);
 
-  const summary=[...sel,...subSel].map(exLabel);
+  const summary=[...sel,...subSel].map(focusLabel);
 
   return(<div ref={ref} className="focus-sel">
     <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
@@ -24668,7 +24874,7 @@ function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
             unfolding rather than two that blink into place. */}
         {stage>=2&&<FxStage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
           {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
-            <div className="fx-fam-hd">{exLabel(f.id)}</div>
+            <div className="fx-fam-hd">{focusLabel(f.id)}</div>
             <div className="fx-grid">
               {f.sub.map(s=><FxOpt key={s} v={s} c={f.c} on={subSel.includes(s)} tog={toggleSub}/>)}
             </div>
@@ -24988,6 +25194,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
     <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}
       title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>;
+  /* The session's type, beside the moves: an S&C session can be turned into a team
+     practice / match / test (and back) without being written again. */
+  const typeSel=!isTemplate&&<SesTypeSelect session={session} onPick={ns=>onUpdate(ns)} className="sk-kind"/>;
+  const headActs=(typeSel||moveBtns)?<>{typeSel||null}{moveBtns||null}</>:null;
 
   return(<div className="sess-ed">
     <div className="sbody">
@@ -25010,7 +25220,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
             onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
-            {moveBtns}
+            {headActs}
             <button type="button" className="btn xs sec iv-rmb" onClick={delSess}
               title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
           </span>
@@ -25023,7 +25233,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
         athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
-        ses={sesCtl} sesMoves={bi===0?moveBtns:null}
+        ses={sesCtl} sesMoves={bi===0?headActs:null}
         bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
@@ -25679,7 +25889,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
    YÜK RAPORU VERİSİ — haftalık ve aylık çıktının ortak kurucusu
    =========================================================
    Her sayı ekrandakiyle aynı yoldan: sporcunun günlük yükü athDayLoad, haftalık monotoni
-   teamWeekMono (sporcu başına, sonra ortalama), ACWR teamLoadStats (sporcu başına, sonra
+   teamWeekMono (takımın 7 günlük yükü: ort. ÷ SS), ACWR teamLoadStats (sporcu başına, sonra
    ortalama). Yük "sporcu başına ortalama AU" olarak verilir (o gün/hafta yük kaydı olan
    sporcuların ortalaması); takım toplamı sporcu tablosunun alt satırında.
    Antrenman türü: sessionType (Kuvvet, Takım antrenmanı, Hız…). Antrenman odağı: seansın
@@ -25884,7 +26094,7 @@ function TeamReports({team,weeks,selected,setSelected}){
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m" title={L(`Foster · ${mWk.n||0} sporcu ortalaması · ${exLabel(lmMonoZone.t||'')}`,`Foster · avg across ${mWk.n||0} athletes · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
+          <div className="m" title={L(`Foster · takımın 7 günlük yükü (ort. ÷ SS) · ${exLabel(lmMonoZone.t||'')}`,`Foster · the team's 7 daily loads (mean ÷ SD) · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
           <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
@@ -25942,7 +26152,7 @@ function TeamReports({team,weeks,selected,setSelected}){
    ölçek, toplam / günlük ortalama / SS / zorlanma. Altta haftanın NEDENİ: Pzt–Paz takımın
    günlük ortalama yükü, ortalama çizgisi ve ±SS bandıyla (çubuklar birbirine ne kadar
    benzerse monotonluk o kadar yüksek) ve sporcu sporcu monotonluk, yükseğinden düşüğüne.
-   Hesap kartla ve takvimle aynı: teamWeekMono (sporcu başına, sonra ortalama). */
+   Hesap kartla ve takvimle aynı: teamWeekMono (takımın 7 günlük yükü: ort. ÷ SS). */
 function MonotonyPanel({team,refWeek}){
   const curWk=fmt(sow(today));
   const start=refWeek&&refWeek<=curWk?refWeek:curWk;
@@ -25980,7 +26190,7 @@ function MonotonyPanel({team,refWeek}){
     <div className="mn-head">
       <div>
         <div className="mn-title">{L('Haftalık Monotonluk','Weekly Monotony')}<span className="mn-sub">{L('Foster monotonluğu ve zorlanma · bir haftayı seç','Foster monotony & strain · pick a week')}</span></div>
-        <div className="mn-help" title={L('Monotonluk = her sporcunun haftalık günlük yük ortalaması ÷ standart sapması, kadro genelinde ortalanır. Zorlanma = haftalık toplam × monotonluk.','Monotony = each athlete\'s mean daily load ÷ SD within the week, averaged across the squad. Strain = weekly total × monotony.')}>
+        <div className="mn-help" title={L('Monotonluk = takımın haftadaki 7 günlük yükünün ortalaması ÷ standart sapması (dinlenme günleri 0). Zorlanma = haftalık toplam × monotonluk.','Monotony = the mean of the team\'s 7 daily loads ÷ their SD (rest days 0). Strain = weekly total × monotony.')}>
           {L('Ort. ÷ SS · <1.0 düşük · 1.0–1.5 normal · 1.5–2.0 izle · >2.0 yüksek','Mean ÷ SD · <1.0 low · 1.0–1.5 normal · 1.5–2.0 watch · >2.0 high')}</div>
       </div>
       <div className="mn-nav">
@@ -26045,7 +26255,7 @@ function MonotonyPanel({team,refWeek}){
           <div><span>{L('Standart sapma','Std. dev.')}</span><b>{n0(selW.sd)}</b><em>AU</em></div>
           <div><span>{L('Zorlanma','Strain')}</span><b>{n0(selW.strain)}</b><em>{L('toplam × mono','total × mono')}</em></div>
         </div>
-        <div className="mn-n">{selW.n?L(`${selW.n} sporcunun ortalaması`,`mean of ${selW.n} athletes`):L('sporcu kaydı yok · takım planı','no athlete logs · team plan')}</div>
+        <div className="mn-n">{selW.n?L(`takımın günlük yükü · ${selW.n} sporcu kaydı`,`team daily load · ${selW.n} athlete logs`):L('sporcu kaydı yok · takım planı','no athlete logs · team plan')}</div>
       </div>
     </div>
 
@@ -33439,6 +33649,185 @@ const ATH_IC={
 };
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
+/* =========================================================
+   PROFİLİ DÜZENLE — sporcunun kimlik kartı (`AthEditProfile`)
+   Ekranın neredeyse tamamını kaplayan pencere: solda kare, büyük fotoğraf ve sporcunun
+   özeti; sağda başlıklara ayrılmış kartlar — Kişisel Bilgiler, Okul, Veli / Acil Durum,
+   Kulüp ve Takım, Sağlık ve İzinler, Polar Bağlantısı, Notlar. Her alan yazıldığı anda
+   kaydedilir; "Bitti" yalnızca kapatır.
+   Ad ve soyad ayrı tutulur (`firstName`, `lastName`) ama uygulamanın her yerinin okuduğu
+   `name` ikisinden yazılır; eski kayıtlarda yalnız `name` varsa son kelime soyad sayılır.
+   Telefon kadronun kullandığı `phone` / `phoneCode` çifti; okul eski `school` alanı.
+   ========================================================= */
+const EP_SCHOOL_TYPES=[['Ortaokul','Middle school'],['Lise','High school'],['Üniversite','University']];
+const EP_RELATIONS=[['Anne','Mother'],['Baba','Father'],['Yasal Vasi','Legal guardian']];
+const EP_BLOOD=['0 Rh+','0 Rh−','A Rh+','A Rh−','B Rh+','B Rh−','AB Rh+','AB Rh−'];
+const EP_AGE_CATS=['U10','U11','U12','U13','U14','U15','U16','U17','U18','U19','U20','U21','U23','Senior'];
+const EP_CONSENT=[['yes','İzin verildi','Granted'],['internal','Yalnızca kulüp içi kullanım','Club internal use only'],['no','İzin verilmedi','Not granted']];
+/* Ad / soyad: ayrı alanlar yoksa kayıtlı tam addan çıkarılır (son kelime soyad). */
+const epNameParts=a=>{
+  if(a.firstName!=null||a.lastName!=null)return[a.firstName||'',a.lastName||''];
+  const w=String(a.name||'').trim().split(/\s+/).filter(Boolean);
+  return w.length<2?[w[0]||'','']:[w.slice(0,-1).join(' '),w[w.length-1]];
+};
+/* Doğum yılına göre yaş kategorisi önerisi: sezonun bittiği yıl − doğum yılı, bir üst
+   çift sayıya yuvarlanır (2026-27 sezonunda 2011 doğumlu → U16). Yalnızca öneri. */
+const epAgeCatHint=dob=>{
+  if(!dob)return'';const b=parseD(dob);if(isNaN(b))return'';
+  const t=new Date();const end=t.getMonth()>=6?t.getFullYear()+1:t.getFullYear();
+  let n=end-b.getFullYear();if(n<10)return'U10';if(n>20)return n>23?'Senior':'U23';
+  if(n%2)n++;return'U'+n;
+};
+const epYearsSince=iso=>{
+  if(!iso)return null;const b=parseD(iso);if(isNaN(b))return null;
+  const t=new Date();let y=t.getFullYear()-b.getFullYear();
+  if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return Math.max(0,y);
+};
+const EpIc=({d})=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.map((p,i)=><path key={i} d={p}/>)}</svg>;
+const EP_IC={
+  person:['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M4.5 20.5c1-3.8 4-6 7.5-6s6.5 2.2 7.5 6'],
+  school:['M2.5 9.5L12 5l9.5 4.5L12 14z','M6.5 11.5v4.3c1.6 1.4 3.4 2.1 5.5 2.1s3.9-.7 5.5-2.1v-4.3','M21.5 9.5v5'],
+  family:['M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z','M2.5 20c.8-3.4 3-5.3 5.5-5.3s4.7 1.9 5.5 5.3','M13.8 15.3c.9-.8 2-1.3 3.2-1.3 2.2 0 3.9 1.6 4.5 4.6'],
+  club:['M12 3.4l7 2.6v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6z','M9 12l2 2 4-4'],
+  health:['M12 3.5c3 3.6 6 7.1 6 10.4a6 6 0 0 1-12 0c0-3.3 3-6.8 6-10.4z','M9.5 14h5','M12 11.5v5'],
+  watch:['M8 6.5V3h8v3.5','M8 17.5V21h8v-3.5','M7 6.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z','M12 10v2.5l1.5 1'],
+  note:['M5 3.5h10l4 4v13H5z','M15 3.5v4h4','M8.5 12h7','M8.5 15.5h7'],
+  camera:ATH_IC.camera,
+};
+function EpSec({ic,title,sub,cls,children}){
+  return(<section className={'ep2-sec'+(cls?' '+cls:'')}>
+    <div className="ep2-sec-h"><span className="ep2-sec-ic"><EpIc d={EP_IC[ic]}/></span>
+      <div><b>{title}</b>{sub&&<span>{sub}</span>}</div></div>
+    {children}
+  </section>);
+}
+function EpF({label,span,id,help,children}){
+  return(<div className={'ep-f s'+(span||1)}><label htmlFor={id}>{label}</label>{children}{help&&<div className="help">{help}</div>}</div>);
+}
+function AthEditProfile({ath,updAth,setup,teamId,positions,onClose}){
+  const set=patch=>updAth(ath.id,patch);
+  const fileRef=useRef(null);
+  const[fn,ln]=epNameParts(ath);
+  const setName=(f,l)=>set({firstName:f,lastName:l,name:[f.trim(),l.trim()].filter(Boolean).join(' ')});
+  const age=epYearsSince(ath.dateOfBirth);
+  const years=epYearsSince(ath.joinDate);
+  const hint=epAgeCatHint(ath.dateOfBirth);
+  const teamName=ath.team||setup.teamName||'';
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const consent=EP_CONSENT.find(c=>c[0]===ath.mediaConsent);
+  useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);return()=>document.removeEventListener('keydown',k);},[]);
+  const txt=(k,ph,extra)=><input id={'ep-'+k} value={ath[k]||''} placeholder={ph||''} onChange={e=>set({[k]:e.target.value})} {...(extra||{})}/>;
+  const sel=(k,opts,none)=><select id={'ep-'+k} value={ath[k]||''} onChange={e=>set({[k]:e.target.value})}>
+    <option value="">{none||L('— seçilmemiş','— not set')}</option>{opts}</select>;
+  const tel=(code,num)=><div className="ep2-ph">
+    <select value={ath[code]||DEFAULT_DIAL} onChange={e=>set({[code]:e.target.value})} title={L('Ülke kodu','Country code')} aria-label={L('Ülke kodu','Country code')}>
+      {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}</select>
+    <input id={'ep-'+num} type="tel" inputMode="tel" placeholder="532 123 45 67" value={ath[num]||''} onChange={e=>set({[num]:cleanPhone(e.target.value)})}/>
+  </div>;
+  const fact=(k,v)=><div className="ep2-fact"><dt>{k}</dt><dd className={v?'':'na'}>{v||'—'}</dd></div>;
+  return(<div className="modal-bg ep2-bg" onClick={onClose}>
+    <div className="modal ep-modal ep2" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
+      <div className="ep-head">
+        <div className="ep-ttl">
+          <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
+          <div className="ep-sub">{L('Sporcu kimlik kartı · değişiklikler yazdıkça kaydedilir','Athlete ID card · changes are saved as you type')}</div>
+        </div>
+        <button className="x-btn" onClick={onClose} aria-label={L('Kapat','Close')}>✕</button>
+      </div>
+      <div className="ep2-wrap">
+        {/* ---- Sol: fotoğraf ve özet ---- */}
+        <aside className="ep2-side">
+          <button type="button" className="ep2-photo" onClick={()=>fileRef.current?.click()}
+            title={L('Fotoğrafı değiştirmek için tıkla','Click to change the photo')}>
+            {ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:<span className="ini">{initials}</span>}
+            <span className="ep2-photo-cta"><EpIc d={EP_IC.camera}/>{ath.photo?L('Fotoğrafı değiştir','Change photo'):L('Fotoğraf yükle','Upload photo')}</span>
+          </button>
+          <input type="file" accept="image/*" ref={fileRef} className="hidden"
+            onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>set({photo:d}));e.target.value='';}}/>
+          <div className="ep2-id">
+            <div className="ep2-nm">{ath.name||L('Adsız Sporcu','Unnamed Athlete')}</div>
+            <div className="ep2-chips">
+              {ath.number!==''&&ath.number!=null&&<span className="ep2-chip num">#{ath.number}</span>}
+              {ath.position&&<span className="ep2-chip">{POS_FULL[ath.position]||ath.position}</span>}
+              {ath.ageCategory&&<span className="ep2-chip">{ath.ageCategory}</span>}
+            </div>
+          </div>
+          <dl className="ep2-facts">
+            {fact(L('Takım','Team'),teamName)}
+            {fact(L('Yaş','Age'),age!=null?L(`${age} yaş`,`${age} yrs`):'')}
+            {fact(L('Doğum tarihi','Date of birth'),ath.dateOfBirth?fd(ath.dateOfBirth):'')}
+            {fact(L('Kulüpte','At the club'),ath.joinDate?(years>0?L(`${years} yıl · ${fd(ath.joinDate)}'den beri`,`${years} yr · since ${fd(ath.joinDate)}`):L(`${fd(ath.joinDate)}'den beri`,`since ${fd(ath.joinDate)}`)):'')}
+            {fact(L('Kan grubu','Blood type'),ath.bloodType)}
+            {fact(L('Veli','Parent'),ath.parentName?[ath.parentName,ath.parentRelation&&L(ath.parentRelation,(EP_RELATIONS.find(r=>r[0]===ath.parentRelation)||[])[1]||ath.parentRelation)].filter(Boolean).join(' · '):'')}
+            <div className="ep2-fact"><dt>{L('Görsel izni','Media consent')}</dt>
+              <dd className={'cons '+(consent?consent[0]:'na')}>{consent?L(consent[1],consent[2]):L('Girilmemiş','Not set')}</dd></div>
+          </dl>
+        </aside>
+        {/* ---- Sağ: başlıklara ayrılmış form ---- */}
+        <div className="ep-body ep2-main">
+          <EpSec ic="person" title={L('Kişisel Bilgiler','Personal Details')} sub={L('Kimlik ve iletişim','Identity and contact')} cls="wide">
+            <div className="ep-grid ep2-g4">
+              <EpF label={L('Ad','First name')} id="ep-fn" span={1}><input id="ep-fn" value={fn} onChange={e=>setName(e.target.value,ln)}/></EpF>
+              <EpF label={L('Soyad','Last name')} id="ep-ln" span={1}><input id="ep-ln" value={ln} onChange={e=>setName(fn,e.target.value)}/></EpF>
+              <EpF label={L('Doğum tarihi','Date of birth')} span={1} help={age!=null?L(`gün / ay / yıl · ${age} yaş`,`day / month / year · ${age} yrs`):L('gün / ay / yıl','day / month / year')}>
+                <DateDMY value={ath.dateOfBirth||''} onChange={v=>set({dateOfBirth:v})}/></EpF>
+              <EpF label={L('Cinsiyet','Sex')} id="ep-sex" span={1}>{sel('sex',<><option value="M">{L('Erkek','Male')}</option><option value="F">{L('Kadın','Female')}</option></>,L('— girilmemiş','— not set'))}</EpF>
+              <EpF label={L('Uyruk','Nationality')} id="ep-nationality" span={1}>{txt('nationality',L('ör. T.C.','e.g. Turkish'))}</EpF>
+              <EpF label={L('Doğum yeri','Place of birth')} id="ep-birthPlace" span={1}>{txt('birthPlace',L('ör. İzmir','e.g. Izmir'))}</EpF>
+              <EpF label={L('Sporcu telefon numarası','Athlete phone')} id="ep-phone" span={2}>{tel('phoneCode','phone')}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="school" title={L('Okul','School')} sub={L('Okul planlaması için','For school schedules')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Okul adı','School name')} id="ep-school" span={2}>{txt('school',L('ör. Atatürk Anadolu Lisesi','e.g. Central High School'))}</EpF>
+              <EpF label={L('Okul türü','School type')} id="ep-schoolType" span={2}>{sel('schoolType',EP_SCHOOL_TYPES.map(([tr,en])=><option key={tr} value={tr}>{L(tr,en)}</option>))}</EpF>
+              <EpF label={L('İl','City')} id="ep-schoolCity" span={1}>{txt('schoolCity',L('ör. İzmir','e.g. Izmir'))}</EpF>
+              <EpF label={L('İlçe','District')} id="ep-schoolDistrict" span={1}>{txt('schoolDistrict',L('ör. Karşıyaka','e.g. Karşıyaka'))}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="family" title={L('Veli / Acil Durum','Parent / Emergency')} sub={L('Ulaşılacak kişi','Who to contact')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Veli adı soyadı','Parent full name')} id="ep-parentName" span={2}>{txt('parentName')}</EpF>
+              <EpF label={L('Yakınlık derecesi','Relationship')} id="ep-parentRelation" span={2}>{sel('parentRelation',EP_RELATIONS.map(([tr,en])=><option key={tr} value={tr}>{L(tr,en)}</option>))}</EpF>
+              <EpF label={L('Veli telefon numarası','Parent phone')} id="ep-parentPhone" span={2}>{tel('parentPhoneCode','parentPhone')}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="club" title={L('Kulüp ve Takım','Club and Team')} sub={L('Kadro bilgisi','Squad details')} cls="wide">
+            <div className="ep-grid ep2-g4">
+              <EpF label={L('Takım','Team')} id="ep-team" span={1}>{txt('team',setup.teamName||L('Takım adı','Team name'))}</EpF>
+              <EpF label={L('Yaş kategorisi','Age category')} id="ep-ageCategory" span={1}
+                help={hint&&hint!==ath.ageCategory?<button type="button" className="ep2-hint" onClick={()=>set({ageCategory:hint})}>{L(`Doğum yılına göre: ${hint} · uygula`,`By birth year: ${hint} · apply`)}</button>:null}>
+                {sel('ageCategory',EP_AGE_CATS.map(c=><option key={c} value={c}>{c==='Senior'?L('Büyükler (A Takım)','Senior'):c}</option>))}</EpF>
+              <EpF label={L('Forma numarası','Jersey number')} id="ep-number" span={1}>{txt('number','',{inputMode:'numeric'})}</EpF>
+              <EpF label={L('Mevki / Pozisyon','Position')} id="ep-pos" span={1}>
+                <select id="ep-pos" value={posOf(ath.position)} onChange={e=>set({position:e.target.value})}>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]&&POS_FULL[p]!==p?`${p} · ${POS_FULL[p]}`:p}</option>)}</select></EpF>
+              <EpF label={L('Kulübe katılım tarihi','Joined the club')} span={2}><DateDMY value={ath.joinDate||''} onChange={v=>set({joinDate:v})}/></EpF>
+              <EpF label={L('Önceki kulüp','Previous club')} id="ep-prevClub" span={2}>{txt('prevClub',L('yoksa boş bırak','leave empty if none'))}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="health" title={L('Sağlık ve İzinler','Health and Consent')} sub={L('Kan grubu, görsel kullanım','Blood type, media use')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Kan grubu','Blood type')} id="ep-bloodType" span={2}>{sel('bloodType',EP_BLOOD.map(b=><option key={b} value={b}>{b}</option>))}</EpF>
+              <EpF label={L('Fotoğraf ve video kullanım izni','Photo and video consent')} id="ep-mediaConsent" span={2}>{sel('mediaConsent',EP_CONSENT.map(([v,tr,en])=><option key={v} value={v}>{L(tr,en)}</option>))}</EpF>
+            </div>
+          </EpSec>
+          {/* Polar bağlantısı: durum, davet linki, senkron ve bağlantıyı kesme. Bileşenin kendi
+              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
+          <EpSec ic="watch" title={L('Polar Bağlantısı','Polar Connection')} sub={L('Saat / göğüs bandı verisi','Watch / chest strap data')} cls="ep-polar">
+            <PolarConnect ath={ath} teamId={teamId}/>
+          </EpSec>
+          <EpSec ic="note" title={L('Notlar','Notes')} sub={L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}>
+            <textarea aria-label={L('Notlar','Notes')} rows={4} value={ath.notes||''} onChange={e=>set({notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
+          </EpSec>
+        </div>
+      </div>
+      <div className="ep-foot">
+        <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
+        <button className="btn" onClick={onClose}>{L('Bitti','Done')}</button>
+      </div>
+    </div>
+  </div>);
+}
 const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,customTests,initialTab,teamId}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
@@ -33448,8 +33837,6 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
      scroll of the list it was opened from and hid its own header and tabs. The roster
      remounts this per athlete (key), so it runs once per athlete opened. */
   useLayoutEffect(()=>{window.scrollTo(0,0);},[ath.id]);
-  const[dobText,setDobText]=useState('');
-  useEffect(()=>{setDobText(fd(ath.dateOfBirth));},[ath.dateOfBirth,editProfileOpen]);
   // Find the most recent date that has any data (sessions/wellness/measurements)
   // so the calendar opens on a week with actual data instead of an empty one.
   const recentDate=useMemo(()=>{
@@ -33533,60 +33920,9 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
-    {/* Profili Düzenle: bölümlere ayrılmış geniş pencere — Kimlik, Okul ve Adres, Polar
-        bağlantısı, Notlar. Her alan yazıldığı anda kaydedilir; "Bitti" yalnızca kapatır.
-        Okul ve adres sporcuda düz metin (`school`, `address`); eski kayıtlarda yoksa boş görünür. */}
-    {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
-      <div className="modal ep-modal" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
-        <div className="ep-head">
-          <div className="ep-av">{ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}</div>
-          <div className="ep-ttl">
-            <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
-            <div className="ep-sub">{[ath.name||L('Adsız Sporcu','Unnamed Athlete'),ath.number&&'#'+ath.number,ath.position&&(POS_FULL[ath.position]||ath.position)].filter(Boolean).join(' · ')}</div>
-          </div>
-          <button className="x-btn" onClick={()=>setEditProfileOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-        </div>
-        <div className="ep-body">
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Kimlik','Identity')}</b><span>{L('Ad, forma, mevki ve doğum bilgisi','Name, jersey, position and birth details')}</span></div>
-            <div className="ep-grid">
-              <div className="ep-f s3"><label htmlFor="ep-name">{L('Ad Soyad','Full name')}</label><input id="ep-name" value={ath.name||''} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-              <div className="ep-f s1"><label htmlFor="ep-num">{L('Forma No','Jersey #')}</label><input id="ep-num" inputMode="numeric" value={ath.number||''} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-              <div className="ep-f s2"><label htmlFor="ep-pos">{L('Mevki','Position')}</label><select id="ep-pos" value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
-              <div className="ep-f s3"><label htmlFor="ep-dob">{L('Doğum tarihi','Date of birth')}</label><input id="ep-dob" type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/>
-                <div className="help">{L('gün / ay / yıl','day / month / year')}{apAge!=null&&<> · {L(`${apAge} yaş`,`${apAge} yrs`)}</>}</div></div>
-              <div className="ep-f s3"><label htmlFor="ep-sex">{L('Cinsiyet','Sex')}</label><select id="ep-sex" value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
-                <option value="">{L('— girilmemiş','— not set')}</option>
-                <option value="M">{L('Erkek','Male')}</option>
-                <option value="F">{L('Kadın','Female')}</option>
-              </select></div>
-            </div>
-          </section>
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Okul ve Adres','School and Address')}</b><span>{L('Okul planlaması ve ulaşım için','For school schedules and travel')}</span></div>
-            <div className="ep-grid">
-              <div className="ep-f s6"><label htmlFor="ep-school">{L('Okul','School')}</label><input id="ep-school" value={ath.school||''} placeholder={L('ör. Atatürk Anadolu Lisesi · 10. sınıf','e.g. Central High School · Grade 10')} onChange={e=>updAth(ath.id,{school:e.target.value})}/></div>
-              <div className="ep-f s6"><label htmlFor="ep-addr">{L('Adres','Address')}</label><textarea id="ep-addr" rows={2} value={ath.address||''} placeholder={L('Mahalle, sokak, no · ilçe / il','Street, number · district / city')} onChange={e=>updAth(ath.id,{address:e.target.value})}/></div>
-            </div>
-          </section>
-          {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
-              burada — durum, davet linki, senkron ve bağlantıyı kesme aynı yerde. Bileşenin kendi
-              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
-          <section className="ep-sec ep-polar">
-            <div className="ep-sec-h"><b>{L('Polar Bağlantısı','Polar Connection')}</b><span>{L('Saat / göğüs bandı verisi','Watch / chest strap data')}</span></div>
-            <PolarConnect ath={ath} teamId={teamId}/>
-          </section>
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Notlar','Notes')}</b><span>{L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}</span></div>
-            <textarea aria-label={L('Notlar','Notes')} rows={3} value={ath.notes||''} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
-          </section>
-        </div>
-        <div className="ep-foot">
-          <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
-          <button className="btn" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button>
-        </div>
-      </div>
-    </div>}
+    {/* Profili Düzenle: ekranı neredeyse dolduran, bölümlere ayrılmış pencere (`AthEditProfile`). */}
+    {editProfileOpen&&<AthEditProfile ath={ath} updAth={updAth} setup={setup} teamId={teamId}
+      positions={positions} onClose={()=>setEditProfileOpen(false)}/>}
     {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup} teamDays={teamDays}/>}
     {tab==='body'&&<AthBody ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
@@ -43028,7 +43364,7 @@ const EX_TERM_TR={
   'Stability':'Stabilite','Injury Prevention':'Sakatlık Önleme','Technical':'Teknik','Tactical':'Taktik',
   'Competition':'Müsabaka','Assessment':'Değerlendirme','Recovery':'Toparlanma',
   /* --- Session focus tree, stage 1 --- */
-  'Movement':'Hareket','Technical / Tactical':'Teknik / Taktik','Return to Play':'Sahaya Dönüş','Testing':'Test',
+  'Power':'Güç','Movement':'Hareket','Technical / Tactical':'Teknik / Taktik','Return to Play':'Sahaya Dönüş','Testing':'Test',
   /* --- stage 2, sub-focus --- */
   'Maximal Strength':'Maksimal Kuvvet','Strength Endurance':'Kuvvette Devamlılık','Eccentric Strength':'Eksantrik Kuvvet',
   'Isometric Strength':'İzometrik Kuvvet','Unilateral Strength':'Tek Taraflı Kuvvet','Core Strength':'Core Kuvveti',

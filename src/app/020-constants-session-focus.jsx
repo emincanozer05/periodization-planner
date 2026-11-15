@@ -97,11 +97,11 @@ const FOCUS_TREE=[
    sub:['Foundational Strength','Maximal Strength','Hypertrophy','Strength Endurance','Eccentric Strength','Isometric Strength','Unilateral Strength','Core Strength']},
   {id:'Power', tr:'Güç', c:'#a3e635',
    sub:['Strength-Speed','Speed-Strength','Explosive Strength','Reactive Strength','Rate of Force Development','Ballistic Power']},
-  {id:'Speed', tr:'Hız', c:'#c000ff',
+  {id:'Speed', tr:'Hız & Çeviklik', c:'#c000ff',
    sub:['Acceleration','Max Velocity','Deceleration','Change of Direction','Reactive Agility','Speed Endurance','Sprint Technique']},
   {id:'Conditioning', tr:'Kondisyon', c:'#00ffd5',
    sub:['Aerobic Capacity','Aerobic Power','Anaerobic Capacity','Anaerobic Power','Repeated Sprint Ability','Lactate Tolerance','Tempo / Extensive']},
-  {id:'Movement', tr:'Hareket', c:'#38bdf8',
+  {id:'Movement', tr:'Hareket Kalitesi', c:'#38bdf8',
    sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception']},
   {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
    sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage']},
@@ -292,7 +292,9 @@ const sesFocus=s=>uniq(sesFocusRaw(s).map(f=>FOCUS_BY[f]?f:FOCUS_L1_FROM_LEGACY[
 /* A focus value in the coach's own language — the tree carries the Turkish for every
    stage-1 quality, so "Strength" reads "Kuvvet" on a Turkish screen and stays "Strength"
    on an English one. The stored value never changes; only what is shown does. */
-const focusLabel=f=>L(FOCUS_BY[f]?.tr||f,f);
+/* Stage-1 focuses read from FOCUS_TREE (Güç, Hız & Çeviklik, Hareket Kalitesi…); anything
+   else — a sub-focus — goes through the shared term list. */
+const focusLabel=f=>FOCUS_BY[f]?L(FOCUS_BY[f].tr,f):exLabel(f);
 /* Sub-focus (stage 2). Stored on the session as `sub: []`; a session written before the
    tree existed derives one from whichever retired focus values named a capacity. */
 const sesSubFocus=s=>{
