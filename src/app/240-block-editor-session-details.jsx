@@ -568,103 +568,56 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
       title={open?L('Antrenman özelliklerini gizle','Hide the training details'):L('Antrenman özelliklerini göster','Show the training details')}>
       <i>{open?'▼':'▶'}</i>{L('Antrenman Özellikleri','Training Details')}
     </button>
-    {open&&<div className="blk-details-b">
+    {open&&<div className="blk-details-b sk">
       {showPicker&&<AthletePicker athletes={athletes}
         selected={block?blkAthIds(session,block):(session.athletes||[])}
         onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
-      {/* What the block IS, written as two cards rather than one strip of loose boxes.
-          The left card is everything a coach fills in — the block's name, when it runs,
-          how long, what it trains and how it is trained; each field wears its caption
-          beside it, so the card reads as a form instead of a row of unlabelled boxes.
-          The right card is the one thing that is not filled in but SET: the intensity
-          the session is planned at, which is a scale to be dragged and needs the room
-          to be one. (The target is not the actual / logged sRPE further down, which only
-          exists once the session has happened.) */}
-      <div className="sess-cards">
-        <section className="sess-card">
-          <header className="sess-card-h">
-            <span className="sess-card-ic basics"><TIc k="grid" size={19}/></span>
-            <div className="sess-card-ht">
-              <b>{L('Temel Bilgiler','Basic Details')}</b>
-              <span>{L('Antrenman bloğunun temel ayarlarını yapın.','Set this training block up.')}</span>
-            </div>
-          </header>
-          <div className="sess-card-b sess-form">
-            {/* NO TITLE BOX HERE. The heading directly above this card is the title —
-                a block's heading names the block, and a session with no block yet is
-                named on its own heading. A second box inside the form asked for the
-                same name twice, on the same screen, one of them unlabelled. */}
-            {!isTemplate&&<label className="sf-row">
-              <span className="sf-l">{L('Saat','Time')}</span>
-              <input className="sf-in mono" type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
-            </label>}
-            <label className="sf-row">
-              <span className="sf-l">{L('Süre','Duration')}</span>
-              {/* Emptying the box has to leave it empty. Coercing a blank field back to 0
-                  on every keystroke pinned a 0 in front of the caret that could not be
-                  deleted — you could only type to the right of it. So '' is kept as its
-                  own value (as the drawer's duration box already does) and only read as
-                  0 where a number is needed. */}
-              <span className="sf-unit">
-                <input className="sf-in mono" type="number" min="0" value={session.duration??''} title={L('Süre (dk)','Duration (min)')}
-                  onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');if(raw!==e.target.value)e.target.value=raw;const d=raw===''?'':Math.max(0,Number(raw));const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*(Number(d)||0));u(upd);}}/>
-                <i>{L('dk','min')}</i>
-              </span>
-            </label>
-            {/* One field, two stages — the focus, then the capacity inside it. HOW the
-                session is trained is not asked here: that is Training Method below,
-                which has asked it all along. `purpose` keeps carrying the answer as
-                text: it is the legacy single-value field the printout and older saved
-                sessions still read. */}
-            <div className="sf-row">
-              <span className="sf-l">{L('Seans Odağı','Session Focus')}</span>
-              <div className="sf-in-wrap">
-                <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)}
-                  onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
-                  onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/>
-              </div>
-            </div>
-            <div className="sf-row">
-              <span className="sf-l">{L('Hedef Bölge','Target Region')}</span>
-              <select className="sf-in" value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-                <option value="">{L('Bölge seç…','Select region…')}</option>
-                {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
-              </select>
-            </div>
-            {/* Training method keeps a row of its own — the list it opens is the longest
-                of the three. */}
-            <div className="sf-row wide">
-              <span className="sf-l">{L('Antrenman Metodu','Training Method')}</span>
-              <div className="sf-in-wrap iv-mrow">
-                <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="sess-card">
-          <header className="sess-card-h">
-            <span className="sess-card-ic rpe"><TIc k="target" size={19}/></span>
-            <div className="sess-card-ht">
-              <b>{L('Hedef Yoğunluk (RPE)','Target Intensity (RPE)')}</b>
-              <span>{L('Bu blok için hedef RPE aralığını belirleyin.','Set the target RPE band for this block.')}</span>
-            </div>
-            {/* The band the target lands in, named at the head of the card rather than
-                beside the number — the card IS the intensity, so its heading can say
-                how hard it is. */}
-            {(()=>{const z=rpeZone(sesRpeTarget(session));
-              return<span className="sess-zone" style={{color:z.c,background:z.soft,borderColor:z.ring}}>{L(z.tr,z.en)}</span>;})()}
-          </header>
-          <div className="sess-card-b">
-            <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})} hideZone/>
-            <div className="sess-note-i">
-              <span className="ic"><TIc k="info" size={16}/></span>
-              <div><b>{L('Bilgi','What this is')}</b>
-                <p>{L('Hedef RPE aralığı, antrenmanın beklenen yoğunluk seviyesini belirtir. Sporcuların antrenman sonrası vereceği sRPE değerleriyle karşılaştırılır.',
-                  'The target RPE band states the intensity this training is planned at. It is read against the sRPE the athletes give after the session.')}</p></div>
-            </div>
-          </div>
-        </section>
-      </div>
+      {/* What the block IS, as the same stat strip the team practice card wears (235):
+          when it runs, how long, how hard — then a second strip for what it trains and
+          how. The target intensity is set on the ten-step scale (the band ±1 around it is
+          what the athletes' sRPE is read against); it is not the logged sRPE further down,
+          which only exists once the session has happened. */}
+      {(()=>{const rT=sesRpeTarget(session),z=rpeZone(rT),[lo,hi]=sesRpeRange(session);
+        const fc=FOCUS_BY[sesFocus(session)[0]]?.c||'#22c55e';
+        const setDur=v=>{const raw=String(v).replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));
+          const upd={duration:d};if(!session.auManual&&session.sRPE!==''&&session.sRPE!=null)upd.au=Math.round(Number(session.sRPE)*(Number(d)||0));u(upd);};
+        return<>
+        <div className="sk-stats">
+          {!isTemplate&&<SkStat k={L('Saat','Time')} ac="#22d3ee" ic={<SkIcClock/>}
+            sub={<span className="sk-st-sub">{skEnd(session)?L(`bitiş ${skEnd(session)}`,`ends ${skEnd(session)}`):L('başlangıç saati','start time')}</span>}>
+            <input type="time" className="dw-inp sk-st-in" value={session.time||''} onChange={e=>u({time:e.target.value})}/>
+          </SkStat>}
+          <SkStat k={L('Süre','Duration')} ac="#a78bfa" ic={<SkIcTimer/>}
+            sub={<span className="sk-st-sub">{Number(session.duration)>0?skHrs(Number(session.duration)):L('dakika','minutes')}</span>}>
+            <div className="sk-st-v"><input type="number" min="0" inputMode="numeric" className="dw-inp sk-st-in sk-st-num" value={session.duration??''}
+              onChange={e=>setDur(e.target.value)} aria-label={L('Süre (dk)','Duration (min)')}/><span className="dw-unit">{L('dk','min')}</span></div>
+          </SkStat>
+          <SkStat k={L('Hedef Yoğunluk','Target Intensity')} ac={z.c} ic={<SkIcGauge/>}
+            sub={<><SkRpeScale value={rT} onPick={n=>u({rpeTarget:n})}/>
+              <span className="sk-st-sub" title={L('Sporcuların antrenman sonrası verdiği sRPE bu aralıkla karşılaştırılır','The athletes\' post-session sRPE is read against this band')}>{L(`hedef aralık ${lo}–${hi}`,`target band ${lo}–${hi}`)}</span></>}>
+            <div className="sk-st-v"><b style={{color:z.c}}>{rT}</b><span className="dw-unit">/10</span><span className="sk-st-tag" style={{color:z.c}}>{L(z.tr,z.en)}</span></div>
+          </SkStat>
+        </div>
+        {/* One field, two stages — the focus, then the capacity inside it. `purpose` keeps
+            carrying the answer as text: it is the legacy single-value field the printout
+            and older saved sessions still read. */}
+        <div className="sk-stats sk-stats-f">
+          <SkStat k={L('Seans Odağı','Session Focus')} ac={fc} ic={<TIc k="target" size={14}/>}>
+            <div className="sk-st-fld"><FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)}
+              onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
+              onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/></div>
+          </SkStat>
+          <SkStat k={L('Hedef Bölge','Target Region')} ac="#64748b" ic={<SkIcPin/>}>
+            <select className="sf-in sk-st-sel" value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+              <option value="">{L('Bölge seç…','Select region…')}</option>
+              {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
+            </select>
+          </SkStat>
+          <SkStat k={L('Antrenman Metodu','Training Method')} ac="#64748b" ic={<TIc k="grid" size={14}/>}>
+            <div className="sk-st-fld iv-mrow"><MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})} placeholder={L('Antrenman metodu seç…','Select training method…')}/></div>
+          </SkStat>
+        </div>
+      </>;})()}
     </div>}
   </div>);
 }

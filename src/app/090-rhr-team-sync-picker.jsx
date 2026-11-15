@@ -428,30 +428,13 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
    ATHLETE PICKER (checkbox grid for session participants)
    ========================================================= */
 function AthletePicker({athletes,selected,onChange}){
-  if(!athletes||athletes.length===0)return(
-    <div className="ath-pick"><div className="help">{L('Kadroda henüz sporcu yok — antrenmanlara atayabilmek için Sporcular sekmesinden ekle.','No athletes on roster yet — add them in the Athletes tab to assign them to sessions.')}</div></div>
-  );
-  const sel=new Set(selected||[]);
-  const toggle=id=>{const a=sel.has(id)?(selected||[]).filter(x=>x!==id):[...(selected||[]),id];onChange(a);};
-  return(<div className="ath-pick">
-    <div className="ath-pick-head">
-      <strong className="ath-pick-t">{L('Katılan Sporcular','Participating Athletes')}</strong>
-      <span className="ath-pick-n">{(selected||[]).length} / {athletes.length}</span>
-      <span style={{flex:1}}/>
-      <button className="btn xs sec" onClick={()=>onChange(athletes.map(a=>a.id))}>{L('Tümünü seç','Select all')}</button>
-      <button className="btn xs sec" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>
-    </div>
-    <div className="ath-pick-grid">
-      {athletes.map(a=>(
-        <label key={a.id} className={`ath-chip${sel.has(a.id)?' on':''}`}>
-          <input type="checkbox" checked={sel.has(a.id)} onChange={()=>toggle(a.id)}/>
-          <span>{a.name}</span>{a.number?<span className="num">#{a.number}</span>:null}
-        </label>
-      ))}
-    </div>
-    <div className="help" style={{marginTop:8}}>{L(
-      'Seçilen sporcular bu bloğun kişisel takvimlerine otomatik olarak eklenir. Her blok bağımsız olarak işaretlenir, bu sayede gardlar ve forvetlere aynı gün farklı çalışmalar verilebilir. Sporcuların kişisel sRPE ve AU değerleri düzenlemeler boyunca korunur.',
-      'Checked athletes get this block copied to their personal calendar automatically — each block of a session is ticked on its own, so the guards and the forwards can be given different work on the same day. Their personal sRPE & AU are preserved across edits.')}</div>
+  /* The same photo chips as the team practice card (SkPlayerPick, 235), under a section
+     heading — one look for "who takes part" wherever a session is planned. */
+  return(<div className="sk ath-pick">
+    <SkSec title={L('Katılan Sporcular','Participating Athletes')}
+      sub={L('Seçilenlerin kişisel takvimine eklenir · her blok ayrı işaretlenir, sRPE ve AU korunur','Added to the chosen athletes\' own calendars · each block is ticked on its own; their sRPE & AU are kept')}>
+      <SkPlayerPick athletes={athletes||[]} selected={selected||[]} onChange={onChange}/>
+    </SkSec>
   </div>);
 }
 
