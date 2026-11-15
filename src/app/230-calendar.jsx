@@ -647,7 +647,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </div>
       <div className="cws" title={athMode
         ?L('Haftalık monotoni (Foster) = sporcunun bu haftaki 7 günlük yükünün ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Weekly monotony (Foster) = the mean of the athlete\'s 7 daily loads this week ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')
-        :L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
+        :L('Bu haftanın takım monotonluğu (Foster) = takımın 7 günlük yükünün (her günün altındaki Günlük Yük) ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week (Foster) = the mean of the team\'s 7 daily loads (the Daily Load under each day) ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
         <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
         <div className="cws-tx">
           <div className="cws-k">{athMode?L('Haftalık Monotoni','Weekly Monotony'):L('Takım Monotonluğu','Team Monotony')}</div>
@@ -831,7 +831,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {canEdit
               ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwRename(e.target.value)} title={L('Seans adını değiştir','Rename the session')}/>
               :<div className="ti">{drawerSes.name}</div>}
-            <div className="su">{drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose}</div>
+            <div className="su">{canEdit
+              /* The type can be changed after the fact — a session added as a team
+                 practice by mistake turns back into Kuvvet & Güç here. */
+              ?<><SesTypeSelect session={drawerSes} onPick={ns=>drwUpd(ns)} className="dw-type"/> · {fdLong(drwDateKey)}</>
+              :(drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose)}</div>
           </div>
           {/* No assignment button here any more. Assigning is a per-BLOCK decision — the
               guards and the forwards get different work on the same day — and this one

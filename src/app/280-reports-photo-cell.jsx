@@ -59,7 +59,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
    YÜK RAPORU VERİSİ — haftalık ve aylık çıktının ortak kurucusu
    =========================================================
    Her sayı ekrandakiyle aynı yoldan: sporcunun günlük yükü athDayLoad, haftalık monotoni
-   teamWeekMono (sporcu başına, sonra ortalama), ACWR teamLoadStats (sporcu başına, sonra
+   teamWeekMono (takımın 7 günlük yükü: ort. ÷ SS), ACWR teamLoadStats (sporcu başına, sonra
    ortalama). Yük "sporcu başına ortalama AU" olarak verilir (o gün/hafta yük kaydı olan
    sporcuların ortalaması); takım toplamı sporcu tablosunun alt satırında.
    Antrenman türü: sessionType (Kuvvet, Takım antrenmanı, Hız…). Antrenman odağı: seansın
@@ -264,7 +264,7 @@ function TeamReports({team,weeks,selected,setSelected}){
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">{L('Akut · 7g','Acute · 7d')}</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(lmLoad.acute).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">{L('Kronik · 28g','Chronic · 28d')}</div><div className="v">{Math.round(lmLoad.chronic).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m" title={L(`Foster · ${mWk.n||0} sporcu ortalaması · ${exLabel(lmMonoZone.t||'')}`,`Foster · avg across ${mWk.n||0} athletes · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
+          <div className="m" title={L(`Foster · takımın 7 günlük yükü (ort. ÷ SS) · ${exLabel(lmMonoZone.t||'')}`,`Foster · the team's 7 daily loads (mean ÷ SD) · ${lmMonoZone.t||''}`)}><span className="mi">∿</span><div className="mc"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div></div></div>
           <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
@@ -322,7 +322,7 @@ function TeamReports({team,weeks,selected,setSelected}){
    ölçek, toplam / günlük ortalama / SS / zorlanma. Altta haftanın NEDENİ: Pzt–Paz takımın
    günlük ortalama yükü, ortalama çizgisi ve ±SS bandıyla (çubuklar birbirine ne kadar
    benzerse monotonluk o kadar yüksek) ve sporcu sporcu monotonluk, yükseğinden düşüğüne.
-   Hesap kartla ve takvimle aynı: teamWeekMono (sporcu başına, sonra ortalama). */
+   Hesap kartla ve takvimle aynı: teamWeekMono (takımın 7 günlük yükü: ort. ÷ SS). */
 function MonotonyPanel({team,refWeek}){
   const curWk=fmt(sow(today));
   const start=refWeek&&refWeek<=curWk?refWeek:curWk;
@@ -360,7 +360,7 @@ function MonotonyPanel({team,refWeek}){
     <div className="mn-head">
       <div>
         <div className="mn-title">{L('Haftalık Monotonluk','Weekly Monotony')}<span className="mn-sub">{L('Foster monotonluğu ve zorlanma · bir haftayı seç','Foster monotony & strain · pick a week')}</span></div>
-        <div className="mn-help" title={L('Monotonluk = her sporcunun haftalık günlük yük ortalaması ÷ standart sapması, kadro genelinde ortalanır. Zorlanma = haftalık toplam × monotonluk.','Monotony = each athlete\'s mean daily load ÷ SD within the week, averaged across the squad. Strain = weekly total × monotony.')}>
+        <div className="mn-help" title={L('Monotonluk = takımın haftadaki 7 günlük yükünün ortalaması ÷ standart sapması (dinlenme günleri 0). Zorlanma = haftalık toplam × monotonluk.','Monotony = the mean of the team\'s 7 daily loads ÷ their SD (rest days 0). Strain = weekly total × monotony.')}>
           {L('Ort. ÷ SS · <1.0 düşük · 1.0–1.5 normal · 1.5–2.0 izle · >2.0 yüksek','Mean ÷ SD · <1.0 low · 1.0–1.5 normal · 1.5–2.0 watch · >2.0 high')}</div>
       </div>
       <div className="mn-nav">
@@ -425,7 +425,7 @@ function MonotonyPanel({team,refWeek}){
           <div><span>{L('Standart sapma','Std. dev.')}</span><b>{n0(selW.sd)}</b><em>AU</em></div>
           <div><span>{L('Zorlanma','Strain')}</span><b>{n0(selW.strain)}</b><em>{L('toplam × mono','total × mono')}</em></div>
         </div>
-        <div className="mn-n">{selW.n?L(`${selW.n} sporcunun ortalaması`,`mean of ${selW.n} athletes`):L('sporcu kaydı yok · takım planı','no athlete logs · team plan')}</div>
+        <div className="mn-n">{selW.n?L(`takımın günlük yükü · ${selW.n} sporcu kaydı`,`team daily load · ${selW.n} athlete logs`):L('sporcu kaydı yok · takım planı','no athlete logs · team plan')}</div>
       </div>
     </div>
 

@@ -604,7 +604,7 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
               onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
               onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/></div>
           </SkStat>
-          <SkStat k={L('Hedef Bölge','Target Region')} ac="#64748b" ic={<SkIcPin/>}>
+          <SkStat k={L('Hedef Bölge','Target Region')} ac="#64748b" ic={<SkIcBody/>}>
             <select className="sf-in sk-st-sel" value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
               <option value="">{L('Bölge seç…','Select region…')}</option>
               {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}

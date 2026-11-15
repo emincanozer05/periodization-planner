@@ -16,6 +16,185 @@ const ATH_IC={
 };
 const AthIc=({k,size})=>{const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{(ATH_IC[k]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
+/* =========================================================
+   PROFİLİ DÜZENLE — sporcunun kimlik kartı (`AthEditProfile`)
+   Ekranın neredeyse tamamını kaplayan pencere: solda kare, büyük fotoğraf ve sporcunun
+   özeti; sağda başlıklara ayrılmış kartlar — Kişisel Bilgiler, Okul, Veli / Acil Durum,
+   Kulüp ve Takım, Sağlık ve İzinler, Polar Bağlantısı, Notlar. Her alan yazıldığı anda
+   kaydedilir; "Bitti" yalnızca kapatır.
+   Ad ve soyad ayrı tutulur (`firstName`, `lastName`) ama uygulamanın her yerinin okuduğu
+   `name` ikisinden yazılır; eski kayıtlarda yalnız `name` varsa son kelime soyad sayılır.
+   Telefon kadronun kullandığı `phone` / `phoneCode` çifti; okul eski `school` alanı.
+   ========================================================= */
+const EP_SCHOOL_TYPES=[['Ortaokul','Middle school'],['Lise','High school'],['Üniversite','University']];
+const EP_RELATIONS=[['Anne','Mother'],['Baba','Father'],['Yasal Vasi','Legal guardian']];
+const EP_BLOOD=['0 Rh+','0 Rh−','A Rh+','A Rh−','B Rh+','B Rh−','AB Rh+','AB Rh−'];
+const EP_AGE_CATS=['U10','U11','U12','U13','U14','U15','U16','U17','U18','U19','U20','U21','U23','Senior'];
+const EP_CONSENT=[['yes','İzin verildi','Granted'],['internal','Yalnızca kulüp içi kullanım','Club internal use only'],['no','İzin verilmedi','Not granted']];
+/* Ad / soyad: ayrı alanlar yoksa kayıtlı tam addan çıkarılır (son kelime soyad). */
+const epNameParts=a=>{
+  if(a.firstName!=null||a.lastName!=null)return[a.firstName||'',a.lastName||''];
+  const w=String(a.name||'').trim().split(/\s+/).filter(Boolean);
+  return w.length<2?[w[0]||'','']:[w.slice(0,-1).join(' '),w[w.length-1]];
+};
+/* Doğum yılına göre yaş kategorisi önerisi: sezonun bittiği yıl − doğum yılı, bir üst
+   çift sayıya yuvarlanır (2026-27 sezonunda 2011 doğumlu → U16). Yalnızca öneri. */
+const epAgeCatHint=dob=>{
+  if(!dob)return'';const b=parseD(dob);if(isNaN(b))return'';
+  const t=new Date();const end=t.getMonth()>=6?t.getFullYear()+1:t.getFullYear();
+  let n=end-b.getFullYear();if(n<10)return'U10';if(n>20)return n>23?'Senior':'U23';
+  if(n%2)n++;return'U'+n;
+};
+const epYearsSince=iso=>{
+  if(!iso)return null;const b=parseD(iso);if(isNaN(b))return null;
+  const t=new Date();let y=t.getFullYear()-b.getFullYear();
+  if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return Math.max(0,y);
+};
+const EpIc=({d})=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.map((p,i)=><path key={i} d={p}/>)}</svg>;
+const EP_IC={
+  person:['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M4.5 20.5c1-3.8 4-6 7.5-6s6.5 2.2 7.5 6'],
+  school:['M2.5 9.5L12 5l9.5 4.5L12 14z','M6.5 11.5v4.3c1.6 1.4 3.4 2.1 5.5 2.1s3.9-.7 5.5-2.1v-4.3','M21.5 9.5v5'],
+  family:['M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z','M2.5 20c.8-3.4 3-5.3 5.5-5.3s4.7 1.9 5.5 5.3','M13.8 15.3c.9-.8 2-1.3 3.2-1.3 2.2 0 3.9 1.6 4.5 4.6'],
+  club:['M12 3.4l7 2.6v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6z','M9 12l2 2 4-4'],
+  health:['M12 3.5c3 3.6 6 7.1 6 10.4a6 6 0 0 1-12 0c0-3.3 3-6.8 6-10.4z','M9.5 14h5','M12 11.5v5'],
+  watch:['M8 6.5V3h8v3.5','M8 17.5V21h8v-3.5','M7 6.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z','M12 10v2.5l1.5 1'],
+  note:['M5 3.5h10l4 4v13H5z','M15 3.5v4h4','M8.5 12h7','M8.5 15.5h7'],
+  camera:ATH_IC.camera,
+};
+function EpSec({ic,title,sub,cls,children}){
+  return(<section className={'ep2-sec'+(cls?' '+cls:'')}>
+    <div className="ep2-sec-h"><span className="ep2-sec-ic"><EpIc d={EP_IC[ic]}/></span>
+      <div><b>{title}</b>{sub&&<span>{sub}</span>}</div></div>
+    {children}
+  </section>);
+}
+function EpF({label,span,id,help,children}){
+  return(<div className={'ep-f s'+(span||1)}><label htmlFor={id}>{label}</label>{children}{help&&<div className="help">{help}</div>}</div>);
+}
+function AthEditProfile({ath,updAth,setup,teamId,positions,onClose}){
+  const set=patch=>updAth(ath.id,patch);
+  const fileRef=useRef(null);
+  const[fn,ln]=epNameParts(ath);
+  const setName=(f,l)=>set({firstName:f,lastName:l,name:[f.trim(),l.trim()].filter(Boolean).join(' ')});
+  const age=epYearsSince(ath.dateOfBirth);
+  const years=epYearsSince(ath.joinDate);
+  const hint=epAgeCatHint(ath.dateOfBirth);
+  const teamName=ath.team||setup.teamName||'';
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const consent=EP_CONSENT.find(c=>c[0]===ath.mediaConsent);
+  useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);return()=>document.removeEventListener('keydown',k);},[]);
+  const txt=(k,ph,extra)=><input id={'ep-'+k} value={ath[k]||''} placeholder={ph||''} onChange={e=>set({[k]:e.target.value})} {...(extra||{})}/>;
+  const sel=(k,opts,none)=><select id={'ep-'+k} value={ath[k]||''} onChange={e=>set({[k]:e.target.value})}>
+    <option value="">{none||L('— seçilmemiş','— not set')}</option>{opts}</select>;
+  const tel=(code,num)=><div className="ep2-ph">
+    <select value={ath[code]||DEFAULT_DIAL} onChange={e=>set({[code]:e.target.value})} title={L('Ülke kodu','Country code')} aria-label={L('Ülke kodu','Country code')}>
+      {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}</select>
+    <input id={'ep-'+num} type="tel" inputMode="tel" placeholder="532 123 45 67" value={ath[num]||''} onChange={e=>set({[num]:cleanPhone(e.target.value)})}/>
+  </div>;
+  const fact=(k,v)=><div className="ep2-fact"><dt>{k}</dt><dd className={v?'':'na'}>{v||'—'}</dd></div>;
+  return(<div className="modal-bg ep2-bg" onClick={onClose}>
+    <div className="modal ep-modal ep2" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
+      <div className="ep-head">
+        <div className="ep-ttl">
+          <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
+          <div className="ep-sub">{L('Sporcu kimlik kartı · değişiklikler yazdıkça kaydedilir','Athlete ID card · changes are saved as you type')}</div>
+        </div>
+        <button className="x-btn" onClick={onClose} aria-label={L('Kapat','Close')}>✕</button>
+      </div>
+      <div className="ep2-wrap">
+        {/* ---- Sol: fotoğraf ve özet ---- */}
+        <aside className="ep2-side">
+          <button type="button" className="ep2-photo" onClick={()=>fileRef.current?.click()}
+            title={L('Fotoğrafı değiştirmek için tıkla','Click to change the photo')}>
+            {ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:<span className="ini">{initials}</span>}
+            <span className="ep2-photo-cta"><EpIc d={EP_IC.camera}/>{ath.photo?L('Fotoğrafı değiştir','Change photo'):L('Fotoğraf yükle','Upload photo')}</span>
+          </button>
+          <input type="file" accept="image/*" ref={fileRef} className="hidden"
+            onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>set({photo:d}));e.target.value='';}}/>
+          <div className="ep2-id">
+            <div className="ep2-nm">{ath.name||L('Adsız Sporcu','Unnamed Athlete')}</div>
+            <div className="ep2-chips">
+              {ath.number!==''&&ath.number!=null&&<span className="ep2-chip num">#{ath.number}</span>}
+              {ath.position&&<span className="ep2-chip">{POS_FULL[ath.position]||ath.position}</span>}
+              {ath.ageCategory&&<span className="ep2-chip">{ath.ageCategory}</span>}
+            </div>
+          </div>
+          <dl className="ep2-facts">
+            {fact(L('Takım','Team'),teamName)}
+            {fact(L('Yaş','Age'),age!=null?L(`${age} yaş`,`${age} yrs`):'')}
+            {fact(L('Doğum tarihi','Date of birth'),ath.dateOfBirth?fd(ath.dateOfBirth):'')}
+            {fact(L('Kulüpte','At the club'),ath.joinDate?(years>0?L(`${years} yıl · ${fd(ath.joinDate)}'den beri`,`${years} yr · since ${fd(ath.joinDate)}`):L(`${fd(ath.joinDate)}'den beri`,`since ${fd(ath.joinDate)}`)):'')}
+            {fact(L('Kan grubu','Blood type'),ath.bloodType)}
+            {fact(L('Veli','Parent'),ath.parentName?[ath.parentName,ath.parentRelation&&L(ath.parentRelation,(EP_RELATIONS.find(r=>r[0]===ath.parentRelation)||[])[1]||ath.parentRelation)].filter(Boolean).join(' · '):'')}
+            <div className="ep2-fact"><dt>{L('Görsel izni','Media consent')}</dt>
+              <dd className={'cons '+(consent?consent[0]:'na')}>{consent?L(consent[1],consent[2]):L('Girilmemiş','Not set')}</dd></div>
+          </dl>
+        </aside>
+        {/* ---- Sağ: başlıklara ayrılmış form ---- */}
+        <div className="ep-body ep2-main">
+          <EpSec ic="person" title={L('Kişisel Bilgiler','Personal Details')} sub={L('Kimlik ve iletişim','Identity and contact')} cls="wide">
+            <div className="ep-grid ep2-g4">
+              <EpF label={L('Ad','First name')} id="ep-fn" span={1}><input id="ep-fn" value={fn} onChange={e=>setName(e.target.value,ln)}/></EpF>
+              <EpF label={L('Soyad','Last name')} id="ep-ln" span={1}><input id="ep-ln" value={ln} onChange={e=>setName(fn,e.target.value)}/></EpF>
+              <EpF label={L('Doğum tarihi','Date of birth')} span={1} help={age!=null?L(`gün / ay / yıl · ${age} yaş`,`day / month / year · ${age} yrs`):L('gün / ay / yıl','day / month / year')}>
+                <DateDMY value={ath.dateOfBirth||''} onChange={v=>set({dateOfBirth:v})}/></EpF>
+              <EpF label={L('Cinsiyet','Sex')} id="ep-sex" span={1}>{sel('sex',<><option value="M">{L('Erkek','Male')}</option><option value="F">{L('Kadın','Female')}</option></>,L('— girilmemiş','— not set'))}</EpF>
+              <EpF label={L('Uyruk','Nationality')} id="ep-nationality" span={1}>{txt('nationality',L('ör. T.C.','e.g. Turkish'))}</EpF>
+              <EpF label={L('Doğum yeri','Place of birth')} id="ep-birthPlace" span={1}>{txt('birthPlace',L('ör. İzmir','e.g. Izmir'))}</EpF>
+              <EpF label={L('Sporcu telefon numarası','Athlete phone')} id="ep-phone" span={2}>{tel('phoneCode','phone')}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="school" title={L('Okul','School')} sub={L('Okul planlaması için','For school schedules')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Okul adı','School name')} id="ep-school" span={2}>{txt('school',L('ör. Atatürk Anadolu Lisesi','e.g. Central High School'))}</EpF>
+              <EpF label={L('Okul türü','School type')} id="ep-schoolType" span={2}>{sel('schoolType',EP_SCHOOL_TYPES.map(([tr,en])=><option key={tr} value={tr}>{L(tr,en)}</option>))}</EpF>
+              <EpF label={L('İl','City')} id="ep-schoolCity" span={1}>{txt('schoolCity',L('ör. İzmir','e.g. Izmir'))}</EpF>
+              <EpF label={L('İlçe','District')} id="ep-schoolDistrict" span={1}>{txt('schoolDistrict',L('ör. Karşıyaka','e.g. Karşıyaka'))}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="family" title={L('Veli / Acil Durum','Parent / Emergency')} sub={L('Ulaşılacak kişi','Who to contact')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Veli adı soyadı','Parent full name')} id="ep-parentName" span={2}>{txt('parentName')}</EpF>
+              <EpF label={L('Yakınlık derecesi','Relationship')} id="ep-parentRelation" span={2}>{sel('parentRelation',EP_RELATIONS.map(([tr,en])=><option key={tr} value={tr}>{L(tr,en)}</option>))}</EpF>
+              <EpF label={L('Veli telefon numarası','Parent phone')} id="ep-parentPhone" span={2}>{tel('parentPhoneCode','parentPhone')}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="club" title={L('Kulüp ve Takım','Club and Team')} sub={L('Kadro bilgisi','Squad details')} cls="wide">
+            <div className="ep-grid ep2-g4">
+              <EpF label={L('Takım','Team')} id="ep-team" span={1}>{txt('team',setup.teamName||L('Takım adı','Team name'))}</EpF>
+              <EpF label={L('Yaş kategorisi','Age category')} id="ep-ageCategory" span={1}
+                help={hint&&hint!==ath.ageCategory?<button type="button" className="ep2-hint" onClick={()=>set({ageCategory:hint})}>{L(`Doğum yılına göre: ${hint} · uygula`,`By birth year: ${hint} · apply`)}</button>:null}>
+                {sel('ageCategory',EP_AGE_CATS.map(c=><option key={c} value={c}>{c==='Senior'?L('Büyükler (A Takım)','Senior'):c}</option>))}</EpF>
+              <EpF label={L('Forma numarası','Jersey number')} id="ep-number" span={1}>{txt('number','',{inputMode:'numeric'})}</EpF>
+              <EpF label={L('Mevki / Pozisyon','Position')} id="ep-pos" span={1}>
+                <select id="ep-pos" value={posOf(ath.position)} onChange={e=>set({position:e.target.value})}>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]&&POS_FULL[p]!==p?`${p} · ${POS_FULL[p]}`:p}</option>)}</select></EpF>
+              <EpF label={L('Kulübe katılım tarihi','Joined the club')} span={2}><DateDMY value={ath.joinDate||''} onChange={v=>set({joinDate:v})}/></EpF>
+              <EpF label={L('Önceki kulüp','Previous club')} id="ep-prevClub" span={2}>{txt('prevClub',L('yoksa boş bırak','leave empty if none'))}</EpF>
+            </div>
+          </EpSec>
+          <EpSec ic="health" title={L('Sağlık ve İzinler','Health and Consent')} sub={L('Kan grubu, görsel kullanım','Blood type, media use')}>
+            <div className="ep-grid ep2-g2">
+              <EpF label={L('Kan grubu','Blood type')} id="ep-bloodType" span={2}>{sel('bloodType',EP_BLOOD.map(b=><option key={b} value={b}>{b}</option>))}</EpF>
+              <EpF label={L('Fotoğraf ve video kullanım izni','Photo and video consent')} id="ep-mediaConsent" span={2}>{sel('mediaConsent',EP_CONSENT.map(([v,tr,en])=><option key={v} value={v}>{L(tr,en)}</option>))}</EpF>
+            </div>
+          </EpSec>
+          {/* Polar bağlantısı: durum, davet linki, senkron ve bağlantıyı kesme. Bileşenin kendi
+              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
+          <EpSec ic="watch" title={L('Polar Bağlantısı','Polar Connection')} sub={L('Saat / göğüs bandı verisi','Watch / chest strap data')} cls="ep-polar">
+            <PolarConnect ath={ath} teamId={teamId}/>
+          </EpSec>
+          <EpSec ic="note" title={L('Notlar','Notes')} sub={L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}>
+            <textarea aria-label={L('Notlar','Notes')} rows={4} value={ath.notes||''} onChange={e=>set({notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
+          </EpSec>
+        </div>
+      </div>
+      <div className="ep-foot">
+        <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
+        <button className="btn" onClick={onClose}>{L('Bitti','Done')}</button>
+      </div>
+    </div>
+  </div>);
+}
 const ATH_TAB_IDS=['profile','training','calendar','body','injuries'];
 function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,customTests,initialTab,teamId}){
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
@@ -25,8 +204,6 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
      scroll of the list it was opened from and hid its own header and tabs. The roster
      remounts this per athlete (key), so it runs once per athlete opened. */
   useLayoutEffect(()=>{window.scrollTo(0,0);},[ath.id]);
-  const[dobText,setDobText]=useState('');
-  useEffect(()=>{setDobText(fd(ath.dateOfBirth));},[ath.dateOfBirth,editProfileOpen]);
   // Find the most recent date that has any data (sessions/wellness/measurements)
   // so the calendar opens on a week with actual data instead of an empty one.
   const recentDate=useMemo(()=>{
@@ -110,60 +287,9 @@ function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,exercises,ai,cust
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
-    {/* Profili Düzenle: bölümlere ayrılmış geniş pencere — Kimlik, Okul ve Adres, Polar
-        bağlantısı, Notlar. Her alan yazıldığı anda kaydedilir; "Bitti" yalnızca kapatır.
-        Okul ve adres sporcuda düz metin (`school`, `address`); eski kayıtlarda yoksa boş görünür. */}
-    {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
-      <div className="modal ep-modal" role="dialog" aria-modal="true" aria-labelledby="ep-title" onClick={e=>e.stopPropagation()}>
-        <div className="ep-head">
-          <div className="ep-av">{ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}</div>
-          <div className="ep-ttl">
-            <h2 id="ep-title">{L('Profili Düzenle','Edit Profile')}</h2>
-            <div className="ep-sub">{[ath.name||L('Adsız Sporcu','Unnamed Athlete'),ath.number&&'#'+ath.number,ath.position&&(POS_FULL[ath.position]||ath.position)].filter(Boolean).join(' · ')}</div>
-          </div>
-          <button className="x-btn" onClick={()=>setEditProfileOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-        </div>
-        <div className="ep-body">
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Kimlik','Identity')}</b><span>{L('Ad, forma, mevki ve doğum bilgisi','Name, jersey, position and birth details')}</span></div>
-            <div className="ep-grid">
-              <div className="ep-f s3"><label htmlFor="ep-name">{L('Ad Soyad','Full name')}</label><input id="ep-name" value={ath.name||''} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-              <div className="ep-f s1"><label htmlFor="ep-num">{L('Forma No','Jersey #')}</label><input id="ep-num" inputMode="numeric" value={ath.number||''} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-              <div className="ep-f s2"><label htmlFor="ep-pos">{L('Mevki','Position')}</label><select id="ep-pos" value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
-              <div className="ep-f s3"><label htmlFor="ep-dob">{L('Doğum tarihi','Date of birth')}</label><input id="ep-dob" type="text" inputMode="numeric" placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/>
-                <div className="help">{L('gün / ay / yıl','day / month / year')}{apAge!=null&&<> · {L(`${apAge} yaş`,`${apAge} yrs`)}</>}</div></div>
-              <div className="ep-f s3"><label htmlFor="ep-sex">{L('Cinsiyet','Sex')}</label><select id="ep-sex" value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
-                <option value="">{L('— girilmemiş','— not set')}</option>
-                <option value="M">{L('Erkek','Male')}</option>
-                <option value="F">{L('Kadın','Female')}</option>
-              </select></div>
-            </div>
-          </section>
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Okul ve Adres','School and Address')}</b><span>{L('Okul planlaması ve ulaşım için','For school schedules and travel')}</span></div>
-            <div className="ep-grid">
-              <div className="ep-f s6"><label htmlFor="ep-school">{L('Okul','School')}</label><input id="ep-school" value={ath.school||''} placeholder={L('ör. Atatürk Anadolu Lisesi · 10. sınıf','e.g. Central High School · Grade 10')} onChange={e=>updAth(ath.id,{school:e.target.value})}/></div>
-              <div className="ep-f s6"><label htmlFor="ep-addr">{L('Adres','Address')}</label><textarea id="ep-addr" rows={2} value={ath.address||''} placeholder={L('Mahalle, sokak, no · ilçe / il','Street, number · district / city')} onChange={e=>updAth(ath.id,{address:e.target.value})}/></div>
-            </div>
-          </section>
-          {/* Polar bağlantısı: eskiden Sporcu Profili sekmesinin altında ayrı bir paneldi; artık
-              burada — durum, davet linki, senkron ve bağlantıyı kesme aynı yerde. Bileşenin kendi
-              etiketi bölüm başlığıyla tekrar etmesin diye CSS'te gizli (.ep-polar). */}
-          <section className="ep-sec ep-polar">
-            <div className="ep-sec-h"><b>{L('Polar Bağlantısı','Polar Connection')}</b><span>{L('Saat / göğüs bandı verisi','Watch / chest strap data')}</span></div>
-            <PolarConnect ath={ath} teamId={teamId}/>
-          </section>
-          <section className="ep-sec">
-            <div className="ep-sec-h"><b>{L('Notlar','Notes')}</b><span>{L('Özel durumlar, kısıtlar, aileyle ilgili bilgiler','Special considerations, restrictions, family notes')}</span></div>
-            <textarea aria-label={L('Notlar','Notes')} rows={3} value={ath.notes||''} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Özel durumlar…','Special considerations…')}/>
-          </section>
-        </div>
-        <div className="ep-foot">
-          <span>{L('Değişiklikler yazdıkça kaydedilir.','Changes are saved as you type.')}</span>
-          <button className="btn" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button>
-        </div>
-      </div>
-    </div>}
+    {/* Profili Düzenle: ekranı neredeyse dolduran, bölümlere ayrılmış pencere (`AthEditProfile`). */}
+    {editProfileOpen&&<AthEditProfile ath={ath} updAth={updAth} setup={setup} teamId={teamId}
+      positions={positions} onClose={()=>setEditProfileOpen(false)}/>}
     {tab==='injuries'&&<AthInjuries ath={ath} updAth={updAth} setup={setup} teamDays={teamDays}/>}
     {tab==='body'&&<AthBody ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}

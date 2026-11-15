@@ -284,7 +284,7 @@ function TrainContent({session,onPatch,readOnly}){
         <div className="tc-k">{L('Seans Odağı','Session Focus')}</div>
         {focus.length||sub.length
           ?<div className="tc-focus">
-            {focus.map(f=><span key={'f-'+f} className="tc-chip on">{exLabel(f)}</span>)}
+            {focus.map(f=><span key={'f-'+f} className="tc-chip on">{focusLabel(f)}</span>)}
             {sub.map(f=><span key={'s-'+f} className="tc-chip">{exLabel(f)}</span>)}
           </div>
           :<div className="tc-empty">{L('Odak seçilmedi','No focus set')}</div>}

@@ -363,34 +363,47 @@ function TeamInsights({days,athletes,refDate,setup}){
       </div>
 
       <div className="tib-col">
-      {/* ---- Team sRPE table ---- */}
-      <div className="tib-card" style={card()}>
+      {/* ---- Team sRPE table ----
+          Each athlete is one row: rank, photo, name and position, the week's sRPE load
+          as a bar on a shared scale (the thin line across every bar is the squad mean,
+          so "above / below the squad" reads without the number), and the Δ against the
+          mean as a coloured pill. Three summary figures head the list. */}
+      <div className="tib-card tib-srpe" style={card()}>
         <div className="tib-chead">
           <div><div className="tib-ct">{L('Takım sRPE Tablosu','Team sRPE Table')}</div>
             <div className="tib-cs">{L('Haftanın toplam sRPE yükü, yüksekten aza','This week’s total sRPE load, highest to lowest')}</div></div>
-          <span className="tib-tot">{tibNum(srpe.total)}<u>AU</u></span>
         </div>
         {srpe.n===0
           ?<div className="tib-none">{L('Bu hafta sıralanacak sporcu yükü yok.','No athlete load this week to rank.')}</div>
           :<>
-            <div className="tib-sr">
-            <table className="tib-tbl">
-              <thead><tr><th className="rk">#</th><th>{L('Sporcu','Athlete')}</th>
-                <th className="r">sRPE</th><th className="r">Δ</th></tr></thead>
-              <tbody>{srpe.rows.map((r,i)=><tr key={r.a.id}>
-                <td className="rk">{i+1}</td>
-                <td className="d">{r.a.name||'—'}</td>
-                <td className="r ac">{r.load?tibNum(r.load):'—'}
-                  <span className="tib-mini"><i className="a" style={{...grow(r.load/srpe.max*100),background:tibDevCol(r.d,15)}}/></span></td>
-                <td className="r"><span className="tib-d" style={{color:tibDevCol(r.d,15)}}>
-                  {r.load?tibPct(r.d):L('yük yok','no load')}</span></td>
-              </tr>)}</tbody>
-            </table>
+            <div className="tsr-sum">
+              <div><span>{L('Toplam','Total')}</span><b>{tibNum(srpe.total)}<u>AU</u></b></div>
+              <div><span>{L('Ortalama','Mean')}</span><b>{tibNum(srpe.mean)}<u>AU</u></b></div>
+              <div><span>{L('Yük giren','Logged')}</span><b>{srpe.n}<u>/ {srpe.rows.length}</u></b></div>
+            </div>
+            <div className="tsr-hd"><span>#</span><span>{L('Sporcu','Athlete')}</span><span className="r">{L('Haftalık yük','Weekly load')}</span><span className="r">Δ {L('ort.','mean')}</span></div>
+            <div className="tib-sr tsr-list" style={{'--tsr-mean':`${Math.min(100,srpe.mean/srpe.max*100)}%`}}>
+              {srpe.rows.map((r,i)=>{const col=r.load?tibDevCol(r.d,15):'var(--dim)';return(
+                <div key={r.a.id} className={'tsr-r'+(r.load?'':' off')+(i<3&&r.load?' top':'')}>
+                  <span className="tsr-rk">{r.load?i+1:'–'}</span>
+                  <span className="tsr-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</span>
+                  <span className="tsr-nm"><b title={r.a.name||''}>{r.a.name||'—'}</b>
+                    <u>{[r.a.number!=null&&r.a.number!==''?'#'+r.a.number:'',tibPosLabel(r.a.position)].filter(Boolean).join(' · ')||'—'}</u></span>
+                  <span className="tsr-v">{r.load?tibNum(r.load):'—'}{r.load?<u>AU</u>:null}</span>
+                  <span className="tsr-bar"><span className="trk"><i style={{...grow(r.load/srpe.max*100),background:col}}/></span></span>
+                  <span className="tsr-d" style={{color:col,borderColor:r.load?col:'var(--border)'}}>{r.load?tibPct(r.d):L('yük yok','no load')}</span>
+                </div>);})}
             </div>
             {/* Outside the scroller, so the reading of the table stays pinned to the
                 bottom of the card instead of scrolling away with the last athlete. */}
-            <div className="tib-legend">{L(`Takım ortalaması ${tibNum(srpe.mean)} AU · ${srpe.n} sporcu · AU = sRPE × dakika`,
-              `Squad mean ${tibNum(srpe.mean)} AU · ${srpe.n} athletes · AU = sRPE × minutes`)}</div>
+            <div className="tib-legend tsr-leg">
+              <span><i style={{background:'#2dd4a7'}}/>{L('ort. ±%15','mean ±15%')}</span>
+              <span><i style={{background:'#f59e0b'}}/>{L('üstünde','above')}</span>
+              <span><i style={{background:'#f43f5e'}}/>{L('> %25 üstü','> 25% above')}</span>
+              <span><i style={{background:'#5cb8ff'}}/>{L('altında','below')}</span>
+              <span className="mn"><i/>{L('takım ortalaması','squad mean')}</span>
+              <span className="au">AU = sRPE × {L('dk','min')}</span>
+            </div>
           </>}
       </div>
       </div>

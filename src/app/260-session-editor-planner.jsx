@@ -84,7 +84,7 @@ function useDDOutside(refs,open,close){
 const FxOpt=({v,on,tog,c})=>(
   <label className={`focus-opt${on?' on':''}`} style={c?{'--fo-c':c}:undefined}>
     <input type="checkbox" checked={on} onChange={()=>tog(v)}/>
-    <span>{exLabel(v)}</span>
+    <span>{focusLabel(v)}</span>
   </label>);
 /* A stage, with the heading that says which question it is answering. `n` drives the
    step badge and the stagger, so the panels arrive in reading order. */
@@ -131,7 +131,7 @@ function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
   };
   const toggleSub=s=>onSubChange(subSel.includes(s)?subSel.filter(x=>x!==s):[...subSel,s]);
 
-  const summary=[...sel,...subSel].map(exLabel);
+  const summary=[...sel,...subSel].map(focusLabel);
 
   return(<div ref={ref} className="focus-sel">
     <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
@@ -151,7 +151,7 @@ function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
             unfolding rather than two that blink into place. */}
         {stage>=2&&<FxStage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
           {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
-            <div className="fx-fam-hd">{exLabel(f.id)}</div>
+            <div className="fx-fam-hd">{focusLabel(f.id)}</div>
             <div className="fx-grid">
               {f.sub.map(s=><FxOpt key={s} v={s} c={f.c} on={subSel.includes(s)} tog={toggleSub}/>)}
             </div>
@@ -471,6 +471,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
     <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}
       title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>;
+  /* The session's type, beside the moves: an S&C session can be turned into a team
+     practice / match / test (and back) without being written again. */
+  const typeSel=!isTemplate&&<SesTypeSelect session={session} onPick={ns=>onUpdate(ns)} className="sk-kind"/>;
+  const headActs=(typeSel||moveBtns)?<>{typeSel||null}{moveBtns||null}</>:null;
 
   return(<div className="sess-ed">
     <div className="sbody">
@@ -493,7 +497,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
             onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
-            {moveBtns}
+            {headActs}
             <button type="button" className="btn xs sec iv-rmb" onClick={delSess}
               title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
           </span>
@@ -506,7 +510,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
         athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
-        ses={sesCtl} sesMoves={bi===0?moveBtns:null}
+        ses={sesCtl} sesMoves={bi===0?headActs:null}
         bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}

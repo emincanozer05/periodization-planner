@@ -165,6 +165,8 @@ const SkIcTimer=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 const SkIcGauge=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 14.5 16 9.5"/></svg>;
 const SkIcHeart=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>;
 const SkIcPin=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>;
+/* Hedef Bölge: konum iğnesi değil, vücut — seçilen şey bir yer değil, vücut bölgesi. */
+const SkIcBody=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M5 9.5l7-1.5 7 1.5"/><path d="M12 8v6"/><path d="M8.5 22l3.5-8 3.5 8"/></svg>;
 const SkIcCal=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>;
 
 /* Players as a grid of chips — who took part in a practice, who made the match squad —
@@ -448,6 +450,48 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
   return null;
 }
 
+/* ---- Seans türü, sonradan değiştirilebilir ---------------------------------------
+   Bir seans hangi düğmeyle eklendiyse o tür olarak kalıyordu: yanlışlıkla "Takım
+   Antrenmanı" diye eklenen bir Kuvvet & Güç seansı geri çevrilemiyordu. `sesTypeOf`
+   seansın şu anki türünü (SPRESETS adı) okur; `sesConvert` seansı başka bir türe çevirir:
+   odağı, alt odağı, yük türünü, `kind`'ı ve RPE yuvasını yeni türün değerleriyle yazar.
+   Seansın adı türün varsayılan adıysa (ya da boşsa) yeni türün adını alır; elle verilmiş
+   bir ad korunur. Saat, süre, katılımcılar, egzersizler, notlar ve yük hiç değişmez. */
+const sesTypeOf=s=>{
+  const k=sesKind(s);
+  if(k==='tp')return'Team Practice';if(k==='match')return'Competition';if(k==='test')return'Test';
+  const f=sesFocus(s).join('|');
+  const p=SPRESETS.find(x=>!x.d.kind&&x.d.focus.join('|')===f);
+  return p?p.name:'';
+};
+const sesConvert=(s,name)=>{
+  const p=SPRESETS.find(x=>x.name===name);if(!p)return s;
+  const d=p.d;const nm=String((s&&s.name)||'').trim();
+  const isDefault=!nm||SPRESETS.some(x=>[x.name,x.tr,x.trName,x.d.name].includes(nm));
+  const ld=String(d.loadType||'').toLowerCase();
+  return{...s,loadType:d.loadType,focus:[...d.focus],sub:[...d.sub],purpose:d.purpose,
+    kind:d.kind||'sc',rpeCat:d.rpeCat||((ld.includes('mechanical')||ld.includes('neuromuscular'))?'sc':'tp'),
+    ...(isDefault?{name:L(p.trName||d.name,d.name)}:{})};
+};
+/* The kind as a dropdown: the same nine types the "add a training block" bar offers. */
+function SesTypeSelect({session,onPick,className}){
+  const cur=sesTypeOf(session);
+  return(<select className={'ses-type-sel'+(className?' '+className:'')} value={cur}
+    title={L('Seans türünü değiştir','Change the session type')} aria-label={L('Seans türü','Session type')}
+    onChange={e=>{const v=e.target.value;if(!v||v===cur)return;
+      /* A team practice / match / test window shows no exercise list: say so before the
+         written exercises disappear behind it (they are kept, and come back if the
+         session is turned back into an S&C type). */
+      const nEx=((session&&session.blocks)||[]).reduce((t,b)=>t+((b&&b.exercises)||[]).length,0);
+      const to=SPRESETS.find(x=>x.name===v);
+      if(to&&to.d.kind&&nEx>0&&!confirm(L(`Bu seanstaki ${nEx} egzersiz "${spLabel(to)}" görünümünde gösterilmez (silinmez; türü geri çevirince yeniden görünür). Devam edilsin mi?`,
+        `The ${nEx} exercise(s) in this session are not shown in the "${spLabel(to)}" view (they are kept and return if you change the type back). Continue?`)))return;
+      onPick(sesConvert(session,v));}}>
+    {!cur&&<option value="">{L('Tür seç…','Pick type…')}</option>}
+    {SPRESETS.map(p=><option key={p.name} value={p.name}>{spLabel(p)}</option>)}
+  </select>);
+}
+
 /* The card a team practice, match or test day gets in the day editor — the same fields
    as its window, under the editor's own header (number, title, moves, remove), and no
    block / exercise list under them. */
@@ -467,7 +511,7 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
         <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
         <LiveInput className="iv-block-nm" value={session.name||''} placeholder={tag}
           title={L('Seans adı','Session name')} onChange={v=>u({name:v})}/>
-        <span className="sk-kind">{tag}</span>
+        <SesTypeSelect session={session} onPick={ns=>onUpdate(ns)} className="sk-kind"/>
         {kind==='tp'&&sum&&<span className="sk-hd-sum">{sum}</span>}
         <span className="iv-blockacts">
           {total>1&&<>
