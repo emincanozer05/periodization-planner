@@ -334,53 +334,53 @@ function RpBoxEditor({x,y,box,type,locs,onDelLoc,onSave,onDelete,onClose}){
   const set=(k,v)=>setD(o=>({...o,[k]:v}));
   const col=d.color||(type&&type.color)||'#94a3b8';
   const enter=e=>{if(e.key==='Enter'){e.preventDefault();save();}};
-  return ReactDOM.createPortal(<div ref={ref} className="rpe" role="dialog" aria-label={L('Antrenmanı düzenle','Edit training')} style={{...pos,'--tc':col}}
+  return ReactDOM.createPortal(<div ref={ref} className="rpbx" role="dialog" aria-label={L('Antrenmanı düzenle','Edit training')} style={{...pos,'--tc':col}}
       onClick={e=>e.stopPropagation()} onContextMenu={e=>e.preventDefault()}>
-    <div className="rpe-h"><i/>{L('Antrenmanı düzenle','Edit training')}
+    <div className="rpbx-h"><i/>{L('Antrenmanı düzenle','Edit training')}
       {type&&<span title={L('Türü','Its type')}>{type.name}</span>}</div>
-    <label className="rpe-f"><span>{L('İsim','Name')}</span>
+    <label className="rpbx-f"><span>{L('İsim','Name')}</span>
       <input value={d.name} maxLength={40} placeholder={(type&&type.name)||L('Antrenman adı','Training name')}
         onChange={e=>set('name',e.target.value)} onKeyDown={enter}/></label>
-    <div className="rpe-row">
-      <label className="rpe-f rpe-t"><span>{L('Saat','Time')}</span>
+    <div className="rpbx-row">
+      <label className="rpbx-f rpbx-t"><span>{L('Saat','Time')}</span>
         <input type="time" value={d.time} onChange={e=>set('time',e.target.value)} onKeyDown={enter}/></label>
-      <div className="rpe-f"><span>{L('Lokasyon','Location')}</span>
+      <div className="rpbx-f"><span>{L('Lokasyon','Location')}</span>
         {(()=>{const q=d.loc.trim().toLocaleLowerCase('tr');
           const list=(locs||[]).filter(l=>!q||l.toLocaleLowerCase('tr').includes(q));
-          return(<div className={'rpe-loc'+(locOpen?' open':'')}>
+          return(<div className={'rpbx-loc'+(locOpen?' open':'')}>
             <input value={d.loc} maxLength={40} placeholder={L('ör. Ağırlık salonu','e.g. Weight room')} aria-label={L('Lokasyon','Location')}
               role="combobox" aria-expanded={locOpen} aria-autocomplete="list"
               onChange={e=>{set('loc',e.target.value);setLocOpen(true);}} onFocus={()=>setLocOpen(true)}
               onKeyDown={e=>{if(e.key==='ArrowDown'){e.preventDefault();setLocOpen(true);
-                const b=e.currentTarget.parentNode.querySelector('.rpe-loc-i');if(b)b.focus();}else enter(e);}}/>
-            {(locs||[]).length>0&&<button type="button" className="rpe-loc-car" tabIndex={-1} aria-label={L('Kayıtlı lokasyonlar','Saved locations')}
+                const b=e.currentTarget.parentNode.querySelector('.rpbx-loc-i');if(b)b.focus();}else enter(e);}}/>
+            {(locs||[]).length>0&&<button type="button" className="rpbx-loc-car" tabIndex={-1} aria-label={L('Kayıtlı lokasyonlar','Saved locations')}
               onClick={()=>setLocOpen(o=>!o)}><SpChev/></button>}
-            {locOpen&&list.length>0&&<div className="rpe-loc-l" role="listbox">
-              {list.map(l=><div key={l} className={'rpe-loc-r'+(l===d.loc?' on':'')}>
-                <button type="button" role="option" aria-selected={l===d.loc} className="rpe-loc-i"
+            {locOpen&&list.length>0&&<div className="rpbx-loc-l" role="listbox">
+              {list.map(l=><div key={l} className={'rpbx-loc-r'+(l===d.loc?' on':'')}>
+                <button type="button" role="option" aria-selected={l===d.loc} className="rpbx-loc-i"
                   onClick={()=>{set('loc',l);setLocOpen(false);}}
                   onKeyDown={e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();
                     const r=e.currentTarget.parentNode[e.key==='ArrowDown'?'nextSibling':'previousSibling'];
-                    const b=r&&r.querySelector('.rpe-loc-i');if(b)b.focus();}}}>{l}</button>
-                <button type="button" className="rpe-loc-x" aria-label={L(`${l} lokasyonunu listeden sil`,`Remove ${l} from the list`)}
+                    const b=r&&r.querySelector('.rpbx-loc-i');if(b)b.focus();}}}>{l}</button>
+                <button type="button" className="rpbx-loc-x" aria-label={L(`${l} lokasyonunu listeden sil`,`Remove ${l} from the list`)}
                   title={L('Listeden sil','Remove from the list')} onClick={()=>onDelLoc(l)}>×</button>
               </div>)}
             </div>}
           </div>);})()}
       </div>
     </div>
-    <div className="rpe-f"><span>{L('Renk','Colour')}</span>
-      <div className="rpe-sws" role="radiogroup" aria-label={L('Renk','Colour')}>
+    <div className="rpbx-f"><span>{L('Renk','Colour')}</span>
+      <div className="rpbx-sws" role="radiogroup" aria-label={L('Renk','Colour')}>
         {RP_COLORS.map(c=><button key={c} type="button" role="radio" aria-checked={col===c} aria-label={c}
-          className={'rpe-sw'+(col===c?' on':'')} style={{background:c}} onClick={()=>set('color',c)}/>)}
-        <label className={'rpe-sw rpe-cust'+(RP_COLORS.includes(col)?'':' on')} title={L('Özel renk','Custom colour')}>
+          className={'rpbx-sw'+(col===c?' on':'')} style={{background:c}} onClick={()=>set('color',c)}/>)}
+        <label className={'rpbx-sw rpbx-cust'+(RP_COLORS.includes(col)?'':' on')} title={L('Özel renk','Custom colour')}>
           <input type="color" value={/^#[0-9a-f]{6}$/i.test(col)?col:'#94a3b8'} onChange={e=>set('color',e.target.value)}/></label>
       </div>
-      {d.color&&type&&<button type="button" className="rpe-reset" onClick={()=>set('color','')}>
+      {d.color&&type&&<button type="button" className="rpbx-reset" onClick={()=>set('color','')}>
         <i style={{background:type.color}}/>{L('Türün rengine dön','Back to the type\'s colour')}</button>}
     </div>
-    <div className="rpe-act">
-      <button type="button" className="rpe-del" onClick={()=>{done.current=true;onDelete();onClose();}}>
+    <div className="rpbx-act">
+      <button type="button" className="rpbx-del" onClick={()=>{done.current=true;onDelete();onClose();}}>
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         {L('Sil','Delete')}</button>
       <span style={{flex:1}}/>
