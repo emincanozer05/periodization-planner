@@ -154,10 +154,11 @@ function sesTipLines(s){
   }));
   return out;
 }
-/* ---- The four week cards' visuals ------------------------------------------------
+/* ---- The five week cards' visuals ------------------------------------------------
    Each card carries one small picture of the number above it, read off the same week:
-   the seven daily loads as bars, the sessions per day as cells, and RPE / monotony as a
-   banded scale with the target bracketed above it and this week's value as a marker. */
+   the seven daily loads as bars, strain as the two numbers it multiplies, the sessions
+   as one bar split by kind, and RPE / monotony as a banded scale with this week's value
+   as a marker (monotony also brackets its target above the scale). */
 /* A banded scale: `bands` [{from,to,c,tr,en}], `tgt` [from,to,label], `ticks` values. */
 function CwsScale({v,max,bands,tgt,ticks,fmtT}){
   const pct=x=>`${Math.min(100,Math.max(0,x/max*100))}%`;
@@ -190,8 +191,9 @@ const CWS_RPE_BANDS=[
   {from:5,to:7,c:'#22c55e',tr:'Normal',en:'Normal'},
   {from:7,to:10,c:'#f97316',tr:'Yüksek',en:'High'},
 ];
-const CwsRpeScale=({v})=><CwsScale v={v} max={10} bands={CWS_RPE_BANDS}
-  tgt={[5,7,L('hedef 5–7','target 5–7')]} ticks={[0,5,7,10]}/>;
+/* No target bracket here: the Low / Normal / High pill and the lit band already say
+   where the week sits against 5–7. */
+const CwsRpeScale=({v})=><CwsScale v={v} max={10} bands={CWS_RPE_BANDS} ticks={[0,5,7,10]}/>;
 /* Seven bars, one per day (rest days stay as an empty track); the heaviest day is lit. */
 function CwsDayBars({vals,tip}){
   const max=Math.max(1,...vals);const top=vals.indexOf(Math.max(...vals));
@@ -201,12 +203,34 @@ function CwsDayBars({vals,tip}){
       <em>{DN[i]}</em></div>)}
   </div>);
 }
-/* Seven day cells with the day's session count; an empty day is a dashed outline. */
-function CwsDayCells({vals}){
-  return(<div className="cwd cwd-n" aria-hidden="true">
-    {vals.map((v,i)=><div key={i} className="cwd-c">
-      <span className={'cwd-b'+(v>0?' on':'')+(v>1?' x':'')}>{v>0?v:''}</span>
-      <em>{DN[i]}</em></div>)}
+/* The week's sessions as one bar split by kind (the calendar cards' own colours, so a
+   red slice is the red cards), with the count of each kind under it. The per-day counts
+   it replaced repeated what the seven columns below already show. */
+const CWS_SES_KINDS=[
+  {k:'match',tr:'Müsabaka',en:'Match'},
+  {k:'tp',tr:'Takım',en:'Team'},
+  {k:'strength',tr:'Kuvvet & Güç',en:'Strength & Power'},
+  {k:'court',tr:'Saha perf.',en:'On-court'},
+  {k:'recovery',tr:'Toparlanma',en:'Recovery'},
+  {k:'',tr:'Diğer',en:'Other'},
+];
+function CwsSesMix({mix}){
+  const rows=CWS_SES_KINDS.map(x=>({...x,n:mix[x.k]||0,c:SES_TYPE_COLORS[x.k]||'#64748b'})).filter(x=>x.n>0);
+  return(<div className="cwx">
+    <div className="cwx-bar" aria-hidden="true">
+      {rows.length?rows.map(r=><i key={r.k||'o'} style={{flexGrow:r.n,background:r.c}} title={`${L(r.tr,r.en)} · ${r.n}`}/>)
+        :<i className="nil"/>}
+    </div>
+    {rows.length>0&&<div className="cwx-lg">{rows.map(r=><span key={r.k||'o'}><i style={{background:r.c}}/>{L(r.tr,r.en)}<b>{r.n}</b></span>)}</div>}
+  </div>);
+}
+/* Strain as what it is made of — the week's total load times its monotony — so the
+   number can be checked against the two cards either side of it. */
+function CwsStrainParts({load,mono}){
+  return(<div className="cwf" aria-hidden="true">
+    <div className="cwf-t"><em>{L('Toplam Yük','Total Load')}</em><b>{load}<small>AU</small></b></div>
+    <span className="cwf-op">×</span>
+    <div className="cwf-t"><em>{L('Monotonluk','Monotony')}</em><b>{mono!=null?mono.toFixed(2):'—'}</b></div>
   </div>);
 }
 function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
@@ -593,6 +617,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const weekMonoV=useMemo(()=>athMode?weekMono(athWeekLoads(ownerAth,fmt(weekStart))).monotony
     :teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart,athMode,ownerAth]);
   const weekMonoZ=monoZoneOf(weekMonoV);
+  /* Last week's monotony, for the strain card's change against it. */
+  const prevMonoV=useMemo(()=>{const pk=fmt(addD(weekStart,-7));
+    return athMode?weekMono(athWeekLoads(ownerAth,pk)).monotony:teamWeekMono(days,athletes,pk).monotony;},
+    [days,athletes,weekStart,athMode,ownerAth]);
   /* ---- What the week ADDS UP TO, read once at the top of it -------------------
      Seven columns say what happens on each day; none of them says what the week is.
      These five do, and every one of them is read off the same numbers the columns and
@@ -601,15 +629,18 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const at=d=>athMode?athDayLoad(ownerAth,fmt(d)):Math.round(teamDaily[fmt(d)]||0);
     let load=0,prev=0;
     for(let i=0;i<7;i++){load+=at(addD(weekStart,i));prev+=at(addD(weekStart,i-7));}
-    // How many sessions, and which kind: a session carrying a ball block is court work.
-    let court=0,floor=0;
-    const rpes=[];const daily=[],sesDays=[];
+    // How many sessions, of which kind (the card colour's kind), how long and on how many days.
+    let sessions=0,mins=0,activeDays=0;const mix={};
+    const rpes=[];const daily=[];
     for(let i=0;i<7;i++){
       const k=fmt(addD(weekStart,i));
       daily.push(at(addD(weekStart,i)));
-      sesDays.push(((days[k]||{}).sessions||[]).length);
-      ((days[k]||{}).sessions||[]).forEach(ss=>{
-        if((ss.blocks||[]).some(b=>blkKind(b)==='ball'))court++;else floor++;
+      const list=(days[k]||{}).sessions||[];
+      if(list.length)activeDays++;
+      list.forEach(ss=>{
+        sessions++;const t=sesTypeKey(ss);mix[t]=(mix[t]||0)+1;
+        // A match has no length of its own (each athlete plays their own minutes).
+        if(!isMatchSes(ss))mins+=Number(ss.duration)||0;
       });
       const r=teamMode?teamDayRPE(athletes,k):athMode?athDayRPE(ownerAth,k):null;
       if(r!=null)rpes.push(r);
@@ -617,8 +648,17 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
     return{load,prev,
       delta:prev>0?Math.round((load-prev)/prev*100):null,
-      court,floor,sessions:court+floor,rpe,daily,sesDays};
+      sessions,mix,mins,activeDays,rpe,daily};
   },[days,athletes,teamDaily,weekStart,teamMode,athMode,ownerAth]);
+  /* Foster's weekly strain = the week's total load × its monotony, taken from the two
+     numbers exactly as the Total Load and Monotony cards print them (monotony to two
+     decimals), so 2817 AU × 1.08 on screen is 3042 here and nothing else. */
+  const mono2=v=>v?Math.round(v*100)/100:0;
+  const weekStrain=weekMonoV?Math.round(weekSum.load*mono2(weekMonoV)):null;
+  const prevStrain=prevMonoV?Math.round(weekSum.prev*mono2(prevMonoV)):null;
+  const strainDelta=weekStrain!=null&&prevStrain>0?Math.round((weekStrain-prevStrain)/prevStrain*100):null;
+  const durTxt=m=>{const h=Math.floor(m/60),r=m%60;
+    return h?(r?L(`${h} sa ${r} dk`,`${h} h ${r} min`):L(`${h} sa`,`${h} h`)):L(`${r} dk`,`${r} min`);};
   /* The planned band is 5-7: under it the week is too easy to adapt to, over it the squad
      is being asked for more than a week of training should ask. */
   const rpeBand=weekSum.rpe==null?{t:L('Veri yok','No data'),c:'var(--dim)'}
@@ -670,7 +710,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     athletes={teamMode?athletes:undefined} staff={staff}/>}
   <div className="panel">
     {!inlineOpen&&(calMode==='week'?<>
-    {/* The week in four numbers, before the seven columns that make them up. */}
+    {/* The week in five numbers, before the seven columns that make them up. */}
     <div className="calw-stats">
       <div className="cws">
         <span className="cws-ic blue"><TIc k="chart" size={19}/></span>
@@ -686,13 +726,29 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-s">{weekSum.prev>0?L(`Önceki hafta ${weekSum.prev} AU`,`Previous week ${weekSum.prev} AU`):L('Önceki haftada yük yok','No load the previous week')}</div>
         </div>
       </div>
+      <div className="cws" title={L('Haftalık strain (Foster) = haftalık toplam yük × monotonluk. Yük ile birlikte yükün ne kadar tekdüze dağıldığını da tartar: aynı toplam yük, günlere eşit yayıldığında daha yüksek strain verir.',
+        'Weekly strain (Foster) = weekly total load × monotony. It weighs the load together with how evenly it is spread: the same total gives a higher strain when every day carries the same.')}>
+        <span className="cws-ic rose"><TIc k="wave" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Haftalık Strain','Weekly Strain')}</div>
+          <div className="cws-v">{weekStrain!=null?weekStrain:'—'}{weekStrain!=null&&<small>AU</small>}
+            {strainDelta!=null&&<em className={strainDelta>=0?'up':'down'}
+              title={L('Önceki haftanın strain değerine göre değişim','Change against the previous week\'s strain')}>
+              {strainDelta>=0?'↑':'↓'} %{Math.abs(strainDelta)}</em>}
+          </div>
+          <CwsStrainParts load={weekSum.load} mono={weekMonoV?mono2(weekMonoV):null}/>
+          <div className="cws-s">{prevStrain>0?L(`Önceki hafta ${prevStrain} AU`,`Previous week ${prevStrain} AU`):L('Önceki haftada strain yok','No strain the previous week')}</div>
+        </div>
+      </div>
       <div className="cws">
         <span className="cws-ic violet"><TIc k="list" size={19}/></span>
         <div className="cws-tx">
           <div className="cws-k">{L('Toplam Seans','Total Sessions')}</div>
-          <div className="cws-v">{weekSum.sessions}</div>
-          <CwsDayCells vals={weekSum.sesDays}/>
-          <div className="cws-s">{L(`${weekSum.floor} antrenman + ${weekSum.court} saha`,`${weekSum.floor} training + ${weekSum.court} court`)}</div>
+          <div className="cws-v">{weekSum.sessions}<small>{L('seans','sessions')}</small></div>
+          <CwsSesMix mix={weekSum.mix}/>
+          <div className="cws-s">{weekSum.sessions
+            ?L(`${weekSum.activeDays} gün · ${7-weekSum.activeDays} dinlenme`,`${weekSum.activeDays} days · ${7-weekSum.activeDays} rest`)+(weekSum.mins>0?' · '+durTxt(weekSum.mins):'')
+            :L('Bu hafta seans yok','No sessions this week')}</div>
         </div>
       </div>
       <div className="cws">
