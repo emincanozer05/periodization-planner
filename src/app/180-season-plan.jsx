@@ -431,15 +431,6 @@ function RoughCalendar({team,updateTeam,rows}){
     save({days:nd,...(n.loc&&!known?{locs:sortLocs([...locs,n.loc])}:{})});};
   const move=(from,i,to)=>{if(from===to)return;const a=[...(dayMap[from]||[])];const t=a.splice(i,1)[0];if(!t)return;
     const nd={...dayMap};if(a.length)nd[from]=a;else delete nd[from];nd[to]=[...(nd[to]||[]),t];setDays(nd);};
-  const copyWeek=ws=>{const nx=addD(ws,7);
-    const has=Array.from({length:7},(_,d)=>(dayMap[fmt(addD(nx,d))]||[]).length).some(Boolean);
-    if(has&&!confirm(L('Sonraki haftada yerleştirilmiş antrenmanlar var. Bu haftanın düzeniyle değiştirilsin mi?',
-      'The next week already has trainings placed. Replace them with this week\'s layout?')))return;
-    const nd={...dayMap};
-    for(let d=0;d<7;d++){const src=dayMap[fmt(addD(ws,d))],dst=fmt(addD(nx,d));if(src&&src.length)nd[dst]=src.map(e=>typeof e==='string'?e:{...e});else delete nd[dst];}
-    setDays(nd);
-    /* The copy usually lands in the next month's first week: follow it there. */
-    if(fmt(nx).slice(0,7)>mk&&fmt(addD(nx,6)).slice(0,7)>mk)setMk(fmt(nx).slice(0,7));};
   const onDrop=(e,k)=>{e.preventDefault();setOver(null);let d=null;
     try{d=JSON.parse(e.dataTransfer.getData('text/plain'));}catch(err){return;}
     if(d&&d.from)move(d.from,d.i,k);};
@@ -511,10 +502,6 @@ function RoughCalendar({team,updateTeam,rows}){
                 <span style={{'--oc':em.c}}><i/>{L(em.l[0],em.l[1])}</span>
                 <span style={{'--oc':ld.c}}><i/>{L(ld.l[0],ld.l[1])}</span>
               </>:<b className="none">{L('Sezon dışı','Off-season')}</b>}
-              <button type="button" className="rp-copy" onClick={()=>copyWeek(ws)}
-                title={L('Bu haftanın düzenini sonraki haftaya kopyala','Copy this week\'s layout to the next week')}>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h11"/></svg>
-                {L('Alt haftaya kopyala','Copy down')}</button>
             </div>
             {[0,1,2,3,4,5,6].map(i=>{const d=addD(ws,i),k=fmt(d),list=dayMap[k]||[],games=compsBy[k]||[];
               const out=d.getMonth()!==m,isT=k===tk,isOpen=menu===k;
