@@ -50,7 +50,7 @@ const epYearsSince=iso=>{
   const t=new Date();let y=t.getFullYear()-b.getFullYear();
   if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return Math.max(0,y);
 };
-const EpIc=({d})=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.map((p,i)=><path key={i} d={p}/>)}</svg>;
+const EpIc=({d,w})=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w||1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.map((p,i)=><path key={i} d={p}/>)}</svg>;
 const EP_IC={
   person:['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M4.5 20.5c1-3.8 4-6 7.5-6s6.5 2.2 7.5 6'],
   school:['M2.5 9.5L12 5l9.5 4.5L12 14z','M6.5 11.5v4.3c1.6 1.4 3.4 2.1 5.5 2.1s3.9-.7 5.5-2.1v-4.3','M21.5 9.5v5'],
@@ -63,8 +63,8 @@ const EP_IC={
 };
 function EpSec({ic,title,sub,cls,children}){
   return(<section className={'ep2-sec'+(cls?' '+cls:'')}>
-    <div className="ep2-sec-h"><span className="ep2-sec-ic"><EpIc d={EP_IC[ic]}/></span>
-      <div><b>{title}</b>{sub&&<span>{sub}</span>}</div></div>
+    <div className="ep2-sec-h"><span className="ep2-sec-ic"><EpIc d={EP_IC[ic]} w={1.9}/></span>
+      <div className="ep2-sec-tx"><b>{title}</b>{sub&&<span>{sub}</span>}</div></div>
     {children}
   </section>);
 }
