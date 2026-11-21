@@ -11468,8 +11468,26 @@ const syncCompetitions=(list,days,hidden)=>{
     });
     return row;
   });
-  return[...prev.filter(c=>c&&!c.srcId),...auto]
-    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  return compIds([...prev.filter(c=>c&&!c.srcId),...auto]
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))));
+};
+/* Every fixture row carries an `id`, so the sync can tell rows apart: the record-based sync
+   (468-store-map.jsx) then writes each row under its own key and the old sync's merge matches
+   rows by id — two devices editing two different fixtures no longer overwrite one another.
+   A row without one gets an id DERIVED from what it holds (a calendar row: its session's id;
+   a typed row: a digest of its date, name, opponent and league), never a random one: two
+   devices giving the same old row two different ids would leave it on the list twice. */
+const compHash=s=>{let h=0x811c9dc5;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;return('0000000'+h.toString(16)).slice(-8);};
+const compIds=list=>{
+  if(list.every(c=>!c||c.id))return list;
+  const used=new Set(list.map(c=>c&&c.id).filter(Boolean));
+  return list.map(c=>{
+    if(!c||typeof c!=='object'||c.id)return c;
+    const base=c.srcId?'m_'+String(c.srcId).replace(/\//g,'_')
+      :'h_'+compHash([c.date,c.name,c.opponent,c.comp].map(x=>x==null?'':String(x)).join('|'));
+    let id=base,n=1;while(used.has(id))id=base+'_'+(++n);
+    used.add(id);return{...c,id};
+  });
 };
 /* THE OTHER DIRECTION — fixture → match window. What was typed on the Season screen
    (before the match window existed, or since) fills the fields the session still leaves
@@ -19669,7 +19687,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           ?<CompMonthCal list={s.competitions} ourAbbr={s.teamAbbr||ourAbbrAuto} month={compMonth} setMonth={setCompMonth}
               onPick={i=>{setCompView('list');setCompFlash(i);}}
               onAdd={d=>{const n=s.competitions.length;
-                u('competitions',[...s.competitions,{date:d,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}]);
+                u('competitions',[...s.competitions,{id:uid(),date:d,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}]);
                 setCompView('list');setCompFlash(n);}}/>
         :s.competitions.length===0
           ?<div className="empty-st">{L('Henüz müsabaka yok — takvimde bir seansın odağını Müsabaka yap, gün buraya kendiliğinden düşsün; ya da aşağıdan elle ekle.',
@@ -19720,7 +19738,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             </div>)}
           </div>}
         <button className="btn sec sm" style={{marginTop:12}}
-          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
+          onClick={()=>u('competitions',[...s.competitions,{id:uid(),date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
           {L('Müsabaka ekle','Add competition')}</button>
       </div>}
     </div>
@@ -40409,6 +40427,13 @@ const _keyedList=arr=>{
   }
   return m;
 };
+/* Yalnızca yazılardan oluşan, tekrarsız liste mi? (boş liste de sayılır) */
+const _strList=arr=>{
+  if(!Array.isArray(arr))return false;
+  const s=new Set();
+  for(const v of arr){if(typeof v!=='string'||s.has(v))return false;s.add(v);}
+  return true;
+};
 function merge3(base,local,remote,st){
   if(deq(local,remote))return remote;       // ikisi aynı → iş yok
   if(deq(base,local))return remote;         // bu cihaz dokunmamış → uzak geçerli
@@ -40435,6 +40460,30 @@ function merge3(base,local,remote,st){
     };
     for(const v of order)push(v.id,v,(sameOrder?kl:kr).get(v.id));
     for(const v of other)push(v.id,undefined,v);
+    return out;
+  }
+  /* Birbirinden farklı yazılardan oluşan liste (lokasyonlar, seansın sporcuları, odaklar…):
+     bir yazının kimliği kendisidir. İki taraf da değiştirmişse ikisinin eklediği de kalır,
+     birinin sildiği silinir. Sıra: bu cihaz sırayı değiştirmediyse ötekinin, değiştirdiyse
+     ekrandaki; öbür tarafın eklediği, o tarafta önünde duran yazının arkasına girer.
+     Tekrarlı ya da yazı dışı eleman taşıyan liste buraya girmez (konumu anlamlı olabilir). */
+  const sl=_strList(local),sr=_strList(remote),sb=base==null||_strList(base);
+  if(sl&&sr&&sb){
+    const bl=Array.isArray(base)?base:[];
+    const inB=new Set(bl),inL=new Set(local),inR=new Set(remote);
+    const common=a=>a.filter(v=>inB.has(v)&&inL.has(v)&&inR.has(v));
+    const localReordered=common(local).join('\u0000')!==common(bl).join('\u0000');
+    const spine=localReordered?local:remote,other=localReordered?remote:local;
+    const keep=v=>!(inB.has(v)&&(!inL.has(v)||!inR.has(v)));    // iki taraftan birinin sildiği gider
+    const out=spine.filter(keep);
+    let prev=null;
+    for(const v of other){
+      if(!keep(v)){continue;}
+      if(out.indexOf(v)>=0){prev=v;continue;}
+      const at=prev==null?0:out.indexOf(prev)+1;
+      out.splice(at,0,v);prev=v;
+    }
+    if(st)bl.forEach(v=>{if(!keep(v))st.deleted++;});
     return out;
   }
   if(_isPlainObj(local)&&_isPlainObj(remote)){

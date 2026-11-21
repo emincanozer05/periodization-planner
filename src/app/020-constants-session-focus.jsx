@@ -203,8 +203,26 @@ const syncCompetitions=(list,days,hidden)=>{
     });
     return row;
   });
-  return[...prev.filter(c=>c&&!c.srcId),...auto]
-    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  return compIds([...prev.filter(c=>c&&!c.srcId),...auto]
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))));
+};
+/* Every fixture row carries an `id`, so the sync can tell rows apart: the record-based sync
+   (468-store-map.jsx) then writes each row under its own key and the old sync's merge matches
+   rows by id — two devices editing two different fixtures no longer overwrite one another.
+   A row without one gets an id DERIVED from what it holds (a calendar row: its session's id;
+   a typed row: a digest of its date, name, opponent and league), never a random one: two
+   devices giving the same old row two different ids would leave it on the list twice. */
+const compHash=s=>{let h=0x811c9dc5;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;return('0000000'+h.toString(16)).slice(-8);};
+const compIds=list=>{
+  if(list.every(c=>!c||c.id))return list;
+  const used=new Set(list.map(c=>c&&c.id).filter(Boolean));
+  return list.map(c=>{
+    if(!c||typeof c!=='object'||c.id)return c;
+    const base=c.srcId?'m_'+String(c.srcId).replace(/\//g,'_')
+      :'h_'+compHash([c.date,c.name,c.opponent,c.comp].map(x=>x==null?'':String(x)).join('|'));
+    let id=base,n=1;while(used.has(id))id=base+'_'+(++n);
+    used.add(id);return{...c,id};
+  });
 };
 /* THE OTHER DIRECTION — fixture → match window. What was typed on the Season screen
    (before the match window existed, or since) fills the fields the session still leaves

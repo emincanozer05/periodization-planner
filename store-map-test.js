@@ -64,7 +64,7 @@ function realistic() {
       days: { [D(1)]: { date: D(1), dailyNotes: '', sessions: [mkSession('as' + k, { sourceId: 'tp1' })] } } };
     athletes.push(ath);
   }
-  const team = { id: 'T1', setup: { sport: 'Basketball', teamName: 'A Takımı', clubName: 'Kulüp', seasonStart: D(-90), seasonEnd: D(200), competitions: [{ date: D(5), name: 'Maç' }], model: 'block', periods: null,
+  const team = { id: 'T1', setup: { sport: 'Basketball', teamName: 'A Takımı', clubName: 'Kulüp', seasonStart: D(-90), seasonEnd: D(200), competitions: [{ id: 'h_c1', date: D(5), name: 'Maç' }, { id: 'm_g2', srcId: 'g2', date: D(12), name: 'Lig' }], model: 'block', periods: null,
       roughPlan: { types: [{ id: 'str', name: 'Kuvvet', color: '#ef4444' }, { id: 'spd', name: 'Sürat', color: '#38bdf8' }], days: { [D(2)]: [{ id: 'bx1', t: 'str' }], [D(3)]: ['spd'] }, locs: ['Salon'] } },
     days, weekOverrides: { [D(-7)]: { label: 'Deload' } }, athletes, staff: [{ id: 's1', name: 'Yardımcı', role: 'Assistant' }],
     seasons: [{ id: 'S2' }, { id: 'S1', name: '2025' }], activeSeasonId: 'S2',
@@ -302,6 +302,9 @@ both('Aylık Takvim: ikisi de AYNI güne kutucuk ekler → ikisi de var, eskisi 
 both('Aylık Takvim: biri kutucuğu düzenler, öbürü aynı güne kutucuk ekler → ikisi de kalır',
   d => { RP(d).days[D(2)][0].time = '09:00'; }, d => RP(d).days[D(2)].push({ id: 'bxC', t: 'spd' }),
   d => RP(d).days[D(2)].length === 2 && RP(d).days[D(2)][0].time === '09:00');
+both('müsabakalar (kimlikli): iki cihaz iki ayrı satırı düzenler → ikisi de kalır',
+  d => { T(d).setup.competitions[0].scoreFor = '80'; }, d => { T(d).setup.competitions[1].location = 'Ev'; },
+  d => T(d).setup.competitions[0].scoreFor === '80' && T(d).setup.competitions[1].location === 'Ev');
 both('seansın sporcuları: biri sporcu ekler, öbürü başka sporcuyu çıkarır → ikisi de uygulanır',
   d => T(d).days[D(1)].sessions[0].athletes.push('a2'), d => { const s = T(d).days[D(1)].sessions[0]; s.athletes = s.athletes.filter(x => x !== 'a0'); },
   d => SM.smCanon(T(d).days[D(1)].sessions[0].athletes) === SM.smCanon(['a1', 'a2']));

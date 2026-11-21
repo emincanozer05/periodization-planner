@@ -485,6 +485,13 @@ const _keyedList=arr=>{
   }
   return m;
 };
+/* Yalnızca yazılardan oluşan, tekrarsız liste mi? (boş liste de sayılır) */
+const _strList=arr=>{
+  if(!Array.isArray(arr))return false;
+  const s=new Set();
+  for(const v of arr){if(typeof v!=='string'||s.has(v))return false;s.add(v);}
+  return true;
+};
 function merge3(base,local,remote,st){
   if(deq(local,remote))return remote;       // ikisi aynı → iş yok
   if(deq(base,local))return remote;         // bu cihaz dokunmamış → uzak geçerli
@@ -511,6 +518,30 @@ function merge3(base,local,remote,st){
     };
     for(const v of order)push(v.id,v,(sameOrder?kl:kr).get(v.id));
     for(const v of other)push(v.id,undefined,v);
+    return out;
+  }
+  /* Birbirinden farklı yazılardan oluşan liste (lokasyonlar, seansın sporcuları, odaklar…):
+     bir yazının kimliği kendisidir. İki taraf da değiştirmişse ikisinin eklediği de kalır,
+     birinin sildiği silinir. Sıra: bu cihaz sırayı değiştirmediyse ötekinin, değiştirdiyse
+     ekrandaki; öbür tarafın eklediği, o tarafta önünde duran yazının arkasına girer.
+     Tekrarlı ya da yazı dışı eleman taşıyan liste buraya girmez (konumu anlamlı olabilir). */
+  const sl=_strList(local),sr=_strList(remote),sb=base==null||_strList(base);
+  if(sl&&sr&&sb){
+    const bl=Array.isArray(base)?base:[];
+    const inB=new Set(bl),inL=new Set(local),inR=new Set(remote);
+    const common=a=>a.filter(v=>inB.has(v)&&inL.has(v)&&inR.has(v));
+    const localReordered=common(local).join('\u0000')!==common(bl).join('\u0000');
+    const spine=localReordered?local:remote,other=localReordered?remote:local;
+    const keep=v=>!(inB.has(v)&&(!inL.has(v)||!inR.has(v)));    // iki taraftan birinin sildiği gider
+    const out=spine.filter(keep);
+    let prev=null;
+    for(const v of other){
+      if(!keep(v)){continue;}
+      if(out.indexOf(v)>=0){prev=v;continue;}
+      const at=prev==null?0:out.indexOf(prev)+1;
+      out.splice(at,0,v);prev=v;
+    }
+    if(st)bl.forEach(v=>{if(!keep(v))st.deleted++;});
     return out;
   }
   if(_isPlainObj(local)&&_isPlainObj(remote)){

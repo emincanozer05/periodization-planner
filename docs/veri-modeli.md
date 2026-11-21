@@ -92,8 +92,8 @@ ama her kayıt kendi alan yolunda (`srpe.<id>.scRPE`) güncellenir; iki kayıt b
 
 - **Yalnızca fark yazılır** (`smDiff`): yeni belge `set`, kaybolan belge `delete`, değişen belge `update`.
   `update` alan düzeyinde ve en fazla 6 seviye iç içe nesneye iner (`wellness.h_…`).
-- **Belge içindeki listeler anahtarlı** (`smEnc`): elemanları kimlikli nesne (`staff`, `seasons`, Aylık Takvim
-  türleri ve kutucukları) ya da birbirinden farklı yazı (lokasyonlar, seansın sporcuları) olan dizi
+- **Belge içindeki listeler anahtarlı** (`smEnc`): elemanları kimlikli nesne (`staff`, `seasons`, müsabakalar,
+  Aylık Takvim türleri ve kutucukları) ya da birbirinden farklı yazı (lokasyonlar, seansın sporcuları) olan dizi
   `{_kl: {k_<kimlik> | s_<özet>: {v: eleman, _o: sıra}}}` olarak yazılır; ekleme, silme ve düzenleme yalnızca
   kendi anahtarına düşer, sıra kesirli `_o`'dan gelir. Kimliksiz nesne, tekrarlanan değer, sayı ya da karışık
   dizi (konumu anlamlı olabilir: `[x, y]`, `['', '', 'diz']`) bütün değer olarak kalır. Silinmiş elemana düşen
