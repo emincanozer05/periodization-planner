@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **2147**, yinelenen: **0**
+- Üst düzey ad sayısı: **2149**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -115,7 +115,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 67 | `privacy-notice` | 5 | `prelude`, `dates-language-factories` |
 | 68 | `billing` | 4 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge`, `ai-coach`↑ |
 | 69 | `account` | 7 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `sync-infra-chunking-merge`, `privacy-notice`, `ai-coach`↑ |
-| 70 | `store-map` | 48 | `team-data-migration` |
+| 70 | `store-map` | 50 | `team-data-migration` |
 | 71 | `team-access` | 7 | `prelude`, `dates-language-factories`, `sync-infra-chunking-merge` |
 | 72 | `exercise-taxonomy-text` | 22 | `prelude`, `dates-language-factories`, `move-taxonomy`¹ |
 | 73 | `exercise-video-picker` | 6 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `exercise-taxonomy-text` |

@@ -99,6 +99,11 @@ ama her kayıt kendi alan yolunda (`srpe.<id>.scRPE`) güncellenir; iki kayıt b
   dizi (konumu anlamlı olabilir: `[x, y]`, `['', '', 'diz']`) bütün değer olarak kalır. Silinmiş elemana düşen
   düzenlemenin bıraktığı yarım girdi (`_o`'su ya da kimliği tutmayan) okunmaz. Bu biçimden önce yazılmış
   belgelerdeki düz diziler okunur; belge ilk değiştiğinde yeni biçime geçer.
+- **Biçim numarası** (`_fmt`, kök belgede; şimdi 2): eşlemenin yazdığı biçim değişince artar. Kendi
+  biçiminden yeni bir `_fmt` gören uygulama ne okur ne yazar, "sayfayı yenile" der (`smController`); açık kalmış
+  eski bir sekme, okuyamadığı alanları bozamaz. `SM_VERSION`'dan ayrıdır: o, çalışma alanının yeni yapıda
+  olduğunu söyler, etkinleştirme ve kurallar ona bakar. Bu korumadan önceki sürümler `_fmt`'ye bakmaz.
+- Günlük kovasında da (`srpe.k_…`) silinmiş kayda düşen düzenlemenin bıraktığı yarım girdi okunmaz.
 - **İki cihaz:** farklı belgeler, aynı belgenin farklı alanları ya da aynı listenin farklı elemanları → ikisi de kalır. Aynı alan → son yazan
   kazanır (K6). Biri kaydı siler, öbürü düzenlerse silme kalır; düzenleme (`update` olmayan belgeye)
   reddedilir ve uygulamada bildirilir.

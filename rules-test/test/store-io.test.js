@@ -240,6 +240,25 @@ test('denetleyici: ekranda GÖNDERİLMEMİŞ düzenleme varken öbür cihazdan g
   a.ctl.stop(); b.ctl.stop();
 });
 
+test('denetleyici: veri daha yeni bir biçimle (_fmt) yazılmışsa ne okunur ne yazılır, hata bildirilir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams));
+  /* "gelecekteki" bir sürüm kök belgeyi kendi biçimiyle yazar */
+  await SM.smWrite(await device(), WS, [{ op: 'update', path: '', fields: [{ path: ['_fmt'], value: 99 }, { path: ['interval'], value: { yeni: true } }] }], K('alice'));
+  const t0 = Date.now(); while (!a.screen.errors.length && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 50));
+  assert.strictEqual(a.screen.errors[0] && a.screen.errors[0].code, 'newer-format');
+  assert.ok(!a.screen.data.interval.yeni, 'yeni biçimdeki veri ekrana konmamalı');
+  a.edit(d => { d.exercises[0].name = 'eski sürümden'; });
+  await a.ctl.idle();
+  const c = watch(await device());
+  await c.until(d => d.interval && d.interval.yeni === true);
+  await new Promise(r => setTimeout(r, 300));
+  const back = await c.until(() => true);
+  assert.strictEqual(back.exercises[0].name, 'Squat', 'eski sürüm yazmamalı');
+  c.off(); a.ctl.stop();
+});
+
 test('denetleyici: silinmiş seansa düzenleme → not düşer, öbür değişiklikler kalır', async () => {
   const data = sample(); await start(data);
   const a = await deviceCtl(), b = await deviceCtl();

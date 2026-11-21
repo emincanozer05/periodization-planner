@@ -42465,7 +42465,9 @@ function useStoreV2(o){
       note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
         setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
           'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
-      error:e=>{const m=String((e&&(e.code||e.message))||e);slog('v2: hata',m);setStatus('error');setSyncErr(m);},
+      error:e=>{const m=String((e&&(e.code||e.message))||e);slog('v2: hata',m);setStatus('error');
+        setSyncErr(e&&e.code==='newer-format'?L('Veri uygulamanın daha yeni bir sürümüyle yazılmış. Değişiklikler gönderilmiyor: sayfayı yenile.',
+          'The data was written by a newer version of the app. Changes are not being sent: reload the page.'):m);},
     });
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};
@@ -43316,6 +43318,11 @@ function AccountDataActions({data}){
 
 /* <store-map> — store-map-test.js bu bölümü Node'da aynen çalıştırır; yalnızca düz JavaScript. */
 var SM_VERSION=2;
+/* Belge BİÇİMİ (kök belgede `_fmt`): eşlemenin yazdığı biçim değişince artar (2: anahtarlı listeler).
+   SM_VERSION'dan ayrı: o, çalışma alanının yeni yapıda olduğunu söyler ve kurallar/etkinleştirme ona
+   bakar. Daha yeni biçimi gören eski bir uygulama yazmaz (bkz. smController), yoksa okuyamadığı
+   alanları bozardı. _fmt'si olmayan kök belge biçim 1'dir. */
+var SM_FORMAT=2;
 var SM_WS_COLS=['exercises','templates','customTests','tryouts','researches'];
 var SM_ATH_SUBS=['tests','injuries','measurements'];
 var SM_ATH_LOGS={srpeLog:'srpe',wellness:'wellness',nightLog:'night',liftLog:'lift'};
@@ -43371,6 +43378,12 @@ function smIsKl(v){return smIsObj(v)&&Object.keys(v).length===1&&smIsObj(v._kl);
 function smKlEntryOk(k,e){
   if(!smIsObj(e)||typeof e._o!=='number')return false;
   return k.slice(0,2)==='k_'?smIsObj(e.v)&&'k_'+e.v.id===k:typeof e.v==='string'&&'s_'+smHash(e.v)===k;
+}
+/* Günlük kovasındaki kayıt için aynı denetim: bir cihaz kaydı silerken öbürü onun bir alanını
+   düzenlerse ({v:{scRPE}}) ya da sırasını değiştirirse ({_o}) yarım bir kayıt kalır; okunmaz. */
+function smLogEntryOk(k,e){
+  if(!smIsObj(e)||typeof e._o!=='number'||!('v'in e))return false;
+  return k.slice(0,2)!=='k_'||(smIsObj(e.v)&&'k_'+e.v.id===k);
 }
 function smEncArr(a){return a.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEncArr(x)}:smEnc(x);});}
 /* p: aynı yerdeki önceki (kodlanmış) değer; anahtarlı listelerin sırası ondan korunur. */
@@ -43458,6 +43471,7 @@ function smToDocs(data,prev){
   var put=function(path,doc){out[path]=smEnc(doc,prev&&prev[path]);};
   var ws=smOmit(data,['activeTeamId','teams'].concat(SM_WS_COLS));
   ws.schemaVersion=SM_VERSION;
+  ws._fmt=SM_FORMAT;
   var split=[];
   SM_WS_COLS.forEach(function(c){
     if(!(c in data))return;
@@ -43610,7 +43624,7 @@ function smFromDocs(docs){
   var col=function(c){return cols[c]||[];};
   var sorted=function(list){return list.map(function(e){return{o:e.doc._o||0,k:e.id,e:e};}).sort(smByOrder).map(function(x){return x.e;});};
   var ws=D['']||{};
-  var data=smOmit(ws,['schemaVersion','_split','_hasTeams']);
+  var data=smOmit(ws,['schemaVersion','_fmt','_split','_hasTeams']);
   (ws._split||[]).forEach(function(c){data[c]=sorted(col(c)).map(function(e){return smOmit(e.doc,['_o']);});});
   if(ws._hasTeams)data.teams=sorted(col('teams')).map(function(e){return smTeamFromDocs(e.id,'teams/'+e.id,e.doc,col,sorted);});
   return data;
@@ -43658,7 +43672,7 @@ function smTeamFromDocs(id,base,td,col,sorted){
       (ad._split||[]).forEach(function(c){a[c]=subs[c+'|'+aid]||[];});
       (ad._logs||[]).forEach(function(c){
         var f=SM_ATH_LOGS[c],rows=[];
-        (logs[aid]||[]).forEach(function(b){var m=b[f];if(m)for(var k in m)rows.push({o:m[k]._o||0,k:k,v:m[k].v});});
+        (logs[aid]||[]).forEach(function(b){var m=b[f];if(m)for(var k in m)if(smLogEntryOk(k,m[k]))rows.push({o:m[k]._o,k:k,v:m[k].v});});
         a[c]=rows.sort(smByOrder).map(function(r){return r.v;});
       });
       if(ad._hasDays)a.days=smDaysFromDocs(col,sorted,base,null,aid);
@@ -43867,8 +43881,10 @@ function smListen(fs,wsPath,onDocs,onError,teams){
    henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
    ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
 function smController(o){
-  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false;
+  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false;
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
+  /* Veri bu uygulamadan daha yeni bir biçimle yazılmışsa ne okunur ne yazılır; uygulama yenilenmeli. */
+  var tooNew=function(incoming){var r=incoming&&incoming[''],f=r&&r._fmt;return typeof f==='number'&&f>SM_FORMAT;};
   var send=function(ops){
     inflight++;report();
     chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
@@ -43879,7 +43895,7 @@ function smController(o){
   /* Ekrandaki veri en son gönderilenden farklıysa farkı gönder; uygulanan yazım listesini döner. */
   var flush=function(){
     var d=o.getData();
-    if(!docs||d===handled)return[];
+    if(!docs||newer||d===handled)return[];
     handled=d;
     var next=smToDocs(o.prep(d),docs);
     var ops=smDiff(docs,next);
@@ -43888,6 +43904,11 @@ function smController(o){
     return ops;
   };
   var onDocs=function(incoming,info){
+    if(tooNew(incoming)){
+      if(!newer){newer=true;var e=new Error('Veri bu uygulamadan daha yeni bir sürümle yazılmış; sayfayı yenile.');e.code='newer-format';o.error(e);}
+      return;
+    }
+    newer=false;
     lastPending=!!info.pending;
     var base=docs,local=[];
     if(base){

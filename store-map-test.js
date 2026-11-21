@@ -259,6 +259,14 @@ both('biri günlük not, öbürü aynı güne seans',
 both('aynı alan → son yazan kazanır (K6)',
   d => { T(d).athletes[1].position = 'C'; }, d => { T(d).athletes[1].position = 'PF'; },
   d => T(d).athletes[1].position === 'PF');
+both('aynı ayda: biri sRPE kaydını siler, öbürü onu düzenler → silme kalır, yarım kayıt okunmaz',
+  d => { const l = T(d).athletes[0].srpeLog; l.splice(l.findIndex(x => x.date === D(-2)), 1); },
+  d => { T(d).athletes[0].srpeLog.find(x => x.date === D(-2)).scRPE = 9; },
+  d => { const l = T(d).athletes[0].srpeLog; return l.length === 2 && l.every(x => x.id && x.date) && !l.some(x => x.date === D(-2)); });
+both('aynı ayda: biri sRPE kaydını siler, öbürü sırayı değiştirir → yarım kayıt ({_o}) okunmaz',
+  d => { const l = T(d).athletes[0].srpeLog; l.splice(l.findIndex(x => x.date === D(-2)), 1); },
+  d => { const l = T(d).athletes[0].srpeLog; l.unshift(l.splice(l.findIndex(x => x.date === D(-2)), 1)[0]); },   // silinen kaydın _o'su değişir
+  d => T(d).athletes[0].srpeLog.every(x => x && x.id && x.date));
 both('biri seansı siler, öbürü düzenler → silme kalır, düzenleme bildirilir',
   d => { T(d).days[D(5)].sessions = []; }, d => { T(d).days[D(5)].sessions[0].name = 'x'; },
   (d, r) => T(d).days[D(5)].sessions.length === 0 && r.failed.length === 1);
