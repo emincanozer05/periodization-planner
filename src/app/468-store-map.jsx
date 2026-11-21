@@ -57,9 +57,12 @@ function smOmit(o,keys){
   var r={};for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k)&&keys.indexOf(k)<0)r[k]=o[k];}
   return r;
 }
+/* undefined, eski senkronun JSON'unda olduğu gibi ele alınır: nesnede alan atılır, dizide null olur.
+   Firestore undefined'ı reddeder (ignoreUndefinedProperties kapalı) ve bütün paketi düşürür;
+   ekranda `{...x, ad: y||undefined}` gibi değerler olağan (ör. sezon adı silinince). */
 function smEnc(v){
-  if(Array.isArray(v))return v.map(function(x){return Array.isArray(x)?{_arr:smEnc(x)}:smEnc(x);});
-  if(v&&typeof v==='object'){var r={};for(var k in v)r[k]=smEnc(v[k]);return r;}
+  if(Array.isArray(v))return v.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEnc(x)}:smEnc(x);});
+  if(v&&typeof v==='object'){var r={};for(var k in v)if(v[k]!==undefined)r[k]=smEnc(v[k]);return r;}
   return v;
 }
 function smDec(v){
@@ -69,10 +72,10 @@ function smDec(v){
   return v;
 }
 function smMonth(date){return typeof date==='string'&&/^\d{4}-\d{2}/.test(date)?date.slice(0,7):'nodate';}
-/* Alan sırasından bağımsız kanonik JSON (anahtarlar sıralı). */
+/* Alan sırasından bağımsız kanonik JSON (anahtarlar sıralı); undefined JSON'daki gibi (bkz. smEnc). */
 function smCanon(v){
-  if(Array.isArray(v))return '['+v.map(smCanon).join(',')+']';
-  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(function(k){return JSON.stringify(k)+':'+smCanon(v[k]);}).join(',')+'}';
+  if(Array.isArray(v))return '['+v.map(function(x){return x===undefined?'null':smCanon(x);}).join(',')+']';
+  if(v&&typeof v==='object')return '{'+Object.keys(v).filter(function(k){return v[k]!==undefined;}).sort().map(function(k){return JSON.stringify(k)+':'+smCanon(v[k]);}).join(',')+'}';
   return JSON.stringify(v);
 }
 /* Kısa, kararlı özet (FNV-1a, iki tur): kimliksiz kaydın anahtarı. */

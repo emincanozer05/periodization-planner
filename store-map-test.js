@@ -128,6 +128,25 @@ for (let i = 0; i < 200; i++) {
 }
 check('200 rastgele hesabın hepsi birebir döner', fuzzOk === 200, fuzzFirst);
 
+section('undefined değerler (eski senkronun JSON\'u gibi: nesnede atılır, dizide null)');
+{
+  /* clone() JSON'dan geçirir ve undefined'ı zaten siler; burada ekrandaki nesne olduğu gibi verilir. */
+  const raw = () => { const d = realistic(); const t = d.teams[0];
+    t.seasons = t.seasons.map(s => s.id === 'S1' ? Object.assign({}, s, { name: undefined }) : s);   // sezon adı silindi (180-season-plan.jsx)
+    t.athletes[0].tests[0].note = undefined; t.days[D(1)].sessions[0].sourceId = undefined;
+    d.ai.list = [1, undefined, 3]; d.interval.extra = undefined; return d; };
+  const docs = SM.smToDocs(raw());
+  const iss = SM.smCheckDocs(docs).issues.filter(i => i.kind === 'undefined');
+  check('hiçbir belgede undefined yok (Firestore bütün paketi reddederdi)', iss.length === 0, JSON.stringify(iss.slice(0, 3)));
+  const back = SM.smFromDocs(docs);
+  check('geri kurulan hâl JSON\'dan geçmiş hâlle birebir', same(back, strip(raw())), firstDiff(back, strip(raw())));
+  check('smCanon undefined\'ı JSON gibi sayar', SM.smCanon(raw()) === SM.smCanon(clone(raw())));
+  const base = SM.smToDocs(clone(realistic()));
+  const ops = SM.smDiff(base, SM.smToDocs(raw(), base));
+  const hasUndef = v => v === undefined || (v && typeof v === 'object' && Object.keys(v).some(k => hasUndef(v[k])));
+  check('yazım listesinde undefined değer yok', !ops.some(o => (o.op === 'set' && hasUndef(o.data)) || (o.fields || []).some(f => !f.del && hasUndef(f.value))));
+}
+
 section('Firestore\'a yazılabilirlik');
 {
   const d = realistic(); d.teams[0].athletes[0].tests[0].grid = [[1, 2]];
