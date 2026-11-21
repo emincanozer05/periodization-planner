@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **2149**, yinelenen: **0**
+- Üst düzey ad sayısı: **2152**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -47,7 +47,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | # | Parça | Tanım | Bağlı olduğu parçalar |
 |---:|---|---:|---|
 | 1 | `prelude` | 13 | `dates-language-factories`↑ |
-| 2 | `constants-session-focus` | 82 | `dates-language-factories`↑, `exercise-taxonomy-text`↑ |
+| 2 | `constants-session-focus` | 84 | `dates-language-factories`↑, `exercise-taxonomy-text`↑ |
 | 3 | `dates-language-factories` | 87 | `prelude`, `constants-session-focus` |
 | 4 | `test-metadata-fms` | 80 | `prelude`, `dates-language-factories`, `print-week`↑, `photo-local-media-store`↑, `sync-infra-chunking-merge`↑ |
 | 5 | `test-thumbs` | 1 | — |
@@ -108,7 +108,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 60 | `428c-athlete-wellness-report` | 8 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-polar`, `wellness-view`, `polar-wellness`↑, `sync-infra-chunking-merge`↑ |
 | 61 | `polar-wellness` | 68 | `prelude`, `constants-session-focus`, `dates-language-factories`, `chart-wrapper`, `athlete-polar`, `sync-infra-chunking-merge`↑ |
 | 62 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
-| 63 | `sync-infra-chunking-merge` | 90 | `team-data-migration` |
+| 63 | `sync-infra-chunking-merge` | 91 | `team-data-migration` |
 | 64 | `use-cloud-sync` | 1 | `prelude`, `dates-language-factories`, `team-data-migration`, `photo-local-media-store`, `sync-infra-chunking-merge`, `store-v2`↑, `store-map`↑, `indiv-plan-descriptions`↑ |
 | 65 | `store-v2` | 2 | `prelude`, `dates-language-factories`, `team-data-migration`, `sync-infra-chunking-merge`, `store-map`↑ |
 | 66 | `auth-ui-cloud-bar` | 9 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `sync-infra-chunking-merge`, `privacy-notice`↑, `account`↑, `language-selector-nav-icons`↑ |

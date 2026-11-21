@@ -92,7 +92,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'merge3', 'mergeCloud', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'cardCol', 'CARD_COLORS', 'CardColorMenu', 'sesTypeColor', 'sesCardColor', 'SPRESETS',
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
@@ -1203,6 +1203,38 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const P = { id: 'sp' };
     check('Horizontal Integration seçmiş sezonun haftaları Block olarak hesaplanıyor',
       ['Accumulation', 'Transmutation', 'Realization'].every((f, i) => A.defWeek(A.phaseModel({ model: 'horizontal' }, 'pre'), P, i, [], '2026-09-07').focus === f));
+  }
+
+  group('Ek — Eski senkronun birleştirmesi: yazı listeleri ve müsabaka satırları');
+  {
+    const J = x => JSON.stringify(x);
+    const m = (b, l, r) => A.merge3(b, l, r, { conflicts: 0, deleted: 0 });
+    const locs = m(['Salon'], ['Salon', 'Saha'], ['Salon', 'Havuz']);
+    check('iki koç aynı anda ayrı lokasyon ekler → ikisi de kalır', locs.length === 3 && locs[0] === 'Salon' && locs.includes('Saha') && locs.includes('Havuz'), J(locs));
+    check('biri siler, öbürü ekler → silme ve ekleme ikisi de uygulanır', J(m(['a', 'b'], ['a'], ['a', 'b', 'c'])) === J(['a', 'c']));
+    check('öbür tarafın eklediği, o tarafta önündekinin arkasına girer', J(m(['a', 'c'], ['a', 'c', 'x'], ['a', 'b', 'c'])) === J(['a', 'b', 'c', 'x']));
+    const ro = m(['a', 'b', 'c'], ['c', 'b', 'a'], ['a', 'b', 'c', 'd']);
+    check('bu cihaz sırayı değiştirdiyse onun sırası esas, öbürünün eklediği de var', ro[0] === 'c' && ro.length === 4 && ro.includes('d'), J(ro));
+    check('tekrarlı (konumu anlamlı) liste birleştirilmez: eski davranış (ekrandaki)', J(m(['', ''], ['x', ''], ['', 'y'])) === J(['x', '']), J(m(['', ''], ['x', ''], ['', 'y'])));
+    const ses = (ath) => ({ teams: [{ id: 'T', days: { '2026-11-16': { sessions: [{ id: 's1', name: 'Kuvvet', athletes: ath }] } } }] });
+    const r = A.mergeCloud(J(ses(['a0', 'a1'])), ses(['a0', 'a1', 'a2']), ses(['a1']), false);
+    check('seansın sporcuları: biri sporcu ekler, öbürü başka sporcuyu çıkarır → ikisi de uygulanır',
+      J(r.state.teams[0].days['2026-11-16'].sessions[0].athletes) === J(['a1', 'a2']) && r.stats.conflicts === 0, J(r.state.teams[0].days['2026-11-16'].sessions[0].athletes));
+    /* Müsabaka satırları kimlik alır: aynı satıra iki cihaz AYNI kimliği verir (içerikten türer). */
+    const typed = [{ date: '2026-12-01', name: 'Hazırlık Maçı', opponent: 'X' }, { date: '2026-12-08', name: 'Kupa', opponent: 'Y' }];
+    const c1 = A.syncCompetitions(typed, {}, []), c2 = A.syncCompetitions(JSON.parse(J(typed)), {}, []);
+    check('elle yazılmış müsabaka satırları kimlik alır; iki cihazda aynı kimlik', c1.every(c => typeof c.id === 'string' && c.id) && J(c1) === J(c2), J(c1));
+    check('kimlik verildikten sonra ikinci senkron hiçbir şeyi değiştirmez (döngü yok)', J(A.syncCompetitions(c1, {}, [])) === J(c1));
+    const twin = A.syncCompetitions([typed[0], { ...typed[0] }], {}, []);
+    check('aynı içerikli iki satır ayrı kimlik alır', twin[0].id !== twin[1].id, J(twin));
+    const cal = A.syncCompetitions([], { '2026-12-03': { sessions: [{ id: 'g7', name: 'Lig Maçı', focus: ['Competition'] }] } }, []);
+    check('takvimden gelen satırın kimliği seansından türer', cal[0].id === 'm_g7', J(cal));
+    const base = J({ teams: [{ id: 'T', setup: { competitions: c1 } }] });
+    const L1 = JSON.parse(base), R1 = JSON.parse(base);
+    L1.teams[0].setup.competitions[0].scoreFor = '80'; R1.teams[0].setup.competitions[1].location = 'Ev';
+    const mc = A.mergeCloud(base, L1, R1, false).state.teams[0].setup.competitions;
+    check('iki cihaz iki ayrı müsabakayı düzenler → ikisi de kalır (kimliğe göre birleşir)',
+      mc.length === 2 && mc[0].scoreFor === '80' && mc[1].location === 'Ev', J(mc));
   }
 
   group('Ek — Maç günü, gün adları, talimat formu, JSON tutarlılığı');

@@ -958,7 +958,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           ?<CompMonthCal list={s.competitions} ourAbbr={s.teamAbbr||ourAbbrAuto} month={compMonth} setMonth={setCompMonth}
               onPick={i=>{setCompView('list');setCompFlash(i);}}
               onAdd={d=>{const n=s.competitions.length;
-                u('competitions',[...s.competitions,{date:d,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}]);
+                u('competitions',[...s.competitions,{id:uid(),date:d,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}]);
                 setCompView('list');setCompFlash(n);}}/>
         :s.competitions.length===0
           ?<div className="empty-st">{L('Henüz müsabaka yok — takvimde bir seansın odağını Müsabaka yap, gün buraya kendiliğinden düşsün; ya da aşağıdan elle ekle.',
@@ -1009,7 +1009,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             </div>)}
           </div>}
         <button className="btn sec sm" style={{marginTop:12}}
-          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
+          onClick={()=>u('competitions',[...s.competitions,{id:uid(),date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
           {L('Müsabaka ekle','Add competition')}</button>
       </div>}
     </div>
