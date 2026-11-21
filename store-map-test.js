@@ -64,7 +64,8 @@ function realistic() {
       days: { [D(1)]: { date: D(1), dailyNotes: '', sessions: [mkSession('as' + k, { sourceId: 'tp1' })] } } };
     athletes.push(ath);
   }
-  const team = { id: 'T1', setup: { sport: 'Basketball', teamName: 'A Takımı', clubName: 'Kulüp', seasonStart: D(-90), seasonEnd: D(200), competitions: [{ date: D(5), name: 'Maç' }], model: 'block', periods: null },
+  const team = { id: 'T1', setup: { sport: 'Basketball', teamName: 'A Takımı', clubName: 'Kulüp', seasonStart: D(-90), seasonEnd: D(200), competitions: [{ date: D(5), name: 'Maç' }], model: 'block', periods: null,
+      roughPlan: { types: [{ id: 'str', name: 'Kuvvet', color: '#ef4444' }, { id: 'spd', name: 'Sürat', color: '#38bdf8' }], days: { [D(2)]: [{ id: 'bx1', t: 'str' }], [D(3)]: ['spd'] }, locs: ['Salon'] } },
     days, weekOverrides: { [D(-7)]: { label: 'Deload' } }, athletes, staff: [{ id: 's1', name: 'Yardımcı', role: 'Assistant' }],
     seasons: [{ id: 'S2' }, { id: 'S1', name: '2025' }], activeSeasonId: 'S2',
     seasonData: { S1: { setup: { teamName: 'A Takımı', seasonStart: D(-450), seasonEnd: D(-200) }, days: parkedDays, weekOverrides: {} } },
@@ -271,6 +272,56 @@ both('biri sezon değiştirir, öbürü o sırada seans düzenler → ikisi de k
     t.seasonData = { S2: park }; t.activeSeasonId = 'S1'; t.setup = nx.setup; t.days = nx.days; t.weekOverrides = nx.weekOverrides; },
   d => { T(d).days[D(1)].sessions[0].name = 'Düzenlendi'; },
   d => T(d).activeSeasonId === 'S1' && T(d).seasonData.S2.days[D(1)].sessions[0].name === 'Düzenlendi');
+
+
+section('belge içindeki listeler anahtarlı: iki cihaz aynı listeye yazar');
+const RP = d => T(d).setup.roughPlan;
+both('ikisi de takıma ayrı bir çalışan ekler → ikisi de var',
+  d => T(d).staff.push({ id: 's2', name: 'Fizyo' }), d => T(d).staff.push({ id: 's3', name: 'Analist' }),
+  d => T(d).staff.length === 3 && ['s1', 's2', 's3'].every(id => T(d).staff.some(x => x.id === id)));
+both('biri sezona ad verir, öbürü yeni sezon açar → ikisi de kalır',
+  d => { T(d).seasons[0].name = '2026-27'; }, d => { T(d).seasons.push({ id: 'S3' }); },
+  d => T(d).seasons.length === 3 && T(d).seasons[0].name === '2026-27' && T(d).seasons[2].id === 'S3');
+both('Aylık Takvim: ikisi de ayrı antrenman türü ekler → ikisi de var',
+  d => RP(d).types.push({ id: 'ty2', name: 'Koşu', color: '#0f0' }), d => RP(d).types.push({ id: 'ty3', name: 'Yüzme', color: '#00f' }),
+  d => RP(d).types.length === 4);
+both('Aylık Takvim: ikisi de ayrı lokasyon ekler → ikisi de var',
+  d => RP(d).locs.push('Saha'), d => RP(d).locs.push('Havuz'),
+  d => RP(d).locs.length === 3 && ['Salon', 'Saha', 'Havuz'].every(l => RP(d).locs.includes(l)));
+both('Aylık Takvim: ikisi de AYNI güne kutucuk ekler → ikisi de var, eskisi başta',
+  d => RP(d).days[D(2)].push({ id: 'bxA', t: 'spd' }), d => RP(d).days[D(2)].push({ id: 'bxB', t: 'str', time: '17:00' }),
+  d => { const l = RP(d).days[D(2)]; return l.length === 3 && l[0].id === 'bx1' && ['bxA', 'bxB'].every(id => l.some(b => b.id === id)); });
+both('Aylık Takvim: biri kutucuğu düzenler, öbürü aynı güne kutucuk ekler → ikisi de kalır',
+  d => { RP(d).days[D(2)][0].time = '09:00'; }, d => RP(d).days[D(2)].push({ id: 'bxC', t: 'spd' }),
+  d => RP(d).days[D(2)].length === 2 && RP(d).days[D(2)][0].time === '09:00');
+both('seansın sporcuları: biri sporcu ekler, öbürü başka sporcuyu çıkarır → ikisi de uygulanır',
+  d => T(d).days[D(1)].sessions[0].athletes.push('a2'), d => { const s = T(d).days[D(1)].sessions[0]; s.athletes = s.athletes.filter(x => x !== 'a0'); },
+  d => SM.smCanon(T(d).days[D(1)].sessions[0].athletes) === SM.smCanon(['a1', 'a2']));
+both('biri listeyi boşaltır, öbürü o sırada eleman ekler → eklenen kalır',
+  d => { T(d).staff = []; }, d => T(d).staff.push({ id: 's9', name: 'Yeni' }),
+  d => T(d).staff.length === 1 && T(d).staff[0].id === 's9');
+both('biri çalışanı siler, öbürü onu düzenler → silme kalır (yarım girdi okunmaz)',
+  d => { T(d).staff = []; }, d => { T(d).staff[0].role = 'Head'; },
+  d => T(d).staff.length === 0);
+{
+  const d = realistic(); const e = clone(d); e.teams[0].setup.roughPlan.types.unshift({ id: 'ty0', name: 'Mobilite', color: '#fff' });
+  const x = SM.smToDocs(clone(d)), ops = SM.smDiff(x, SM.smToDocs(clone(e), x));
+  const f = ops.flatMap(o => (o.fields || []).map(ff => ff.path.join('.')));
+  check('listenin başına eleman: yalnızca o elemanın alanı yazılır', f.length === 1 && /types\._kl\.k_ty0$/.test(f[0]), f.join(', '));
+}
+{
+  /* Anahtarlı listeden önce yazılmış belgeler (diziler düz) okunur; ilk yazımda yeni biçime geçilir. */
+  const d = strip(realistic());
+  const plain = v => Array.isArray(v) ? v.map(plain) : (v && typeof v === 'object')
+    ? (Object.keys(v).length === 1 && v._kl && typeof v._kl === 'object'
+      ? Object.entries(v._kl).sort((p, q) => p[1]._o - q[1]._o).map(([, en]) => plain(en.v))
+      : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plain(x)]))) : v;
+  const old = {}; const cur = SM.smToDocs(clone(d)); for (const p in cur) old[p] = plain(cur[p]);
+  check('eski biçimdeki belgeler birebir okunur', same(SM.smFromDocs(old), d), firstDiff(SM.smFromDocs(old), d));
+  const e = clone(d); e.teams[0].staff.push({ id: 's5', name: 'X' });
+  const r = SM.smApply(old, SM.smDiff(old, SM.smToDocs(clone(e), old)));
+  check('eski biçimden ilk yazım: sonuç birebir', !r.failed.length && same(SM.smFromDocs(r.docs), e), firstDiff(SM.smFromDocs(r.docs), e));
+}
 
 console.log('\n' + '─'.repeat(64) + '\n  ' + pass + ' geçti, ' + fail + ' kaldı');
 process.exit(fail ? 1 : 0);

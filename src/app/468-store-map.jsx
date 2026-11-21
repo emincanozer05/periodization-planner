@@ -25,6 +25,9 @@
      yoksa içeriğinin özeti h_<özet>. Kimliksiz iki yeni kayıt aynı anda eklenirse ikisi de kalır.
    • Bir dizi ancak BÜTÜN elemanları geçerli ve (takım içinde) benzersiz kimlik taşıyorsa bölünür;
      değilse olduğu gibi üst belgede kalır. Hiçbir şey kaybolmaz, kimlik uydurulmaz.
+   • BELGE İÇİNDEKİ LİSTELER ANAHTARLI. Kimlikli nesnelerden ya da birbirinden farklı yazılardan
+     oluşan dizi {_kl:{k_<kimlik>|s_<özet>:{v,_o}}} olarak yazılır (bkz. smEnc): iki cihaz aynı listeye
+     aynı anda farklı eleman eklerse ikisi de kalır.
    • Firestore dizi içinde dizi kabul etmez: iç diziler {_arr:[…]} olarak sarılır, geri açılır.
    • Cihaza ait alan (activeTeamId) yazılmaz. */
 
@@ -60,14 +63,59 @@ function smOmit(o,keys){
 /* undefined, eski senkronun JSON'unda olduğu gibi ele alınır: nesnede alan atılır, dizide null olur.
    Firestore undefined'ı reddeder (ignoreUndefinedProperties kapalı) ve bütün paketi düşürür;
    ekranda `{...x, ad: y||undefined}` gibi değerler olağan (ör. sezon adı silinince). */
-function smEnc(v){
-  if(Array.isArray(v))return v.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEnc(x)}:smEnc(x);});
-  if(v&&typeof v==='object'){var r={};for(var k in v)if(v[k]!==undefined)r[k]=smEnc(v[k]);return r;}
+/* ANAHTARLI LİSTE. Belgenin içindeki bir dizi (takımın `staff`/`seasons`'ı, sezonun Aylık Takvim
+   türleri/lokasyonları/kutucukları, seansın sporcuları…) Firestore'da tek bir değerdir: iki cihaz aynı
+   anda farklı bir eleman eklerse son yazan öbürünü silerdi. Elemanlar kimlikle eşlenebiliyorsa dizi
+   {_kl:{anahtar:{v:eleman,_o:sıra}}} haritası olarak yazılır; ekleme, silme ve düzenleme yalnızca kendi
+   anahtarına düşer, sıra kesirli `_o`'dan gelir (önceki belgedeki değer korunur, bkz. smOrder).
+   Anahtar: kimlikli nesnede k_<kimlik>; birbirinden farklı yazılarda s_<özet> (yazının kimliği
+   kendisidir). Kimliksiz nesne, tekrarlanan değer, sayı ya da karışık dizi olduğu gibi kalır
+   (konumu anlamlı olabilir: [x, y], ['', '', 'diz']). */
+function smListKeys(arr){
+  var keys=[],seen={},objs=arr.length&&smIsObj(arr[0]);
+  for(var i=0;i<arr.length;i++){
+    var x=arr[i],k;
+    if(objs){if(!smIsObj(x)||!smValidId(x.id))return null;k='k_'+x.id;}
+    else{if(typeof x!=='string')return null;k='s_'+smHash(x);}
+    if(seen[k])return null;
+    seen[k]=1;keys.push(k);
+  }
+  return keys;
+}
+function smIsKl(v){return smIsObj(v)&&Object.keys(v).length===1&&smIsObj(v._kl);}
+/* Eleman anahtarıyla tutarlı mı: başka cihazın sildiği elemana düşen bir düzenleme yarım bir
+   girdi ({v} ya da {_o}) bırakabilir; o girdi okunmaz (ayrı belgedeki kayıtta olduğu gibi silme kalır). */
+function smKlEntryOk(k,e){
+  if(!smIsObj(e)||typeof e._o!=='number')return false;
+  return k.slice(0,2)==='k_'?smIsObj(e.v)&&'k_'+e.v.id===k:typeof e.v==='string'&&'s_'+smHash(e.v)===k;
+}
+function smEncArr(a){return a.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEncArr(x)}:smEnc(x);});}
+/* p: aynı yerdeki önceki (kodlanmış) değer; anahtarlı listelerin sırası ondan korunur. */
+function smEnc(v,p){
+  if(Array.isArray(v)){
+    var keys=smListKeys(v);
+    if(!keys)return smEncArr(v);
+    var pk=smIsKl(p)?p._kl:null,prevO={};
+    if(pk)keys.forEach(function(k){var e=pk[k];if(smIsObj(e)&&typeof e._o==='number')prevO[k]=e._o;});
+    var o=smOrder(keys,prevO),m={};
+    v.forEach(function(x,i){var e=pk&&pk[keys[i]];m[keys[i]]={v:smEnc(x,smIsObj(e)?e.v:undefined),_o:o[i]};});
+    return{_kl:m};
+  }
+  if(v&&typeof v==='object'){
+    var r={},pp=smIsObj(p)?p:null;
+    for(var k in v)if(v[k]!==undefined)r[k]=smEnc(v[k],pp?pp[k]:undefined);
+    return r;
+  }
   return v;
 }
 function smDec(v){
   if(Array.isArray(v))return v.map(function(x){
     return smIsObj(x)&&Object.keys(x).length===1&&Array.isArray(x._arr)?smDec(x._arr):smDec(x);});
+  if(smIsKl(v)){
+    var rows=[];
+    for(var key in v._kl){var e=v._kl[key];if(smKlEntryOk(key,e))rows.push({o:e._o,k:key,v:e.v});}
+    return rows.sort(smByOrder).map(function(r){return smDec(r.v);});
+  }
   if(v&&typeof v==='object'){var r={};for(var k in v)r[k]=smDec(v[k]);return r;}
   return v;
 }
@@ -124,7 +172,7 @@ function smPrevO(prev,paths){var r={};if(!prev)return r;paths.forEach(function(x
 /* ── data → belgeler ─────────────────────────────────────────────────────── */
 function smToDocs(data,prev){
   var out={};
-  var put=function(path,doc){out[path]=smEnc(doc);};
+  var put=function(path,doc){out[path]=smEnc(doc,prev&&prev[path]);};
   var ws=smOmit(data,['activeTeamId','teams'].concat(SM_WS_COLS));
   ws.schemaVersion=SM_VERSION;
   var split=[];
@@ -340,9 +388,11 @@ function smTeamFromDocs(id,base,td,col,sorted){
 /* ── yazım farkı ──────────────────────────────────────────────────────────
    Belge yoksa/yenilenmişse set, kaybolduysa delete, değiştiyse update. update alan yolları
    dizi olarak verilir (['srpe','k_r1']); diziler bütün değer, nesneler en fazla SM_DIFF_DEPTH
-   derinliğe kadar inilerek yazılır. Silinen alan { del: true }. */
-var SM_DIFF_DEPTH=3;
-function smDiffFields(a,b,path,depth,out){
+   derinliğe kadar inilerek yazılır. Silinen alan { del: true }.
+   Anahtarlı listede (smEnc) `_kl` ve girdinin `v`'si derinlik saymaz; `_kl`'ye her zaman inilir —
+   boşalan bir liste bütün değer olarak yazılsaydı öbür cihazın o sırada eklediğini silerdi. */
+var SM_DIFF_DEPTH=6;
+function smDiffFields(a,b,path,depth,out,mode){   // mode: undefined | 'kl' (girdiler) | 'entry' ({v,_o})
   var keys={},k;
   for(k in a)keys[k]=1;for(k in b)keys[k]=1;
   for(k in keys){
@@ -350,7 +400,10 @@ function smDiffFields(a,b,path,depth,out){
     if(!(k in b)){out.push({path:p,del:true});continue;}
     if(!(k in a)){out.push({path:p,value:b[k]});continue;}
     if(smCanon(a[k])===smCanon(b[k]))continue;
-    if(depth<SM_DIFF_DEPTH&&smIsObj(a[k])&&smIsObj(b[k])&&Object.keys(b[k]).length)smDiffFields(a[k],b[k],p,depth+1,out);
+    var both=smIsObj(a[k])&&smIsObj(b[k]);
+    if(both&&!mode&&k==='_kl'&&smIsKl(a)&&smIsKl(b))smDiffFields(a[k],b[k],p,depth,out,'kl');
+    else if(both&&mode==='entry'&&k==='v'&&Object.keys(b[k]).length)smDiffFields(a[k],b[k],p,depth,out);
+    else if(both&&depth<SM_DIFF_DEPTH&&(mode==='kl'||Object.keys(b[k]).length))smDiffFields(a[k],b[k],p,depth+1,out,mode==='kl'?'entry':undefined);
     else out.push({path:p,value:b[k]});
   }
 }

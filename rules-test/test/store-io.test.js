@@ -128,6 +128,34 @@ test('silinen seansa gelen düzenleme düşer ve bildirilir; aynı paketteki öb
   c.off();
 });
 
+test('belge içindeki listeler AYNI ANDA: iki çalışan, iki lokasyon, aynı güne iki kutucuk → hepsi kalır; silinen elemana düzenleme yarım kalmaz', async () => {
+  const data = sample(); const t0 = data.teams[0];
+  t0.staff = [{ id: 'st1', name: 'Yardımcı' }, { id: 'st2', name: 'Fizyo' }];
+  t0.setup.roughPlan = { types: [{ id: 'str', name: 'Kuvvet', color: '#f00' }], days: { [D(2)]: [{ id: 'bx1', t: 'str' }] }, locs: ['Salon'] };
+  const docs0 = await start(data);
+  const opsA = opsFrom(docs0, data, d => {
+    const t = d.teams[0]; t.staff.push({ id: 'stA', name: 'A' }); t.setup.roughPlan.locs.push('Saha');
+    t.setup.roughPlan.days[D(2)].push({ id: 'bxA', t: 'str' }); t.staff = t.staff.filter(s => s.id !== 'st2');
+  });
+  const opsB = opsFrom(docs0, data, d => {
+    const t = d.teams[0]; t.staff.push({ id: 'stB', name: 'B' }); t.setup.roughPlan.locs.push('Havuz');
+    t.setup.roughPlan.days[D(2)].push({ id: 'bxB', t: 'str', time: '17:00' }); t.staff[1].name = 'Fizyoterapist';
+  });
+  const [ra, rb] = await Promise.all([SM.smWrite(await device(), WS, opsA, K('alice')), SM.smWrite(await device(), WS, opsB, K('alice'))]);
+  assert.deepStrictEqual(ra.failed.concat(rb.failed), []);
+  const c = watch(await device());
+  const got = await c.until(d => {
+    const t = d.teams[0], rp = t.setup.roughPlan;
+    return ['st1', 'stA', 'stB'].every(id => t.staff.some(s => s.id === id))
+      && ['Salon', 'Saha', 'Havuz'].every(l => rp.locs.includes(l)) && rp.days[D(2)].length === 3;
+  });
+  /* st2'yi A sildi, B düzenledi: hangisi sonra gelirse gelsin st2 ya hiç yok ya tam (kimliğiyle) */
+  const st2 = got.teams[0].staff.find(s => s.name === 'Fizyoterapist' || s.id === 'st2');
+  assert.ok(!st2 || st2.id === 'st2', 'yarım eleman okundu: ' + JSON.stringify(st2));
+  assert.ok(got.teams[0].staff.every(s => s && typeof s.id === 'string'));
+  c.off();
+});
+
 test('izleyici (viewer) yazamaz: hata yukarı çıkar, hiçbir şey yazılmaz', async () => {
   const data = sample(); const docs0 = await start(data);
   const ops = opsFrom(docs0, data, d => { d.exercises[0].name = 'izinsiz'; });

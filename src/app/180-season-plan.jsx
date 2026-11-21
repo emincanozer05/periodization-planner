@@ -277,8 +277,10 @@ function WeeklyPlanTab({team,updateTeam,plan,periods,focusWeek}){
    session card on the Calendar tab (`calw-ses`), so both calendars read the same. Boxes
    drag between days; each row starts with its week's plan (phase · focus · load) from
    the weekly cards, and fixtures show on their day.
-   A day holds a list of boxes: a type id (a box never edited — older saves are all of
-   this shape), or {t, name, color, time, loc} once edited. */
+   A day holds a list of boxes, each {id, t, name?, color?, time?, loc?}. Older saves hold a
+   bare type id or an object without `id`; a day's boxes get their ids the first time that
+   day is written (rpIds). The id lets the record-based sync (468-store-map.jsx) keep two
+   boxes added to the same day on two devices at once — a list without ids is written whole. */
 const RP_COLORS=['#ef4444','#f97316','#f59e0b','#facc15','#a3e635','#22c55e','#2dd4a7','#38bdf8','#3b82f6','#6366f1','#a78bfa','#ec4899','#94a3b8'];
 const RP_DEFAULT_TYPES=[
   {id:'str',n:['Kuvvet','Strength'],c:'#ef4444'},
@@ -292,6 +294,8 @@ function rpTypes(s){const rp=s&&s.roughPlan;
   if(rp&&Array.isArray(rp.types))return rp.types;
   return RP_DEFAULT_TYPES.map(t=>({id:t.id,name:L(t.n[0],t.n[1]),color:t.c}));}
 const rpBox=e=>typeof e==='string'?{t:e}:(e&&typeof e==='object'?e:null);
+/* A day's boxes, each with an id (older bare type ids and id-less objects get one). */
+const rpIds=list=>(list||[]).map(e=>{const b=rpBox(e);return!b||b.id?b:{id:uid(),...b};}).filter(Boolean);
 /* A box as it shows: its own name / colour, else its type's. */
 const rpView=(e,typeBy)=>{const b=rpBox(e);if(!b)return null;const t=typeBy[b.t];
   if(!t&&!b.name)return null;
@@ -420,18 +424,18 @@ function RoughCalendar({team,updateTeam,rows}){
   const delLoc=l=>save({locs:locs.filter(x=>x!==l)});
   const inSeason=k=>(!s.seasonStart||k>=s.seasonStart)&&(!s.seasonEnd||k<=s.seasonEnd);
   const setDays=nd=>save({days:nd});
-  const setDay=(k,list)=>{const nd={...dayMap};if(list.length)nd[k]=list;else delete nd[k];setDays(nd);};
-  const add=(k,tid)=>setDay(k,[...(dayMap[k]||[]),tid]);
+  const setDay=(k,list)=>{const nd={...dayMap};if(list.length)nd[k]=rpIds(list);else delete nd[k];setDays(nd);};
+  const add=(k,tid)=>setDay(k,[...(dayMap[k]||[]),{id:uid(),t:tid}]);
   const removeAt=(k,i)=>setDay(k,(dayMap[k]||[]).filter((_,j)=>j!==i));
-  /* A box with nothing of its own left goes back to being just its type id. */
+  /* A box with nothing of its own left is just its id and type. */
   const editAt=(k,i,draft)=>{const b=rpBox((dayMap[k]||[])[i]);if(!b)return;
-    const n={t:b.t};['name','color','time','loc'].forEach(f=>{const v=String(draft[f]||'').trim();if(v)n[f]=v;});
+    const n={id:b.id||uid(),t:b.t};['name','color','time','loc'].forEach(f=>{const v=String(draft[f]||'').trim();if(v)n[f]=v;});
     const t=typeBy[b.t];if(t&&n.name===t.name)delete n.name;if(t&&n.color===t.color)delete n.color;
-    const nd={...dayMap,[k]:(dayMap[k]||[]).map((e,j)=>j===i?(Object.keys(n).length>1?n:b.t):e)};
+    const nd={...dayMap,[k]:rpIds((dayMap[k]||[]).map((e,j)=>j===i?n:e))};
     const known=n.loc&&locs.some(l=>l.toLocaleLowerCase('tr')===n.loc.toLocaleLowerCase('tr'));
     save({days:nd,...(n.loc&&!known?{locs:sortLocs([...locs,n.loc])}:{})});};
-  const move=(from,i,to)=>{if(from===to)return;const a=[...(dayMap[from]||[])];const t=a.splice(i,1)[0];if(!t)return;
-    const nd={...dayMap};if(a.length)nd[from]=a;else delete nd[from];nd[to]=[...(nd[to]||[]),t];setDays(nd);};
+  const move=(from,i,to)=>{if(from===to)return;const a=rpIds(dayMap[from]);const t=a.splice(i,1)[0];if(!t)return;
+    const nd={...dayMap};if(a.length)nd[from]=a;else delete nd[from];nd[to]=[...rpIds(nd[to]),t];setDays(nd);};
   const onDrop=(e,k)=>{e.preventDefault();setOver(null);let d=null;
     try{d=JSON.parse(e.dataTransfer.getData('text/plain'));}catch(err){return;}
     if(d&&d.from)move(d.from,d.i,k);};

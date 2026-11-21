@@ -91,8 +91,15 @@ ama her kayıt kendi alan yolunda (`srpe.<id>.scRPE`) güncellenir; iki kayıt b
 ## 4. Yazım ve çakışma
 
 - **Yalnızca fark yazılır** (`smDiff`): yeni belge `set`, kaybolan belge `delete`, değişen belge `update`.
-  `update` alan düzeyinde ve en fazla 3 seviye iç içe nesneye iner (`wellness.h_…`); diziler bütün değer.
-- **İki cihaz:** farklı belgeler ya da aynı belgenin farklı alanları → ikisi de kalır. Aynı alan → son yazan
+  `update` alan düzeyinde ve en fazla 6 seviye iç içe nesneye iner (`wellness.h_…`).
+- **Belge içindeki listeler anahtarlı** (`smEnc`): elemanları kimlikli nesne (`staff`, `seasons`, Aylık Takvim
+  türleri ve kutucukları) ya da birbirinden farklı yazı (lokasyonlar, seansın sporcuları) olan dizi
+  `{_kl: {k_<kimlik> | s_<özet>: {v: eleman, _o: sıra}}}` olarak yazılır; ekleme, silme ve düzenleme yalnızca
+  kendi anahtarına düşer, sıra kesirli `_o`'dan gelir. Kimliksiz nesne, tekrarlanan değer, sayı ya da karışık
+  dizi (konumu anlamlı olabilir: `[x, y]`, `['', '', 'diz']`) bütün değer olarak kalır. Silinmiş elemana düşen
+  düzenlemenin bıraktığı yarım girdi (`_o`'su ya da kimliği tutmayan) okunmaz. Bu biçimden önce yazılmış
+  belgelerdeki düz diziler okunur; belge ilk değiştiğinde yeni biçime geçer.
+- **İki cihaz:** farklı belgeler, aynı belgenin farklı alanları ya da aynı listenin farklı elemanları → ikisi de kalır. Aynı alan → son yazan
   kazanır (K6). Biri kaydı siler, öbürü düzenlerse silme kalır; düzenleme (`update` olmayan belgeye)
   reddedilir ve uygulamada bildirilir.
 - Bunların hepsi `store-map-test.js` → "iki cihaz aynı anda" bölümünde `smApply` ile, ayrıca
