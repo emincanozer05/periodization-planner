@@ -75,7 +75,9 @@ function useStoreV2(o){
       note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
         setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
           'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
-      error:e=>{const m=String((e&&(e.code||e.message))||e);slog('v2: hata',m);setStatus('error');setSyncErr(m);},
+      error:e=>{const m=String((e&&(e.code||e.message))||e);slog('v2: hata',m);setStatus('error');
+        setSyncErr(e&&e.code==='newer-format'?L('Veri uygulamanın daha yeni bir sürümüyle yazılmış. Değişiklikler gönderilmiyor: sayfayı yenile.',
+          'The data was written by a newer version of the app. Changes are not being sent: reload the page.'):m);},
     });
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};

@@ -25,11 +25,19 @@
      yoksa içeriğinin özeti h_<özet>. Kimliksiz iki yeni kayıt aynı anda eklenirse ikisi de kalır.
    • Bir dizi ancak BÜTÜN elemanları geçerli ve (takım içinde) benzersiz kimlik taşıyorsa bölünür;
      değilse olduğu gibi üst belgede kalır. Hiçbir şey kaybolmaz, kimlik uydurulmaz.
+   • BELGE İÇİNDEKİ LİSTELER ANAHTARLI. Kimlikli nesnelerden ya da birbirinden farklı yazılardan
+     oluşan dizi {_kl:{k_<kimlik>|s_<özet>:{v,_o}}} olarak yazılır (bkz. smEnc): iki cihaz aynı listeye
+     aynı anda farklı eleman eklerse ikisi de kalır.
    • Firestore dizi içinde dizi kabul etmez: iç diziler {_arr:[…]} olarak sarılır, geri açılır.
    • Cihaza ait alan (activeTeamId) yazılmaz. */
 
 /* <store-map> — store-map-test.js bu bölümü Node'da aynen çalıştırır; yalnızca düz JavaScript. */
 var SM_VERSION=2;
+/* Belge BİÇİMİ (kök belgede `_fmt`): eşlemenin yazdığı biçim değişince artar (2: anahtarlı listeler).
+   SM_VERSION'dan ayrı: o, çalışma alanının yeni yapıda olduğunu söyler ve kurallar/etkinleştirme ona
+   bakar. Daha yeni biçimi gören eski bir uygulama yazmaz (bkz. smController), yoksa okuyamadığı
+   alanları bozardı. _fmt'si olmayan kök belge biçim 1'dir. */
+var SM_FORMAT=2;
 var SM_WS_COLS=['exercises','templates','customTests','tryouts','researches'];
 var SM_ATH_SUBS=['tests','injuries','measurements'];
 var SM_ATH_LOGS={srpeLog:'srpe',wellness:'wellness',nightLog:'night',liftLog:'lift'};
@@ -60,14 +68,65 @@ function smOmit(o,keys){
 /* undefined, eski senkronun JSON'unda olduğu gibi ele alınır: nesnede alan atılır, dizide null olur.
    Firestore undefined'ı reddeder (ignoreUndefinedProperties kapalı) ve bütün paketi düşürür;
    ekranda `{...x, ad: y||undefined}` gibi değerler olağan (ör. sezon adı silinince). */
-function smEnc(v){
-  if(Array.isArray(v))return v.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEnc(x)}:smEnc(x);});
-  if(v&&typeof v==='object'){var r={};for(var k in v)if(v[k]!==undefined)r[k]=smEnc(v[k]);return r;}
+/* ANAHTARLI LİSTE. Belgenin içindeki bir dizi (takımın `staff`/`seasons`'ı, sezonun Aylık Takvim
+   türleri/lokasyonları/kutucukları, seansın sporcuları…) Firestore'da tek bir değerdir: iki cihaz aynı
+   anda farklı bir eleman eklerse son yazan öbürünü silerdi. Elemanlar kimlikle eşlenebiliyorsa dizi
+   {_kl:{anahtar:{v:eleman,_o:sıra}}} haritası olarak yazılır; ekleme, silme ve düzenleme yalnızca kendi
+   anahtarına düşer, sıra kesirli `_o`'dan gelir (önceki belgedeki değer korunur, bkz. smOrder).
+   Anahtar: kimlikli nesnede k_<kimlik>; birbirinden farklı yazılarda s_<özet> (yazının kimliği
+   kendisidir). Kimliksiz nesne, tekrarlanan değer, sayı ya da karışık dizi olduğu gibi kalır
+   (konumu anlamlı olabilir: [x, y], ['', '', 'diz']). */
+function smListKeys(arr){
+  var keys=[],seen={},objs=arr.length&&smIsObj(arr[0]);
+  for(var i=0;i<arr.length;i++){
+    var x=arr[i],k;
+    if(objs){if(!smIsObj(x)||!smValidId(x.id))return null;k='k_'+x.id;}
+    else{if(typeof x!=='string')return null;k='s_'+smHash(x);}
+    if(seen[k])return null;
+    seen[k]=1;keys.push(k);
+  }
+  return keys;
+}
+function smIsKl(v){return smIsObj(v)&&Object.keys(v).length===1&&smIsObj(v._kl);}
+/* Eleman anahtarıyla tutarlı mı: başka cihazın sildiği elemana düşen bir düzenleme yarım bir
+   girdi ({v} ya da {_o}) bırakabilir; o girdi okunmaz (ayrı belgedeki kayıtta olduğu gibi silme kalır). */
+function smKlEntryOk(k,e){
+  if(!smIsObj(e)||typeof e._o!=='number')return false;
+  return k.slice(0,2)==='k_'?smIsObj(e.v)&&'k_'+e.v.id===k:typeof e.v==='string'&&'s_'+smHash(e.v)===k;
+}
+/* Günlük kovasındaki kayıt için aynı denetim: bir cihaz kaydı silerken öbürü onun bir alanını
+   düzenlerse ({v:{scRPE}}) ya da sırasını değiştirirse ({_o}) yarım bir kayıt kalır; okunmaz. */
+function smLogEntryOk(k,e){
+  if(!smIsObj(e)||typeof e._o!=='number'||!('v'in e))return false;
+  return k.slice(0,2)!=='k_'||(smIsObj(e.v)&&'k_'+e.v.id===k);
+}
+function smEncArr(a){return a.map(function(x){return x===undefined?null:Array.isArray(x)?{_arr:smEncArr(x)}:smEnc(x);});}
+/* p: aynı yerdeki önceki (kodlanmış) değer; anahtarlı listelerin sırası ondan korunur. */
+function smEnc(v,p){
+  if(Array.isArray(v)){
+    var keys=smListKeys(v);
+    if(!keys)return smEncArr(v);
+    var pk=smIsKl(p)?p._kl:null,prevO={};
+    if(pk)keys.forEach(function(k){var e=pk[k];if(smIsObj(e)&&typeof e._o==='number')prevO[k]=e._o;});
+    var o=smOrder(keys,prevO),m={};
+    v.forEach(function(x,i){var e=pk&&pk[keys[i]];m[keys[i]]={v:smEnc(x,smIsObj(e)?e.v:undefined),_o:o[i]};});
+    return{_kl:m};
+  }
+  if(v&&typeof v==='object'){
+    var r={},pp=smIsObj(p)?p:null;
+    for(var k in v)if(v[k]!==undefined)r[k]=smEnc(v[k],pp?pp[k]:undefined);
+    return r;
+  }
   return v;
 }
 function smDec(v){
   if(Array.isArray(v))return v.map(function(x){
     return smIsObj(x)&&Object.keys(x).length===1&&Array.isArray(x._arr)?smDec(x._arr):smDec(x);});
+  if(smIsKl(v)){
+    var rows=[];
+    for(var key in v._kl){var e=v._kl[key];if(smKlEntryOk(key,e))rows.push({o:e._o,k:key,v:e.v});}
+    return rows.sort(smByOrder).map(function(r){return smDec(r.v);});
+  }
   if(v&&typeof v==='object'){var r={};for(var k in v)r[k]=smDec(v[k]);return r;}
   return v;
 }
@@ -124,9 +183,10 @@ function smPrevO(prev,paths){var r={};if(!prev)return r;paths.forEach(function(x
 /* ── data → belgeler ─────────────────────────────────────────────────────── */
 function smToDocs(data,prev){
   var out={};
-  var put=function(path,doc){out[path]=smEnc(doc);};
+  var put=function(path,doc){out[path]=smEnc(doc,prev&&prev[path]);};
   var ws=smOmit(data,['activeTeamId','teams'].concat(SM_WS_COLS));
   ws.schemaVersion=SM_VERSION;
+  ws._fmt=SM_FORMAT;
   var split=[];
   SM_WS_COLS.forEach(function(c){
     if(!(c in data))return;
@@ -279,7 +339,7 @@ function smFromDocs(docs){
   var col=function(c){return cols[c]||[];};
   var sorted=function(list){return list.map(function(e){return{o:e.doc._o||0,k:e.id,e:e};}).sort(smByOrder).map(function(x){return x.e;});};
   var ws=D['']||{};
-  var data=smOmit(ws,['schemaVersion','_split','_hasTeams']);
+  var data=smOmit(ws,['schemaVersion','_fmt','_split','_hasTeams']);
   (ws._split||[]).forEach(function(c){data[c]=sorted(col(c)).map(function(e){return smOmit(e.doc,['_o']);});});
   if(ws._hasTeams)data.teams=sorted(col('teams')).map(function(e){return smTeamFromDocs(e.id,'teams/'+e.id,e.doc,col,sorted);});
   return data;
@@ -327,7 +387,7 @@ function smTeamFromDocs(id,base,td,col,sorted){
       (ad._split||[]).forEach(function(c){a[c]=subs[c+'|'+aid]||[];});
       (ad._logs||[]).forEach(function(c){
         var f=SM_ATH_LOGS[c],rows=[];
-        (logs[aid]||[]).forEach(function(b){var m=b[f];if(m)for(var k in m)rows.push({o:m[k]._o||0,k:k,v:m[k].v});});
+        (logs[aid]||[]).forEach(function(b){var m=b[f];if(m)for(var k in m)if(smLogEntryOk(k,m[k]))rows.push({o:m[k]._o,k:k,v:m[k].v});});
         a[c]=rows.sort(smByOrder).map(function(r){return r.v;});
       });
       if(ad._hasDays)a.days=smDaysFromDocs(col,sorted,base,null,aid);
@@ -340,9 +400,11 @@ function smTeamFromDocs(id,base,td,col,sorted){
 /* ── yazım farkı ──────────────────────────────────────────────────────────
    Belge yoksa/yenilenmişse set, kaybolduysa delete, değiştiyse update. update alan yolları
    dizi olarak verilir (['srpe','k_r1']); diziler bütün değer, nesneler en fazla SM_DIFF_DEPTH
-   derinliğe kadar inilerek yazılır. Silinen alan { del: true }. */
-var SM_DIFF_DEPTH=3;
-function smDiffFields(a,b,path,depth,out){
+   derinliğe kadar inilerek yazılır. Silinen alan { del: true }.
+   Anahtarlı listede (smEnc) `_kl` ve girdinin `v`'si derinlik saymaz; `_kl`'ye her zaman inilir —
+   boşalan bir liste bütün değer olarak yazılsaydı öbür cihazın o sırada eklediğini silerdi. */
+var SM_DIFF_DEPTH=6;
+function smDiffFields(a,b,path,depth,out,mode){   // mode: undefined | 'kl' (girdiler) | 'entry' ({v,_o})
   var keys={},k;
   for(k in a)keys[k]=1;for(k in b)keys[k]=1;
   for(k in keys){
@@ -350,7 +412,10 @@ function smDiffFields(a,b,path,depth,out){
     if(!(k in b)){out.push({path:p,del:true});continue;}
     if(!(k in a)){out.push({path:p,value:b[k]});continue;}
     if(smCanon(a[k])===smCanon(b[k]))continue;
-    if(depth<SM_DIFF_DEPTH&&smIsObj(a[k])&&smIsObj(b[k])&&Object.keys(b[k]).length)smDiffFields(a[k],b[k],p,depth+1,out);
+    var both=smIsObj(a[k])&&smIsObj(b[k]);
+    if(both&&!mode&&k==='_kl'&&smIsKl(a)&&smIsKl(b))smDiffFields(a[k],b[k],p,depth,out,'kl');
+    else if(both&&mode==='entry'&&k==='v'&&Object.keys(b[k]).length)smDiffFields(a[k],b[k],p,depth,out);
+    else if(both&&depth<SM_DIFF_DEPTH&&(mode==='kl'||Object.keys(b[k]).length))smDiffFields(a[k],b[k],p,depth+1,out,mode==='kl'?'entry':undefined);
     else out.push({path:p,value:b[k]});
   }
 }
@@ -531,8 +596,10 @@ function smListen(fs,wsPath,onDocs,onError,teams){
    henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
    ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
 function smController(o){
-  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false;
+  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false;
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
+  /* Veri bu uygulamadan daha yeni bir biçimle yazılmışsa ne okunur ne yazılır; uygulama yenilenmeli. */
+  var tooNew=function(incoming){var r=incoming&&incoming[''],f=r&&r._fmt;return typeof f==='number'&&f>SM_FORMAT;};
   var send=function(ops){
     inflight++;report();
     chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
@@ -543,7 +610,7 @@ function smController(o){
   /* Ekrandaki veri en son gönderilenden farklıysa farkı gönder; uygulanan yazım listesini döner. */
   var flush=function(){
     var d=o.getData();
-    if(!docs||d===handled)return[];
+    if(!docs||newer||d===handled)return[];
     handled=d;
     var next=smToDocs(o.prep(d),docs);
     var ops=smDiff(docs,next);
@@ -552,6 +619,11 @@ function smController(o){
     return ops;
   };
   var onDocs=function(incoming,info){
+    if(tooNew(incoming)){
+      if(!newer){newer=true;var e=new Error('Veri bu uygulamadan daha yeni bir sürümle yazılmış; sayfayı yenile.');e.code='newer-format';o.error(e);}
+      return;
+    }
+    newer=false;
     lastPending=!!info.pending;
     var base=docs,local=[];
     if(base){
