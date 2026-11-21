@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **2171**, yinelenen: **0**
+- Üst düzey ad sayısı: **2174**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -29,13 +29,13 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 
 Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine en fazla 2 parça bağlı: modüle çevirmesi en kolay olanlar.
 
-`test-thumbs`, `scouting-notes`, `monitor-config`, `researches`, `language-selector-nav-icons`
+`scouting-notes`, `monitor-config`, `researches`, `language-selector-nav-icons`
 
 ## Geriye (ertelenmiş) bağlar ve döngüler
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **133** / toplam bağ 679
+- Geriye bağ sayısı: **133** / toplam bağ 681
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 61 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories` ↔ `move-taxonomy` ↔ `exercise-taxonomy-text`
@@ -87,8 +87,8 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 39 | `test-progression-compare` | 8 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `athlete-boxes`, `team-data-migration`, `periods-weeks-load-monotony`, `chart-wrapper`, `photo-local-media-store` |
 | 40 | `fv-profile` | 16 | `prelude`, `dates-language-factories`, `athlete-phv`↑ |
 | 41 | `team-data` | 12 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `team-data-migration`, `chart-wrapper` |
-| 42 | `evaluation-tryouts` | 26 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `dev-report-page`, `testing-session`, `team-data`, `tryout-print`↑ |
-| 43 | `tryout-print` | 9 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `evaluation-tryouts` |
+| 42 | `evaluation-tryouts` | 29 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`¹, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `test-pdf`, `dev-report-page`, `testing-session`, `team-data`, `tryout-print`↑ |
+| 43 | `tryout-print` | 9 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `test-thumbs`, `periods-weeks-load-monotony`, `photo-local-media-store`, `test-pdf`, `evaluation-tryouts` |
 | 44 | `athlete-detail-snapshot` | 2 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony` |
 | 45 | `program-design-assistant` | 11 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `athlete-detail-snapshot` |
 | 46 | `program-writer` | 12 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-library-export`↑, `athlete-context-readiness`↑, `coach-assistant`↑, `sport-context-equipment`↑, `ai-coach`↑ |

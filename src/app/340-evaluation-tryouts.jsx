@@ -99,6 +99,11 @@ const tryoutPartsOf=(k,v)=>(typeof v==='string'&&v.trim()!=='')?null:(TRYOUT_PAR
    lift, the 5–10 m split, the FMS movement's score (the lower side). `lvl` colours it. */
 function tryoutReadout(k,v){
   const Lx=(tr,en)=>REPORT_LANG==='tr'?tr:en;
+  if(TRYOUT_FMS.includes(k)){
+    const it=fmsCalc(tryoutFmsObj({[k]:v})).items.find(i=>'fms_'+i.id===k);
+    if(!it||it.score==null)return null;
+    const m=FMS_SCORE_SCALE[it.score];
+    return{l:m?Lx(m.tr,m.en):Lx('Puan','Score'),v:it.score+'/3',lvl:tryoutFmsTone(it.score),asym:it.asym};}
   if(!v||typeof v!=='object'||!TRYOUT_PARTS[k])return null;
   const pct=p=>Lx('%'+p,p+'%');
   if(STR_LIFTS.includes(k)){const e=strE1rm(tN(v.load),tN(v.reps));
@@ -109,8 +114,6 @@ function tryoutReadout(k,v){
   if(k==='hipRot'){const ir=asymPct(v.irR,v.irL,'hi'),er=asymPct(v.erR,v.erL,'hi');
     if(ir==null&&er==null)return null;const worst=Math.max(ir||0,er||0);
     return{l:Lx('Asimetri','Asymmetry'),v:[ir!=null?'IR '+pct(ir):'',er!=null?'ER '+pct(er):''].filter(Boolean).join(' · '),lvl:asymLevel(worst)};}
-  if(k.startsWith('fms_')){const r=tN(v.r),l=tN(v.l);if(r==null||l==null)return null;
-    return{l:Lx('Puan (düşük taraf)','Score (lower side)'),v:Math.min(r,l)+'/3',lvl:r!==l?'warn':Math.min(r,l)<=1?'bad':'ok'};}
   const p=asymPct(v.r,v.l,TRYOUT_LO.includes(k)?'lo':'hi');
   return p!=null?{l:Lx('Asimetri','Asymmetry'),v:pct(p),lvl:asymLevel(p)}:null;
 }
@@ -130,6 +133,23 @@ const TRYOUT_LEGACY=[
 /* The tests a brand-new candidate starts with — the four a basketball trial runs by
    default. Everything else is one click away in the picker. */
 const TRYOUT_TESTS_DEFAULT=['verticalJump','sprint','tTest','shuttleRun'];
+/* THE TRIAL'S FMS IN THE FMS RECORD'S OWN SHAPE. The seven movements are kept on the sheet as
+   tests of their own (`fms_deepSquat`, `fms_hurdleStep` {r,l}…); turned into the `fms` object a
+   test record carries, fmsCalc scores them exactly as it scores the squad's — the lower side
+   is the movement's score, the total is out of 21 — and the sheet, its printout and the
+   promoted athlete's FMS card all read the same numbers. A side-less number typed before the
+   movements took sides is left out: which side it was is not ours to guess. */
+const TRYOUT_FMS=FMS_ITEMS.map(it=>'fms_'+it.id);
+function tryoutFmsObj(tests){
+  const tt=tests||{},o={};
+  const s=x=>String(x==null?'':x).trim();
+  FMS_ITEMS.forEach(it=>{const v=tt['fms_'+it.id];if(!tryoutHas(v))return;
+    if(it.bi){if(v&&typeof v==='object')o[it.id]={right:s(v.r),left:s(v.l)};}
+    else if(typeof v==='string')o[it.id]=s(v);});
+  return o;
+}
+/* The FMS score's colour, as on every other FMS card and printout: 3 green, 2 amber, 0–1 red. */
+const tryoutFmsTone=v=>v==null?'':v>=3?'ok':v===2?'warn':'bad';
 /* The club's catalog as the trial sheet reads it: the built-in battery, then the coach's
    own tests (`data.customTests` — the same rows the Testing screen adds to), then any
    trial-only test left over from before the two lists were joined. */
@@ -204,9 +224,8 @@ function tryoutTestRecord(cand,customIds){
       if(Object.values(o).some(Boolean)){rec.hipRot=o;ok=true;}}
     else if(obj&&k==='accel'){const o={t5:num(v.t5),t10:num(v.t10)};if(o.t5||o.t10){rec.sprintSplits=o;ok=true;}}
     else if(obj&&STR_LIFTS.includes(k)){const o={load:num(v.load),reps:num(v.reps)};if(o.load){rec[k]=o;ok=true;}}
-    else if(k.startsWith('fms_')&&FMS_PART_IDS.includes(k)){const item=k.slice(4);
-      if(obj){const o=lr(v);if(o.right||o.left){rec.fms={...rec.fms,[item]:o};ok=true;}}
-      else if(num(v)&&!TRYOUT_PARTS[k]){rec.fms={...rec.fms,[item]:num(v)};ok=true;}}
+    else if(TRYOUT_FMS.includes(k)){const item=k.slice(4);const o=tryoutFmsObj({[k]:v})[item];
+      if(o!=null){rec.fms={...rec.fms,[item]:o};ok=true;}}
     else if(!obj&&ids.has(k)){rec.custom={...rec.custom,[k]:s(v)};ok=true;}
     if(ok)bat.push(k);
     else left.push(k);
@@ -283,6 +302,40 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const tryoutGroups=defs=>[...TEST_GROUPS.filter(g=>g.id!=='all'),{id:'old',tr:'Eski Testler',en:'Retired Tests'}]
     .map(g=>({...g,items:defs.filter(f=>(f.legacy?'old':f.custom?'custom':(f.g||(TEST_META[f.k]||{}).g||'custom'))===g.id)}))
     .filter(g=>g.items.length);
+  /* An FMS movement is drawn the way the squad's FMS card draws it: the FMS logo and the
+     movement's name, a 0–3 score per side, and beside them the final score — the lower side —
+     in the FMS colours, with the asymmetry flag; under it what that score means on the FMS
+     scale. The score is fmsCalc's, the same as everywhere else. */
+  const fmsR=fmsCalc(tryoutFmsObj(cur&&cur.tests));
+  const fmsCard=k=>{
+    const v=(cur.tests||{})[k];const it=fmsR.items.find(i=>'fms_'+i.id===k);
+    const legacy=it.bi&&typeof v==='string'&&v.trim()!=='';
+    const rows=it.bi?TRYOUT_LR:[{s:null,tr:'Skor',en:'Score'}];
+    const m=it.score!=null?FMS_SCORE_SCALE[it.score]:null;
+    return(<div key={k} className={'tryo-tc tryo-fms'+(it.filled?' done':'')}>
+      <div className="tryo-tc-h"><img className="tryo-fmslg" src={FMS_LOGO_SQ} alt="FMS"/>
+        <span className="nm" lang="en">{it.en}</span><span className="u">FMS</span></div>
+      <div className="tryo-fms-b">
+        <div className="tryo-fms-rows">
+          {rows.map(p=>{const cv=String(p.s?(v&&typeof v==='object'?v[p.s]:''):(typeof v==='string'?v:'')||'').trim();
+            const set=n=>{const nv=cv===n?'':n;p.s?updPart(k,p.s,nv):updTest(k,nv);};
+            return(<div key={p.s||'x'} className="tryo-fms-row"><span>{Lx(p.tr,p.en)}</span>
+              <div className="fmsl-seg" role="group" aria-label={`${it.en} ${Lx(p.tr,p.en)}`}>
+                {['0','1','2','3'].map(n=><button type="button" key={n} className={'s'+n+(cv===n?' on':'')} aria-pressed={cv===n}
+                  onClick={()=>set(n)}>{n}</button>)}</div></div>);})}
+          {legacy&&<div className="tryo-fms-old">{Lx(`Eski kayıt: ${v.trim()} (taraf belirtilmemiş) — bir taraf seçilince yerini alır.`,
+            `Old entry: ${v.trim()} (no side) — replaced once a side is scored.`)}</div>}
+        </div>
+        <div className={'fmsc-fin'+(it.score!=null?' t'+Math.max(1,Math.min(3,it.score)):'')}>
+          <div className="k">{Lx('Nihai','Final')}</div>
+          <div className="v">{it.score!=null?it.score:'—'}<small>/3</small></div>
+          {it.asym!=null&&<div className="fmsc-flag am">{Lx('asimetri','asym.')} {it.asym}</div>}
+        </div>
+      </div>
+      {m&&<div className={'tryo-fms-m '+tryoutFmsTone(it.score)}><b>{Lx(m.tr,m.en)}</b>
+        <span>{Lx(m.dTr,m.dEn)}{it.asym!=null?' '+Lx('Düşük taraf skoru geçerlidir.','The lower side is the score.'):''}</span></div>}
+    </div>);
+  };
 
   /* --- the test catalog on this sheet --- */
   const togglePick=k=>{
@@ -633,9 +686,16 @@ function TryoutsView({data,setData,teams,activeTeamId}){
               {shown.length===0&&<div className="empty-st" style={{padding:'18px 10px',margin:0}}>
                 {Lx('Bu adaya henüz test seçilmedi — "Test Seç / Ekle" ile başla.','No tests chosen for this candidate yet — start with "Choose / Add Tests".')}</div>}
               {tryoutGroups(shown.map(k=>tryoutTestDef(k,customTests))).map(g=><div key={g.id} className="tryo-tgrp">
-                <div className="tryo-tgrp-h">{Lx(g.tr,g.en)}</div>
-                <div className="tryo-tcs">
-                  {g.items.map(f=>{const k=f.k;const v=(cur.tests||{})[k];const parts=tryoutPartsOf(k,v);
+                <div className="tryo-tgrp-h">{Lx(g.tr,g.en)}
+                  {/* The FMS total, as the squad's FMS card shows it under the movements. */}
+                  {g.id==='move'&&g.items.some(f=>TRYOUT_FMS.includes(f.k))&&<span className="tryo-fms-tot">
+                    {Lx('FMS toplamı','FMS total')} <b>{fmsR.total!=null?fmsR.total:'—'}</b> / 21<i>{fmsR.n}/7 {Lx('hareket','movements')}</i></span>}
+                </div>
+                {/* The FMS movements sit in a grid of their own, two to a row, after the
+                    group's other tests: wider cards mixed into the narrow ones left holes. */}
+                {g.items.some(f=>!TRYOUT_FMS.includes(f.k))&&<div className="tryo-tcs">
+                  {g.items.filter(f=>!TRYOUT_FMS.includes(f.k)).map(f=>{const k=f.k;
+                    const v=(cur.tests||{})[k];const parts=tryoutPartsOf(k,v);
                     const unit=f.u?tryoutUnit(f.u):'';const rd=tryoutReadout(k,v);
                     return(<div key={k} className={'tryo-tc'+(tryoutHas(v)?' done':'')+(parts&&parts.length>2?' wide':'')}>
                       <div className="tryo-tc-h"><span className="nm">{Lx(f.tr,f.en)}</span>
@@ -654,7 +714,10 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                           {unit&&<em>{unit}</em>}</label></div>}
                       {rd&&<div className={'tryo-tc-r '+(rd.lvl||'')}><span>{rd.l}</span><b>{rd.v}</b></div>}
                     </div>);})}
-                </div>
+                </div>}
+                {g.items.some(f=>TRYOUT_FMS.includes(f.k))&&<div className="tryo-tcs fmsg">
+                  {g.items.filter(f=>TRYOUT_FMS.includes(f.k)).map(f=>fmsCard(f.k))}
+                </div>}
               </div>)}
             </div>
           </div>

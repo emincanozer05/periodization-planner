@@ -99,7 +99,7 @@ function loadApp() {
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
     'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'indivSig', 'indivSigRaw', 'indivSigCompact', 'indivHandEdited', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
     'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems', 'tdItems', 'TEST_CATALOG', 'CMP_METRICS', 'CMP_METRIC_TEST',
-    'tryoutTestRecord', 'tryoutPicked', 'tryoutHas', 'tryoutReadout', 'tryoutValText', 'tryoutTestCatalog', 'tryoutTestDef', 'testTook'];
+    'tryoutTestRecord', 'tryoutPicked', 'tryoutHas', 'tryoutReadout', 'tryoutValText', 'tryoutTestCatalog', 'tryoutTestDef', 'testTook', 'tryoutFmsObj', 'fmsCalc'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -2013,6 +2013,13 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const e1 = A.tryoutReadout('benchPress', cand.tests.benchPress);
     check('seçme okuması: kuvvette Epley tahmini 1RM', e1 && e1.v === '46.7 kg', JSON.stringify(e1));
     check('seçme değeri metin olarak (CSV/çıktı)', A.inTurkish(() => A.tryoutValText('curvedRun', cand.tests.curvedRun, A.tryoutTestDef('curvedRun', []))) === 'Sağ 5.2 sn · Sol 5.8 sn');
+    const fr = A.inTurkish(() => A.tryoutReadout('fms_hurdleStep', { r: '2', l: '3' }));
+    check('FMS okuması: düşük taraf, FMS rengi ve ölçekteki anlamı (diğer FMS kartlarıyla aynı)',
+      fr && fr.v === '2/3' && fr.lvl === 'warn' && fr.asym === 1 && /kompansasyon/i.test(fr.l), JSON.stringify(fr));
+    const f3 = A.tryoutReadout('fms_deepSquat', '3'), f1 = A.tryoutReadout('fms_rotary', { r: '1', l: '' });
+    check('FMS okuması: 3 yeşil, tek taraf 1 kırmızı', f3 && f3.lvl === 'ok' && f1 && f1.v === '1/3' && f1.lvl === 'bad', JSON.stringify([f3, f1]));
+    const fo = A.fmsCalc(A.tryoutFmsObj({ fms_deepSquat: '2', fms_hurdleStep: { r: '2', l: '3' }, fms_rotary: '2', verticalJump: '40' }));
+    check('FMS toplamı fmsCalc ile; tarafsız eski değer sayılmıyor', fo.total === 4 && fo.n === 2, JSON.stringify({ t: fo.total, n: fo.n }));
     const none = A.tryoutTestRecord({ name: 'Boş', tests: {} }, []);
     check('kadroya aktarım: ölçümü olmayan aday için test kaydı açılmıyor', !none.taken && none.left.length === 0);
   }

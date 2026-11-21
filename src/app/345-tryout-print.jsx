@@ -32,6 +32,9 @@ const TRY_SHEET_CSS=`
 .kvs.six{grid-template-columns:repeat(6,1fr)}
 .kv .x{font-size:8.5px;color:var(--mu);margin-top:2px;font-weight:500}
 .tg{margin-bottom:9px;break-inside:avoid;page-break-inside:avoid}
+/* The FMS cards can run past a page: the group may break between cards, never inside one. */
+.tg.fm{break-inside:auto;page-break-inside:auto}
+.tc.ds.noimg{grid-template-columns:minmax(0,1fr)}
 .tt th.c,.tt td.c{text-align:center}
 .tt td{vertical-align:middle}
 .tt td.nm{font-weight:600;width:38%}
@@ -158,14 +161,35 @@ function printTryoutSheet(cand,opts){
     else vals=`<td class="c val${n(v)?'':' empty'}" colspan="2">${cell(typeof v==='string'?v:'',unit)}</td>`;
     const rd=tryoutReadout(f.k,v);if(rd)anyRd=true;
     return`<tr><td class="nm">${esc(L(f.tr,f.en))}</td>${vals}<td class="rd">${rd?`${rd.lvl?`<i class="${rd.lvl}"></i>`:''}${esc(rd.l)}: <b>${esc(rd.v)}</b>`:''}</td></tr>`;};
-  const testsHtml=groups.length?groups.map(g=>`<div class="tg"><div class="sub-h">${esc(L(g.tr,g.en))}</div>
-      <table class="tt"><colgroup><col style="width:36%"/><col style="width:16%"/><col style="width:16%"/><col/></colgroup>
-      ${g.items.map(testRow).join('')}</table></div>`).join('')
+  /* The FMS movements print as the Test PDF and the Profile printout print them: one card per
+     movement — its picture, the FMS logo and name, what it tests, then the score large in the
+     FMS colours with each side under it, and what the score means on the FMS scale. */
+  const R=fmsCalc(tryoutFmsObj(t.tests));
+  const fmsTone=v=>v<=1?'#dc2626':v===2?'#b88400':'#16a34a';
+  const fmsCardP=k=>{const it=R.items.find(i=>'fms_'+i.id===k);const v=it.score;
+    const m=v!=null&&FMS_SCORE_SCALE[v];const info=FMS_INFO.find(x=>x.id===it.id);
+    const ip=TEST_IMG[k],th=ip&&TEST_THUMB[ip];
+    const img=th?`<div class="tc-im"><img src="${th}" alt=""/></div>`:'';
+    const raw=(t.tests||{})[k];const legacy=it.bi&&typeof raw==='string'&&raw.trim()!=='';
+    const sides=it.bi?`<div class="ds-lr"><span>${L('Sağ','R')} <b>${it.right!=null?it.right:'—'}</b></span><span>${L('Sol','L')} <b>${it.left!=null?it.left:'—'}</b></span></div>`:'';
+    return`<div class="tc ds${img?'':' noimg'}">${img}<div class="ds-r">
+      <div class="ds-h"><div class="tc-n" lang="en"><img class="fms-lg" src="${FMS_LOGO_SQ}" alt="FMS"/>${esc(it.en)}</div>
+        <div class="ds-w">${esc(info?L(info.tr,info.en):'')}</div></div>
+      <div class="ds-s"><div class="ds-v"${m?` style="color:${fmsTone(v)}"`:''}>${v!=null?v:'—'}<small> / 3</small>${sides}</div>
+        ${m?`<div><div class="ds-m" style="color:${fmsTone(v)}">${esc(L(m.tr,m.en))}</div><div class="ds-x">${esc(L(m.dTr,m.dEn))}${it.asym!=null?` ${L('Düşük taraf skoru geçerlidir.','The lower side is the score.')}`:''}</div></div>`
+          :legacy?`<div class="ds-x">${esc(L(`Eski kayıt: ${raw.trim()} (taraf belirtilmemiş)`,`Old entry: ${raw.trim()} (no side)`))}</div>`:''}</div>
+    </div></div>`;};
+  const testsHtml=groups.length?groups.map(g=>{
+      const fm=g.items.filter(f=>TRYOUT_FMS.includes(f.k)),rest=g.items.filter(f=>!TRYOUT_FMS.includes(f.k));
+      return`<div class="tg${fm.length?' fm':''}"><div class="sub-h">${esc(L(g.tr,g.en))}${fm.length?`<span class="hv">${L('FMS toplamı','FMS total')} ${R.total!=null?R.total:'—'} / 21 · ${R.n}/7 ${L('hareket','movements')}</span>`:''}</div>
+      ${fm.length?`<div class="tcs">${fm.map(f=>fmsCardP(f.k)).join('')}</div>`:''}
+      ${rest.length?`<table class="tt"${fm.length?' style="margin-top:6px"':''}><colgroup><col style="width:36%"/><col style="width:16%"/><col style="width:16%"/><col/></colgroup>
+      ${rest.map(testRow).join('')}</table>`:''}</div>`;}).join('')
     :`<div class="card none">${L('Bu adaya test seçilmedi.','No tests chosen for this candidate.')}</div>`;
   const filled=defs.filter(f=>tryoutHas((t.tests||{})[f.k])).length;
   const s3=`<section>${secH(3,L('Test Sonuçları','Test Results'),defs.length?L(`${defs.length} testten ${filled} tanesi girildi`,`${filled} of ${defs.length} tests entered`):'')}
     ${testsHtml}
-    ${anyRd?`<div class="key2"><span><i style="background:#16a34a"></i>${L('dengeli (asimetri < %10)','balanced (asymmetry < 10%)')}</span><span><i style="background:#d97706"></i>${L('izlenmeli (%10–15) · FMS: taraflar farklı','watch (10–15%) · FMS: sides differ')}</span><span><i style="background:#dc2626"></i>${L('belirgin (≥ %15) · FMS: 1 ya da 0','marked (≥ 15%) · FMS: 1 or 0')}</span></div>`:''}
+    ${anyRd?`<div class="key2"><span><i style="background:#16a34a"></i>${L('dengeli (asimetri < %10)','balanced (asymmetry < 10%)')}</span><span><i style="background:#d97706"></i>${L('izlenmeli (%10–15)','watch (10–15%)')}</span><span><i style="background:#dc2626"></i>${L('belirgin (≥ %15)','marked (≥ 15%)')}</span></div>`:''}
   </section>`;
   /* ── 4 · the coach's words ── */
   const txt=s=>n(s)?`<div class="txt">${esc(s)}</div>`:`<div class="txt none">—</div>`;
@@ -197,9 +221,22 @@ function printTryoutList(list,opts){
   const keys=[...new Set(rows.flatMap(t=>tryoutPicked(t).filter(k=>tryoutHas((t.tests||{})[k]))))];
   const defs=keys.map(k=>tryoutTestDef(k,o.customTests));
   const groups=tryoutGroupList(defs);
+  /* The FMS movements print their final score (the lower side) in the FMS colours, and the
+     movement group closes with the FMS total, as the squad's FMS card ends with it. */
+  groups.forEach(g=>{const last=g.items.map(f=>TRYOUT_FMS.includes(f.k)).lastIndexOf(true);
+    if(last>=0)g.items=[...g.items.slice(0,last+1),{k:'__fmsTotal',tr:'FMS Toplamı',en:'FMS Total',u:'/21'},...g.items.slice(last+1)];});
   const cols=groups.flatMap(g=>g.items.map((f,i)=>({...f,gid:g.id,gl:i===0?L(g.tr,g.en):'',gn:g.items.length})));
-  const short=f=>{const v=f;return L(v.tr,v.en);};
-  const cellOf=(t,f)=>{const v=(t.tests||{})[f.k];if(!tryoutHas(v))return`<td class="t e">—</td>`;
+  const fmsCol=v=>v<=1?'#dc2626':v===2?'#b88400':'#16a34a';
+  // The FMS movements by their short names (FMS DS, FMS HS…): seven full names would push the
+  // table off the page. The key under the table spells them out.
+  const short=f=>{if(TRYOUT_FMS.includes(f.k)){const c=TEST_CATALOG.find(x=>x.id===f.k);return c?c.short:f.en;}
+    if(f.k==='__fmsTotal')return L('FMS Toplam','FMS Total');return L(f.tr,f.en);};
+  const cellOf=(t,f)=>{
+    if(f.k==='__fmsTotal'){const r=fmsCalc(tryoutFmsObj(t.tests));
+      return r.total!=null?`<td class="t">${r.total}${r.n<7?`<span class="sw"> (${r.n}/7)</span>`:''}</td>`:`<td class="t e">—</td>`;}
+    if(TRYOUT_FMS.includes(f.k)){const it=fmsCalc(tryoutFmsObj({[f.k]:(t.tests||{})[f.k]})).items.find(i=>'fms_'+i.id===f.k);
+      return it&&it.score!=null?`<td class="t" style="color:${fmsCol(it.score)}">${it.score}${it.asym!=null?`<span class="sw"> (${it.right}·${it.left})</span>`:''}</td>`:`<td class="t e">—</td>`;}
+    const v=(t.tests||{})[f.k];if(!tryoutHas(v))return`<td class="t e">—</td>`;
     const parts=tryoutPartsOf(f.k,v);
     if(!parts)return`<td class="t">${esc(n(v))}</td>`;
     // Every part in its fixed place (sağ / sol, IR S / IR L…), a missing one as a dash, so the
@@ -209,7 +246,8 @@ function printTryoutList(list,opts){
   const cnt=id=>rows.filter(t=>(t.status||'new')===id).length;
   const ages=rows.map(tryoutAge).filter(a=>a!=null);
   const grpRow=cols.length?`<tr class="grp"><th colspan="7"></th>${groups.map(g=>`<th class="c" colspan="${g.items.length}">${esc(L(g.tr,g.en))}</th>`).join('')}<th colspan="2"></th></tr>`:'';
-  const unitOf=f=>{const p=TRYOUT_PARTS[f.k];const u=f.u?tryoutUnit(f.u):'';
+  const unitOf=f=>{if(TRYOUT_FMS.includes(f.k))return'/3';
+    const p=TRYOUT_PARTS[f.k];const u=f.u?tryoutUnit(f.u):'';
     if(p===TRYOUT_LR)return L('sağ / sol','R / L')+(u?' · '+u:'');
     if(p)return p.map(x=>L(x.tr,x.en)+(x.u?' '+tryoutUnit(x.u):'')).join(' / ')+(p.every(x=>x.u)||!u?'':' · '+u);
     return u;};
@@ -235,6 +273,9 @@ function printTryoutList(list,opts){
   <div class="sm">${kv(L('Toplam','Total'),rows.length)}${TRYOUT_STATUS.map(s=>kv(`<span style="color:${TRYOUT_ST_COL[s.id]}">●</span> ${esc(L(s.tr,s.en))}`,cnt(s.id))).join('')}
     ${kv(L('Yaş Aralığı','Age Range'),ages.length?`${Math.min(...ages)}–${Math.max(...ages)}`:'—')}</div>
   ${table}
+  ${cols.some(f=>TRYOUT_FMS.includes(f.k))?`<div class="key2" style="margin-top:6px"><span>${L('FMS: nihai puan düşük taraftır, parantezde sağ·sol','FMS: the final score is the lower side; right·left in brackets')}</span>
+    <span><i style="background:#16a34a"></i>3</span><span><i style="background:#b88400"></i>2</span><span><i style="background:#dc2626"></i>0–1</span>
+    <span>${cols.filter(f=>TRYOUT_FMS.includes(f.k)).map(f=>`${esc(short(f))} = ${esc(f.en.replace(/^FMS\s+/,''))}`).join(' · ')}</span></div>`:''}
   <div class="ft"><span>CoachOS · ${L('Seçmeler','Tryouts')}</span><span>${L(`${today_} tarihinde oluşturuldu`,`Generated ${today_}`)}</span></div>`;
   tryoutPrintWindow(L('Seçmeler — Aday Listesi','Tryouts — Candidate List'),body,{landscape:true});
 }
