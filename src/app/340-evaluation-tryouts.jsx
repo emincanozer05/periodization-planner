@@ -55,18 +55,65 @@ const TRYOUT_FAMILY=[
    score. */
 const TRYOUT_UNITS={anthro:'cm',circ:'cm',ankleDF:'°',aslr:'/3',ohs:'/3',fms:'/21',yBalance:'%',
   verticalJump:'cm',cmj:'cm',lateralCmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'',
-  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',laneAgility:'sec',shuttleRun:'sec',
+  sprint:'sec',tTest:'sec',fiveZeroFive:'sec',laneAgility:'sec',shuttleRun:'sec',curvedRun:'sec',
   fms_deepSquat:'/3',fms_hurdleStep:'/3',fms_inlineLunge:'/3',fms_shoulderMobility:'/3',fms_aslr:'/3',fms_trunkPushup:'/3',fms_rotary:'/3',
-  hipRot:'°',tSpine:'°',accel:'sec',benchPress:'kg',trapBarDL:'kg',backSquat:'kg',pullUp:'',copenhagen:'sec',sidePlank:'sec',ift3015:'km/h'};
+  hipRot:'°',tSpine:'°',accel:'sec',benchPress:'kg',trapBarDL:'kg',backSquat:'kg',pullUp:'rep',copenhagen:'sec',sidePlank:'sec',ift3015:'km/h'};
 /* Turkish names for the built-in battery. The catalog itself is written in English (it is
    read by the reports too), and a trial sheet is filled in on the court in Turkish. */
 const TRYOUT_TR={anthro:'Antropometri',circ:'Çevre Ölçümü',posture:'Statik Postür',
-  ankleDF:'Ayak Bileği DF',aslr:'ASLR',ohs:'Overhead Squat',fms:'FMS',yBalance:'Y Balance',
+  ankleDF:'Ayak Bileği DF',aslr:'ASLR',ohs:'Overhead Squat',fms:'FMS',yBalance:'Y Balance (kompozit)',
   verticalJump:'Dikey Sıçrama',cmj:'CMJ',lateralCmj:'Lateral CMJ',squatJump:'Skuat Sıçrama',
   horizontalJump:'Yatay Sıçrama',dropJump:'Drop Jump (RSI)',sprint:'20m Sprint',tTest:'T-Test',
-  fiveZeroFive:'505 COD',laneAgility:'Lane Agility',shuttleRun:'Shuttle Run',
+  fiveZeroFive:'505 COD',laneAgility:'Lane Agility',shuttleRun:'Shuttle Run',curvedRun:'Kavisli Koşu',
   hipRot:'Kalça IR/ER',thomas:'Modifiye Thomas Testi',tSpine:'T-Spine Rotasyon',accel:'5-10m İvmelenme',
   pullUp:'Barfiks (Pull-Up)',copenhagen:'Copenhagen Plank',sidePlank:'Yan Plank',backSquat:'Barbell Squat'};
+/* Tests a trial sheet cannot hold. Anthropometry is the Body Measurements section already;
+   circumferences, the posture photos and the Thomas test's three readings per side are not
+   a number a scout writes on the court. They stay out of the picker — a sheet that already
+   carries a value for one keeps it, labelled, so nothing typed is lost. */
+const TRYOUT_SKIP=['anthro','circ','posture','thomas'];
+/* Most of the battery is one number. The bilateral tests are two — a single "ankle DF 38°"
+   box hid which ankle, and the asymmetry is the very thing a youth screen is read for — and a
+   few take their own parts. Each part may carry its own unit; otherwise the test's. */
+const TRYOUT_LR=[{s:'r',tr:'Sağ',en:'Right'},{s:'l',tr:'Sol',en:'Left'}];
+const TRYOUT_STR=[{s:'load',tr:'Yük',en:'Load',u:'kg'},{s:'reps',tr:'Tekrar',en:'Reps',u:'rep'}];
+const TRYOUT_PARTS={
+  ankleDF:TRYOUT_LR,lateralCmj:TRYOUT_LR,tSpine:TRYOUT_LR,copenhagen:TRYOUT_LR,sidePlank:TRYOUT_LR,
+  fiveZeroFive:TRYOUT_LR,curvedRun:TRYOUT_LR,
+  fms_hurdleStep:TRYOUT_LR,fms_inlineLunge:TRYOUT_LR,fms_shoulderMobility:TRYOUT_LR,fms_aslr:TRYOUT_LR,fms_rotary:TRYOUT_LR,
+  hipRot:[{s:'irR',tr:'IR Sağ',en:'IR Right'},{s:'irL',tr:'IR Sol',en:'IR Left'},
+          {s:'erR',tr:'ER Sağ',en:'ER Right'},{s:'erL',tr:'ER Sol',en:'ER Left'}],
+  accel:[{s:'t5',tr:'0–5 m',en:'0–5 m'},{s:'t10',tr:'0–10 m',en:'0–10 m'}],
+  benchPress:TRYOUT_STR,trapBarDL:TRYOUT_STR,backSquat:TRYOUT_STR,
+};
+// Time tests: the quicker side is the better one when the asymmetry is worked out.
+const TRYOUT_LO=['fiveZeroFive','curvedRun'];
+/* A test result is a string, or — for a test with parts — an object of them. */
+const tryoutHas=v=>v&&typeof v==='object'
+  ?Object.values(v).some(x=>String(x==null?'':x).trim()!=='')
+  :String(v==null?'':v).trim()!=='';
+/* The parts a stored value is drawn with. A number typed before the test took sides stays
+   one box: which side it was is not ours to guess. */
+const tryoutPartsOf=(k,v)=>(typeof v==='string'&&v.trim()!=='')?null:(TRYOUT_PARTS[k]||null);
+/* The one line read off a result: the asymmetry of a bilateral test, the estimated 1RM of a
+   lift, the 5–10 m split, the FMS movement's score (the lower side). `lvl` colours it. */
+function tryoutReadout(k,v){
+  const Lx=(tr,en)=>REPORT_LANG==='tr'?tr:en;
+  if(!v||typeof v!=='object'||!TRYOUT_PARTS[k])return null;
+  const pct=p=>Lx('%'+p,p+'%');
+  if(STR_LIFTS.includes(k)){const e=strE1rm(tN(v.load),tN(v.reps));
+    return e!=null?{l:Lx('Tahmini 1RM','Est. 1RM'),v:+e.toFixed(1)+' kg'}:null;}
+  if(k==='accel'){const a=tN(v.t5),b=tN(v.t10);
+    if(a==null||b==null)return null;
+    return b>a?{l:'5–10 m',v:(b-a).toFixed(2)+' '+tryoutUnit('sec')}:{l:Lx('Kontrol et','Check'),v:Lx('10 m > 5 m olmalı','10 m must exceed 5 m'),lvl:'bad'};}
+  if(k==='hipRot'){const ir=asymPct(v.irR,v.irL,'hi'),er=asymPct(v.erR,v.erL,'hi');
+    if(ir==null&&er==null)return null;const worst=Math.max(ir||0,er||0);
+    return{l:Lx('Asimetri','Asymmetry'),v:[ir!=null?'IR '+pct(ir):'',er!=null?'ER '+pct(er):''].filter(Boolean).join(' · '),lvl:asymLevel(worst)};}
+  if(k.startsWith('fms_')){const r=tN(v.r),l=tN(v.l);if(r==null||l==null)return null;
+    return{l:Lx('Puan (düşük taraf)','Score (lower side)'),v:Math.min(r,l)+'/3',lvl:r!==l?'warn':Math.min(r,l)<=1?'bad':'ok'};}
+  const p=asymPct(v.r,v.l,TRYOUT_LO.includes(k)?'lo':'hi');
+  return p!=null?{l:Lx('Asimetri','Asymmetry'),v:pct(p),lvl:asymLevel(p)}:null;
+}
 /* Tests the trial sheet carried before it shared the club's catalog. They are not offered
    any more, but a candidate measured on one still has the number on their sheet — so the
    key keeps its name and its unit, and the sheet can still label the box. */
@@ -89,25 +136,83 @@ const TRYOUT_TESTS_DEFAULT=['verticalJump','sprint','tTest','shuttleRun'];
 const tryoutTestCatalog=custom=>{
   const own=Array.isArray(custom)?custom:[];
   return[
-    ...TEST_CATALOG.filter(c=>!c.retired).map(c=>({k:c.id,u:TRYOUT_UNITS[c.id]||'',tr:TRYOUT_TR[c.id]||c.name,en:c.name})),
-    ...own.map(c=>({k:c.id,u:c.u||'',tr:c.name,en:c.name,custom:true})),
+    ...TEST_CATALOG.filter(c=>!c.retired&&!TRYOUT_SKIP.includes(c.id))
+      .map(c=>({k:c.id,u:TRYOUT_UNITS[c.id]||'',tr:TRYOUT_TR[c.id]||c.name,en:c.name,g:(TEST_META[c.id]||{}).g||'custom'})),
+    ...own.map(c=>({k:c.id,u:c.u||'',tr:c.name,en:c.name,custom:true,g:'custom'})),
   ];
 };
-/* Everything a stored key can be looked up in, the retired tests included, so a number
-   written years ago still knows what it is called. */
+/* Everything a stored key can be looked up in, the retired and the sheet-less tests included,
+   so a number written years ago still knows what it is called. */
 const tryoutTestDefs=custom=>[...tryoutTestCatalog(custom),
-  ...TEST_CATALOG.filter(c=>c.retired).map(c=>({k:c.id,u:TRYOUT_UNITS[c.id]||'',tr:TRYOUT_TR[c.id]||c.name,en:c.name,legacy:true})),
-  ...TRYOUT_LEGACY.map(t=>({...t,legacy:true}))];
-const tryoutTestDef=(k,custom)=>tryoutTestDefs(custom).find(t=>t.k===k)||{k,u:'',tr:k,en:k};
+  ...TEST_CATALOG.filter(c=>c.retired||TRYOUT_SKIP.includes(c.id)).map(c=>({k:c.id,u:TRYOUT_UNITS[c.id]||'',tr:TRYOUT_TR[c.id]||c.name,en:c.name,legacy:true,g:'old'})),
+  ...TRYOUT_LEGACY.map(t=>({...t,legacy:true,g:'old'}))];
+const tryoutTestDef=(k,custom)=>tryoutTestDefs(custom).find(t=>t.k===k)||{k,u:'',tr:k,en:k,legacy:true,g:'old'};
 /* Which tests a sheet shows: the ones picked for it, plus any that already carry a
-   result — a test whose pick was later removed must not take its number with it. */
+   result — a test whose pick was later removed must not take its number with it. A test the
+   sheet can no longer hold (TRYOUT_SKIP) is shown only while it carries a number. */
 const tryoutPicked=t=>{
-  const picked=Array.isArray(t&&t.picked)?t.picked:TRYOUT_TESTS_DEFAULT;
-  const filled=Object.keys((t&&t.tests)||{}).filter(k=>String((t.tests||{})[k]||'').trim()!=='');
+  const tests=(t&&t.tests)||{};
+  const picked=(Array.isArray(t&&t.picked)?t.picked:TRYOUT_TESTS_DEFAULT)
+    .filter(k=>!TRYOUT_SKIP.includes(k)||tryoutHas(tests[k]));
+  const filled=Object.keys(tests).filter(k=>tryoutHas(tests[k]));
   return[...picked,...filled.filter(k=>!picked.includes(k))];
 };
-// 'sec' is a placeholder, not a label: seconds are written sn in Turkish and s in English.
-const tryoutUnit=u=>u==='sec'?(REPORT_LANG==='tr'?'sn':'s'):u;
+// 'sec' and 'rep' are placeholders, not labels: written sn / tekrar in Turkish, s / reps in English.
+const tryoutUnit=u=>u==='sec'?(REPORT_LANG==='tr'?'sn':'s'):u==='rep'?(REPORT_LANG==='tr'?'tekrar':'reps'):u;
+/* A result as one line of text — the CSV, the printouts and the roster notes read it. */
+function tryoutValText(k,v,def){
+  const Lx=(tr,en)=>REPORT_LANG==='tr'?tr:en;
+  if(!tryoutHas(v))return'';
+  const parts=tryoutPartsOf(k,v);
+  const u=def&&def.u?tryoutUnit(def.u):'';
+  if(!parts)return String(v).trim()+(u?' '+u:'');
+  return parts.filter(p=>String(v[p.s]==null?'':v[p.s]).trim()!=='')
+    .map(p=>`${Lx(p.tr,p.en)} ${String(v[p.s]).trim()}${(p.u?tryoutUnit(p.u):u)?' '+(p.u?tryoutUnit(p.u):u):''}`).join(' · ');
+}
+/* THE CANDIDATE'S RESULTS AS THE SQUAD'S FIRST TEST RECORD. "Kadroya Aktar" used to carry the
+   name, the phone and the height across and leave every number measured at the trial behind,
+   so the promoted player's Testing & Assessment page started empty on the day they joined.
+   The trial is now written into one record dated the trial day, in the shape the squad's own
+   test cards read (makeTest), its battery the tests that carried a number. A value the record
+   has no place for — a Y Balance composite, a side-less number on a bilateral test, a test the
+   club deleted — comes back in `left` as a line of text, and goes into the athlete's notes. */
+function tryoutTestRecord(cand,customIds){
+  const t=cand||{};const tests=t.tests||{};
+  const ids=customIds instanceof Set?customIds:new Set(customIds||[]);
+  const rec=makeTest('pre');
+  const day=t.date||fmt(today);
+  rec.date=day;rec.year=parseD(day).getFullYear();
+  const bat=[],left=[];
+  const s=x=>String(x==null?'':x).trim();
+  const num=x=>{const v=s(x);return v!==''&&isFinite(Number(v.replace(',','.')))?v.replace(',','.'):'';};
+  // The body measurements are the Anthropometric Measurement test of the squad's catalog.
+  ['height','weight','wingspan','bodyFat'].forEach(k=>{const v=num(t[k]);if(v){rec[k]=v;if(!bat.includes('anthro'))bat.push('anthro');}});
+  const SINGLE=['verticalJump','cmj','squatJump','dropJump','horizontalJump','tTest','shuttleRun','laneAgility'];
+  const LR={ankleDF:'ankleDF',lateralCmj:'lateralCmj',tSpine:'tSpine',copenhagen:'copenhagen',sidePlank:'sidePlank',curvedRun:'curvedRun',fiveZeroFive:'cod505'};
+  const lr=v=>({right:num(v.r),left:num(v.l)});
+  tryoutPicked(t).forEach(k=>{
+    const v=tests[k];if(!tryoutHas(v))return;
+    const obj=v&&typeof v==='object';
+    let ok=false;
+    if(!obj&&SINGLE.includes(k)&&num(v)){rec[k]=num(v);ok=true;}
+    else if(!obj&&k==='sprint'&&num(v)){rec.sprint20m={...rec.sprint20m,time:num(v)};ok=true;}
+    else if(!obj&&k==='ift3015'&&num(v)){rec.ift3015={vift:num(v)};ok=true;}
+    else if(!obj&&k==='pullUp'&&num(v)){rec.pullUp={reps:num(v),load:''};ok=true;}
+    else if(obj&&LR[k]){const o=lr(v);if(o.right||o.left){rec[LR[k]]=o;ok=true;
+      if(k==='fiveZeroFive'){const b=cod505Calc({cod505:o}).best;rec.fiveZeroFive=b!=null?String(b):'';}}}
+    else if(obj&&k==='hipRot'){const o={irR:num(v.irR),irL:num(v.irL),erR:num(v.erR),erL:num(v.erL)};
+      if(Object.values(o).some(Boolean)){rec.hipRot=o;ok=true;}}
+    else if(obj&&k==='accel'){const o={t5:num(v.t5),t10:num(v.t10)};if(o.t5||o.t10){rec.sprintSplits=o;ok=true;}}
+    else if(obj&&STR_LIFTS.includes(k)){const o={load:num(v.load),reps:num(v.reps)};if(o.load){rec[k]=o;ok=true;}}
+    else if(k.startsWith('fms_')&&FMS_PART_IDS.includes(k)){const item=k.slice(4);
+      if(obj){const o=lr(v);if(o.right||o.left){rec.fms={...rec.fms,[item]:o};ok=true;}}
+      else if(num(v)&&!TRYOUT_PARTS[k]){rec.fms={...rec.fms,[item]:num(v)};ok=true;}}
+    else if(!obj&&ids.has(k)){rec.custom={...rec.custom,[k]:s(v)};ok=true;}
+    if(ok)bat.push(k);
+    else left.push(k);
+  });
+  return{rec:{...rec,battery:bat},taken:bat.length>0,left};
+}
 function makeTryout(){
   return{id:uid(),name:'',photo:null,dateOfBirth:'',position:'',dominantHand:'',
     phone:'',email:'',city:'',school:'',prevClub:'',guardian:'',guardianPhone:'',
@@ -152,6 +257,9 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const cur=list.find(t=>t.id===sel)||null;
   const updT=patch=>cur&&upd(cur.id,patch);
   const updTest=(k,v)=>cur&&upd(cur.id,t=>({tests:{...(t.tests||{}),[k]:v}}));
+  // One part of a test with parts (a side, a load, a gate) — the other parts stay as they are.
+  const updPart=(k,part,v)=>cur&&upd(cur.id,t=>{const tests=t.tests||{};const o=tests[k];
+    return{tests:{...tests,[k]:{...(o&&typeof o==='object'?o:{}),[part]:v}}};});
   const add=()=>{const t=makeTryout();save([t,...list]);setSel(t.id);};
   const del=id=>{const t=list.find(x=>x.id===id);
     if(!confirm(Lx(`${t&&t.name?t.name:'Bu aday'} kaydı silinsin mi?`,`Delete ${t&&t.name?t.name:'this candidate'}?`)))return;
@@ -170,6 +278,11 @@ function TryoutsView({data,setData,teams,activeTeamId}){
      than sitting empty on the sheet for good. */
   const pickerList=[...catalog,...shown.filter(k=>!catalog.some(f=>f.k===k))
     .map(k=>({...tryoutTestDef(k,customTests),legacy:true}))];
+  /* The catalog's own groups, in its order (Hareket Taraması, Sıçrama…), then the coach's
+     tests and the retired ones. Empty groups are left out. */
+  const tryoutGroups=defs=>[...TEST_GROUPS.filter(g=>g.id!=='all'),{id:'old',tr:'Eski Testler',en:'Retired Tests'}]
+    .map(g=>({...g,items:defs.filter(f=>(f.legacy?'old':f.custom?'custom':(f.g||(TEST_META[f.k]||{}).g||'custom'))===g.id)}))
+    .filter(g=>g.items.length);
 
   /* --- the test catalog on this sheet --- */
   const togglePick=k=>{
@@ -177,7 +290,7 @@ function TryoutsView({data,setData,teams,activeTeamId}){
     const picked=Array.isArray(cur.picked)?cur.picked:[...TRYOUT_TESTS_DEFAULT];
     if(picked.includes(k)){
       // Dropping a test that already holds a number would throw the number away.
-      if(String((cur.tests||{})[k]||'').trim()!==''&&
+      if(tryoutHas((cur.tests||{})[k])&&
          !confirm(Lx('Bu testin girilmiş sonucu var — kaldırılsın mı?','This test already has a result — remove it anyway?')))return;
       const tests={...(cur.tests||{})};delete tests[k];
       updT({picked:picked.filter(x=>x!==k),tests});
@@ -224,21 +337,37 @@ function TryoutsView({data,setData,teams,activeTeamId}){
       if(!n&&!h)return'';
       return Lx(f.tr,f.en)+': '+[n,h?h+' cm':''].filter(Boolean).join(' · ');
     }).filter(Boolean).join('\n');
+    /* The trial's numbers become the athlete's first test record (tryoutTestRecord); the
+       ones a record has no place for are written into the notes rather than dropped. */
+    const ownIds=new Set((Array.isArray(data.customTests)?data.customTests:[]).map(c=>c.id));
+    const tr=tryoutTestRecord(cur,ownIds);
+    const leftTxt=tr.left.map(k=>{const d=tryoutTestDef(k,customTests);return Lx(d.tr,d.en)+': '+tryoutValText(k,(cur.tests||{})[k],d);}).join('; ');
     const notes=[cur.notes,cur.strengths&&Lx('Güçlü yönler: ','Strengths: ')+cur.strengths,
-      cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses,parents].filter(Boolean).join('\n');
+      cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses,parents,
+      leftTxt&&Lx('Seçme testleri: ','Tryout tests: ')+leftTxt].filter(Boolean).join('\n');
+    const tests=tr.taken?[tr.rec]:[];
+    /* The body measurements are mirrored into the measurements list the way a test taken on
+       the Testing screen is (EvaluationView.updTest), so Antropometri shows them too. */
+    const r=tr.rec;
+    const measurements=tr.taken&&r.battery.includes('anthro')
+      ?[{id:uid(),srcTest:r.id,date:r.date,height:r.height||'',weight:r.weight||'',bodyFat:r.bodyFat||'',
+         wingspan:r.wingspan||'',legLength:'',sittingHeight:'',notes:''}]:[];
     const a={id:uid(),name:nm,number:'',position:cur.position||positions[0],
       dateOfBirth:cur.dateOfBirth||'',height:cur.height||'',weight:cur.weight||'',
       phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,school:cur.school||'',
       notes:notes+(notes?'\n':'')+Lx('Seçmelerden geldi','From tryouts')+(cur.date?` (${fd(cur.date)})`:''),
       trainingAge:'',somatotype:'',constraints:'',constraintTags:[],levelTag:'',
-      injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};
+      injuries:[],measurements,wellness:[],srpeLog:[],tests,days:{}};
     /* The roster and the tryout list live in the same `data` object, so both edits go
        through ONE setData — two calls would each start from the same stale `data` and the
        second would throw the first away, which is exactly how the athlete went missing. */
     setData({...data,
       teams:data.teams.map(t=>t.id===dest.id?{...t,athletes:[...(t.athletes||[]),a]}:t),
       tryouts:list.map(t=>t.id===cur.id?{...t,status:'in',movedTo:dest.id}:t)});
-    alert(Lx(`${nm} kadroya eklendi.`,`${nm} was added to the roster.`));
+    const nT=tr.rec.battery.filter(k=>k!=='anthro').length;
+    alert(Lx(`${nm} kadroya eklendi.`,`${nm} was added to the roster.`)+(tr.taken
+      ?' '+Lx(`Seçme ölçümleri ${fd(tr.rec.date)} tarihli ilk test kaydı olarak aktarıldı${nT?` (${nT} test)`:''}.`,
+              `The tryout measurements were carried over as their first test record, dated ${fd(tr.rec.date)}${nT?` (${nT} tests)`:''}.`):''));
   };
   // One sheet per candidate, one row per sheet — the file a club actually passes around.
   const exportCsv=()=>{
@@ -253,13 +382,20 @@ function TryoutsView({data,setData,teams,activeTeamId}){
     // simply did not run it.
     // Retired tests too: a candidate measured on one still has the number, and a CSV that
     // silently drops the column loses it.
-    const testCols=tryoutTestDefs(customTests).filter(f=>list.some(t=>tryoutPicked(t).includes(f.k)));
+    const testCols=tryoutTestDefs(customTests).filter(f=>list.some(t=>tryoutPicked(t).includes(f.k)))
+      /* A test with parts is one column per part (Sağ / Sol, Yük / Tekrar…); a side-less
+         number typed before the test took sides is written in the first one. */
+      .flatMap(f=>{const parts=TRYOUT_PARTS[f.k];
+        if(!parts)return[{...f,h:Lx(f.tr,f.en)+(f.u?` (${tryoutUnit(f.u)})`:''),get:v=>v&&typeof v==='object'?'':(v||'')}];
+        return parts.map((p,i)=>{const u=p.u?tryoutUnit(p.u):f.u?tryoutUnit(f.u):'';
+          return{...f,h:`${Lx(f.tr,f.en)} ${Lx(p.tr,p.en)}`+(u?` (${u})`:''),
+            get:v=>v&&typeof v==='object'?(v[p.s]||''):(i===0?(v||''):'')};});});
     const head=[...cols.map(c=>c[1]),...TRYOUT_BODY.map(f=>Lx(f.tr,f.en)+(f.u?` (${f.u})`:'')),
-      ...testCols.map(f=>Lx(f.tr,f.en)+(f.u?` (${tryoutUnit(f.u)})`:'')),Lx('Puan','Rating'),Lx('Durum','Status'),
+      ...testCols.map(f=>f.h),Lx('Puan','Rating'),Lx('Durum','Status'),
       Lx('Güçlü Yönler','Strengths'),Lx('Gelişim Alanları','To Develop'),Lx('Notlar','Notes')];
     const esc=v=>{const s=String(v==null?'':v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
     const rows=list.map(t=>[...cols.map(c=>t[c[0]]||''),...TRYOUT_BODY.map(f=>t[f.k]||''),
-      ...testCols.map(f=>(t.tests||{})[f.k]||''),t.rating||'',Lx(tryoutStatus(t.status).tr,tryoutStatus(t.status).en),
+      ...testCols.map(f=>f.get((t.tests||{})[f.k])),t.rating||'',Lx(tryoutStatus(t.status).tr,tryoutStatus(t.status).en),
       t.strengths||'',t.weaknesses||'',t.notes||''].map(esc).join(';'));
     const blob=new Blob(['﻿'+[head.map(esc).join(';'),...rows].join('\r\n')],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -287,6 +423,10 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const field=(label,val,on,extra)=>(<div className="tryo-f" {...(extra||{})}>
     <label>{label}</label><input value={val||''} onChange={e=>on(e.target.value)}/></div>);
   const filterOn=ageMin!==''||ageMax!==''||flt!=='all'||q.trim()!=='';
+  // The filter in words, printed under the list's title.
+  const listFilterTxt=()=>[flt!=='all'?Lx(tryoutStatus(flt).tr,tryoutStatus(flt).en):'',
+    ageMin!==''||ageMax!==''?Lx('Yaş ','Age ')+(ageMin||'…')+'–'+(ageMax||'…'):'',
+    q.trim()?`“${q.trim()}”`:''].filter(Boolean).join(' · ');
 
   return(<div className="tryo-page">
     <PageHero title={Lx('Seçmeler','Tryouts')}
@@ -297,6 +437,9 @@ function TryoutsView({data,setData,teams,activeTeamId}){
               {v:counts.in||0,l:Lx('Kabul','Accepted')},
               {v:ages.length?`${Math.min(...ages)}–${Math.max(...ages)}`:'—',l:Lx('Yaş','Age')}]}>
       <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>CSV</button>
+      {/* The list as it is filtered on screen — a U14 session prints its own sheet. */}
+      <button className="btn sm sec" onClick={()=>printTryoutList(filtered,{customTests,filterTxt:filterOn?listFilterTxt():''})}
+        disabled={!filtered.length} title={Lx('Ekranda süzülen adayların A4 yatay listesi','An A4 landscape list of the candidates filtered on screen')}>{Lx('Liste Çıktısı','Print List')}</button>
       <button className="tryo-add" onClick={add}>{Lx('Aday Ekle','Add Candidate')}</button>
     </PageHero>
     <div className="tryo-body">
@@ -370,7 +513,9 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                 </select>
                 <button className="btn sm white" onClick={promote}>{Lx('Kadroya Aktar','Move to Roster')} →</button>
               </div>
-              <button className="btn sm danger" onClick={()=>del(cur.id)}>✕</button>
+              <button className="btn sm sec" onClick={()=>printTryoutSheet(cur,{customTests,teamName:moveTeam&&moveTeam.setup.teamName})}
+                title={Lx('Adayın A4 seçme formu','The candidate’s A4 tryout sheet')}>{Lx('Çıktı Al','Print')}</button>
+              <button className="btn sm danger" onClick={()=>del(cur.id)} title={Lx('Adayı sil','Delete candidate')}>✕</button>
             </div>
           </div>
 
@@ -396,7 +541,10 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                 <input type="date" value={cur.dateOfBirth||''} onChange={e=>updT({dateOfBirth:e.target.value})}/></div>
               <div className="tryo-f"><label>{Lx('Pozisyon','Position')}</label>
                 <select value={cur.position||''} onChange={e=>updT({position:e.target.value})}>
-                  <option value="">—</option>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]||p}</option>)}
+                  {/* A position the destination squad's sport does not list (a candidate typed in
+                      under another team, an old PG) still shows, rather than reading as blank. */}
+                  <option value="">—</option>{[...positions,...(cur.position&&!positions.includes(cur.position)?[cur.position]:[])]
+                    .map(p=><option key={p} value={p}>{POS_FULL[p]||p}</option>)}
                 </select></div>
               <div className="tryo-f"><label>{Lx('Kullandığı El / Ayak','Dominant Side')}</label>
                 <select value={cur.dominantHand||''} onChange={e=>updT({dominantHand:e.target.value})}>
@@ -444,26 +592,33 @@ function TryoutsView({data,setData,teams,activeTeamId}){
             </div></div>
           </div>
 
-          {/* Only the tests this trial actually ran. The drawer holds the rest. */}
+          {/* Only the tests this trial actually ran, grouped as the squad's catalog groups
+              them. The drawer holds the rest. */}
           <div className="tryo-sec">
             <div className="tryo-sec-h"><span className="ic"><TIc k="chart" size={17}/></span>{Lx('Test Sonuçları','Test Results')}
-              <span className="cnt">{shown.filter(k=>String((cur.tests||{})[k]||'').trim()!=='').length}/{shown.length}</span>
+              <span className="cnt">{shown.filter(k=>tryoutHas((cur.tests||{})[k])).length}/{shown.length} {Lx('girildi','entered')}</span>
               <button className={'tryo-pickbtn'+(picker?' on':'')} onClick={()=>setPicker(!picker)}>
                 {picker?Lx('Bitti','Done'):Lx('Test Seç / Ekle','Choose / Add Tests')}</button>
             </div>
             {picker&&<div className="tryo-picker">
-              <div className="tryo-picker-h">{Lx('Bu adayın sayfasında hangi testler dursun?','Which tests should this candidate’s sheet carry?')}</div>
-              <div className="tryo-picker-g">
-                {pickerList.map(f=>{const on=shown.includes(f.k);
-                  return(<button key={f.k} className={'tryo-pick'+(on?' on':'')} onClick={()=>togglePick(f.k)}>
-                    <span className="bx">{on?'✓':'＋'}</span>
-                    <span className="nm">{Lx(f.tr,f.en)}</span>
-                    {f.u&&<span className="u">{tryoutUnit(f.u)}</span>}
-                    {f.legacy&&<span className="u" title={Lx('Eski test — katalogda yok','A retired test — no longer in the catalog')}>{Lx('eski','old')}</span>}
-                    {f.custom&&<span className="x" title={Lx('Testi kulübün katalogundan sil','Delete this test from the club\'s catalog')}
-                      onClick={e=>{e.stopPropagation();delCustomTest(f.k);}}>✕</span>}
-                  </button>);})}
-              </div>
+              <div className="tryo-picker-h">{Lx('Bu adayın sayfasında hangi testler dursun?','Which tests should this candidate’s sheet carry?')}
+                <span>{Lx('Sağ/sol testler iki kutuyla gelir. Antropometri “Fiziksel Ölçümler”de; çevre, postür ve Thomas testi seçmelik değil.',
+                          'Right/left tests come with two boxes. Anthropometry is under “Body Measurements”; circumferences, posture and the Thomas test are not trial tests.')}</span></div>
+              {tryoutGroups(pickerList).map(g=><div key={g.id} className="tryo-pick-grp">
+                <div className="tryo-pick-gh">{Lx(g.tr,g.en)}<span>{g.items.filter(f=>shown.includes(f.k)).length}/{g.items.length}</span></div>
+                <div className="tryo-picker-g">
+                  {g.items.map(f=>{const on=shown.includes(f.k);
+                    return(<button key={f.k} className={'tryo-pick'+(on?' on':'')} onClick={()=>togglePick(f.k)}>
+                      <span className="bx">{on?'✓':''}</span>
+                      <span className="nm">{Lx(f.tr,f.en)}</span>
+                      {TRYOUT_PARTS[f.k]===TRYOUT_LR&&<span className="u">{Lx('S/S','R/L')}</span>}
+                      {f.u&&<span className="u">{tryoutUnit(f.u)}</span>}
+                      {f.legacy&&<span className="u" title={Lx('Eski test — katalogda yok','A retired test — no longer in the catalog')}>{Lx('eski','old')}</span>}
+                      {f.custom&&<span className="x" title={Lx('Testi kulübün katalogundan sil','Delete this test from the club\'s catalog')}
+                        onClick={e=>{e.stopPropagation();delCustomTest(f.k);}}>✕</span>}
+                    </button>);})}
+                </div>
+              </div>)}
               <div className="tryo-picker-add">
                 <input placeholder={Lx('Kendi testin (ör. Serbest Atış %)','Your own test (e.g. Free-throw %)')}
                   value={newTest.name} onChange={e=>setNewTest({...newTest,name:e.target.value})}
@@ -477,14 +632,30 @@ function TryoutsView({data,setData,teams,activeTeamId}){
             <div className="tryo-sec-b">
               {shown.length===0&&<div className="empty-st" style={{padding:'18px 10px',margin:0}}>
                 {Lx('Bu adaya henüz test seçilmedi — "Test Seç / Ekle" ile başla.','No tests chosen for this candidate yet — start with "Choose / Add Tests".')}</div>}
-              {shown.length>0&&<div className="tryo-fields">
-                {shown.map(k=>{const f=tryoutTestDef(k,customTests);
-                  return(<div key={k} className={'tryo-f'+(f.u?' tryo-t':'')}>
-                    <label>{Lx(f.tr,f.en)}</label>
-                    <input inputMode="decimal" placeholder="—" value={(cur.tests||{})[k]||''} onChange={e=>updTest(k,e.target.value)}/>
-                    {f.u&&<span className="tryo-t-u">{tryoutUnit(f.u)}</span>}
-                  </div>);})}
-              </div>}
+              {tryoutGroups(shown.map(k=>tryoutTestDef(k,customTests))).map(g=><div key={g.id} className="tryo-tgrp">
+                <div className="tryo-tgrp-h">{Lx(g.tr,g.en)}</div>
+                <div className="tryo-tcs">
+                  {g.items.map(f=>{const k=f.k;const v=(cur.tests||{})[k];const parts=tryoutPartsOf(k,v);
+                    const unit=f.u?tryoutUnit(f.u):'';const rd=tryoutReadout(k,v);
+                    return(<div key={k} className={'tryo-tc'+(tryoutHas(v)?' done':'')+(parts&&parts.length>2?' wide':'')}>
+                      <div className="tryo-tc-h"><span className="nm">{Lx(f.tr,f.en)}</span>
+                        {/* The unit sits inside each box, and each side is labelled over its own. */}
+                        {f.legacy&&<span className="u old">{Lx('eski','old')}</span>}</div>
+                      {parts
+                        ?<div className={'tryo-tc-in n'+parts.length}>
+                          {parts.map(p=><label key={p.s} className="tryo-tc-f"><span>{Lx(p.tr,p.en)}</span>
+                            <input inputMode="decimal" placeholder="—" value={(v&&typeof v==='object'?v[p.s]:'')||''}
+                              onChange={e=>updPart(k,p.s,e.target.value)} aria-label={`${Lx(f.tr,f.en)} ${Lx(p.tr,p.en)}`}/>
+                            {(p.u||f.u)&&<em>{tryoutUnit(p.u||f.u)}</em>}</label>)}
+                        </div>
+                        :<div className="tryo-tc-in n1"><label className="tryo-tc-f">
+                          <input inputMode="decimal" placeholder="—" value={typeof v==='string'?v:''}
+                            onChange={e=>updTest(k,e.target.value)} aria-label={Lx(f.tr,f.en)}/>
+                          {unit&&<em>{unit}</em>}</label></div>}
+                      {rd&&<div className={'tryo-tc-r '+(rd.lvl||'')}><span>{rd.l}</span><b>{rd.v}</b></div>}
+                    </div>);})}
+                </div>
+              </div>)}
             </div>
           </div>
 

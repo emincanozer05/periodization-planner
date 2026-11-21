@@ -98,7 +98,8 @@ function loadApp() {
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
     'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
     'guardSessions', 'restoreSessionsFrom', 'sesCount', 'liftLocalMedia', 'swapStrings', 'indivSig', 'indivSigRaw', 'indivSigCompact', 'indivHandEdited', 'hasPendingMedia', 'syncSizeReport', 'fmsReadPdf',
-    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems', 'tdItems', 'TEST_CATALOG', 'CMP_METRICS', 'CMP_METRIC_TEST'];
+    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvNormDir', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES', 'EX_EXTRA_FILTERS', 'ptLibFiling', 'ptAlignToLib', 'setExerciseTags', 'registerLibTags', 'getLibItems', 'tdItems', 'TEST_CATALOG', 'CMP_METRICS', 'CMP_METRIC_TEST',
+    'tryoutTestRecord', 'tryoutPicked', 'tryoutHas', 'tryoutReadout', 'tryoutValText', 'tryoutTestCatalog', 'tryoutTestDef', 'testTook'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1979,6 +1980,41 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       A.liftPRsOf(hist, hist.liftLog[1]).length === 1 && A.liftPRsOf(hist, hist.liftLog[2]).length === 0 && A.liftPRsOf(hist, hist.liftLog[0]).length === 0);
     const sg = A.liftSuggestRm(hist);
     check('1RM önerisi: ≤6 tekrarlı en iyi sette Epley, 2.5 kg\'a yuvarlı', sg['back squat'] && sg['back squat'].kg === 122.5, JSON.stringify(sg));
+  }
+
+  /* ─── Seçmeler: test kataloğu, sağ/sol değerler, kadroya aktarımda testler ── */
+  {
+    const cat = A.tryoutTestCatalog([]).map(c => c.k);
+    check('seçme kataloğu: tek sayıyla girilemeyen testler (antropometri, çevre, postür, Thomas) yok',
+      !['anthro', 'circ', 'posture', 'thomas'].some(k => cat.includes(k)) && cat.includes('curvedRun'), cat.join(','));
+    check('seçme kataloğu: Kavisli Koşu saniyeyle', A.tryoutTestDef('curvedRun', []).u === 'sec');
+    const cand = { id: 'c1', name: 'Aday', date: '2026-11-15', height: '162', weight: '48', wingspan: '', bodyFat: '12,5',
+      picked: ['verticalJump', 'sprint', 'anthro', 'curvedRun', 'fiveZeroFive', 'benchPress', 'accel', 'fms_deepSquat', 'fms_hurdleStep', 'yBalance', 'ankleDF', 'ct_x', 'shuttleRun'],
+      tests: { verticalJump: '42', sprint: '3,41', curvedRun: { r: '5.2', l: '5.8' }, fiveZeroFive: { r: '2.61', l: '2.49' },
+        benchPress: { load: '40', reps: '5' }, accel: { t5: '1.1', t10: '1.9' }, fms_deepSquat: '2', fms_hurdleStep: { r: '2', l: '3' },
+        yBalance: '92', ankleDF: '38', ct_x: '7', shuttleRun: { r: '', l: '' } } };
+    const shown = A.tryoutPicked(cand);
+    check('boş seçilmiş "anthro" sayfada gösterilmiyor; boş parça nesnesi değer sayılmıyor',
+      !shown.includes('anthro') && shown.includes('shuttleRun') && !A.tryoutHas(cand.tests.shuttleRun) && A.tryoutHas(cand.tests.curvedRun), shown.join(','));
+    const { rec, taken, left } = A.tryoutTestRecord(cand, new Set(['ct_x']));
+    check('kadroya aktarım: seçme tarihli tek test kaydı', taken && rec.date === '2026-11-15' && rec.period === 'pre' && rec.year === 2026, JSON.stringify({ d: rec.date, p: rec.period }));
+    check('kadroya aktarım: vücut ölçüleri antropometriye (virgül noktaya)', rec.height === '162' && rec.weight === '48' && rec.bodyFat === '12.5' && rec.battery.includes('anthro'));
+    check('kadroya aktarım: tek sayılı testler kayda', rec.verticalJump === '42' && rec.sprint20m.time === '3.41');
+    check('kadroya aktarım: sağ/sol testler kayıt biçiminde', rec.curvedRun.right === '5.2' && rec.curvedRun.left === '5.8'
+      && rec.cod505.right === '2.61' && rec.fiveZeroFive === '2.49', JSON.stringify({ c: rec.curvedRun, cod: rec.cod505, f: rec.fiveZeroFive }));
+    check('kadroya aktarım: kuvvet, ivmelenme, FMS, özel test', rec.benchPress.load === '40' && rec.benchPress.reps === '5'
+      && rec.sprintSplits.t5 === '1.1' && rec.fms.deepSquat === '2' && rec.fms.hurdleStep.right === '2' && rec.custom.ct_x === '7');
+    check('kadroya aktarım: batarya yalnızca değeri olan testler', ['verticalJump', 'sprint', 'curvedRun', 'fiveZeroFive', 'benchPress', 'accel', 'fms_deepSquat', 'fms_hurdleStep', 'ct_x'].every(k => rec.battery.includes(k))
+      && !rec.battery.includes('shuttleRun') && !rec.battery.includes('yBalance'), rec.battery.join(','));
+    check('kadroya aktarım: kayda sığmayan değerler (Y Balance kompoziti, tarafsız ayak bileği) geri dönüyor', left.includes('yBalance') && left.includes('ankleDF') && left.length === 2, left.join(','));
+    check('kadroya aktarım: test kartları kaydı okuyor (testTook)', A.testTook(rec, 'curvedRun') && A.testTook(rec, 'benchPress') && A.testTook(rec, 'verticalJump'));
+    const rd = A.inTurkish(() => A.tryoutReadout('curvedRun', cand.tests.curvedRun));
+    check('seçme okuması: süre testinde asimetri hızlı tarafa göre', rd && rd.v === '%11.5' && rd.lvl === 'warn', JSON.stringify(rd));
+    const e1 = A.tryoutReadout('benchPress', cand.tests.benchPress);
+    check('seçme okuması: kuvvette Epley tahmini 1RM', e1 && e1.v === '46.7 kg', JSON.stringify(e1));
+    check('seçme değeri metin olarak (CSV/çıktı)', A.inTurkish(() => A.tryoutValText('curvedRun', cand.tests.curvedRun, A.tryoutTestDef('curvedRun', []))) === 'Sağ 5.2 sn · Sol 5.8 sn');
+    const none = A.tryoutTestRecord({ name: 'Boş', tests: {} }, []);
+    check('kadroya aktarım: ölçümü olmayan aday için test kaydı açılmıyor', !none.taken && none.left.length === 0);
   }
 
   /* ─── seans koruması: eski bir kopya seansları topluca silemez ──────────── */
