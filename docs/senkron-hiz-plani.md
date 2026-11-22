@@ -42,7 +42,10 @@ gelen güncellemede bütün ağacı yeni nesnelerle kuruyor.
       söylüyorsa (`455` → `ownSrv === false`, yarım kalmış taşıma) eski davranış sürer.
 - [x] **v2'de günlük bulut yedeği:** eski senkronun ortak atasını bekliyordu, v2'de o yalnızca açılış
       yarışında doluyordu. Artık v2'de sahip + senkron yeşilken alınır; başka kulübü açan üye almaz.
-- [ ] `migrate` belirlenimci: okurken `Date.now()` / `uid()` üretmesin (`070`).
+- [x] `migrate` belirlenimci (`070` → `detId`): okurken eksik kimlik saatten/rastgeleden değil kaydın yerinden
+      ve içeriğinden türer (takım, sezon, eski bölümlü gün, aynalanan ölçüm satırı, kadro, araştırma, egzersiz,
+      kayıtlı aralık, boş hesaptaki varsayılan takım); `addedAt` uydurulmaz. Ayrıca `migrate` kendi çıktısında
+      hiçbir şey değiştirmez (eski bölümlü günün egzersiz alanları ilk okumada tamamlanıyor). validator-test: +7 kontrol.
 - [ ] Bayrak altyapısı (G2), uzaktan kapatma anahtarı (G3), ölçüm sayaçları (tanı penceresi).
 - [ ] Büyük örnek veri + `tools/sync-bench.js` + eşdeğerlik test düzeneği (artımlı ≡ tam).
 
@@ -86,4 +89,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | Tarih | Faz | Ne yapıldı | PR |
 |---|---|---|---|
 | 2026-11-22 | — | Plan, ölçüm | — |
-| 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | bu PR |
+| 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | #791 |
+| 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | bu PR |

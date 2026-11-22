@@ -1339,6 +1339,47 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !m.exercises.some(e => 'review' in e), JSON.stringify(m.exercises));
   }
 
+  /* Senkron hız planı R0: migrate her okumada çalışıyor (her cihaz, her gelen güncelleme). Okurken
+     saat ya da rastgele kimlik üretirse aynı buluttan iki cihaz farklı veri çıkarır: ikisi de "değişti"
+     sanıp farklı kimliklerle yazar (aynı test için iki ölçüm satırı, iki farklı sezon kimliği…). */
+  group('Ek — migrate belirlenimci: aynı girdi → aynı çıktı, ikinci çalıştırma bir şey değiştirmez');
+  {
+    const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']'
+      : v && typeof v === 'object' ? '{' + Object.keys(v).filter(k => v[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}'
+      : String(JSON.stringify(v));   // undefined alan JSON'da ve Firestore'da yazılmaz: yok sayılır (smCanon gibi)
+    const raw = {
+      teams: [
+        { id: 'T1', setup: { teamName: 'A' }, days: {
+            '2026-01-05': { sections: { warmup: [{ name: 'Jog' }], main: [{ name: 'Squat' }] }, loadType: 'Strength' },
+            '2026-01-06': { sessions: [{ id: 's1', name: 'Kuvvet', sections: { main: [{ name: 'RDL' }] } }] } },
+          athletes: [{ id: 'a1', name: 'Ali', tests: [{ id: 'tt1', date: '2026-01-02', height: 190, weight: 85 }] }] },   // sezonu yok
+        { setup: { teamName: 'Kimliksiz' }, athletes: [] },                                                      // kimliği yok
+      ],
+      exercises: [{ name: 'Plank' }, { name: 'Plank' }, { id: 'keep', name: 'Squat' }, { name: 'Lunge', type: 'Knee Dominant' }],
+      researches: [{ title: 'Makale', url: 'https://x' }, { id: 'r9', title: 'Eski', addedAt: 5 }],
+    };
+    const firstDiff = (x, y, p) => { if (canon(x) === canon(y)) return null; if (!x || !y || typeof x !== 'object' || typeof y !== 'object') return p + ': ' + canon(x).slice(0, 80) + ' ≠ ' + canon(y).slice(0, 80);
+      for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) { const r = firstDiff(x[k], y[k], p + '.' + k); if (r) return r; } return p + ' (sıra)'; };
+    const run = () => A.migrate(JSON.parse(JSON.stringify(raw)));
+    const m1 = run();
+    await new Promise(r => setTimeout(r, 5));   // uid() saat + rastgele: farklı anda yeniden
+    const m2 = run();
+    check('migrate: aynı girdi iki kez → birebir aynı çıktı (kimlik, saat üretilmiyor)', canon(m1) === canon(m2), firstDiff(m1, m2, ''));
+    const m3 = A.migrate(JSON.parse(JSON.stringify(m1)));
+    check('migrate: çıktısına yeniden uygulanınca hiçbir şey değişmiyor', canon(m3) === canon(m1), firstDiff(m1, m3, ''));
+    const exIds = m1.exercises.map(e => e.id);
+    check('migrate: kimliksiz egzersizler benzersiz kimlik alıyor, var olan kimlik korunuyor',
+      new Set(exIds).size === exIds.length && exIds.every(Boolean) && exIds.includes('keep'), JSON.stringify(exIds));
+    const t1 = m1.teams.find(t => t.id === 'T1'), ms = t1.athletes[0].measurements;
+    check('migrate: testten aynalanan ölçüm satırı tek ve testine bağlı', ms.length === 1 && ms[0].srcTest === 'tt1' && !!ms[0].id, JSON.stringify(ms));
+    check('migrate: sezonu olmayan takımın sezon kimliği takıma bağlı ve sabit', t1.seasons.length === 1 && t1.activeSeasonId === t1.seasons[0].id);
+    check('migrate: kimliksiz takım ve araştırma kimlik alıyor; var olan addedAt korunuyor',
+      m1.teams.every(t => !!t.id) && new Set(m1.teams.map(t => t.id)).size === 2 &&
+      m1.researches.every(r => !!r.id) && m1.researches.find(r => r.id === 'r9').addedAt === 5);
+    const single = () => A.migrate({ setup: { teamName: 'Tek' }, days: {}, athletes: [] });   // en eski tek takımlı biçim
+    check('migrate: tek takımlı eski biçim de belirlenimci', canon(single()) === canon(single()));
+  }
+
   group('Ek — Hareket paterni seçimi (Revize 12): form → JSON → denetim');
   {
     const raw = { must: ['Trap Bar Jump'], avoid: ['derin squat'],
