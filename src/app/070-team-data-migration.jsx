@@ -1,9 +1,11 @@
 /* =========================================================
    DEFAULT DATA & MIGRATION
    ========================================================= */
-function makeDefaultTeam(){
-  const sid=uid();
-  return{id:uid(),
+/* fixedId: migrate'in okurken kurduğu takım (bkz. detId) — her cihazda aynı kimlik. Verilmezse yeni bir
+   takım (kullanıcının eylemi ya da ekrandaki yer tutucu): rastgele kimlik. */
+function makeDefaultTeam(fixedId){
+  const sid=fixedId?'sn_'+fixedId:uid();
+  return{id:fixedId||uid(),
     setup:{sport:'Basketball',teamName:'Example BC Senior Squad',athleteCount:14,
       seasonStart:'2026-08-03',seasonEnd:'2027-05-30',
       competitions:[{date:'2026-10-04',name:'Regular Season Opener'},{date:'2026-12-28',name:'Mid-Season Cup'},
@@ -117,16 +119,23 @@ function rosterByName(t){
   return sorted===list?t:{...t,athletes:sorted};
 }
 
-function migrateTeam(t){
-  if(!t.id)t.id=uid();
+/* BELİRLENİMCİ KİMLİK (senkron hız planı R0). migrate her okumada çalışır: her cihazda, buluttan gelen
+   her güncellemede. Eksik bir kimliği okurken uid() (saat + rastgele) ya da Date.now() ile doldurmak,
+   aynı buluttan iki cihazın FARKLI veri çıkarması demekti: ikisi de "değişti" sanıp kendi kimliğiyle
+   yazıyordu (aynı test için iki ayrı ölçüm satırı, iki ayrı sezon kimliği…). Artık eksik kimlik kaydın
+   yerinden ve içeriğinden türer: aynı girdi her cihazda, her seferinde aynı çıktıyı verir. Yeni kayıt
+   oluşturan ekranlar (kullanıcının eylemi) uid() kullanmaya devam eder; bu yalnızca okuma yolu. */
+const detId=(pfx,s)=>pfx+compHash(String(s));
+function migrateTeam(t,i){
+  if(!t.id)t.id=detId('t_',(i||0)+'|'+JSON.stringify(t.setup||null));
   if(!t.setup)t.setup=makeDefaultTeam().setup;
   if(!('periods'in t.setup))t.setup.periods=null;
   if(!t.days)t.days={};if(!t.weekOverrides)t.weekOverrides={};if(!t.athletes)t.athletes=[];
   /* Teams saved before the roster had a bench keep one: an empty staff list. */
-  t.staff=Array.isArray(t.staff)?t.staff.map(normStaff):[];
+  t.staff=Array.isArray(t.staff)?t.staff.map((m,j)=>normStaff(m&&m.id?m:{...(m||{}),id:detId('st_',t.id+'|'+j+'|'+JSON.stringify(m||null))})):[];
   /* Teams saved before seasons existed hold exactly one season — the one in t.setup. */
   if(!t.seasonData)t.seasonData={};
-  if(!Array.isArray(t.seasons)||!t.seasons.length)t.seasons=[{id:uid()}];
+  if(!Array.isArray(t.seasons)||!t.seasons.length)t.seasons=[{id:'sn_'+t.id}];
   if(!t.seasons.some(sn=>sn.id===t.activeSeasonId))t.activeSeasonId=t.seasons[0].id;
   delete t.seasonData[t.activeSeasonId];
   // Per-team form-sync config (each team connects its own Tally forms via a Worker).
@@ -140,18 +149,23 @@ function migrateTeam(t){
     const d=t.days[k];if(!d)continue;
     if(d.sections&&!d.sessions){
       const blocks=[];
-      if(d.sections.warmup?.length)blocks.push({id:uid(),name:'Warm-up',exercises:d.sections.warmup});
-      if(d.sections.main?.length)blocks.push({id:uid(),name:'Main Phase',exercises:d.sections.main});
-      if(d.sections.cooldown?.length)blocks.push({id:uid(),name:'Cool-down',exercises:d.sections.cooldown});
-      t.days[k]={date:k,sessions:[{id:uid(),name:d.loadType||'Workout',time:d.time||'17:00',loadType:'Mechanical load',
+      const sid='ses_'+t.id+'_'+k;
+      if(d.sections.warmup?.length)blocks.push({id:sid+'_wu',name:'Warm-up',exercises:d.sections.warmup});
+      if(d.sections.main?.length)blocks.push({id:sid+'_main',name:'Main Phase',exercises:d.sections.main});
+      if(d.sections.cooldown?.length)blocks.push({id:sid+'_cd',name:'Cool-down',exercises:d.sections.cooldown});
+      t.days[k]={date:k,sessions:[{id:sid,name:d.loadType||'Workout',time:d.time||'17:00',loadType:'Mechanical load',
         purpose:d.purpose||'Technical',duration:d.duration||60,sRPE:d.sRPE||'',au:'',blocks,notes:d.notes||''}],dailyNotes:''};
-    } else if(d.sessions){
-      d.sessions=d.sessions.map(s=>{
+    }
+    /* Çevrilen gün de aşağıdaki normalleştirmeden geçer: eskiden egzersizlerin varsayılan alanları ancak
+       İKİNCİ okumada ekleniyordu, yani aynı veri her cihazda iki turda değişip iki kez yazılıyordu. */
+    const dd=t.days[k];
+    if(dd.sessions){
+      dd.sessions=dd.sessions.map((s,si)=>{
         if(s.sections&&!s.blocks){
-          const blocks=[];
-          if(s.sections.warmup?.length)blocks.push({id:uid(),name:'Warm-up',exercises:s.sections.warmup});
-          if(s.sections.main?.length)blocks.push({id:uid(),name:'Main Phase',exercises:s.sections.main});
-          if(s.sections.cooldown?.length)blocks.push({id:uid(),name:'Cool-down',exercises:s.sections.cooldown});
+          const blocks=[],bid=(s.id||('ses_'+t.id+'_'+k+'_'+si));
+          if(s.sections.warmup?.length)blocks.push({id:bid+'_wu',name:'Warm-up',exercises:s.sections.warmup});
+          if(s.sections.main?.length)blocks.push({id:bid+'_main',name:'Main Phase',exercises:s.sections.main});
+          if(s.sections.cooldown?.length)blocks.push({id:bid+'_cd',name:'Cool-down',exercises:s.sections.cooldown});
           s={...s,blocks};
         }
         if(!s.blocks)s.blocks=[];
@@ -190,7 +204,7 @@ function migrateTeam(t){
       const hasAnthro=['height','weight','wingspan','bodyFat','legLength','sittingHeight'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
       const exIdx=measurements.findIndex(m=>m.srcTest===tt.id);
       if(hasAnthro&&tt.date){
-        const rec={id:exIdx>=0?measurements[exIdx].id:uid(),srcTest:tt.id,date:tt.date,
+        const rec={id:exIdx>=0?measurements[exIdx].id:(tt.id?'m_'+tt.id:detId('m_',a.id+'|'+tt.date+'|'+JSON.stringify(tt))),srcTest:tt.id,date:tt.date,
           height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',sittingHeight:tt.sittingHeight||'',
           notes:exIdx>=0?(measurements[exIdx].notes||''):''};
         if(exIdx>=0)measurements[exIdx]={...measurements[exIdx],...rec};else measurements.push(rec);
@@ -272,13 +286,13 @@ function migrateTeam(t){
   return t;
 }
 function migrate(data){
-  if(!data)return makeDefault();
+  if(!data){const t=makeDefaultTeam('t_default');return{activeTeamId:t.id,teams:[t],templates:[]};}
   // Old single-team root structure → multi-team
   if(data.setup&&!data.teams){
-    const t={id:uid(),setup:data.setup,days:data.days||{},weekOverrides:data.weekOverrides||{},athletes:data.athletes||[]};
+    const t={id:'t_legacy',setup:data.setup,days:data.days||{},weekOverrides:data.weekOverrides||{},athletes:data.athletes||[]};
     data={activeTeamId:t.id,teams:[t]};
   }
-  if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam()];
+  if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam('t_default')];
   data.teams=data.teams.map(migrateTeam);
   /* Programların uzun parmak izleri kısa özete (bkz. indivSigCompact): bir hesapta verinin %81'i bu
      alandı. Her okumada çalışır — eski sürümle açık kalmış bir cihaz yine uzun yazabilir — ama
@@ -322,9 +336,9 @@ function migrate(data){
   /* The assistant knowledge database is gone; a workspace that still carries it drops it. */
   delete data.knowledge;
   if(!Array.isArray(data.researches))data.researches=[];
-  data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
+  data.researches=data.researches.map((r,i)=>({id:r.id||detId('r_',i+'|'+(r.url||'')+'|'+(r.title||'')),title:r.title||'',url:r.url||'',doi:r.doi||'',
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
-    journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
+    journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||0}));
   if(!Array.isArray(data.savedResearch))data.savedResearch=[];
   if(!Array.isArray(data.templates))data.templates=[];
   data.templates=data.templates.map(t=>{const s=t.session||{};
@@ -333,6 +347,8 @@ function migrate(data){
   // The Interval Timer's work/rest block, its saved intervals and the player's settings
   // ride along with the rest of the workspace, so an interval set up on the laptop is
   // there on the phone.
+  if(data.interval&&Array.isArray(data.interval.saved))
+    data.interval={...data.interval,saved:data.interval.saved.map((x,j)=>x&&!x.id?{...x,id:detId('iv_',j+'|'+JSON.stringify(x))}:x)};
   data.interval=normInterval(data.interval);
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
@@ -340,7 +356,10 @@ function migrate(data){
      the pattern / execution an exercise was tagged with and the plan picture put on a
      program row are written onto the library entry, and rebuilding it from a whitelist
      threw both away the next time the workspace was opened. */
-  data.exercises=data.exercises.map(e=>({...e,id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
+  /* Kimliksiz egzersiz içeriğinin özetini alır; birebir aynı iki kart sırasıyla _2, _3… ile ayrılır. */
+  const exSeen={};
+  const exId=e=>{const b=detId('ex_',JSON.stringify(e));const n=exSeen[b]=(exSeen[b]||0)+1;return n>1?b+'_'+n:b;};
+  data.exercises=data.exercises.map(e=>({...e,id:e.id||exId(e),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}))
     /* Hip / Knee Dominant: the old single "Contraction Type" list carried Push and Pull
        beside Eccentric and Isometric. Push / Pull are the direction of the load and now
