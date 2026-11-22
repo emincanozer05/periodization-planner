@@ -41411,6 +41411,23 @@ function useCloudSync(data,setData){
   const v2=useStoreV2({user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready});
   const v2On=v2.active;
   const v2Ref=useRef(false);v2Ref.current=v2On;
+  /* ESKİ YAPI TAŞINMIŞSA ESKİ SENKRON DEVREDER (senkron hız planı R0).
+     v2 bayrağı (workspaces/{uid}) sunucudan gelene kadar eski dinleyici kalkıyor ve taşınmış bir
+     hesapta eski yapının DONMUŞ JSON'unu (taşımadan önceki hâli) ekrana koyuyordu: yeni bir cihazda
+     birkaç saniye eski veri görünüyor, o arada yapılan düzenleme kurallarca reddediliyor, sonra v2
+     ekranı eziyordu. Artık eski dinleyici manifestte `migratedTo` görünce hiçbir şey uygulamaz,
+     yazmaz ve durur (legacyLock); yeni yapı açılınca o devralır. Tek istisna: sunucu çalışma alanının
+     taşınMAdığını söylüyorsa (taşıma kilitten sonra yarıda kalmış) eski veri bugünkü gibi gösterilir —
+     yazımları kurallar zaten reddeder. Bu bekleme süresince ekran salt okunurdur (v2.hold, 690). */
+  const[legacyLock,setLegacyLock]=useState(false);
+  const legacyLockRef=useRef(false);
+  const ownSrvRef=useRef(null);ownSrvRef.current=v2.ownSrv;
+  const legacyHold=legacyLock&&v2.ownSrv!==false;
+  const legacyOff=v2On||legacyHold;     // eski dinleyici, yazıcı, boşaltma ve gözcü bu true iken durur
+  const offRef=useRef(false);offRef.current=legacyOff;
+  const v2OwnerRef=useRef(false);v2OwnerRef.current=v2On&&v2.role==='owner';
+  const lockUid=user&&user.uid;
+  useEffect(()=>{legacyLockRef.current=false;setLegacyLock(false);},[lockUid]);   // kilit hesaba ait
   useEffect(()=>{
     if(typeof window==='undefined'||!window.addEventListener)return;
     const act=()=>{userActAt.current=Date.now();};
@@ -41579,7 +41596,9 @@ function useCloudSync(data,setData){
      reddedildiğinde). Buluttaki hâl bizim kendi yazımımızsa ya da içeriği zaten elimizdeyse
      birleştirilecek bir şey yoktur: yalnızca hangi rev'in üstüne yazdığımız güncellenir. */
   const pullMerge=async(fb,uid)=>{
+    if(offRef.current)return;
     const sv=await readLatest(fb,uid);
+    if(offRef.current||legacyHandOff(sv.migratedTo))return;
     if(sv.json==null){if(sv.found)waitThenHeal(fb,uid);return;}
     lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;
     if(sv.json===lastSynced.current||sv.json===ancestor.current||myRevs.current.has(sv.rev)){
@@ -41618,7 +41637,7 @@ function useCloudSync(data,setData){
 
   // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
   const writeNow=async(urgent)=>{
-    if(v2Ref.current)return;   // yeni yapı (455-store-v2): eski manifest artık salt okunur
+    if(offRef.current)return;   // yeni yapı (455-store-v2) ya da taşınmış eski yapı: eski manifest salt okunur
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current){slog('write: atlandı','ready='+(ready.current?1:0)+' user='+(u?1:0));return;}
@@ -41821,8 +41840,32 @@ function useCloudSync(data,setData){
      Geri yazımı `data` değişiminin tetiklediği debounce turu üstlenir — bunun için birleşmiş
      hâl lastApplied'a YAZILMAZ (yazılsaydı "buluttan geldi, geri yazma" sanılırdı).
      true döner: geri yazılacak bir şey var (yeşil yakma). */
+  /* Eski manifestte `migratedTo` görüldü: eski senkron hiçbir şey uygulamadan ve yazmadan durur
+     (bkz. legacyLock). Ekranda eski yapıdan gösterilmiş bir hâlin üstüne yazılmamış düzenleme
+     varsa (önbellekteki eski manifest, sunucunun cevabından önce ekrana konmuşsa) koça söylenir:
+     o düzenleme eski yapıya yazılamaz (kurallar reddeder) ve yeni yapı açılınca ekran onun
+     verisiyle değişir. true döner: devredildi, çağıran hiçbir şeye dokunmadan çekilmeli. */
+  const legacyHandOff=to=>{
+    if(!to||ownSrvRef.current===false)return false;   // sunucu "çalışma alanı taşınmamış" dedi → eski düzen sürer
+    offRef.current=true;
+    if(legacyLockRef.current)return true;
+    legacyLockRef.current=true;
+    const edited=ready.current&&(dirty.current||writing.current||queued.current);
+    slog('eski yapı taşınmış → eski veri gösterilmiyor, eski senkron durdu; yeni yapı bekleniyor',
+      String(to)+(edited?' · yazılmamış düzenleme vardı':''));
+    if(edited)setSyncNote('Bu hesap yeni senkron yapısına taşınmış. Açılışta eski kayıttan gösterilen ekranda yaptığın son değişiklik kaydedilemedi; ekran yeni yapının verisiyle yenilenince kontrol et.');
+    ready.current=false;dirty.current=false;queued.current=false;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
+    clearSettle();
+    setStatus('syncing');
+    setLegacyLock(true);
+    return true;
+  };
   const applyRemote=(json,parsed,remoteAt,meta)=>{
     const m=meta||{};
+    // Son savunma hattı: devredilmiş eski yapıdan gelen hiçbir hâl ekrana konmaz.
+    if(offRef.current||legacyHandOff(m.migratedTo)){slog('eski yapı durdu: gelen eski hâl uygulanmadı');return false;}
     let base=ancestor.current;
     /* AYNI UZAK HÂL İKİNCİ KEZ. Bu rev'i zaten aldık, birleştirdik ve ortak ata yaptık; üstüne
        yapılan yerel düzenleme kuyrukta ya da yolda. Dinleyici aynı manifesti yeniden teslim
@@ -42016,7 +42059,7 @@ function useCloudSync(data,setData){
     const found=docs.some(v=>v&&typeof v.c==='string');
     if(manifest){
       const json=assembleFrom(manifest,byHash,byRev);
-      if(json!=null)return{json,n:manifest.n,rev:manifest.rev,base:manifest.base,heal:manifest.heal,at:stampMs(manifest.st),found,byRev};
+      if(json!=null)return{json,n:manifest.n,rev:manifest.rev,base:manifest.base,heal:manifest.heal,migratedTo:manifest.migratedTo,at:stampMs(manifest.st),found,byRev};
     }
     const rec=assembleAny(byRev);
     if(rec){
@@ -42040,7 +42083,7 @@ function useCloudSync(data,setData){
     const md=await col.doc(uid).get({source:'server'});
     const m=md.exists?md.data():null;
     if(!m||!Array.isArray(m.ids))return null;
-    const meta={n:m.n,rev:m.rev,base:m.base,heal:m.heal,at:stampMs(m.st),found:true};
+    const meta={n:m.n,rev:m.rev,base:m.base,heal:m.heal,migratedTo:m.migratedTo,at:stampMs(m.st),found:true};
     const key=m.ids.join('|');
     const hit=idsJson.current.find(e=>e.key===key);
     if(hit)return{json:hit.json,...meta};
@@ -42072,11 +42115,12 @@ function useCloudSync(data,setData){
 
   // Tutarsız ara durum: sunucuya tekrar bak → düzeldiyse uygula, düzelmediyse yerelden geri yaz.
   const healInconsistent=async(fb,uid)=>{
-    if(healing.current)return;
+    if(healing.current||offRef.current)return;
     if(writing.current||queued.current){waitThenHeal(fb,uid);return;}   // yazımımız sürüyor → ara durum bizim, tekrar bekle
     healing.current=true;
     try{
       const sv=await readServer(fb,uid);
+      if(offRef.current||legacyHandOff(sv.migratedTo))return;   // (finally: healing bırakılır)
       const{json,n,rev,at,byRev,mrev}=sv;
       if(json!=null){
         let parsed=null;try{parsed=migrate(JSON.parse(json));}catch(e){}
@@ -42163,12 +42207,13 @@ function useCloudSync(data,setData){
 
   // Sunucudan elle çek
   const forcePull=async()=>{
-    const fb=FB();const u=userRef.current;if(!fb||!u)return;
+    const fb=FB();const u=userRef.current;if(!fb||!u||offRef.current)return;
     clearSettle();
     setStatus('syncing');
     let pulled=false;
     try{
       const sv=await readLatest(fb,u.uid);   // hızlı yol; olmazsa tam okuma (manifest bozuksa parçalardan kurtarır)
+      if(offRef.current||legacyHandOff(sv.migratedTo))return;
       const{json,n,rev,at,found}=sv;
       if(json==null){
         // Parçalar duruyor ama hiçbir tutarlı set çıkmıyor → onarım turu (asla üzerine yazma).
@@ -42225,7 +42270,7 @@ function useCloudSync(data,setData){
 
   // CANLI DİNLEYİCİ: manifest + parçalar (+ eski formatlardan tek seferlik geçiş)
   useEffect(()=>{
-    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda dinleyici 455-store-v2'de
+    const fb=FB();if(!fb||!user||legacyOff)return;   // yeni yapıda dinleyici 455-store-v2'de
     /* Dinleyici İKİ sebeple kurulur: hesap değişti (sıfırdan) ya da eskisi ölüp yenisi
        geliyor (yeniden). İkisi aynı şey değil. Yeniden kurarken lastSynced/ancestor'ı
        silmek, o anda gönderilmemiş bir düzenleme varsa onu birleştirilecek tabansız
@@ -42349,6 +42394,11 @@ function useCloudSync(data,setData){
           const chunks=groupChunks(chunkDocs);       // eski düzen: rev → {i: parça}
           const byHash=indexByHash(chunkDocs);       // yeni düzen: hash → içerik
           if(manifest){
+            /* Taşınmış eski yapı: hiçbir şey birleştirilmez, uygulanmaz, yazılmaz (bkz. legacyLock).
+               Sunucu çalışma alanının taşınmadığını söylemişse (yarım kalmış taşıma) eski veri
+               bugünkü gibi gösterilir; yazımları kurallar reddeder. */
+            if(legacyHandOff(manifest.migratedTo))return;
+            if(manifest.migratedTo)slog('eski yapı taşınmış ama çalışma alanı taşınmamış görünüyor → eski veri gösteriliyor (yazılamaz)');
             /* AYNI MANİFEST → AYNI DİZGİ. Parça adları içeriğin hash'i olduğundan bir
                manifestin id listesi, birleşecek dizginin birebir kimliğidir: liste aynıysa
                birleşecek şey de aynıdır. Bu bir tahmin değil, içerik adreslemenin kendisi —
@@ -42511,7 +42561,7 @@ function useCloudSync(data,setData){
         setStatus('syncing');resub.current=Date.now();});
     return ()=>{clearSettle();if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
       pendSince.current=0;fromPending.current=false;unsub();};
-  },[user,subTick,v2On]);
+  },[user,subTick,legacyOff]);
 
   /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
      Storage kapalıyken çekilen fotoğraf cihazda `local:` tutamağıyla duruyor; bulut
@@ -42578,7 +42628,7 @@ function useCloudSync(data,setData){
 
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
-    const fb=FB();if(!fb||!user||v2On)return;   // yeni yapıda bekleyen yazım yok: her değişiklik anında gider
+    const fb=FB();if(!fb||!user||legacyOff)return;   // yeni yapıda bekleyen yazım yok: her değişiklik anında gider
     const flush=()=>{
       if(timer.current){clearTimeout(timer.current);timer.current=null;}
       /* Sayfa kapanıyor/gizleniyor ve yazım hâlâ sunucu okumasını bekliyor: düzenleme henüz
@@ -42728,7 +42778,7 @@ function useCloudSync(data,setData){
     return()=>{clearInterval(watchdog);document.removeEventListener('visibilitychange',onVis);window.removeEventListener('offline',offline);
       window.removeEventListener('online',resume);window.removeEventListener('pageshow',resume);
       window.removeEventListener('pagehide',onHide);window.removeEventListener('beforeunload',onBeforeUnload);};
-  },[user,v2On]);
+  },[user,legacyOff]);
 
   /* ═══════════════════════════════════════════════════════════════════════
      GÖZCÜ — göstergenin sarıda ÇAKILI KALMASININ panzehiri.
@@ -42751,12 +42801,18 @@ function useCloudSync(data,setData){
      ═══════════════════════════════════════════════════════════════════════ */
   /* GÜNLÜK BULUT YEDEĞİ (bkz. cloudSnapshotDaily): günde bir kez, bulutla eşitken (yazılmamış
      değişiklik yokken) durumun tamamı ayrıca saklanır. Açılıştan bir süre sonra başlar —
-     açılışın ilk dakikası senkronun kendisine kalsın. */
+     açılışın ilk dakikası senkronun kendisine kalsın.
+     Yeni yapıda (455) eski senkronun ortak atası hiç dolmuyor; eskiden yedek bu yüzden v2'de
+     alınmıyordu (yalnızca eski dinleyici açılışta yarışı kazanırsa alınıyordu). v2'de koşul:
+     kendi çalışma alanının sahibi ve senkron yeşil (gönderilmemiş/onaylanmamış yazım yok). Başka
+     bir kulübü açan üye kendi hesabına kulübün yedeğini almaz; o kulübün yedeğini sahibi alır. */
   useEffect(()=>{
     if(!user)return;
     const run=()=>{
       const fb=FB();
-      if(!fb||!ready.current||dirty.current||writing.current||ancestor.current==null)return;
+      if(!fb||!ready.current)return;
+      if(v2Ref.current){if(!v2OwnerRef.current||statusRef.current!=='synced')return;}
+      else if(offRef.current||dirty.current||writing.current||ancestor.current==null)return;
       cloudSnapshotDaily(fb,user.uid,dataRef.current);
     };
     const first=setTimeout(run,90000);
@@ -42767,7 +42823,7 @@ function useCloudSync(data,setData){
   const lastPull=useRef(0);
   const lastResub=useRef(0);
   useEffect(()=>{
-    const fb=FB();if(!fb||!user||v2On)return;   // gözcü eski dinleyicinin; yeni yapıda Firestore'un kendi bağlantısı
+    const fb=FB();if(!fb||!user||legacyOff)return;   // gözcü eski dinleyicinin; yeni yapıda Firestore'un kendi bağlantısı
     let reloading=false;
     const RESUB_MS=20000;
     /* Koç bir alana yazıyor ya da az önce dokundu mu? Taşıma değişikliği sayfayı yeniler ve
@@ -42883,7 +42939,7 @@ function useCloudSync(data,setData){
     };
     const iv=setInterval(tick,2000);
     return()=>{clearInterval(iv);window.removeEventListener('pointerdown',touch,true);window.removeEventListener('keydown',touch,true);};
-  },[user,v2On]);
+  },[user,legacyOff]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:
      her yazım, durumun tamamını seri hâle getirip parçalamayı gerektirir (birkaç MB'lık bir
@@ -42908,7 +42964,7 @@ function useCloudSync(data,setData){
   };
   useEffect(()=>{
     const prevData=prevSeen.current;prevSeen.current=data;
-    const fb=FB();if(!fb||!user||!ready.current||v2On)return;   // yeni yapıda yazım 455-store-v2'de
+    const fb=FB();if(!fb||!user||!ready.current||legacyOff)return;   // yeni yapıda yazım 455-store-v2'de
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;lastEditAt.current=Date.now();setStatus('syncing');
@@ -42937,7 +42993,7 @@ function useCloudSync(data,setData){
       if(typeof requestIdleCallback==='function')requestIdleCallback(()=>writeNow(),{timeout:120});
       else writeNow();
     },wait);
-  },[data,user,v2On]);
+  },[data,user,legacyOff]);
 
   /* Panelin okuduğu canlı iç durum. Ref'ler render sırasında okunuyor — teşhis için
      doğru olan da bu: gösterilen şey o anın gerçeği olsun, React'in bir tur gerisi değil. */
@@ -42975,7 +43031,7 @@ function useCloudSync(data,setData){
   };
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
     /* Faz 5: açık kulüp ve bu kişinin oradaki rolü (yeni yapı etkin değilse ws/role null). */
-    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select},
+    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select,hold:legacyHold&&!v2On},
     sizeReport:()=>syncSizeReport(dataRef.current),
     /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
     preflight:()=>smPreflightReport(dataRef.current),
@@ -43044,6 +43100,10 @@ function useStoreV2(o){
   const{user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready}=o;
   const uid=user&&user.uid;
   const[own,setOwn]=useState(false);                 // kendi çalışma alanı taşınmış mı
+  /* Aynı soru, yalnızca SUNUCUNUN cevabı: null = henüz bilinmiyor, true/false = sunucu söyledi.
+     Eski senkron, eski manifestte `migratedTo` görünce bunu bekler (450 → legacyHold): sunucu
+     "taşınmamış" demedikçe eski yapının donmuş verisini ekrana koymaz. */
+  const[ownSrv,setOwnSrv]=useState(null);
   const[joined,setJoined]=useState([]);              // üye olduğu kulüpler (ws kimlikleri)
   const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
@@ -43052,14 +43112,18 @@ function useStoreV2(o){
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
   // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
-    setOwn(false);setJoined([]);
+    setOwn(false);setOwnSrv(null);setJoined([]);
     let p=null;try{p=uid?localStorage.getItem(WS_PICK_KEY(uid)):null;}catch(e){}
     setPick(p);
     const fs=fsOf();if(!fs)return;                   // sahte ortam (sync-test) → eski düzen
     const offs=[];
     try{
-      offs.push(fs.doc('workspaces/'+uid).onSnapshot(s=>{
-        const d=s.exists?s.data():null;setOwn(!!(d&&d.schemaVersion===2&&d.migrated===true));
+      // Üst veri değişimleri de istenir: önbellekten gelen cevap sunucudakiyle aynıysa sunucunun
+      // onayı ancak böyle duyulur (ownSrv).
+      offs.push(fs.doc('workspaces/'+uid).onSnapshot({includeMetadataChanges:true},s=>{
+        const d=s.exists?s.data():null,m=!!(d&&d.schemaVersion===2&&d.migrated===true);
+        setOwn(m);
+        if(!(s.metadata&&s.metadata.fromCache))setOwnSrv(m);
       },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setOwn(false);}));
       offs.push(fs.collection('users/'+uid+'/memberships').onSnapshot(s=>{
         setJoined(s.docs.map(d=>d.id).filter(id=>id!==uid));
@@ -43117,7 +43181,7 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }
 function LoadingScreen(){
   return(
@@ -55494,7 +55558,9 @@ function App(){
   /* Abonelik yoksa (ve config/billing.enforced açıksa) uygulama salt okunur: ekranların
      setData / updateTeam çağrıları hiçbir şey yazmaz. Bayrak kapalıyken access.full hep true. */
   /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
-  const readOnly=!bill.access.full||(sync.v2&&sync.v2.role==='viewer');
+  /* Taşınmış hesabın eski senkronu devretti, yeni yapı henüz açılmadı (450 → legacyLock): ekranda
+     ya varsayılan ya da eski yapıdan kalmış bir hâl var; düzenleme ikisine de yazılamaz. */
+  const readOnly=!bill.access.full||(sync.v2&&(sync.v2.role==='viewer'||sync.v2.hold));
   const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);

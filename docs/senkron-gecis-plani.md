@@ -341,6 +341,8 @@ Service worker'ın önbellekteki eski sürüm bir süre eski senkronla yazmaya �
 - Kurallar: `kullanici_verileri/<uid>` manifestinde `migratedTo` varsa yazım reddedilir.
 - Eski kod reddi zaten "okuyup yeniden dene" olarak ele alıyor → döngüye girmemesi için bu PR'la
   birlikte eski koda "`migratedTo` görürsen sayfayı yenile" kontrolü eklenir (taşımadan **önce** yayınlanır).
+- ✅ 2026-11-22 ([`senkron-hiz-plani.md`](senkron-hiz-plani.md) R0): eski senkron `migratedTo` görünce devreder —
+  eski veriyi ekrana koymaz, yazmaz, kurtarma yollarıyla geri dönmez; yeni yapı devralır (`450` → `legacyLock`).
 
 ### 7.5 Geri dönüş
 Eski veri silinmeden 90 gün durur. Bir hesapta sorun çıkarsa `schemaVersion` 1'e çekilir, `migratedTo`

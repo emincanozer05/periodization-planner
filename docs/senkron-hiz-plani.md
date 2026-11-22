@@ -1,0 +1,89 @@
+# Senkron Hız Planı — riski sıfıra yaklaştırarak
+
+> **Durum:** R0 sürüyor · **Son güncelleme:** 2026-11-22
+> Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
+> işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
+
+## 1. Sorun (ölçüm)
+
+Düzenlemenin maliyeti değişen kayıt kadar değil, **hesabın tamamı kadar**. 3,7 MB / 2.101 belgelik
+gerçekçi bir hesapta tek bir test değerini değiştirmek (masaüstü CPU, Node):
+
+| Adım | Süre | Yer |
+|---|---|---|
+| `smToDocs` (bütün veri → belgeler) | 89 ms | `468-store-map.jsx` → `smController.flush` |
+| `smDiff` (2.101 belgenin hepsi metne çevrilip karşılaştırılıyor) | 233 ms | aynı yer |
+| Kendi yazımının yankısı: `smFromDocs` + `migrate` + bütün verinin iki kez metne çevrilmesi | ~250 ms, yazım başına 2–3 kez | `smController.onDocs` |
+
+Telefonda kabaca 4–6 katı. Ek olarak: her tuş vuruşu ayrı tur; yazımlar sunucu onayını sırayla
+bekliyor; hiçbir belge değişmeyen dinleyici olayları da tam yeniden kurulum yapıyor; `migrate` her
+gelen güncellemede bütün ağacı yeni nesnelerle kuruyor.
+
+## 2. Değişmez kurallar (her adım uyar)
+
+| # | Kural |
+|---|---|
+| G1 | Buluttaki biçim değişmez (belge yapısı, `_fmt`, kurallar, taşıma). Değişen yalnızca cihazdaki hesaplama |
+| G2 | Her iyileştirme kendi bayrağının arkasında, varsayılan kapalı; bayrak kapalıyken davranış birebir aynı |
+| G3 | Uzaktan kapatma anahtarı (yalnızca Console'dan yazılan bir ayar belgesi, uygulama canlı dinler) |
+| G4 | Önce gölge: yeni algoritma eskisinin yanında çalışır, buluta eskisinin sonucu gider |
+| G5 | Kendi kendini onarma: yeni yol açıldıktan sonra da boşta tam hesap; fark → düzeltme + bayrak o cihazda kapanır + günlük |
+| G6 | Yedek doğrulanmadan gerçek hesapta adım yok |
+| G7 | Tek PR, tek değişiklik, kendi çıkış ölçütü |
+| G8 | Kademeli açılım: emulator → test hesabı → sahibin tek cihazı → iki cihaz → diğer kullanıcılar |
+
+## 3. Fazlar
+
+### R0 — Güvenlik altyapısı ve mevcut açıklar (davranışı değiştirmez ya da yalnızca güvenliği artırır)
+- [x] **Açılış yarışı:** taşınmış hesapta v2 bayrağı gelmeden eski dinleyici kalkıp eski yapının donmuş
+      JSON'unu ekrana koyuyordu (uçtan uca testte yeniden üretildi). Artık eski senkron `migratedTo`
+      görünce devreder (`450` → `legacyLock`): uygulamaz, yazmaz, kurtarma çekimi / onarım / gözcü durur;
+      bekleme süresince ekran salt okunur (`v2.hold`, `690`). İstisna: sunucu çalışma alanının taşınmadığını
+      söylüyorsa (`455` → `ownSrv === false`, yarım kalmış taşıma) eski davranış sürer.
+- [x] **v2'de günlük bulut yedeği:** eski senkronun ortak atasını bekliyordu, v2'de o yalnızca açılış
+      yarışında doluyordu. Artık v2'de sahip + senkron yeşilken alınır; başka kulübü açan üye almaz.
+- [ ] `migrate` belirlenimci: okurken `Date.now()` / `uid()` üretmesin (`070`).
+- [ ] Bayrak altyapısı (G2), uzaktan kapatma anahtarı (G3), ölçüm sayaçları (tanı penceresi).
+- [ ] Büyük örnek veri + `tools/sync-bench.js` + eşdeğerlik test düzeneği (artımlı ≡ tam).
+
+### R1 — Ölçüm (salt okunur)
+Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. Gerekmeyen adım yapılmaz.
+
+### R2 — Düşük riskli hızlandırmalar (her biri ayrı bayrak)
+- [ ] Hiçbir belgenin değişmediği dinleyici olayında yeniden kurulumu atlama (gölge, 0 fark).
+- [ ] Kendi yankısını atlama (gölge, 0 fark).
+- [ ] Onay beklemeden ardışık gönderim; ilk hatada o oturum sıralıya döner.
+- [ ] Aynı karedeki değişiklikleri tek turda gönderme (zamanlayıcı yok; kapanışta hemen gönderim).
+
+### R3 — Giden tarafta artımlı eşleme
+Kaynak nesne kimliğine göre önbellek; değişmeyen belge yeniden üretilmez. CI'da ≥1 milyon adımlık
+rastgele eşdeğerlik testi → ≥2 hafta / ≥5.000 gerçek düzenleme gölge (0 fark) → kademeli açılış, onarım ağı açık.
+
+### R4 — Gelen tarafta artımlı uygulama
+Aynı düzen: yalnızca değişen takım / sporcu yeniden kurulur, `migrate` kimliği korur.
+
+### R5 — Açılış ve dinleme kapsamı (yalnızca R1 gerekli gösterirse)
+Şart: yüklenmemiş kısım fark hesabına hiç girmez (yokluk asla silme olarak yazılamaz).
+
+### R6 — Eski senkrondan çıkış
+Geçiş planı Faz 4 ve Faz 6, R0–R4 kararlı olduktan sonra.
+
+## 4. Başarı ölçütleri (3,7 MB hesap)
+
+| Ölçüt | Bugün | Hedef |
+|---|---|---|
+| Tek düzenlemede gönderim | ~320 ms | ≤ 5 ms |
+| Kendi yankısını işleme | ~250 ms × 2–3 | ≤ 5 ms |
+| Yazarken 50 ms'yi aşan görev | her tuşta | yok |
+| Öbür cihazda görünme | yazım sayısı × gidiş-dönüş | ≲ 1 sn |
+
+## 5. Her PR'ın test kapısı
+CI: `check-syntax`, `validator-test`, `sync-test`, `store-map-test`, emulator testleri, `assemble --check`.
+Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-loop-test.js`.
+
+## 6. İlerleme
+
+| Tarih | Faz | Ne yapıldı | PR |
+|---|---|---|---|
+| 2026-11-22 | — | Plan, ölçüm | — |
+| 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | bu PR |
