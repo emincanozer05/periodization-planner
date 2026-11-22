@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip, pipeWrite yayında, varsayılan kapalı; sırada staleEcho) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip, pipeWrite, staleEcho yayında, varsayılan kapalı) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -96,10 +96,13 @@ Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. 
       (`reassert`); başka hata → bayrak oturumda kapanıyor. Ölçüm (10 hızlı düzenleme): sıralı modda ekran son
       değere 20 olayda ulaşıyor (her yazım bir gidiş-dönüş bekliyor), ardışık modda 10 olayda; ama düzenlemeler
       Firestore'un yerel uygulamasından hızlıysa ekran yine bir an geri gidiyor → sıradaki adım.
-- [ ] **`staleEcho`** — kendi BEKLEYEN yazımının eski yankısını tanıma: değişen belge Firestore'da onaylanmamış yerel
-      yazım taşıyorsa (`metadata.hasPendingWrites`) ve içeriği bu cihazın o belge için gönderdiği sürümlerden
-      biriyse ekrana konmaz (daha yeni sürüm zaten ekranda ve yolda). Bekleyen yazım yoksa (başka cihazın aynı
-      değeri yazmış olması) tam yol. Hedef: yazarken geri gidip gelme sıfır.
+- [x] **`staleEcho`** — kendi BEKLEYEN yazımının eski yankısını tanıma: `smListen` değişen belgelerden onaylanmamış
+      yerel yazım taşıyanları (`metadata.hasPendingWrites`) iletiyor; denetleyici her belge için gönderdiği
+      sürümlerin özetini tutuyor (en çok 24, sunucunun son sözü gelince sıfırlanıyor). Değişen belge bekleyen yazım
+      taşıyor ve içeriği eski bir gönderilen sürümse ekrana konmuyor (daha yeni sürüm ekranda ve yolda). Bekleyen
+      yazım yoksa asla → tam yol (başka cihaz aynı değeri yazmışsa sunucunun hâli gelir). Emulator: dört bayrak
+      açıkken 10 hızlı düzenlemede A'nın ekranı bir daha hiç eski değere dönmüyor (önce 200…209 geri sayıyordu);
+      karşı cihaz A'nın eski değerini aynı alana yazınca da iki ekran sunucuyla birebir.
 - [ ] Aynı karedeki değişiklikleri tek turda gönderme (zamanlayıcı yok; kapanışta hemen gönderim).
 
 ### R3 — Giden tarafta artımlı eşleme
@@ -153,4 +156,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | #794 |
 | 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | #795 |
 | 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | #796 |
-| 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | bu PR |
+| 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | #797 |
+| 2026-11-22 | R2 | `staleEcho` (varsayılan kapalı): yazarken geri gidip gelme biter; emulator +3 (77/77, 3 tekrar kararlı), uçtan uca bölüm 11 (66/66) | bu PR |

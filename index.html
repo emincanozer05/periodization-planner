@@ -41354,6 +41354,7 @@ const SYNC_FLAGS={
   metaSkip:'Hiçbir belgenin değişmediği dinleyici olaylarında (yazım onayı, önbellek→sunucu) ekran yeniden kurulmaz (468 → smController)',
   echoSkip:'Değişen belgelerin hepsi bu cihazın son gönderdiğiyle aynıysa (kendi yazımının yankısı) ekran yeniden kurulmaz (468 → smController)',
   pipeWrite:'Yazımlar bir öncekinin sunucu onayını beklemeden hemen Firestore\'a verilir; reddedilen paket en güncel hâlden yeniden yazılır (468 → smController.send)',
+  staleEcho:'Kendi onaylanmamış yazımının ESKİ yankısı (daha yeni sürüm ekranda ve yolda) ekrana konmaz: yazarken geri gidip gelme biter (468 → smController)',
 };
 const SYNC_FLAG_LS='coachos_syncflag_';
 let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'
@@ -43619,6 +43620,7 @@ function SyncDiag({sync,onClose}){
       [L('Yeni yapı: sessiz olay (atlanan / uyuşmazlık / geri alma)','New sync: quiet events (skipped / mismatch / revert)'),vs.quietN+' ('+vs.quietSkip+' / '+vs.quietMiss+' / '+vs.quietRevert+')'],
       [L('Yeni yapı: yankı olayı (atlanan / uyuşmazlık / geri alma)','New sync: echo events (skipped / mismatch / revert)'),vs.ownN+' ('+vs.ownSkip+' / '+vs.ownMiss+' / '+vs.ownRevert+')'],
       [L('Yeni yapı: ardışık yazım (yeniden yazılan paket)','New sync: pipelined writes (re-asserted batches)'),vs.pipeN+' ('+vs.pipeRetry+')'],
+      [L('Yeni yapı: eski yankı (atlanan / geri alma)','New sync: stale echoes (skipped / revert)'),vs.staleHit+' ('+vs.staleSkip+' / '+vs.staleRevert+')'],
     );
   }
   if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
@@ -44660,7 +44662,7 @@ var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','mea
    belgeler bir öncekiyle aynıdır (senkron hız planı R2 → metaSkip). Kuşkuda true (tam yol). */
 function smListen(fs,wsPath,onDocs,onError,teams){
   var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
-  var changed=true,docSig={},paths={};   // paths: son onDocs'tan beri içeriği değişen belgeler (echoSkip)
+  var changed=true,docSig={},paths={},pend={};   // paths: son onDocs'tan beri içeriği değişen belgeler (echoSkip); pend: onlardan onaylanmamış yerel yazım taşıyanlar (staleEcho)
   var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
   var emit=function(){
     if(queued||dead)return;queued=true;
@@ -44668,8 +44670,8 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       queued=false;
       if(dead||Object.keys(waiting).length)return;
       var copy={};for(var p in docs)copy[p]=docs[p];
-      var info={fromCache:lastInfo.fromCache,pending:lastInfo.pending,changed:changed,paths:Object.keys(paths)};
-      changed=false;paths={};
+      var info={fromCache:lastInfo.fromCache,pending:lastInfo.pending,changed:changed,paths:Object.keys(paths),pend:pend};
+      changed=false;paths={};pend={};
       onDocs(copy,info);
     });
   };
@@ -44684,10 +44686,11 @@ function smListen(fs,wsPath,onDocs,onError,teams){
          atıldığından içerik aynıysa bu bir içerik değişimi değildir: eski nesne korunur, olay sessiz kalır. */
       snap.docChanges().forEach(function(ch){
         var rel=colRel+'/'+ch.doc.id;
-        if(ch.type==='removed'){delete docs[rel];changed=true;paths[rel]=1;return;}
+        if(ch.type==='removed'){delete docs[rel];changed=true;paths[rel]=1;delete pend[rel];return;}
         var nd=strip(ch.doc.data());
         if(ch.type==='modified'&&docs[rel]!==undefined&&smCanon(docs[rel])===smCanon(nd))return;
         docs[rel]=nd;changed=true;paths[rel]=1;
+        if(ch.doc.metadata&&ch.doc.metadata.hasPendingWrites)pend[rel]=1;else delete pend[rel];
       });
       lastInfo={fromCache:snap.metadata.fromCache,pending:snap.metadata.hasPendingWrites};
       if(onFirst)onFirst(snap);
@@ -44707,7 +44710,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
   waiting.ws=1;
   subs.ws=fs.doc(wsPath+'/'+SM_ROOT).onSnapshot({includeMetadataChanges:true},function(snap){
     if(snap.exists)docs['']=strip(snap.data());else delete docs[''];
-    if(docChanged('',docs[''])){changed=true;paths['']=1;}
+    if(docChanged('',docs[''])){changed=true;paths['']=1;if(snap.metadata&&snap.metadata.hasPendingWrites)pend['']=1;else delete pend[''];}
     delete waiting.ws;emit();
   },err);
   SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
@@ -44722,7 +44725,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       subs[key]=fs.doc(wsPath+'/teams/'+tid).onSnapshot({includeMetadataChanges:true},function(snap){
         if(snap.exists){docs['teams/'+tid]=strip(snap.data());addTeam(tid);}
         else{delete docs['teams/'+tid];dropTeam(tid);}
-        if(docChanged('teams/'+tid,docs['teams/'+tid])){changed=true;paths['teams/'+tid]=1;}
+        if(docChanged('teams/'+tid,docs['teams/'+tid])){changed=true;paths['teams/'+tid]=1;if(snap.metadata&&snap.metadata.hasPendingWrites)pend['teams/'+tid]=1;else delete pend['teams/'+tid];}
         delete waiting[key];emit();
       },err);
     });
@@ -44753,7 +44756,9 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0};}
+/* staleEcho: bir belge için bu cihazın gönderdiği sürümlerden en çok bu kadarı hatırlanır (belge başına). */
+var SM_SENT_KEEP=24;
 /* Belgenin içindeki bir alan yolunun değeri (yoksa undefined). */
 function smGetIn(o,path){for(var i=0;i<path.length;i++){if(!smIsObj(o))return undefined;o=o[path[i]];}return o;}
 /* İki gelen belge kümesi aynı nesnelerden mi oluşuyor? smListen içeriği değişmeyen belgede eski nesneyi
@@ -44775,6 +44780,16 @@ function smSameRefs(a,b){
 }
 function smController(o){
   var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false,lastIn=null;
+  /* sent[yol]: bu cihazın o belge için gönderdiği sürümlerin özeti (eskiden yeniye). Belge onaylanmamış yerel
+     yazım taşımadan gelince (sunucu son sözü söyledi) sıfırlanır. staleEcho bununla kendi eski yankısını tanır. */
+  var sent={};
+  var noteSent=function(ops,nd){
+    ops.forEach(function(op){
+      var h=sent[op.path]||(sent[op.path]=[]);
+      h.push(nd[op.path]===undefined?'∅':smCanon(nd[op.path]));
+      if(h.length>SM_SENT_KEEP)h.shift();
+    });
+  };
   var st=smStatsNew();
   var slow=function(kind,ms,info){st.slowN++;if(o.slow)try{o.slow(kind,Math.round(ms),info);}catch(e){}};
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
@@ -44840,7 +44855,7 @@ function smController(o){
     var dt=smNow()-t0;
     st.flushN++;st.flushMs+=dt;if(dt>st.flushMax)st.flushMax=dt;st.opsN+=ops.length;
     docs=next;
-    if(ops.length)send(ops);
+    if(ops.length){noteSent(ops,next);send(ops);}
     if(dt>SM_SLOW_MS){var nd=0;for(var k in next)nd++;st.docs=nd;slow('gönderim',dt,'belge='+nd+' yazım='+ops.length);}
     return ops;
   };
@@ -44885,19 +44900,31 @@ function smController(o){
         if(o.shadow)try{o.shadow('echoSkip',echoOn?'açık':'gölge');}catch(e){}
         if(echoOn&&o.trip)try{o.trip('echoSkip','değişen belge listesi eksikti');}catch(e){}
       }else{
+        /* Her değişen belge: (a) son gönderilenle aynı (yankı) ya da (b) STALEECHO: Firestore'da bu cihazın
+           onaylanmamış yazımını taşıyor VE içeriği bu cihazın o belge için gönderdiği eski sürümlerden biri —
+           yani daha yeni sürüm zaten ekranda ve yolda (Firestore yazımları sırasıyla uygular). Onaylanmamış yazım
+           yoksa (sunucunun son sözü; başka cihaz aynı değeri yazmış olabilir) (b) asla sayılmaz → tam yol. */
+        var stale=false;
         echo=info.paths.every(function(p){
           var inI=incoming[p]!==undefined,inD=docs[p]!==undefined;
-          return inI===inD&&(!inI||smCanon(incoming[p])===smCanon(docs[p]));
+          var ci=inI?smCanon(incoming[p]):'∅';
+          if(inI===inD&&(!inI||ci===smCanon(docs[p])))return true;
+          if(info.pend&&info.pend[p]&&sent[p]&&sent[p].indexOf(ci)>=0){stale=true;return true;}
+          return false;
         });
-        if(echo)st.ownHit++;
-        if(echo&&echoOn){st.ownSkip++;flush();report();return;}
+        if(echo&&!stale)st.ownHit++;
+        if(echo&&stale)st.staleHit++;
+        var staleOn=stale&&!!(o.flag&&o.flag('staleEcho'));
+        if(echo&&(stale?staleOn:echoOn)){if(stale)st.staleSkip++;else st.ownSkip++;flush();report();return;}
       }
     }
+    // Sunucunun son sözünü taşıyan (onaylanmamış yazımı olmayan) belgelerin gönderim geçmişi sıfırlanır.
+    if(info.paths)info.paths.forEach(function(p){if(!(info.pend&&info.pend[p]))delete sent[p];});
     var t0=smNow();
     var base=docs,local=[];
     if(base){
       var d=o.getData();
-      if(d!==handled){local=smDiff(base,smToDocs(o.prep(d),base));handled=d;if(local.length)send(local);}
+      if(d!==handled){var ld=smToDocs(o.prep(d),base);local=smDiff(base,ld);handled=d;if(local.length){noteSent(local,ld);send(local);}}
     }
     var merged=local.length?smApply(incoming,local).docs:incoming;
     docs=merged;
@@ -44907,7 +44934,7 @@ function smController(o){
     if(applied){handled=remote;o.apply(remote);st.applyN++;}
     else handled=cur;
     if(quiet&&applied)st.quietRevert++;
-    if(echo&&applied)st.ownRevert++;   // gölge: yankı olayında tam yol ekranı değiştirdi   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
+    if(echo&&applied){if(stale)st.staleRevert++;else st.ownRevert++;}   // gölge: tam yol yankı olayında ekranı değiştirdi (geri aldı)   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
     var dt=smNow()-t0;
     st.echoN++;st.echoMs+=dt;if(dt>st.echoMax)st.echoMax=dt;
     if(dt>SM_SLOW_MS){var nd=0;for(var k in merged)nd++;st.docs=nd;slow('gelen',dt,'belge='+nd+(applied?' ekrana kondu':' ekran aynı'));}

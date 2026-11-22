@@ -190,7 +190,7 @@ async function deviceCtl(uid = 'alice', teams, flags) {
   const ctl = SM.smController({
     fs: await device(uid), wsPath: WS, K: K(uid), teams,
     flag: n => !!(flags && flags[n]), shadow: (n, i) => screen.shadows.push(n + ':' + i), trip: (n, w) => screen.trips.push(n + ':' + w),
-    getData: () => screen.data, apply: d => { screen.data = d; },
+    getData: () => screen.data, apply: d => { screen.data = d; if (screen.trace) screen.trace.push(screen.traceOf(d)); },
     prep: d => { const c = Object.assign({}, d); delete c.activeTeamId; return c; },
     fromDocs: docs => Object.assign(SM.smFromDocs(docs), { activeTeamId: 'T1' }),
     status: s => { screen.status = s; }, note: n => { screen.notes += n; }, error: e => { screen.errors.push(e); },
@@ -341,6 +341,62 @@ test('pipeWrite + echoSkip + metaSkip: iki cihaz beklemeden art arda düzenler �
   assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
   assert.ok(sa.pipeN >= 1 && sb.pipeN >= 1);
   const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams), 'sunucu ekranla aynı olmalı');
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
+/* Senkron hız planı R2 — staleEcho: kendi onaylanmamış yazımının ESKİ yankısı ekrana konmaz (yazarken geri gitme). */
+const cmjOf = d => A0(d).tests[0].cmj;
+test('staleEcho gölge (bayrak kapalı): hızlı düzenlemede tam yolun geri almaları sayılır, uyuşmazlık yok', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl('alice', undefined, { pipeWrite: true });
+  await a.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 10; i++) a.edit(d => { A0(d).tests[0].cmj = 300 + i; });
+  await a.ctl.idle(); await a.until(d => cmjOf(d) === 309); await a.until(() => a.screen.status === 'synced');
+  const sa = a.ctl.stats();
+  assert.ok(sa.staleHit >= 1 && sa.staleRevert >= 1, 'eski yankı görülmeli ve tam yol ekranı geri almalı: ' + JSON.stringify(sa));
+  assert.strictEqual(sa.staleSkip, 0); assert.strictEqual(sa.ownMiss, 0);
+  a.ctl.stop();
+});
+
+test('staleEcho açık (dört bayrak): hızlı düzenlemeden sonra ekran bir daha ESKİ değere dönmez; karşı cihazın değişikliği gelir', async () => {
+  const data = sample(); await start(data);
+  const F = { pipeWrite: true, echoSkip: true, metaSkip: true, staleEcho: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  a.screen.traceOf = cmjOf; a.screen.trace = [];
+  for (let i = 0; i < 10; i++) a.edit(d => { A0(d).tests[0].cmj = 400 + i; });
+  b.edit(d => { A0(d).position = 'BB'; d.exercises[1].name = 'Bx'; });
+  await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  const fin = d => cmjOf(d) === 409 && A0(d).position === 'BB' && d.exercises[1].name === 'Bx';
+  await a.until(fin); await b.until(fin);
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  assert.deepStrictEqual(a.screen.trace.filter(v => v !== 409), [], 'A\'nın ekranı eski değere dönmemeli: ' + a.screen.trace.join(' '));
+  assert.ok(same(a.screen.data, b.screen.data));
+  const sa = a.ctl.stats();
+  assert.ok(sa.staleSkip >= 1, JSON.stringify(sa));
+  assert.strictEqual(sa.ownMiss + b.ctl.stats().ownMiss, 0); assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
+  const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams), 'sunucu ekranla aynı olmalı');
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
+test('staleEcho açık: karşı cihaz AYNI ALANA A\'nın eski değerini yazar → A\'nın ekranı yine sunucuyla birebir aynı kalır', async () => {
+  const data = sample(); await start(data);
+  const F = { pipeWrite: true, echoSkip: true, metaSkip: true, staleEcho: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let r = 0; r < 4; r++) {
+    for (let i = 0; i < 5; i++) a.edit(d => { A0(d).tests[0].cmj = 500 + i; });
+    b.edit(d => { A0(d).tests[0].cmj = 501; });          // A'nın gönderdiği eski bir sürümle aynı değer
+    await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  }
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  await new Promise(r => setTimeout(r, 600));
+  const c = await deviceCtl(); await c.until(d => !!d.teams);
+  await new Promise(r => setTimeout(r, 400));
+  const srv = cmjOf(c.screen.data);
+  assert.strictEqual(cmjOf(a.screen.data), srv, 'A ekranı sunucuyla aynı olmalı');
+  assert.strictEqual(cmjOf(b.screen.data), srv, 'B ekranı sunucuyla aynı olmalı');
+  assert.ok(same(a.screen.data, b.screen.data) && same(c.screen.data.teams, a.screen.data.teams));
   a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
 });
 

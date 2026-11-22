@@ -295,6 +295,23 @@ const SEED = () => {
     const bad10 = await Promise.all([D, E, F, G].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı|v2: hata/.test(slogText()))));
     check('hiçbir cihazda uyuşmazlık, bayrak kapanması ya da senkron hatası yok', !bad10.some(Boolean), JSON.stringify(bad10));
     check('10. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R2 — staleEcho: H dört bayrakla, hızlı yazmayı taklit eder (10 düzenleme art arda, aynı turda). */
+    console.log('\n== 11. staleEcho: hızlı yazma, dört bayrak');
+    const H = await open('H', UID, '?syncflag=metaSkip,echoSkip,pipeWrite,staleEcho');
+    check('H\'de dört bayrak açık', !!(await until(() => H.evaluate(() => ['metaSkip', 'echoSkip', 'pipeWrite', 'staleEcho'].every(syncFlag)), 10000)), await H.evaluate(() => syncFlagsReport()));
+    await until(async () => (await data(H)).teams && ath(await data(H), 'a1'), 20000);
+    await H.evaluate(() => { for (let i = 0; i < 10; i++) __setData(prev => { const d = JSON.parse(JSON.stringify(prev)); d.teams[0].athletes.find(a => a.id === 'a0').tests[0].cmj = 90 + i; return d; }); });
+    // Örnekleme: düzenlemelerden sonra H'nin ekranındaki değer 2 sn boyunca hiç eski değere dönmemeli.
+    const samples = [];
+    for (let k = 0; k < 40; k++) { samples.push(await H.evaluate(() => __data().teams[0].athletes.find(a => a.id === 'a0').tests[0].cmj)); await sleep(50); }
+    check('H\'nin ekranı eski değere dönmedi (örnekleme)', samples.every(v => v === 99), samples.join(' '));
+    const fin11 = d => ath(d, 'a0').tests[0].cmj === 99;
+    for (const [n, pg] of [['D', D], ['G', G], ['H', H]]) check(n + ' son değeri gösteriyor', !!(await until(async () => fin11(await data(pg)))));
+    await sleep(1000);
+    const bad11 = await Promise.all([D, G, H].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı|v2: hata/.test(slogText()))));
+    check('uyuşmazlık, bayrak kapanması ya da senkron hatası yok', !bad11.some(Boolean), JSON.stringify(bad11));
+    check('11. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {

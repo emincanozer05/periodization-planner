@@ -309,6 +309,7 @@ function SyncDiag({sync,onClose}){
       [L('Yeni yapı: sessiz olay (atlanan / uyuşmazlık / geri alma)','New sync: quiet events (skipped / mismatch / revert)'),vs.quietN+' ('+vs.quietSkip+' / '+vs.quietMiss+' / '+vs.quietRevert+')'],
       [L('Yeni yapı: yankı olayı (atlanan / uyuşmazlık / geri alma)','New sync: echo events (skipped / mismatch / revert)'),vs.ownN+' ('+vs.ownSkip+' / '+vs.ownMiss+' / '+vs.ownRevert+')'],
       [L('Yeni yapı: ardışık yazım (yeniden yazılan paket)','New sync: pipelined writes (re-asserted batches)'),vs.pipeN+' ('+vs.pipeRetry+')'],
+      [L('Yeni yapı: eski yankı (atlanan / geri alma)','New sync: stale echoes (skipped / revert)'),vs.staleHit+' ('+vs.staleSkip+' / '+vs.staleRevert+')'],
     );
   }
   if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
