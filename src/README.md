@@ -26,6 +26,10 @@ senkrondaki sigorta (`450-use-cloud-sync.jsx`, `AUTO_*`) yazımı seyreltir ve d
 Senkronun yeni yapısına (`455-store-v2.jsx`, `468-store-map.jsx`) dokunan işlerde ayrıca uçtan uca test:
 `node build.js && cd rules-test && npx firebase emulators:exec --config ../firebase.json --only firestore --project periodization-planner "node ../tools/v2-e2e-test.js"`
 — gerçek uygulama emulator'e bağlanır, bir hesabı eski düzenden taşır ve iki cihazı yeni yapıda aynı anda çalıştırır.
+Senkronun hesap yüküne dokunan işlerde (`468-store-map.jsx`, `455-store-v2.jsx`) önce/sonra ölçümü:
+`node tools/sync-bench.js --save once.json`, değişiklikten sonra `--compare once.json` (aynı makinede; iş sayısı
+makineden bağımsız). Düzenleme zinciri ve eşdeğerlik testi CI'da: `node store-map-equiv-test.js` (uzun koşu:
+`--steps 20000 --size large`).
 Service worker'a dokunan işlerde ayrıca `node tools/sw-browser-test.js`: gerçek Chromium'da gerçek worker'ı,
 CORS göndermeyen sahte bir Storage sunucusuna karşı sınar (medya önbelleği, çevrimdışı görsel).
 
