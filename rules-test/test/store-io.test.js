@@ -262,6 +262,45 @@ test('metaSkip açık: sessiz olaylar atlanır; iki cihaz AYNI ANDA düzenler, i
   a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
 });
 
+/* Senkron hız planı R2 — echoSkip: değişen belgelerin hepsi bu cihazın gönderdiğiyle aynıysa (kendi yankısı). */
+test('echoSkip gölge (bayrak kapalı): kendi yazımlarının yankısı tanınır, liste hiç eksik değil', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 4; i++) { a.edit(d => { A0(d).tests[0].cmj = 50 + i; d.exercises[0].name = 'Y' + i; }); await a.ctl.idle(); }
+  await b.until(d => A0(d).tests[0].cmj === 53 && d.exercises[0].name === 'Y3');
+  await new Promise(r => setTimeout(r, 400));
+  const sa = a.ctl.stats(), sb = b.ctl.stats();
+  assert.ok(sa.ownHit >= 1, 'A kendi yankısını tanımalı: ' + JSON.stringify(sa));
+  assert.strictEqual(sa.ownSkip, 0); assert.strictEqual(sa.ownMiss + sb.ownMiss, 0, JSON.stringify([a.screen.shadows, b.screen.shadows]));
+  assert.strictEqual(sb.ownHit, 0, 'B için A\'nın yazımı yankı değil: ' + JSON.stringify(sb));
+  assert.ok(same(a.screen.data, b.screen.data));
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('echoSkip + metaSkip açık: iki cihaz AYNI ANDA ve aynı belgeyi hızlı hızlı düzenler → hepsi kalır, iki ekran ve sunucu birebir', async () => {
+  const data = sample(); await start(data);
+  const F = { echoSkip: true, metaSkip: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 6; i++) {
+    a.edit(d => { A0(d).tests[0].cmj = 90 + i; });
+    a.edit(d => { A0(d).tests[0].cmj = 100 + i; });              // aynı belgeye arka arkaya iki düzenleme (eski yankı)
+    b.edit(d => { A0(d).position = 'Q' + i; d.exercises[0].name = 'Z' + i; });   // aynı sporcu belgesi, başka alan
+    await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  }
+  const fin = d => A0(d).tests[0].cmj === 105 && A0(d).position === 'Q5' && d.exercises[0].name === 'Z5';
+  await a.until(fin); await b.until(fin);
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  assert.ok(same(a.screen.data, b.screen.data), 'iki ekran birebir aynı olmalı');
+  const sa = a.ctl.stats(), sb = b.ctl.stats();
+  assert.ok(sa.ownSkip + sb.ownSkip >= 1, 'en az bir yankı atlanmalı: ' + JSON.stringify([sa, sb]));
+  assert.strictEqual(sa.ownMiss + sb.ownMiss + sa.quietMiss + sb.quietMiss, 0, JSON.stringify([a.screen.shadows, b.screen.shadows]));
+  assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
+  const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams), 'sunucu ekranla aynı olmalı');
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
 test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {
   const data = sample(); await start(data);
   const a = await deviceCtl(), b = await deviceCtl();
