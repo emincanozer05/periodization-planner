@@ -161,6 +161,12 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    /* Senkron bayrakları ve uzaktan kapatma anahtarı (src/app/447-sync-flags.jsx): off, kill{}, flags{}.
+       Firebase Console'dan elle değişir; uygulama canlı dinler. */
+    match /config/sync {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
 
     // Check-in linkleri: adresi (token) bilen okur, listeleyemez.
     match /checkin_links/{token} {

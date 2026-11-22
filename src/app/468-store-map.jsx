@@ -591,18 +591,30 @@ function smListen(fs,wsPath,onDocs,onError,teams){
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
      fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
      status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
+     slow(tür, ms, ayrıntı)             (isteğe bağlı) ana iş parçacığında SM_SLOW_MS'yi aşan tur
+     flag(ad) → bool                    (isteğe bağlı) senkron bayrakları (447); yoksa hepsi kapalı.
+                                        Yeni bir davranış YALNIZCA bununla açılır (senkron hız planı G2)
    }
    Kural: yerel değişiklik her zaman ÖNCE gönderilir. Başka cihazdan güncelleme gelirken ekranda
    henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
    ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
+/* Ölçüm (senkron hız planı R0/R1): yalnızca sayar, hiçbir kararı değiştirmez. Ana iş parçacığında
+   SM_SLOW_MS'yi aşan bir tur o.slow(tür, ms, ayrıntı) ile bildirilir (uygulama günlüğe yazar). */
+var SM_SLOW_MS=50;
+var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
+function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0};}
 function smController(o){
   var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false;
+  var st=smStatsNew();
+  var slow=function(kind,ms,info){st.slowN++;if(o.slow)try{o.slow(kind,Math.round(ms),info);}catch(e){}};
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
   /* Veri bu uygulamadan daha yeni bir biçimle yazılmışsa ne okunur ne yazılır; uygulama yenilenmeli. */
   var tooNew=function(incoming){var r=incoming&&incoming[''],f=r&&r._fmt;return typeof f==='number'&&f>SM_FORMAT;};
   var send=function(ops){
     inflight++;report();
-    chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+    var t0=0;
+    chain=chain.then(function(){t0=smNow();return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+      var dt=smNow()-t0;st.writeN++;st.ackMs+=dt;if(dt>st.ackMax)st.ackMax=dt;
       if(r.failed.length)o.note(r.failed.length);
     }).catch(function(e){o.error(e);}).then(function(){inflight--;report();});
     return chain;
@@ -612,10 +624,14 @@ function smController(o){
     var d=o.getData();
     if(!docs||newer||d===handled)return[];
     handled=d;
+    var t0=smNow();
     var next=smToDocs(o.prep(d),docs);
     var ops=smDiff(docs,next);
+    var dt=smNow()-t0;
+    st.flushN++;st.flushMs+=dt;if(dt>st.flushMax)st.flushMax=dt;st.opsN+=ops.length;
     docs=next;
     if(ops.length)send(ops);
+    if(dt>SM_SLOW_MS){var nd=0;for(var k in next)nd++;st.docs=nd;slow('gönderim',dt,'belge='+nd+' yazım='+ops.length);}
     return ops;
   };
   var onDocs=function(incoming,info){
@@ -625,6 +641,7 @@ function smController(o){
     }
     newer=false;
     lastPending=!!info.pending;
+    var t0=smNow();
     var base=docs,local=[];
     if(base){
       var d=o.getData();
@@ -634,8 +651,12 @@ function smController(o){
     docs=merged;
     var remote=o.fromDocs(merged);
     var cur=o.getData();
-    if(!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur))){handled=remote;o.apply(remote);}
+    var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
+    if(applied){handled=remote;o.apply(remote);st.applyN++;}
     else handled=cur;
+    var dt=smNow()-t0;
+    st.echoN++;st.echoMs+=dt;if(dt>st.echoMax)st.echoMax=dt;
+    if(dt>SM_SLOW_MS){var nd=0;for(var k in merged)nd++;st.docs=nd;slow('gelen',dt,'belge='+nd+(applied?' ekrana kondu':' ekran aynı'));}
     report();
   };
   return{
@@ -644,6 +665,7 @@ function smController(o){
     changed:flush,                      // ekranda veri değişti
     ready:function(){return docs!==null;},
     idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
+    stats:function(){var r={};for(var k in st)r[k]=st[k];return r;},   // ölçüm (tanı penceresi)
   };
 }
 

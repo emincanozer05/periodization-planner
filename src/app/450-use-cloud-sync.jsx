@@ -95,6 +95,7 @@ function useCloudSync(data,setData){
   const[syncWarn,setSyncWarn]=useState('');
   /* Kayıt bazlı senkron (455-store-v2.jsx). Hesap yeni yapıya taşınmışsa veri oradan dinlenir ve
      yazılır; aşağıdaki eski dinleyici, yazıcı, boşaltma ve gözcü durur. Taşınmamış hesapta v2On false. */
+  useSyncConfig(user);   // senkron bayrakları + uzaktan kapatma anahtarı (447)
   const v2=useStoreV2({user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready});
   const v2On=v2.active;
   const v2Ref=useRef(false);v2Ref.current=v2On;
@@ -1696,6 +1697,7 @@ function useCloudSync(data,setData){
     skew:skew.current,
     kicks:netKick.current.total,
     auto:autoRun.current.t.length,autoTrip:!!autoRun.current.trip,
+    v2:v2On,v2stats:v2On&&v2.stats?v2.stats():null,flags:syncFlagsReport(),
   });
   /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
      şeyden birini söyler — okundu (taşıma sağlam, sorun mantıkta), zaman aşımı (cihaz

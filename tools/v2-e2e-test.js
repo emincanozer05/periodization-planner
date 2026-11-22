@@ -220,6 +220,13 @@ const SEED = () => {
     check('yedek tam (özet + parçalar) ve yeni yapının verisini taşıyor', snaps.length === 1 && snaps[0].n > 0 &&
       (await admin(db => db.doc(`users/${UID}/snapshot_parts/${snaps[0].day}_0`).get().then(s => (s.data() || {}).c || ''))).includes('C yazdı'),
       JSON.stringify(snaps));
+    // Senkron bayrakları (447): ayar gerçek kurallarla okunuyor; uzaktan kapatma sayfa yenilenmeden duyuluyor.
+    check('senkron ayarı (config/sync) okundu', !!(await until(() => D.evaluate(() => /ayar okundu/.test(syncFlagsReport())), 10000)),
+      await D.evaluate(() => syncFlagsReport()));
+    await admin(db => db.doc('config/sync').set({ off: true }));
+    check('uzaktan kapatma canlı duyuldu (off → hepsi kapalı)', !!(await until(() => D.evaluate(() => /HEPSİ KAPALI/.test(syncFlagsReport())), 10000)),
+      await D.evaluate(() => syncFlagsReport()));
+    await admin(db => db.doc('config/sync').delete());
     check('7. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));

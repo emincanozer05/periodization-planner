@@ -296,6 +296,19 @@ function SyncDiag({sync,onClose}){
     [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
     [L('Durum','Status'),sync.status],
   ];
+  /* Yeni yapı (v2) ölçümü: düzenleme başına ana iş parçacığında geçen süre (senkron hız planı R1).
+     ort / en çok, ms. Kişisel veri yok. */
+  const vs=d.v2stats;
+  if(vs){
+    const avg=(s,n)=>n?Math.round(s/n):0,mx=v=>Math.round(v);
+    rows.push(
+      [L('Yeni yapı: gönderim (ort/en çok)','New sync: send (avg/max)'),avg(vs.flushMs,vs.flushN)+' / '+mx(vs.flushMax)+' ms · '+vs.flushN+L(' tur',' runs')],
+      [L('Yeni yapı: gelen işleme (ort/en çok)','New sync: incoming (avg/max)'),avg(vs.echoMs,vs.echoN)+' / '+mx(vs.echoMax)+' ms · '+vs.echoN+L(' tur',' runs')],
+      [L('Yeni yapı: yazım onayı (ort/en çok)','New sync: write ack (avg/max)'),avg(vs.ackMs,vs.writeN)+' / '+mx(vs.ackMax)+' ms · '+vs.writeN+L(' yazım',' writes')],
+      [L('Yeni yapı: yavaş tur (>50 ms)','New sync: slow runs (>50 ms)'),String(vs.slowN)+(vs.docs?' · '+vs.docs+L(' belge',' docs'):'')],
+    );
+  }
+  if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
   const prev=slogPrevText();
   const prevHead=SYNC_LOG_PREV?(L('Önceki oturum','Previous session')+' · '+new Date(SYNC_LOG_PREV.at).toLocaleString()
     +(SYNC_LOG_PREV.clean?'':L(' · düzgün kapanmadı',' · did not close cleanly'))):'';

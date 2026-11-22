@@ -26,6 +26,7 @@ function useStoreV2(o){
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
   const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
   const ctl=useRef(null);
+  const slowAt=useRef({});
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
   // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
@@ -80,6 +81,9 @@ function useStoreV2(o){
       prep:d=>stripDeviceOnly(d),
       fromDocs:docs=>migrate(smFromDocs(docs)),
       status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}},
+      /* Yavaş tur (ana iş parçacığında SM_SLOW_MS'den uzun): her tür için en çok 30 sn'de bir günlüğe. */
+      slow:(k,ms,info)=>{const t=Date.now(),l=slowAt.current;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: yavaş tur ('+k+')',ms+' ms · '+info);},
+      flag:syncFlag,                                  // bayraklar (447): denetleyici yeni davranışı yalnızca bunlarla açar
       note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
         setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
           'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
@@ -98,5 +102,5 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,ownSrv,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }

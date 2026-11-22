@@ -215,6 +215,10 @@ test('denetleyici: iki cihaz açılır, A\'nın düzenlemesi B\'nin ekranına ge
   a.edit(d => { A0(d).tests[0].cmj = 99; });
   await b.until(d => A0(d).tests[0].cmj === 99);
   await a.ctl.idle(); await a.until(() => a.screen.status === 'synced');
+  // Ölçüm (senkron hız planı R0): sayaçlar yalnızca sayar; bir gönderim, bir yazım onayı, gelen turlar.
+  const sa = a.ctl.stats(), sb = b.ctl.stats();
+  assert.ok(sa.flushN >= 1 && sa.opsN >= 1 && sa.writeN === 1 && sa.ackMs >= 0, JSON.stringify(sa));
+  assert.ok(sb.echoN >= 2 && sb.applyN >= 2 && sb.writeN === 0, JSON.stringify(sb));   // ilk yükleme + A'nın düzenlemesi
   a.ctl.stop(); b.ctl.stop();
 });
 
