@@ -17,6 +17,10 @@ function useStoreV2(o){
   const{user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready}=o;
   const uid=user&&user.uid;
   const[own,setOwn]=useState(false);                 // kendi çalışma alanı taşınmış mı
+  /* Aynı soru, yalnızca SUNUCUNUN cevabı: null = henüz bilinmiyor, true/false = sunucu söyledi.
+     Eski senkron, eski manifestte `migratedTo` görünce bunu bekler (450 → legacyHold): sunucu
+     "taşınmamış" demedikçe eski yapının donmuş verisini ekrana koymaz. */
+  const[ownSrv,setOwnSrv]=useState(null);
   const[joined,setJoined]=useState([]);              // üye olduğu kulüpler (ws kimlikleri)
   const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
@@ -25,14 +29,18 @@ function useStoreV2(o){
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
   // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
-    setOwn(false);setJoined([]);
+    setOwn(false);setOwnSrv(null);setJoined([]);
     let p=null;try{p=uid?localStorage.getItem(WS_PICK_KEY(uid)):null;}catch(e){}
     setPick(p);
     const fs=fsOf();if(!fs)return;                   // sahte ortam (sync-test) → eski düzen
     const offs=[];
     try{
-      offs.push(fs.doc('workspaces/'+uid).onSnapshot(s=>{
-        const d=s.exists?s.data():null;setOwn(!!(d&&d.schemaVersion===2&&d.migrated===true));
+      // Üst veri değişimleri de istenir: önbellekten gelen cevap sunucudakiyle aynıysa sunucunun
+      // onayı ancak böyle duyulur (ownSrv).
+      offs.push(fs.doc('workspaces/'+uid).onSnapshot({includeMetadataChanges:true},s=>{
+        const d=s.exists?s.data():null,m=!!(d&&d.schemaVersion===2&&d.migrated===true);
+        setOwn(m);
+        if(!(s.metadata&&s.metadata.fromCache))setOwnSrv(m);
       },e=>{console.warn('store v2: işaret okunamadı',e&&e.code);setOwn(false);}));
       offs.push(fs.collection('users/'+uid+'/memberships').onSnapshot(s=>{
         setJoined(s.docs.map(d=>d.id).filter(id=>id!==uid));
@@ -90,5 +98,5 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }

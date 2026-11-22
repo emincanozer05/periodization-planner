@@ -941,6 +941,57 @@ async function scenarioSigCompactWritten() {
   endScene(); h.unmount();
 }
 
+/* Senkron hız planı R0: hesap yeni yapıya (v2) taşınmışsa eski manifestte `migratedTo` durur.
+   Eski senkron bunu görünce eski yapının donmuş verisini ekrana KOYMAMALI, hiçbir şey YAZMAMALI ve
+   kendi kurtarma yollarıyla (kurtarma çekimi, onarım) da geri dönmemeli; yeni yapı devralır.
+   (Bu sahte ortamda v2 hiç açılmıyor: eski senkronun tek başına ne yaptığı sınanıyor.) */
+function migratedManifest(w, state, rev) {
+  const h = 'eski' + rev;
+  w.fake.serverSet('coach1_' + h, { userId: 'coach1', c: JSON.stringify(state), h, rev });
+  w.fake.serverSet('coach1', { userId: 'coach1', v: 2, n: 1, rev, ids: [h], st: w.fake.now(), base: rev, migratedTo: 'workspaces/coach1' });
+}
+async function scenarioMigratedLegacyHandsOff() {
+  scene('taşınmış hesap: eski senkron eski veriyi ekrana koymuyor, yazmıyor, devrediyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  migratedManifest(w, realState(7), 1000);
+  const { out, h } = mountApp();
+  await sleep(1500);
+  check('eski yapının verisi ekrana konmadı', !out.data.teams[0].athletes.length, JSON.stringify(out.data.teams[0].athletes));
+  check('günlükte devir yazıldı', /eski yapı taşınmış/.test(BAG.slogText()));
+  check('ekran salt okunur bekliyor (v2.hold)', out.sync.v2 && out.sync.v2.hold === true);
+  const c0 = w.fake.commits;
+  out.setData(realState(9));   // salt okunur kapıyı (690) atlayan bir düzenleme bile
+  await sleep(2500);
+  check('eski yapıya hiçbir şey yazılmadı', w.fake.commits === c0 && w.fake.docs.get('coach1').rev === 1000,
+    'commit ' + c0 + ' → ' + w.fake.commits);
+  await sleep(14000);   // kurtarma çekimi ve gözcü süreleri (PEND_STUCK_MS) geçsin
+  check('kurtarma yolları da eski veriyi geri getirmedi', out.data.teams[0].athletes[0].note === 'n9', JSON.stringify(out.data.teams[0].athletes));
+  check('hâlâ hiçbir şey yazılmadı', w.fake.commits === c0, 'commit ' + c0 + ' → ' + w.fake.commits);
+  endScene(); h.unmount();
+}
+async function scenarioMigratedWhileOpen() {
+  scene('açıkken başka cihaz hesabı taşıdı: eski senkron durur, yazılmamış düzenleme için not düşer');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('önce eski düzende yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  w.fake.ack = false;                   // bu cihazın sıradaki yazımı onaylanmasın (yolda kalsın)
+  out.setData(realState(2));
+  await sleep(600);
+  migratedManifest(w, realState(1), Date.now() + 5000);
+  w.fake.ack = true; w.fake.emit({});
+  await sleep(1500);
+  check('günlükte devir yazıldı', /eski yapı taşınmış/.test(BAG.slogText()));
+  check('ekrandaki hâl eski yapının verisiyle ezilmedi', out.data.teams[0].athletes[0].note === 'n2', JSON.stringify(out.data.teams[0].athletes));
+  const c0 = w.fake.commits;
+  out.setData(realState(3));
+  await sleep(2500);
+  check('devirden sonra yazım yok', w.fake.commits === c0, 'commit ' + c0 + ' → ' + w.fake.commits);
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -952,6 +1003,7 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
     scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
     scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
     scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead, scenarioAutoWriteLoop, scenarioLogSurvivesCrash, scenarioSigCompactWritten,
+    scenarioMigratedLegacyHandsOff, scenarioMigratedWhileOpen,
   ];
   // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
   const only = process.env.SYNCTEST_ONLY;

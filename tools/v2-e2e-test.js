@@ -194,6 +194,33 @@ const SEED = () => {
     check('C\'nin düzenlemesi sahibe geldi', !!(await until(async () => ath(await data(B), 'a1').name === 'C yazdı')));
     check('sahipte iki takım duruyor', (await data(B)).teams.length === 2);
     check('davet sırasında sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R0: taşınmış hesap yeni bir cihazda (önbelleği yok) açılırken v2 bayrağı
+       gelmeden eski dinleyici kalkıyordu. Eski yapının donmuş JSON'u (taşımadan önceki hâl) ekrana
+       konmamalı, eski senkron hiçbir şey yazmamalı; v2 açılınca günlük bulut yedeği de alınmalı
+       (eskiden eski senkronun ortak atasını beklerdi, v2'de o hiç dolmuyor). */
+    console.log('\n== 7. taşınmış hesap yeni cihazda: eski veri ekrana gelmez; v2\'de günlük yedek');
+    const revD = (await get('kullanici_verileri/' + UID)).rev;
+    const D = await open('D');
+    check('D yeni yapıda', !!(await until(() => logHas(D, /v2: yeni yapı etkin/), 20000)));
+    const dSaw = await until(async () => { const d = await data(D); return d.teams && ath(d, 'a1') && ath(d, 'a1').name === 'C yazdı'; }, 20000);
+    check('D yeni yapının verisini gösteriyor', !!dSaw);
+    check('D\'de eski yapının donmuş verisi ekrana HİÇ konmadı', !(await logHas(D, /snap: HAZIR \(manifest okundu\)|snap: uzak hâl uygulandı|kurtarma çekimi: deneniyor/)),
+      await D.evaluate(() => slogText().split('\n').filter(l => /snap|dinleyici|eski yapı/.test(l)).slice(0, 8).join(' | ')));
+    check('eski manifest D yüzünden değişmedi', (await get('kullanici_verileri/' + UID)).rev === revD);
+    // Yedekleri sil: D'nin açılıştan 90 sn sonraki ilk yedek turu bugünün yedeğini yeniden almalı.
+    // Öbür sayfalar kapatılır: onlar da yeni yapının sahibi, yedeği D'den önce alabilirlerdi.
+    for (const pg of [A, B, C]) await pg.context().close();
+    await admin(async db => {
+      for (const c of ['snapshots', 'snapshot_parts']) { const s = await db.collection(`users/${UID}/${c}`).get(); for (const x of s.docs) await x.ref.delete(); }
+    });
+    const snapD = await until(() => logHas(D, /günlük yedek alındı/), 120000, 2000);
+    check('v2 hesabında günlük bulut yedeği alındı (D)', !!snapD);
+    const snaps = await admin(db => db.collection(`users/${UID}/snapshots`).get().then(s => s.docs.map(x => x.data())));
+    check('yedek tam (özet + parçalar) ve yeni yapının verisini taşıyor', snaps.length === 1 && snaps[0].n > 0 &&
+      (await admin(db => db.doc(`users/${UID}/snapshot_parts/${snaps[0].day}_0`).get().then(s => (s.data() || {}).c || ''))).includes('C yazdı'),
+      JSON.stringify(snaps));
+    check('7. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {
