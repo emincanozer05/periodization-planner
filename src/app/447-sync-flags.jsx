@@ -21,6 +21,7 @@ const SYNC_FLAGS={
   /* ad: 'ne yapar' — R2 ve sonrasının adımları buraya eklenir. */
   metaSkip:'Hiçbir belgenin değişmediği dinleyici olaylarında (yazım onayı, önbellek→sunucu) ekran yeniden kurulmaz (468 → smController)',
   echoSkip:'Değişen belgelerin hepsi bu cihazın son gönderdiğiyle aynıysa (kendi yazımının yankısı) ekran yeniden kurulmaz (468 → smController)',
+  pipeWrite:'Yazımlar bir öncekinin sunucu onayını beklemeden hemen Firestore\'a verilir; reddedilen paket en güncel hâlden yeniden yazılır (468 → smController.send)',
 };
 const SYNC_FLAG_LS='coachos_syncflag_';
 let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'
