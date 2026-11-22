@@ -41352,6 +41352,7 @@ function stateFromOldDocs(arr){
 const SYNC_FLAGS={
   /* ad: 'ne yapar' — R2 ve sonrasının adımları buraya eklenir. */
   metaSkip:'Hiçbir belgenin değişmediği dinleyici olaylarında (yazım onayı, önbellek→sunucu) ekran yeniden kurulmaz (468 → smController)',
+  echoSkip:'Değişen belgelerin hepsi bu cihazın son gönderdiğiyle aynıysa (kendi yazımının yankısı) ekran yeniden kurulmaz (468 → smController)',
 };
 const SYNC_FLAG_LS='coachos_syncflag_';
 let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'
@@ -43615,6 +43616,7 @@ function SyncDiag({sync,onClose}){
       [L('Yeni yapı: yazım onayı (ort/en çok)','New sync: write ack (avg/max)'),avg(vs.ackMs,vs.writeN)+' / '+mx(vs.ackMax)+' ms · '+vs.writeN+L(' yazım',' writes')],
       [L('Yeni yapı: yavaş tur (>50 ms)','New sync: slow runs (>50 ms)'),String(vs.slowN)+(vs.docs?' · '+vs.docs+L(' belge',' docs'):'')],
       [L('Yeni yapı: sessiz olay (atlanan / uyuşmazlık / geri alma)','New sync: quiet events (skipped / mismatch / revert)'),vs.quietN+' ('+vs.quietSkip+' / '+vs.quietMiss+' / '+vs.quietRevert+')'],
+      [L('Yeni yapı: yankı olayı (atlanan / uyuşmazlık / geri alma)','New sync: echo events (skipped / mismatch / revert)'),vs.ownN+' ('+vs.ownSkip+' / '+vs.ownMiss+' / '+vs.ownRevert+')'],
     );
   }
   if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
@@ -44652,7 +44654,7 @@ var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','mea
    belgeler bir öncekiyle aynıdır (senkron hız planı R2 → metaSkip). Kuşkuda true (tam yol). */
 function smListen(fs,wsPath,onDocs,onError,teams){
   var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
-  var changed=true,docSig={};
+  var changed=true,docSig={},paths={};   // paths: son onDocs'tan beri içeriği değişen belgeler (echoSkip)
   var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
   var emit=function(){
     if(queued||dead)return;queued=true;
@@ -44660,8 +44662,8 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       queued=false;
       if(dead||Object.keys(waiting).length)return;
       var copy={};for(var p in docs)copy[p]=docs[p];
-      var info={fromCache:lastInfo.fromCache,pending:lastInfo.pending,changed:changed};
-      changed=false;
+      var info={fromCache:lastInfo.fromCache,pending:lastInfo.pending,changed:changed,paths:Object.keys(paths)};
+      changed=false;paths={};
       onDocs(copy,info);
     });
   };
@@ -44676,10 +44678,10 @@ function smListen(fs,wsPath,onDocs,onError,teams){
          atıldığından içerik aynıysa bu bir içerik değişimi değildir: eski nesne korunur, olay sessiz kalır. */
       snap.docChanges().forEach(function(ch){
         var rel=colRel+'/'+ch.doc.id;
-        if(ch.type==='removed'){delete docs[rel];changed=true;return;}
+        if(ch.type==='removed'){delete docs[rel];changed=true;paths[rel]=1;return;}
         var nd=strip(ch.doc.data());
         if(ch.type==='modified'&&docs[rel]!==undefined&&smCanon(docs[rel])===smCanon(nd))return;
-        docs[rel]=nd;changed=true;
+        docs[rel]=nd;changed=true;paths[rel]=1;
       });
       lastInfo={fromCache:snap.metadata.fromCache,pending:snap.metadata.hasPendingWrites};
       if(onFirst)onFirst(snap);
@@ -44693,13 +44695,13 @@ function smListen(fs,wsPath,onDocs,onError,teams){
   var dropTeam=function(tid){
     (teamSubs[tid]||[]).forEach(function(k){if(subs[k])subs[k]();delete subs[k];delete waiting[k];});
     delete teamSubs[tid];
-    var pre='teams/'+tid+'/';for(var p in docs)if(p.indexOf(pre)===0)delete docs[p];
+    var pre='teams/'+tid+'/';for(var p in docs)if(p.indexOf(pre)===0){delete docs[p];paths[p]=1;}
     changed=true;
   };
   waiting.ws=1;
   subs.ws=fs.doc(wsPath+'/'+SM_ROOT).onSnapshot({includeMetadataChanges:true},function(snap){
     if(snap.exists)docs['']=strip(snap.data());else delete docs[''];
-    if(docChanged('',docs['']))changed=true;
+    if(docChanged('',docs[''])){changed=true;paths['']=1;}
     delete waiting.ws;emit();
   },err);
   SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
@@ -44714,7 +44716,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       subs[key]=fs.doc(wsPath+'/teams/'+tid).onSnapshot({includeMetadataChanges:true},function(snap){
         if(snap.exists){docs['teams/'+tid]=strip(snap.data());addTeam(tid);}
         else{delete docs['teams/'+tid];dropTeam(tid);}
-        if(docChanged('teams/'+tid,docs['teams/'+tid]))changed=true;
+        if(docChanged('teams/'+tid,docs['teams/'+tid])){changed=true;paths['teams/'+tid]=1;}
         delete waiting[key];emit();
       },err);
     });
@@ -44745,9 +44747,17 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0};}
 /* İki gelen belge kümesi aynı nesnelerden mi oluşuyor? smListen içeriği değişmeyen belgede eski nesneyi
    korur; bu yüzden "hiçbir belge değişmedi" iddiası metne çevirmeden, yalnızca kimlikle doğrulanır. */
+/* smSameRefs'in listedeki yollar dışındaki hâli: liste dışında kalan her belge aynı nesne mi, aynı yollar mı. */
+function smSameRefsExcept(a,b,skip){
+  if(!a||!b)return false;
+  var sk={},i,k,n=0;for(i=0;i<skip.length;i++)sk[skip[i]]=1;
+  for(k in a){if(sk[k])continue;if(a[k]!==b[k])return false;n++;}
+  for(k in b){if(!sk[k])n--;}
+  return n===0;
+}
 function smSameRefs(a,b){
   if(!a||!b)return false;
   var n=0,k;
@@ -44810,7 +44820,31 @@ function smController(o){
         if(skipOn&&o.trip)try{o.trip('metaSkip','sessiz denen olayda belgeler değişmişti');}catch(e){}
       }else if(skipOn){st.quietSkip++;flush();report();return;}
     }
-    lastIn=incoming;
+    var prevIn=lastIn;lastIn=incoming;
+    /* KENDİ YAZIMININ YANKISI (echoSkip, senkron hız planı R2): değişen belgelerin HEPSİ bu cihazın son
+       gönderdiğiyle (docs) içerikçe aynıysa gelen hâl ekrandakinin aynısıdır: tam yol (bütün belgelerden
+       veriyi kurup bütün veriyi metne çevirmek) yalnızca bunu doğrulardı. Karar ucuz: yalnızca değişen
+       birkaç belge karşılaştırılır. Dayandığı tek varsayım — listede olmayan belge değişmedi — nesne
+       kimliğiyle doğrulanır (bayrak kapalıyken de: gölge); tutmazsa sayılır, bayrak bu oturumda kapanır.
+       Gönderilmiş daha yeni bir sürümün arkasından gelen ESKİ yankı (aynı belge, eski içerik) yankı
+       sayılmaz: başka cihaz aynı değeri yazmış olabilir; o hâlde tam yol yürür. */
+    var echo=false,echoOn=false;
+    if(!quiet&&docs&&info.paths&&info.paths.length&&prevIn){
+      st.ownN++;
+      echoOn=!!(o.flag&&o.flag('echoSkip'));
+      if(!smSameRefsExcept(prevIn,incoming,info.paths)){
+        st.ownMiss++;
+        if(o.shadow)try{o.shadow('echoSkip',echoOn?'açık':'gölge');}catch(e){}
+        if(echoOn&&o.trip)try{o.trip('echoSkip','değişen belge listesi eksikti');}catch(e){}
+      }else{
+        echo=info.paths.every(function(p){
+          var inI=incoming[p]!==undefined,inD=docs[p]!==undefined;
+          return inI===inD&&(!inI||smCanon(incoming[p])===smCanon(docs[p]));
+        });
+        if(echo)st.ownHit++;
+        if(echo&&echoOn){st.ownSkip++;flush();report();return;}
+      }
+    }
     var t0=smNow();
     var base=docs,local=[];
     if(base){
@@ -44824,7 +44858,8 @@ function smController(o){
     var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
     if(applied){handled=remote;o.apply(remote);st.applyN++;}
     else handled=cur;
-    if(quiet&&applied)st.quietRevert++;   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
+    if(quiet&&applied)st.quietRevert++;
+    if(echo&&applied)st.ownRevert++;   // gölge: yankı olayında tam yol ekranı değiştirdi   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
     var dt=smNow()-t0;
     st.echoN++;st.echoMs+=dt;if(dt>st.echoMax)st.echoMax=dt;
     if(dt>SM_SLOW_MS){var nd=0;for(var k in merged)nd++;st.docs=nd;slow('gelen',dt,'belge='+nd+(applied?' ekrana kondu':' ekran aynı'));}

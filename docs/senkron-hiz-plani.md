@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 tamam · R2 sürüyor (metaSkip yayında, varsayılan kapalı) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip yayında, varsayılan kapalı; sırada pipeWrite) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -79,8 +79,18 @@ Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. 
       Güvence: "hiçbir belge değişmedi" varsayımı her sessiz olayda nesne kimliğiyle doğrulanıyor (ucuz; bayrak
       kapalıyken gölge), tutmazsa bayrak o oturumda kapanıyor. Açılım: önce `?syncflag=metaSkip` tek cihaz →
       iki cihaz → `config/sync.flags.metaSkip: true`. Tanı penceresi: "sessiz olay (atlanan / uyuşmazlık / geri alma)".
-- [ ] Kendi yankısını atlama (gölge, 0 fark).
-- [ ] Onay beklemeden ardışık gönderim; ilk hatada o oturum sıralıya döner.
+- [x] **`echoSkip`** — kendi yankısını atlama: `smListen` değişen belgelerin listesini (`info.paths`) iletiyor;
+      listedeki her belge bu cihazın son gönderdiğiyle (`docs`) içerikçe aynıysa ekran yeniden kurulmuyor. Karar
+      yalnızca değişen birkaç belgeyi karşılaştırır. Varsayım ("listede olmayan belge değişmedi") nesne kimliğiyle
+      her olayda doğrulanıyor; tutmazsa bayrak kapanıyor. Gönderilmiş daha yeni sürümün arkasından gelen ESKİ
+      yankı yankı sayılmıyor (başka cihaz aynı değeri yazmış olabilir) → tam yol.
+      **Ölçülen sınır:** isabet düşük (emulator: tek düzenleyicide 8 olayda 1, eşzamanlı düzenlemede 24'te 0–8).
+      Sebep: yazımlar `send` zincirinde bir öncekinin SUNUCU ONAYINI bekliyor; bu arada gelen bir olay, kuyruktaki
+      yazımı içermeyen eski hâli `docs`'a ve ekrana koyuyor (geri alma yarışı, `quietRevert`/`ownRevert`). Yankı
+      gelince "son gönderilen" artık o değil. Çözüm sıradaki adım: `pipeWrite`.
+- [ ] **`pipeWrite`** — onay beklemeden ardışık gönderim (Firestore yerel görünümü yazımı hemen içerir → geri alma
+      yarışı biter, echoSkip isabeti yükselir); ilk hatada o oturum sıralıya döner. Gerekirse: henüz commit'e
+      girmemiş yazımlar gelen hâlin üstüne konur (aynı bayrak).
 - [ ] Aynı karedeki değişiklikleri tek turda gönderme (zamanlayıcı yok; kapanışta hemen gönderim).
 
 ### R3 — Giden tarafta artımlı eşleme
@@ -132,4 +142,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | #792 |
 | 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | #793 |
 | 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | #794 |
-| 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | bu PR |
+| 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | #795 |
+| 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | bu PR |

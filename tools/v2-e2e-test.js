@@ -253,6 +253,29 @@ const SEED = () => {
       check('E ve D ekranı birebir aynı', canon((await data(E)).teams) === canon((await data(D)).teams));
     }
     check('8. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R2 — echoSkip: F iki bayrakla (metaSkip + echoSkip), E yalnız metaSkip, D gölgede. */
+    console.log('\n== 9. echoSkip + metaSkip: üç cihaz, üç ayrı bayrak durumu');
+    const F = await open('F', UID, '?syncflag=metaSkip,echoSkip');
+    check('F\'de echoSkip ve metaSkip açık', !!(await until(() => F.evaluate(() => syncFlag('echoSkip') && syncFlag('metaSkip')), 10000)), await F.evaluate(() => syncFlagsReport()));
+    await until(async () => (await data(F)).teams && ath(await data(F), 'a1'), 20000);
+    for (let i = 0; i < 5; i++) {
+      await edit(F, `const a=d.teams[0].athletes.find(a=>a.id==='a0'); a.tests[0].cmj=${70 + i}; d.exercises[0].name='F${i}';`);
+      await edit(E, `d.teams[0].athletes.find(a=>a.id==='a1').position='E${i}';`);
+      await edit(D, `d.teams[0].athletes.find(a=>a.id==='a2').position='D${i}';`);
+      await sleep(120);
+    }
+    const fin9 = d => ath(d, 'a0').tests[0].cmj === 74 && d.exercises[0].name === 'F4' && ath(d, 'a1').position === 'E4' && ath(d, 'a2').position === 'D4';
+    for (const [n, pg] of [['D', D], ['E', E], ['F', F]]) check(n + ' üç cihazın son düzenlemesini gösteriyor', !!(await until(async () => fin9(await data(pg)))));
+    await sleep(1500);
+    {
+      const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v);
+      const tD = canon((await data(D)).teams);
+      check('D, E, F ekranı birebir aynı', tD === canon((await data(E)).teams) && tD === canon((await data(F)).teams));
+    }
+    const bad9 = await Promise.all([D, E, F].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı/.test(slogText()))));
+    check('hiçbir cihazda gölge uyuşmazlığı ya da bayrak kapanması yok', !bad9.some(Boolean), JSON.stringify(bad9));
+    check('9. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {
