@@ -185,10 +185,11 @@ test('verinin üst düzey alanları state/root\'ta; çalışma alanı belgesi (s
 });
 
 /* ── denetleyici: iki cihaz, her birinin kendi "ekranı" ─────────────────────── */
-async function deviceCtl(uid = 'alice', teams) {
-  const screen = { data: null, status: '', notes: 0, errors: [] };
+async function deviceCtl(uid = 'alice', teams, flags) {
+  const screen = { data: null, status: '', notes: 0, errors: [], shadows: [], trips: [] };
   const ctl = SM.smController({
     fs: await device(uid), wsPath: WS, K: K(uid), teams,
+    flag: n => !!(flags && flags[n]), shadow: (n, i) => screen.shadows.push(n + ':' + i), trip: (n, w) => screen.trips.push(n + ':' + w),
     getData: () => screen.data, apply: d => { screen.data = d; },
     prep: d => { const c = Object.assign({}, d); delete c.activeTeamId; return c; },
     fromDocs: docs => Object.assign(SM.smFromDocs(docs), { activeTeamId: 'T1' }),
@@ -220,6 +221,45 @@ test('denetleyici: iki cihaz açılır, A\'nın düzenlemesi B\'nin ekranına ge
   assert.ok(sa.flushN >= 1 && sa.opsN >= 1 && sa.writeN === 1 && sa.ackMs >= 0, JSON.stringify(sa));
   assert.ok(sb.echoN >= 2 && sb.applyN >= 2 && sb.writeN === 0, JSON.stringify(sb));   // ilk yükleme + A'nın düzenlemesi
   a.ctl.stop(); b.ctl.stop();
+});
+
+/* Senkron hız planı R2 — metaSkip: hiçbir belgenin değişmediği dinleyici olayları (yazım onayı, önbellek→sunucu). */
+test('metaSkip gölge (bayrak kapalı): sessiz olaylar sayılır, atlanmaz, hiçbiri ekranı değiştirmezdi', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 4; i++) { a.edit(d => { A0(d).tests[0].cmj = 70 + i; }); await a.ctl.idle(); }
+  await b.until(d => A0(d).tests[0].cmj === 73);
+  await new Promise(r => setTimeout(r, 400));
+  const sa = a.ctl.stats();
+  assert.ok(sa.quietN >= 1, 'yazım onayı sessiz olay olarak görülmeli: ' + JSON.stringify(sa));
+  assert.strictEqual(sa.quietSkip, 0); assert.strictEqual(sa.quietMiss, 0, JSON.stringify(a.screen.shadows));
+  assert.ok(same(a.screen.data, b.screen.data));
+  assert.strictEqual(b.ctl.stats().quietMiss, 0);
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('metaSkip açık: sessiz olaylar atlanır; iki cihaz AYNI ANDA düzenler, ikisi de aynı hâle gelir, bayrak kapanmaz', async () => {
+  const data = sample(); await start(data);
+  const F = { metaSkip: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 6; i++) {
+    a.edit(d => { A0(d).tests[0].cmj = 80 + i; });
+    b.edit(d => { A0(d).position = 'P' + i; d.exercises[0].name = 'Ex' + i; });
+    await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  }
+  const fin = d => A0(d).tests[0].cmj === 85 && A0(d).position === 'P5' && d.exercises[0].name === 'Ex5';
+  await a.until(fin); await b.until(fin);
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  assert.ok(same(a.screen.data, b.screen.data), 'iki ekran birebir aynı olmalı');
+  const sa = a.ctl.stats(), sb = b.ctl.stats();
+  assert.ok(sa.quietSkip + sb.quietSkip >= 1, 'en az bir sessiz olay atlanmalı: ' + JSON.stringify([sa, sb]));
+  assert.strictEqual(sa.quietMiss + sb.quietMiss, 0, JSON.stringify([a.screen.shadows, b.screen.shadows]));
+  assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
+  // Sunucudaki hâl de ekranla aynı (atlanan olaylar hiçbir yazımı kaçırmadı)
+  const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams));
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
 });
 
 test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {

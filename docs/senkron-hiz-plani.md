@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 tamam → sırada R1 (gerçek cihazda ölçüm) · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam · R2 sürüyor (metaSkip yayında, varsayılan kapalı) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -71,7 +71,14 @@ orantılı. R3/R4'ün CI bütçesi "smCanon / düzenleme" sayısına bağlanacak
 Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. Gerekmeyen adım yapılmaz.
 
 ### R2 — Düşük riskli hızlandırmalar (her biri ayrı bayrak)
-- [ ] Hiçbir belgenin değişmediği dinleyici olayında yeniden kurulumu atlama (gölge, 0 fark).
+- [x] **`metaSkip`** — hiçbir belgenin değişmediği dinleyici olayında yeniden kurulumu atlama (468 → `smListen`
+      `info.changed`, `smController`). Bulgu: her yazım `_at: serverTimestamp()` taşıdığı için sunucu onayı da
+      "değişti" diye geliyordu; artık yalnızca `_at`/`_by` değişen belge içerik değişimi sayılmıyor (eski nesne
+      korunuyor). İkinci bulgu: eski tam yol sessiz olayda, gönderilmiş ama yankısı gelmemiş düzenlemeyi ekranda
+      bir an GERİ ALIYOR (emulator: 4 düzenlemede 3 geri alma, `quietRevert`). Atlama bunu da önlüyor.
+      Güvence: "hiçbir belge değişmedi" varsayımı her sessiz olayda nesne kimliğiyle doğrulanıyor (ucuz; bayrak
+      kapalıyken gölge), tutmazsa bayrak o oturumda kapanıyor. Açılım: önce `?syncflag=metaSkip` tek cihaz →
+      iki cihaz → `config/sync.flags.metaSkip: true`. Tanı penceresi: "sessiz olay (atlanan / uyuşmazlık / geri alma)".
 - [ ] Kendi yankısını atlama (gölge, 0 fark).
 - [ ] Onay beklemeden ardışık gönderim; ilk hatada o oturum sıralıya döner.
 - [ ] Aynı karedeki değişiklikleri tek turda gönderme (zamanlayıcı yok; kapanışta hemen gönderim).
@@ -124,4 +131,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | #791 |
 | 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | #792 |
 | 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | #793 |
-| 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | bu PR |
+| 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | #794 |
+| 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | bu PR |

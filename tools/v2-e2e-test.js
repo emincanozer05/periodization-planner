@@ -228,6 +228,31 @@ const SEED = () => {
       await D.evaluate(() => syncFlagsReport()));
     await admin(db => db.doc('config/sync').delete());
     check('7. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R2 — metaSkip: E bu cihazda bayrakla açılır (?syncflag=metaSkip), D kapalı (gölge).
+       İki cihaz arka arkaya ve aynı anda düzenler; iki ekran birebir aynı kalmalı, gölge uyuşmazlık görmemeli. */
+    console.log('\n== 8. metaSkip: bir cihaz bayrakla, öbürü gölgede');
+    const E = await open('E', UID, '?syncflag=metaSkip');
+    check('E\'de metaSkip açık', !!(await until(() => E.evaluate(() => syncFlag('metaSkip')), 10000)), await E.evaluate(() => syncFlagsReport()));
+    check('D\'de metaSkip kapalı', !(await D.evaluate(() => syncFlag('metaSkip'))));
+    await until(async () => (await data(E)).teams && ath(await data(E), 'a1'), 20000);
+    for (let i = 0; i < 5; i++) {
+      await edit(E, `d.teams[0].athletes.find(a=>a.id==='a0').tests[0].cmj=${60 + i};`);
+      await edit(D, `d.teams[0].athletes.find(a=>a.id==='a2').position='P${i}';`);
+      await sleep(150);
+    }
+    const fin8 = d => ath(d, 'a0').tests[0].cmj === 64 && ath(d, 'a2').position === 'P4';
+    check('E ikisini de gösteriyor', !!(await until(async () => fin8(await data(E)))));
+    check('D ikisini de gösteriyor', !!(await until(async () => fin8(await data(D)))));
+    await sleep(1500);
+    const statsOf = pg => pg.evaluate(() => { const t = slogText(); return { miss: /gölge uyuşmazlığı \(metaSkip\)/.test(t), trip: /bayrak kendiliğinden kapandı: metaSkip/.test(t) }; });
+    const sE = await statsOf(E), sD = await statsOf(D);
+    check('gölge uyuşmazlığı yok, bayrak kapanmadı (E ve D)', !sE.miss && !sE.trip && !sD.miss, JSON.stringify({ sE, sD }));
+    {
+      const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v);
+      check('E ve D ekranı birebir aynı', canon((await data(E)).teams) === canon((await data(D)).teams));
+    }
+    check('8. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {

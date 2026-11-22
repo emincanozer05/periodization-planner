@@ -306,6 +306,7 @@ function SyncDiag({sync,onClose}){
       [L('Yeni yapı: gelen işleme (ort/en çok)','New sync: incoming (avg/max)'),avg(vs.echoMs,vs.echoN)+' / '+mx(vs.echoMax)+' ms · '+vs.echoN+L(' tur',' runs')],
       [L('Yeni yapı: yazım onayı (ort/en çok)','New sync: write ack (avg/max)'),avg(vs.ackMs,vs.writeN)+' / '+mx(vs.ackMax)+' ms · '+vs.writeN+L(' yazım',' writes')],
       [L('Yeni yapı: yavaş tur (>50 ms)','New sync: slow runs (>50 ms)'),String(vs.slowN)+(vs.docs?' · '+vs.docs+L(' belge',' docs'):'')],
+      [L('Yeni yapı: sessiz olay (atlanan / uyuşmazlık / geri alma)','New sync: quiet events (skipped / mismatch / revert)'),vs.quietN+' ('+vs.quietSkip+' / '+vs.quietMiss+' / '+vs.quietRevert+')'],
     );
   }
   if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
