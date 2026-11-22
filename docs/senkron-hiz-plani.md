@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 sürüyor · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam → sırada R1 (gerçek cihazda ölçüm) · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -18,6 +18,19 @@ gerçekçi bir hesapta tek bir test değerini değiştirmek (masaüstü CPU, Nod
 Telefonda kabaca 4–6 katı. Ek olarak: her tuş vuruşu ayrı tur; yazımlar sunucu onayını sırayla
 bekliyor; hiçbir belge değişmeyen dinleyici olayları da tam yeniden kurulum yapıyor; `migrate` her
 gelen güncellemede bütün ağacı yeni nesnelerle kuruyor.
+
+### Temel çizgi (R0 sonu, `node tools/sync-bench.js`, büyük hesap: 6,3 MB / 4.877 belge, sunucu CPU)
+
+| Düzenleme | Firestore'a giden | Gönderim | Yankı | smCanon / gönderim | smCanon / yankı |
+|---|---|---|---|---|---|
+| test değeri | 1 yazım, 85 B | 680 ms | 469 ms | 1.501.874 | 1.060.332 |
+| seans adı | 1 yazım, 94 B | 680 ms | 496 ms | 1.502.266 | 1.060.332 |
+| wellness ekle | 1 yazım, 173 B | 679 ms | 526 ms | 1.503.914 | 1.060.340 |
+| kütüphanenin başına egzersiz | 1 yazım, 136 B | 722 ms | 548 ms | 1.501.838 | 1.060.344 |
+| sezon ayarı (müsabaka) | 1 yazım, 182 B | 693 ms | 480 ms | 1.502.080 | 1.060.340 |
+
+Giden veri zaten değişenle orantılı (B3 sağlanmış); sorun tamamen cihazdaki hesap: iş sayısı hesapla
+orantılı. R3/R4'ün CI bütçesi "smCanon / düzenleme" sayısına bağlanacak.
 
 ## 2. Değişmez kurallar (her adım uyar)
 
@@ -49,7 +62,10 @@ gelen güncellemede bütün ağacı yeni nesnelerle kuruyor.
 - [x] Bayrak altyapısı (G2) ve uzaktan kapatma anahtarı (G3): `447-sync-flags.jsx` (`syncFlag`, `syncFlagTrip`),
       `config/sync` kuralı (okuma: oturumlu herkes, yazma: kimse). Ölçüm sayaçları: `smController.stats()`
       (gönderim, gelen işleme, yazım onayı, yavaş tur) → senkron tanı penceresi; 50 ms'yi aşan tur günlüğe.
-- [ ] Büyük örnek veri + `tools/sync-bench.js` + eşdeğerlik test düzeneği (artımlı ≡ tam).
+- [x] Örnek veri (`tools/sync-fixture.js`: small / large, tohumlu), ölçüm aracı (`tools/sync-bench.js`: süre +
+      makineden bağımsız iş sayısı), eşdeğerlik testi (`store-map-equiv-test.js`, CI: validator.yml): rastgele
+      düzenleme zincirlerinde D1 fark → birebir hedef belgeler, D2 gidiş-dönüş, D3 boş düzenleme yazmaz,
+      D4 aday ≡ referans (R3 adayı buraya bağlar). Bilerek bozulmuş aday 30 adımda 27 kez yakalandı.
 
 ### R1 — Ölçüm (salt okunur)
 Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. Gerekmeyen adım yapılmaz.
@@ -107,4 +123,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | — | Plan, ölçüm | — |
 | 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | #791 |
 | 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | #792 |
-| 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | bu PR |
+| 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | #793 |
+| 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | bu PR |
