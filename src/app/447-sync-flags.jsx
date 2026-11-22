@@ -19,6 +19,7 @@
    Bu parça JSX içermez: sync-test.js 440–460'ı düz JS çalıştırır. */
 const SYNC_FLAGS={
   /* ad: 'ne yapar' — R2 ve sonrasının adımları buraya eklenir. */
+  metaSkip:'Hiçbir belgenin değişmediği dinleyici olaylarında (yazım onayı, önbellek→sunucu) ekran yeniden kurulmaz (468 → smController)',
 };
 const SYNC_FLAG_LS='coachos_syncflag_';
 let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'

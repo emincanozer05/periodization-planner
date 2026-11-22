@@ -524,8 +524,12 @@ var SM_TEAM_COLS=['seasons','days','sessions','athletes','tests','injuries','mea
 /* teams: üyenin erişebildiği takımlar. ['*'] ya da verilmezse bütün takım koleksiyonu dinlenir;
    bir liste verilirse (yalnız belirli takımlara erişen antrenör) her takımın belgesi tek tek dinlenir —
    kurallar bütün koleksiyonun listelenmesini o üyeye izin vermez. */
+/* info.changed: son onDocs'tan beri bir belge gerçekten değişti mi (eklendi, değişti, silindi). false ise
+   olay yalnızca üst veridir — yazımın sunucu onayı (bekleyen → oturdu), önbellekten sunucuya geçiş — ve
+   belgeler bir öncekiyle aynıdır (senkron hız planı R2 → metaSkip). Kuşkuda true (tam yol). */
 function smListen(fs,wsPath,onDocs,onError,teams){
   var docs={},waiting={},subs={},teamSubs={},dead=false,queued=false,lastInfo={fromCache:false,pending:false};
+  var changed=true,docSig={};
   var strip=function(d){var r={};for(var k in d)if(SM_META.indexOf(k)<0)r[k]=d[k];return r;};
   var emit=function(){
     if(queued||dead)return;queued=true;
@@ -533,16 +537,26 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       queued=false;
       if(dead||Object.keys(waiting).length)return;
       var copy={};for(var p in docs)copy[p]=docs[p];
-      onDocs(copy,lastInfo);
+      var info={fromCache:lastInfo.fromCache,pending:lastInfo.pending,changed:changed};
+      changed=false;
+      onDocs(copy,info);
     });
   };
+  /* Tek belge dinleyicisi (kök, takım belgesi) üst veri değişiminde de uyanır: içerik bir öncekiyle aynı mı? */
+  var docChanged=function(key,data){var s=data===undefined?'∅':JSON.stringify(data);if(docSig[key]===s)return false;docSig[key]=s;return true;};
   var err=function(e){if(onError)onError(e);};
   var listenCol=function(key,colRel,onFirst){
     waiting[key]=1;
     subs[key]=fs.collection(wsPath+'/'+colRel).onSnapshot({includeMetadataChanges:true},function(snap){
+      /* Seçeneksiz docChanges() üst veri değişimlerini saymaz. Ama her yazım `_at: serverTimestamp()` taşıdığı
+         için sunucu onayı da bir "değişti" olarak gelir (damga null → gerçek zaman). `_at`/`_by` okurken
+         atıldığından içerik aynıysa bu bir içerik değişimi değildir: eski nesne korunur, olay sessiz kalır. */
       snap.docChanges().forEach(function(ch){
         var rel=colRel+'/'+ch.doc.id;
-        if(ch.type==='removed')delete docs[rel];else docs[rel]=strip(ch.doc.data());
+        if(ch.type==='removed'){delete docs[rel];changed=true;return;}
+        var nd=strip(ch.doc.data());
+        if(ch.type==='modified'&&docs[rel]!==undefined&&smCanon(docs[rel])===smCanon(nd))return;
+        docs[rel]=nd;changed=true;
       });
       lastInfo={fromCache:snap.metadata.fromCache,pending:snap.metadata.hasPendingWrites};
       if(onFirst)onFirst(snap);
@@ -557,10 +571,12 @@ function smListen(fs,wsPath,onDocs,onError,teams){
     (teamSubs[tid]||[]).forEach(function(k){if(subs[k])subs[k]();delete subs[k];delete waiting[k];});
     delete teamSubs[tid];
     var pre='teams/'+tid+'/';for(var p in docs)if(p.indexOf(pre)===0)delete docs[p];
+    changed=true;
   };
   waiting.ws=1;
   subs.ws=fs.doc(wsPath+'/'+SM_ROOT).onSnapshot({includeMetadataChanges:true},function(snap){
     if(snap.exists)docs['']=strip(snap.data());else delete docs[''];
+    if(docChanged('',docs['']))changed=true;
     delete waiting.ws;emit();
   },err);
   SM_WS_COLS.forEach(function(c){listenCol('c:'+c,c);});
@@ -575,6 +591,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
       subs[key]=fs.doc(wsPath+'/teams/'+tid).onSnapshot({includeMetadataChanges:true},function(snap){
         if(snap.exists){docs['teams/'+tid]=strip(snap.data());addTeam(tid);}
         else{delete docs['teams/'+tid];dropTeam(tid);}
+        if(docChanged('teams/'+tid,docs['teams/'+tid]))changed=true;
         delete waiting[key];emit();
       },err);
     });
@@ -594,6 +611,8 @@ function smListen(fs,wsPath,onDocs,onError,teams){
      slow(tür, ms, ayrıntı)             (isteğe bağlı) ana iş parçacığında SM_SLOW_MS'yi aşan tur
      flag(ad) → bool                    (isteğe bağlı) senkron bayrakları (447); yoksa hepsi kapalı.
                                         Yeni bir davranış YALNIZCA bununla açılır (senkron hız planı G2)
+     shadow(ad, ayrıntı)                (isteğe bağlı) gölge/doğrulama uyuşmazlığı: yeni yol farklı sonuç verirdi
+     trip(ad, sebep)                    (isteğe bağlı) bayrağı bu oturumda kapat (onarım ağı, G5)
    }
    Kural: yerel değişiklik her zaman ÖNCE gönderilir. Başka cihazdan güncelleme gelirken ekranda
    henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
@@ -602,9 +621,19 @@ function smListen(fs,wsPath,onDocs,onError,teams){
    SM_SLOW_MS'yi aşan bir tur o.slow(tür, ms, ayrıntı) ile bildirilir (uygulama günlüğe yazar). */
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
-function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0};}
+function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0};}
+/* İki gelen belge kümesi aynı nesnelerden mi oluşuyor? smListen içeriği değişmeyen belgede eski nesneyi
+   korur; bu yüzden "hiçbir belge değişmedi" iddiası metne çevirmeden, yalnızca kimlikle doğrulanır. */
+function smSameRefs(a,b){
+  if(!a||!b)return false;
+  var n=0,k;
+  for(k in a){if(a[k]!==b[k])return false;n++;}
+  for(k in b)n--;
+  return n===0;
+}
 function smController(o){
-  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false;
+  var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false,lastIn=null;
   var st=smStatsNew();
   var slow=function(kind,ms,info){st.slowN++;if(o.slow)try{o.slow(kind,Math.round(ms),info);}catch(e){}};
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
@@ -641,6 +670,24 @@ function smController(o){
     }
     newer=false;
     lastPending=!!info.pending;
+    /* SESSİZ OLAY (metaSkip, senkron hız planı R2): hiçbir belge değişmedi — yazımın sunucu onayı ya da
+       önbellek→sunucu geçişi. Gelen belgeler bir öncekinin AYNISI olduğundan yeniden birleştirmenin
+       yapabileceği tek şey, gönderilmiş ama henüz yankısı gelmemiş bir yerel düzenlemeyi ekranda bir an geri
+       almaktır (eski bir onay olayı, sonraki düzenlemeden önce işlenirse). Bayrak açıkken atlanır; ekranda
+       gönderilmemiş bir düzenleme varsa her zamanki gibi gönderilir.
+       Atlamanın dayandığı tek varsayım ("hiçbir belge değişmedi") HER sessiz olayda kimlikle doğrulanır
+       (ucuz; bayrak kapalıyken de: gölge). Tutmazsa sayılır, bayrak bu oturumda kapanır ve tam yol yürür. */
+    var quiet=info.changed===false&&docs!==null,skipOn=false;
+    if(quiet){
+      st.quietN++;
+      skipOn=!!(o.flag&&o.flag('metaSkip'));
+      if(!smSameRefs(lastIn,incoming)){
+        st.quietMiss++;quiet=false;
+        if(o.shadow)try{o.shadow('metaSkip',skipOn?'açık':'gölge');}catch(e){}
+        if(skipOn&&o.trip)try{o.trip('metaSkip','sessiz denen olayda belgeler değişmişti');}catch(e){}
+      }else if(skipOn){st.quietSkip++;flush();report();return;}
+    }
+    lastIn=incoming;
     var t0=smNow();
     var base=docs,local=[];
     if(base){
@@ -654,6 +701,7 @@ function smController(o){
     var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
     if(applied){handled=remote;o.apply(remote);st.applyN++;}
     else handled=cur;
+    if(quiet&&applied)st.quietRevert++;   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
     var dt=smNow()-t0;
     st.echoN++;st.echoMs+=dt;if(dt>st.echoMax)st.echoMax=dt;
     if(dt>SM_SLOW_MS){var nd=0;for(var k in merged)nd++;st.docs=nd;slow('gelen',dt,'belge='+nd+(applied?' ekrana kondu':' ekran aynı'));}

@@ -84,6 +84,8 @@ function useStoreV2(o){
       /* Yavaş tur (ana iş parçacığında SM_SLOW_MS'den uzun): her tür için en çok 30 sn'de bir günlüğe. */
       slow:(k,ms,info)=>{const t=Date.now(),l=slowAt.current;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: yavaş tur ('+k+')',ms+' ms · '+info);},
       flag:syncFlag,                                  // bayraklar (447): denetleyici yeni davranışı yalnızca bunlarla açar
+      trip:syncFlagTrip,                              // onarım ağı: uyuşmazlıkta bayrak bu oturumda kapanır (G5)
+      shadow:(n,info)=>{const t=Date.now(),l=slowAt.current,k='sh:'+n;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: gölge uyuşmazlığı ('+n+')',info);},
       note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
         setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
           'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
