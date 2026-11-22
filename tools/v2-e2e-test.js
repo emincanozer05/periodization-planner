@@ -276,6 +276,25 @@ const SEED = () => {
     const bad9 = await Promise.all([D, E, F].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı/.test(slogText()))));
     check('hiçbir cihazda gölge uyuşmazlığı ya da bayrak kapanması yok', !bad9.some(Boolean), JSON.stringify(bad9));
     check('9. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R2 — pipeWrite: G üç bayrakla, beklemeden art arda düzenler; D (gölge), E, F ile birlikte. */
+    console.log('\n== 10. pipeWrite: bir cihaz beklemeden art arda yazar');
+    const G = await open('G', UID, '?syncflag=metaSkip,echoSkip,pipeWrite');
+    check('G\'de pipeWrite açık', !!(await until(() => G.evaluate(() => syncFlag('pipeWrite')), 10000)), await G.evaluate(() => syncFlagsReport()));
+    await until(async () => (await data(G)).teams && ath(await data(G), 'a1'), 20000);
+    for (let i = 0; i < 8; i++) await edit(G, `d.teams[0].athletes.find(a=>a.id==='a0').tests[0].cmj=${80 + i}; d.exercises[0].name='G${i}';`);
+    await edit(D, `d.teams[0].athletes.find(a=>a.id==='a2').position='DD';`);
+    const fin10 = d => ath(d, 'a0').tests[0].cmj === 87 && d.exercises[0].name === 'G7' && ath(d, 'a2').position === 'DD';
+    for (const [n, pg] of [['D', D], ['E', E], ['F', F], ['G', G]]) check(n + ' son hâli gösteriyor', !!(await until(async () => fin10(await data(pg)))));
+    await sleep(1500);
+    {
+      const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v);
+      const tG = canon((await data(G)).teams);
+      check('D, E, F, G ekranı birebir aynı', (await Promise.all([D, E, F].map(async pg => canon((await data(pg)).teams)))).every(t => t === tG));
+    }
+    const bad10 = await Promise.all([D, E, F, G].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı|v2: hata/.test(slogText()))));
+    check('hiçbir cihazda uyuşmazlık, bayrak kapanması ya da senkron hatası yok', !bad10.some(Boolean), JSON.stringify(bad10));
+    check('10. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {

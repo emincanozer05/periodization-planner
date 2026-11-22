@@ -41353,6 +41353,7 @@ const SYNC_FLAGS={
   /* ad: 'ne yapar' — R2 ve sonrasının adımları buraya eklenir. */
   metaSkip:'Hiçbir belgenin değişmediği dinleyici olaylarında (yazım onayı, önbellek→sunucu) ekran yeniden kurulmaz (468 → smController)',
   echoSkip:'Değişen belgelerin hepsi bu cihazın son gönderdiğiyle aynıysa (kendi yazımının yankısı) ekran yeniden kurulmaz (468 → smController)',
+  pipeWrite:'Yazımlar bir öncekinin sunucu onayını beklemeden hemen Firestore\'a verilir; reddedilen paket en güncel hâlden yeniden yazılır (468 → smController.send)',
 };
 const SYNC_FLAG_LS='coachos_syncflag_';
 let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'
@@ -43617,6 +43618,7 @@ function SyncDiag({sync,onClose}){
       [L('Yeni yapı: yavaş tur (>50 ms)','New sync: slow runs (>50 ms)'),String(vs.slowN)+(vs.docs?' · '+vs.docs+L(' belge',' docs'):'')],
       [L('Yeni yapı: sessiz olay (atlanan / uyuşmazlık / geri alma)','New sync: quiet events (skipped / mismatch / revert)'),vs.quietN+' ('+vs.quietSkip+' / '+vs.quietMiss+' / '+vs.quietRevert+')'],
       [L('Yeni yapı: yankı olayı (atlanan / uyuşmazlık / geri alma)','New sync: echo events (skipped / mismatch / revert)'),vs.ownN+' ('+vs.ownSkip+' / '+vs.ownMiss+' / '+vs.ownRevert+')'],
+      [L('Yeni yapı: ardışık yazım (yeniden yazılan paket)','New sync: pipelined writes (re-asserted batches)'),vs.pipeN+' ('+vs.pipeRetry+')'],
     );
   }
   if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
@@ -44611,7 +44613,10 @@ function smRef(fs,wsPath,rel){return fs.doc(wsPath+'/'+(rel===''?SM_ROOT:rel));}
    olmayan belgeye düşerse (başka cihaz silmiş) bütün paket reddedilir. O zaman paketin işlemleri
    tek tek yeniden denenir; yalnızca düşen update'ler `failed`'a yazılır, gerisi kalır.
    Yetki ya da ağ hatası olduğu gibi yukarı çıkar (çağıran yeniden dener / kullanıcıya söyler). */
-async function smWrite(fs,wsPath,ops,K){
+/* opts.noRetry (pipeWrite): paket "silinmiş belgeye düzenleme" ile reddedilirse işlemler tek tek ESKİ
+   değerleriyle yeniden denenmez — arkasından daha yeni bir yazım çoktan gitmiş olabilir, eski değer onu ezerdi.
+   Reddedilen paket ve sonrası `retry` olarak döner; çağıran (denetleyici) o yolları EN GÜNCEL hâlden yeniden yazar. */
+async function smWrite(fs,wsPath,ops,K,opts){
   var meta=function(){var m={_at:K.FieldValue.serverTimestamp()};if(K.uid)m._by=K.uid;return m;};
   var one=function(b,op){
     var ref=smRef(fs,wsPath,op.path);
@@ -44631,6 +44636,7 @@ async function smWrite(fs,wsPath,ops,K){
     try{await b.commit();written+=chunk.length;}
     catch(e){
       if(!e||e.code!=='not-found')throw e;
+      if(opts&&opts.noRetry)return{written:written,failed:failed,retry:ops.slice(i)};
       for(var j=0;j<chunk.length;j++){
         var b1=fs.batch();one(b1,chunk[j]);
         try{await b1.commit();written++;}
@@ -44747,7 +44753,9 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0};}
+/* Belgenin içindeki bir alan yolunun değeri (yoksa undefined). */
+function smGetIn(o,path){for(var i=0;i<path.length;i++){if(!smIsObj(o))return undefined;o=o[path[i]];}return o;}
 /* İki gelen belge kümesi aynı nesnelerden mi oluşuyor? smListen içeriği değişmeyen belgede eski nesneyi
    korur; bu yüzden "hiçbir belge değişmedi" iddiası metne çevirmeden, yalnızca kimlikle doğrulanır. */
 /* smSameRefs'in listedeki yollar dışındaki hâli: liste dışında kalan her belge aynı nesne mi, aynı yollar mı. */
@@ -44772,13 +44780,53 @@ function smController(o){
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
   /* Veri bu uygulamadan daha yeni bir biçimle yazılmışsa ne okunur ne yazılır; uygulama yenilenmeli. */
   var tooNew=function(incoming){var r=incoming&&incoming[''],f=r&&r._fmt;return typeof f==='number'&&f>SM_FORMAT;};
+  /* ARDIŞIK GÖNDERİM (pipeWrite, senkron hız planı R2). Sıralı yolda her yazım bir öncekinin SUNUCU ONAYINI
+     bekler; bekleyen yazım Firestore'a henüz verilmediği için arada gelen bir olay onu içermez ve tam yol
+     ekranı (ve docs'u) bir an onsuz hâle döndürür (geri alma yarışı). Bayrak açıkken yazım hemen Firestore'a
+     verilir: Firestore aynı istemcinin yazımlarını sırasıyla işler ve yerel görünümü sonraki her olayda onları
+     içerir. Kurallar:
+       • Sıralı yolda bekleyen bir yazım varken ardışık gönderilmez (sıra bozulmasın).
+       • Paket "silinmiş belgeye düzenleme" ile reddedilirse yollar ESKİ değerle değil, EN GÜNCEL hâlden (docs)
+         yeniden yazılır (reassert); gerçekten silinmiş belgeye düşen düzenleme bildirilir.
+       • Başka bir hata (yetki vb.) → bayrak bu oturumda kapanır, hata her zamanki gibi bildirilir. */
+  var serialWait=0;
+  var ack=function(t0){var dt=smNow()-t0;st.writeN++;st.ackMs+=dt;if(dt>st.ackMax)st.ackMax=dt;};
+  var reassert=async function(rops){
+    var seen={},paths=[],failed=[];
+    rops.forEach(function(op){if(!seen[op.path]){seen[op.path]=op;paths.push(op.path);}else if(op.op==='update'&&seen[op.path].op==='update')seen[op.path]={op:'update',path:op.path,fields:seen[op.path].fields.concat(op.fields)};});
+    for(var i=0;i<paths.length;i++){
+      var p=paths[i],orig=seen[p],cur=docs?docs[p]:undefined,op;
+      // İşlem şimdi, EN GÜNCEL hâlden kurulur ve aynı anda (eşzamanlı) Firestore'a verilir: arkasından gelen
+      // her yazım Firestore'da bundan sonra işlenir.
+      if(cur===undefined)op={op:'delete',path:p};
+      else if(orig.op==='update')op={op:'update',path:p,fields:orig.fields.map(function(f){var v=smGetIn(cur,f.path);return v===undefined?{path:f.path,del:true}:{path:f.path,value:v};})};
+      else op={op:'set',path:p,data:cur};
+      var r=await smWrite(o.fs,o.wsPath,[op],o.K,{noRetry:true});
+      if(r.retry)failed.push(p);
+    }
+    if(failed.length)o.note(failed.length);
+  };
   var send=function(ops){
     inflight++;report();
+    if(!serialWait&&o.flag&&o.flag('pipeWrite')){
+      st.pipeN++;
+      var t1=smNow();
+      var p=smWrite(o.fs,o.wsPath,ops,o.K,{noRetry:true}).then(function(r){
+        ack(t1);
+        if(r.retry){st.pipeRetry++;return reassert(r.retry);}
+      }).catch(function(e){
+        if(o.trip)try{o.trip('pipeWrite','yazım hatası: '+String((e&&(e.code||e.message))||e));}catch(x){}
+        o.error(e);
+      }).then(function(){inflight--;report();});
+      chain=chain.then(function(){return p;});
+      return chain;
+    }
+    serialWait++;
     var t0=0;
     chain=chain.then(function(){t0=smNow();return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
-      var dt=smNow()-t0;st.writeN++;st.ackMs+=dt;if(dt>st.ackMax)st.ackMax=dt;
+      ack(t0);
       if(r.failed.length)o.note(r.failed.length);
-    }).catch(function(e){o.error(e);}).then(function(){inflight--;report();});
+    }).catch(function(e){o.error(e);}).then(function(){serialWait--;inflight--;report();});
     return chain;
   };
   /* Ekrandaki veri en son gönderilenden farklıysa farkı gönder; uygulanan yazım listesini döner. */

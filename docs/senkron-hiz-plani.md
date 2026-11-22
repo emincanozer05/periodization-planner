@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip yayında, varsayılan kapalı; sırada pipeWrite) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip, pipeWrite yayında, varsayılan kapalı; sırada staleEcho) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -88,9 +88,18 @@ Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. 
       Sebep: yazımlar `send` zincirinde bir öncekinin SUNUCU ONAYINI bekliyor; bu arada gelen bir olay, kuyruktaki
       yazımı içermeyen eski hâli `docs`'a ve ekrana koyuyor (geri alma yarışı, `quietRevert`/`ownRevert`). Yankı
       gelince "son gönderilen" artık o değil. Çözüm sıradaki adım: `pipeWrite`.
-- [ ] **`pipeWrite`** — onay beklemeden ardışık gönderim (Firestore yerel görünümü yazımı hemen içerir → geri alma
-      yarışı biter, echoSkip isabeti yükselir); ilk hatada o oturum sıralıya döner. Gerekirse: henüz commit'e
-      girmemiş yazımlar gelen hâlin üstüne konur (aynı bayrak).
+- [x] **`pipeWrite`** — yazımlar bir öncekinin sunucu onayını beklemeden hemen Firestore'a veriliyor (`send`).
+      Sıralı yolda bekleyen yazım varken ardışık gönderilmiyor. TEHLİKE ve önlemi: paket "silinmiş belgeye
+      düzenleme" ile reddedilirse eski yol işlemleri ESKİ değerleriyle tek tek yeniden deniyordu — ardışık modda
+      arkasından daha yeni yazım gitmiş olabileceği için bu, yeni değeri ezerdi (emulator'de bilerek bozulmuş
+      sürümle gösterildi). Artık reddedilen paketin yolları EN GÜNCEL hâlden (`docs`) yeniden yazılıyor
+      (`reassert`); başka hata → bayrak oturumda kapanıyor. Ölçüm (10 hızlı düzenleme): sıralı modda ekran son
+      değere 20 olayda ulaşıyor (her yazım bir gidiş-dönüş bekliyor), ardışık modda 10 olayda; ama düzenlemeler
+      Firestore'un yerel uygulamasından hızlıysa ekran yine bir an geri gidiyor → sıradaki adım.
+- [ ] **`staleEcho`** — kendi BEKLEYEN yazımının eski yankısını tanıma: değişen belge Firestore'da onaylanmamış yerel
+      yazım taşıyorsa (`metadata.hasPendingWrites`) ve içeriği bu cihazın o belge için gönderdiği sürümlerden
+      biriyse ekrana konmaz (daha yeni sürüm zaten ekranda ve yolda). Bekleyen yazım yoksa (başka cihazın aynı
+      değeri yazmış olması) tam yol. Hedef: yazarken geri gidip gelme sıfır.
 - [ ] Aynı karedeki değişiklikleri tek turda gönderme (zamanlayıcı yok; kapanışta hemen gönderim).
 
 ### R3 — Giden tarafta artımlı eşleme
@@ -143,4 +152,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | #793 |
 | 2026-11-22 | R0 | Örnek veri, ölçüm aracı (temel çizgi yukarıda), eşdeğerlik testi CI'da — R0 tamam | #794 |
 | 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | #795 |
-| 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | bu PR |
+| 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | #796 |
+| 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | bu PR |

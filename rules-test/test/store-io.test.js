@@ -301,6 +301,49 @@ test('echoSkip + metaSkip açık: iki cihaz AYNI ANDA ve aynı belgeyi hızlı h
   a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
 });
 
+/* Senkron hız planı R2 — pipeWrite: yazımlar onay beklemeden art arda Firestore'a verilir. */
+for (const pipe of [false, true]) {
+  test(`${pipe ? 'pipeWrite açık' : 'sıralı (bayrak kapalı)'}: silinmiş seansa düşen paket reddedilir, ARKASINDAN gelen yeni değer ezilmez`, async () => {
+    const data = sample(); await start(data);
+    const a = await deviceCtl('alice', undefined, pipe ? { pipeWrite: true } : {});
+    await a.until(d => same(d.teams, data.teams));
+    a.ctl.stop();                                             // A silinmeyi görmesin (çevrimdışı kalmış gibi)
+    await (await device()).doc(WS + '/teams/T1/sessions/s3').delete();   // başka cihaz seansı sildi
+    a.edit(d => { d.exercises[0].name = 'X1'; d.teams[0].days[D(0)].sessions[0].duration = 99; });   // paket 1: e0 + s3 (reddedilir)
+    a.edit(d => { d.exercises[0].name = 'X2'; });                                                     // paket 2: e0 (daha yeni)
+    await a.ctl.idle();
+    const e0 = (await (await device()).doc(WS + '/exercises/e0').get()).data();
+    const s3 = await (await device()).doc(WS + '/teams/T1/sessions/s3').get();
+    assert.strictEqual(e0.name, 'X2', 'daha yeni değer kalmalı (eski X1 onu ezmemeli)');
+    assert.strictEqual(s3.exists, false, 'silinen seans geri gelmemeli');
+    assert.strictEqual(a.screen.notes, 1, 'silinmiş kayda düşen düzenleme bildirilmeli');
+    assert.deepStrictEqual(a.screen.errors, []); assert.deepStrictEqual(a.screen.trips, []);
+    if (pipe) assert.ok(a.ctl.stats().pipeN >= 2 && a.ctl.stats().pipeRetry === 1, JSON.stringify(a.ctl.stats()));
+  });
+}
+
+test('pipeWrite + echoSkip + metaSkip: iki cihaz beklemeden art arda düzenler → hepsi kalır, iki ekran ve sunucu birebir, geri alma yok', async () => {
+  const data = sample(); await start(data);
+  const F = { pipeWrite: true, echoSkip: true, metaSkip: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 10; i++) {
+    a.edit(d => { A0(d).tests[0].cmj = 200 + i; });
+    if (i % 2) b.edit(d => { A0(d).position = 'R' + i; d.exercises[1].name = 'W' + i; });
+  }
+  await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  const fin = d => A0(d).tests[0].cmj === 209 && A0(d).position === 'R9' && d.exercises[1].name === 'W9';
+  await a.until(fin); await b.until(fin);
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  assert.ok(same(a.screen.data, b.screen.data), 'iki ekran birebir aynı olmalı');
+  const sa = a.ctl.stats(), sb = b.ctl.stats();
+  assert.strictEqual(sa.ownMiss + sb.ownMiss + sa.quietMiss + sb.quietMiss, 0, JSON.stringify([a.screen.shadows, b.screen.shadows]));
+  assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
+  assert.ok(sa.pipeN >= 1 && sb.pipeN >= 1);
+  const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams), 'sunucu ekranla aynı olmalı');
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
 test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {
   const data = sample(); await start(data);
   const a = await deviceCtl(), b = await deviceCtl();
