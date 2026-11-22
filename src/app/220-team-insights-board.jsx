@@ -31,16 +31,31 @@ function TeamInsights({days,athletes,refDate,setup}){
      "how much of the week touched power". Its MINUTES are split evenly between them
      instead of being counted twice, so the minute column still adds up to the minutes
      that were actually on the plan. `total` stays the number of sessions in the week,
-     which is why it is counted per session rather than summed off the rows. */
+     which is why it is counted per session rather than summed off the rows.
+
+     A session the coach split by position — "Guard's / Forward's / Center's Contrast",
+     the same focus at the same start time, each for its own group — is ONE session run
+     in parallel, not three. Sessions on the same day that share a start time and the
+     same focus set are counted once, with the longest of their durations; a session
+     without a start time is never merged, since nothing says it ran alongside another. */
   const sesDist=useMemo(()=>{
     const by={};let total=0;
-    dayKeys.forEach(k=>(((days||{})[k]||{}).sessions||[]).forEach(s=>{
-      total++;
-      const mins=Number(s.duration)||0;
-      const fs=sesFocus(s).filter(f=>TIB_FOCUS_BY[f]);
-      const keys=fs.length?fs:[TIB_FOCUS_NONE.id];
-      keys.forEach(f=>{const b=by[f]||(by[f]={n:0,min:0});b.n++;b.min+=mins/keys.length;});
-    }));
+    dayKeys.forEach(k=>{
+      const slots=new Map();
+      (((days||{})[k]||{}).sessions||[]).forEach((s,i)=>{
+        const fs=sesFocus(s).filter(f=>TIB_FOCUS_BY[f]);
+        const keys=fs.length?fs:[TIB_FOCUS_NONE.id];
+        const t=String(s.time||'').trim();
+        const id=t?`${t}|${[...keys].sort().join(',')}`:`#${i}`;
+        const mins=Number(s.duration)||0;
+        const cur=slots.get(id);
+        if(cur)cur.mins=Math.max(cur.mins,mins);else slots.set(id,{keys,mins});
+      });
+      slots.forEach(({keys,mins})=>{
+        total++;
+        keys.forEach(f=>{const b=by[f]||(by[f]={n:0,min:0});b.n++;b.min+=mins/keys.length;});
+      });
+    });
     const rows=Object.keys(by)
       .map(f=>({...(TIB_FOCUS_BY[f]||TIB_FOCUS_NONE),n:by[f].n,min:Math.round(by[f].min)}))
       .sort((a,b)=>b.n-a.n||b.min-a.min||a.label.localeCompare(b.label));
