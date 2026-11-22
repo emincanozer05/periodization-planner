@@ -254,7 +254,7 @@ function loadSyncModule(world) {
   const args = ['bag', 'firebase', 'window', 'document', 'navigator', 'location', 'localStorage', 'sessionStorage',
     'Worker', 'Blob', 'requestIdleCallback', 'cancelIdleCallback'];
   const bag = {};
-  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;bag.slog=slog;bag.slogSave=slogSave;bag.lsSave=lsSave;bag.lsFlush=lsFlush;bag.sigCompacted=n=>{_sigCompactPending=n;};')(
+  new Function(...args, stub + src + '\n;bag.useCloudSync=useCloudSync;bag.slogText=slogText;bag.slogPrevText=slogPrevText;bag.slog=slog;bag.slogSave=slogSave;bag.lsSave=lsSave;bag.lsFlush=lsFlush;bag.sigCompacted=n=>{_sigCompactPending=n;};bag.SYNC_FLAGS=SYNC_FLAGS;bag.syncFlag=syncFlag;bag.syncCfgSet=syncCfgSet;bag.syncFlagTrip=syncFlagTrip;bag.syncFlagsFromUrl=syncFlagsFromUrl;bag.syncFlagsReport=syncFlagsReport;')(
     bag, world.firebase, world.win, world.document, world.navigator, world.location,
     world.localStorage, world.sessionStorage,
     undefined, undefined, undefined, undefined);   // Worker/Blob yok → parçalama ana iş parçacığında
@@ -992,6 +992,51 @@ async function scenarioMigratedWhileOpen() {
   endScene(); h.unmount();
 }
 
+/* Senkron hız planı R0 (G2, G3, G5): bayrak yalnızca tanımlıysa, bulut ayarı okunduysa ve kapatılmamışsa
+   açık sayılır. Kapatma (off / kill) cihazdaki açmayı da yener; ayar okunamazsa hepsi kapalı. */
+async function scenarioSyncFlags() {
+  scene('senkron bayrakları: varsayılan kapalı, uzaktan kapatma her şeyi yener');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const B = BAG, F = 'testFlag', LS = 'coachos_syncflag_' + F;
+  B.SYNC_FLAGS[F] = 'deneme';
+  w.localStorage.setItem(LS, '1');
+  check('ayar duyulmadan (unknown) cihazda açık olsa da kapalı', B.syncFlag(F) === false);
+  B.syncCfgSet(null, 'error');
+  check('ayar okunamadıysa kapalı', B.syncFlag(F) === false);
+  B.syncCfgSet(null, 'ok');
+  check('ayar okundu (belge yok) + bu cihazda açık → açık', B.syncFlag(F) === true);
+  check('tanımsız bayrak hep kapalı', B.syncFlag('yokBoyle') === false);
+  w.localStorage.removeItem(LS);
+  check('cihazda açılmamış, ayar boş → kapalı (varsayılan)', B.syncFlag(F) === false);
+  B.syncCfgSet({ flags: { [F]: true } }, 'ok');
+  check('ayar herkese açtı → açık', B.syncFlag(F) === true);
+  w.localStorage.setItem(LS, '1');
+  B.syncCfgSet({ flags: { [F]: true }, kill: { [F]: true } }, 'ok');
+  check('kill: cihazda ve ayarda açık olsa da kapalı', B.syncFlag(F) === false);
+  B.syncCfgSet({ flags: { [F]: true }, off: true }, 'ok');
+  check('off: hepsi kapalı', B.syncFlag(F) === false);
+  B.syncCfgSet({ off: 'true' }, 'ok');
+  check('elle yazılmış off: "true" de kapatıyor (şüphede kapalı)', B.syncFlag(F) === false);
+  B.syncCfgSet({ kill: [F] }, 'ok');
+  check('kill dizi olarak da kapatıyor', B.syncFlag(F) === false);
+  B.syncCfgSet({ flags: { [F]: 'true' }, off: false, kill: { [F]: false } }, 'ok');
+  w.localStorage.removeItem(LS);
+  check('açma katı: flags: "true" (metin) açmıyor; off:false / kill:false kapatmıyor', B.syncFlag(F) === false);
+  w.localStorage.setItem(LS, '1');
+  check('…ve cihazdaki açma o hâlde geçerli', B.syncFlag(F) === true);
+  B.syncFlagTrip(F, 'sınama');
+  check('kendiliğinden kapanma: kapalı ve cihazdaki açma silindi', B.syncFlag(F) === false && w.localStorage.getItem(LS) === null);
+  check('günlükte söylendi', /bayrak kendiliğinden kapandı: testFlag/.test(BAG.slogText()));
+  const B2 = (BAG = loadSyncModule(makeWorld()));   // yeni oturum
+  B2.SYNC_FLAGS.a = 'x'; B2.SYNC_FLAGS.b = 'y'; B2.syncCfgSet(null, 'ok');
+  const done = B2.syncFlagsFromUrl('?v2pilot=1&syncflag=a,b,yok');
+  check('adres ?syncflag=a,b bu cihazda açıyor, tanımsızı yok sayıyor', B2.syncFlag('a') && B2.syncFlag('b') && done.join() === 'a,b', done.join());
+  B2.syncFlagsFromUrl('?syncflag=-a');
+  check('adres ?syncflag=-a kapatıyor', !B2.syncFlag('a') && B2.syncFlag('b'));
+  check('rapor durumu ve sebebi söylüyor', /a=kapalı \(kapalı\), b=AÇIK \(bu cihazda açık\)/.test(B2.syncFlagsReport()), B2.syncFlagsReport());
+  endScene();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -1003,7 +1048,7 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
     scenarioBlindWriteMerged, scenarioBlindWriteNoAncestor, scenarioConcurrentWriteRejected,
     scenarioMissingChunkRepaired, scenarioWedgedConnectionEdit, scenarioWedgedOnWake, scenarioWedgedLong,
     scenarioNoNeedlessKick, scenarioSlowAckNoLoss, scenarioCloseDuringPreRead, scenarioAutoWriteLoop, scenarioLogSurvivesCrash, scenarioSigCompactWritten,
-    scenarioMigratedLegacyHandsOff, scenarioMigratedWhileOpen,
+    scenarioMigratedLegacyHandsOff, scenarioMigratedWhileOpen, scenarioSyncFlags,
   ];
   // Yalnızca bazılarını koşmak için:  SYNCTEST_ONLY=Wedged node sync-test.js
   const only = process.env.SYNCTEST_ONLY;

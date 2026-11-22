@@ -46,7 +46,9 @@ gelen güncellemede bütün ağacı yeni nesnelerle kuruyor.
       ve içeriğinden türer (takım, sezon, eski bölümlü gün, aynalanan ölçüm satırı, kadro, araştırma, egzersiz,
       kayıtlı aralık, boş hesaptaki varsayılan takım); `addedAt` uydurulmaz. Ayrıca `migrate` kendi çıktısında
       hiçbir şey değiştirmez (eski bölümlü günün egzersiz alanları ilk okumada tamamlanıyor). validator-test: +7 kontrol.
-- [ ] Bayrak altyapısı (G2), uzaktan kapatma anahtarı (G3), ölçüm sayaçları (tanı penceresi).
+- [x] Bayrak altyapısı (G2) ve uzaktan kapatma anahtarı (G3): `447-sync-flags.jsx` (`syncFlag`, `syncFlagTrip`),
+      `config/sync` kuralı (okuma: oturumlu herkes, yazma: kimse). Ölçüm sayaçları: `smController.stats()`
+      (gönderim, gelen işleme, yazım onayı, yavaş tur) → senkron tanı penceresi; 50 ms'yi aşan tur günlüğe.
 - [ ] Büyük örnek veri + `tools/sync-bench.js` + eşdeğerlik test düzeneği (artımlı ≡ tam).
 
 ### R1 — Ölçüm (salt okunur)
@@ -71,6 +73,20 @@ Aynı düzen: yalnızca değişen takım / sporcu yeniden kurulur, `migrate` kim
 ### R6 — Eski senkrondan çıkış
 Geçiş planı Faz 4 ve Faz 6, R0–R4 kararlı olduktan sonra.
 
+## 3b. Kapatma anahtarı nasıl kullanılır
+
+Firebase Console → Firestore → `config` koleksiyonu → `sync` belgesi (yoksa oluşturulur):
+
+| Alan | Etki |
+|---|---|
+| `off: true` | Bütün senkron bayrakları kapanır (bütün cihazlarda, saniyeler içinde, yenilemeden) |
+| `kill: { <ad>: true }` | Yalnızca o bayrak kapanır |
+| `flags: { <ad>: true }` | O bayrak herkese açılır (kademeli açılımın son adımı) |
+
+Kapatma geniş yorumlanır (`off: "true"`, `kill: ["ad"]` da kapatır), açma katı (yalnızca `true`). Bir cihazda
+denemek için adres: `?syncflag=<ad>` (açar), `?syncflag=-<ad>` (kapatır). Durum: senkron tanı penceresi →
+"Senkron bayrakları". Ayar okunamazsa bütün bayraklar kapalıdır.
+
 ## 4. Başarı ölçütleri (3,7 MB hesap)
 
 | Ölçüt | Bugün | Hedef |
@@ -90,4 +106,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 |---|---|---|---|
 | 2026-11-22 | — | Plan, ölçüm | — |
 | 2026-11-22 | R0 | Taşınmış hesapta eski senkron devreder (açılış yarışı); v2'de günlük yedek. sync-test +2 senaryo, uçtan uca bölüm 7 | #791 |
-| 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | bu PR |
+| 2026-11-22 | R0 | `migrate` belirlenimci ve kendi çıktısında değişmez; validator-test +7 kontrol | #792 |
+| 2026-11-22 | R0 | Senkron bayrakları + uzaktan kapatma anahtarı (`config/sync`), ölçüm sayaçları ve tanı penceresi; sync-test +17, kural testi +1, emulator ölçüm kontrolü, uçtan uca +2 | bu PR |

@@ -179,6 +179,16 @@ test('abonelik ayarı: oturumlu herkes okur, kimse yazamaz', async () => {
   await assertFails(getDoc(doc(a, 'config/diger')));
 });
 
+test('senkron ayarı (bayraklar, kapatma anahtarı): oturumlu herkes okur, kimse yazamaz', async () => {
+  await seed(s => setDoc(doc(s, 'config/sync'), { off: false, kill: {}, flags: {} }));
+  const a = db(await as('alice'));
+  await assertSucceeds(getDoc(doc(a, 'config/sync')));
+  await assertFails(setDoc(doc(a, 'config/sync'), { off: true }));
+  await assertFails(setDoc(doc(a, 'config/sync'), { flags: { x: true } }, { merge: true }));
+  await assertFails(deleteDoc(doc(a, 'config/sync')));
+  await assertFails(getDoc(doc(db(await anon()), 'config/sync')));
+});
+
 test('hesap silme izi: istemciye tamamen kapalı', async () => {
   const a = db(await as('alice'));
   await assertFails(getDoc(doc(a, 'account_deletions/x')));

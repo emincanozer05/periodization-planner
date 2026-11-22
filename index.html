@@ -41330,6 +41330,101 @@ function stateFromOldDocs(arr){
   return migrate({...extra,teams,exercises,researches});
 }
 
+/* =========================================================
+   SENKRON BAYRAKLARI VE UZAKTAN KAPATMA ANAHTARI (senkron hız planı R0 → G2, G3, G5)
+   =========================================================
+   Senkronu hızlandıran her yeni davranış kendi bayrağının arkasında, varsayılan KAPALI gelir
+   (docs/senkron-hiz-plani.md). Bayrak kapalıyken davranış bugünküyle birebir aynıdır.
+
+   Bir bayrak açık sayılır ancak:
+     1. adı SYNC_FLAGS'ta tanımlıysa (tanımsız ad her zaman kapalı),
+     2. bulut ayarı (config/sync) okunduysa: ayar duyulmadan hiçbir şey açılmaz — kapatma
+        anahtarını duyamayan bir cihaz yeni davranışı çalıştırmasın,
+     3. ayarda kapatılmamışsa: `off: true` hepsini, `kill: {ad: true}` birini kapatır. Kapatma her
+        şeyi yener (cihazdaki açma dahil) ve canlıdır: uygulama yeniden yüklenmeden, saniyeler içinde,
+     4. bu oturumda kendiliğinden kapanmamışsa (syncFlagTrip: onarım ağı bir tutarsızlık gördü),
+     5. ve ya bulut ayarı herkese açmışsa (`flags: {ad: true}`) ya da bu cihazda açılmışsa
+        (adres: ?syncflag=ad1,ad2 açar, ?syncflag=-ad kapatır; cihaza kaydedilir).
+
+   config/sync yalnızca Firebase Console'dan yazılır (kurallar: okuma giriş yapmış herkese, yazma kimseye).
+   Örnek: { off: false, kill: { echoSkip: true }, flags: {} }
+   Bu parça JSX içermez: sync-test.js 440–460'ı düz JS çalıştırır. */
+const SYNC_FLAGS={
+  /* ad: 'ne yapar' — R2 ve sonrasının adımları buraya eklenir. */
+};
+const SYNC_FLAG_LS='coachos_syncflag_';
+let _syncCfg={state:'unknown',off:false,kill:{},flags:{}};   // state: 'unknown' | 'ok' | 'error'
+const _syncTrip={};                                          // ad → sebep (bu oturumda kendiliğinden kapandı)
+const _syncObj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+/* Kapatma GENİŞ yorumlanır, açma KATI: Console'da elle yazılan `off: "true"` ya da `kill: ["ad"]` de
+   kapatır (şüphede kapalı); açmak için yalnızca gerçek `true` geçer. */
+const _syncOn=v=>v!==undefined&&v!==null&&v!==false&&v!==0&&v!==''&&v!=='false';
+function syncCfgSet(d,state){
+  const x=_syncObj(d),kill={};
+  if(Array.isArray(x.kill))x.kill.forEach(n=>{if(typeof n==='string')kill[n]=true;});
+  else{const k=_syncObj(x.kill);Object.keys(k).forEach(n=>{if(_syncOn(k[n]))kill[n]=true;});}
+  _syncCfg={state,off:_syncOn(x.off),kill,flags:{..._syncObj(x.flags)}};
+}
+function syncFlag(name){
+  if(!Object.prototype.hasOwnProperty.call(SYNC_FLAGS,name))return false;
+  const c=_syncCfg;
+  if(c.state!=='ok'||c.off===true||c.kill[name]===true)return false;
+  if(_syncTrip[name])return false;
+  if(c.flags[name]===true)return true;
+  try{return localStorage.getItem(SYNC_FLAG_LS+name)==='1';}catch(e){return false;}
+}
+/* Onarım ağı (G5): yeni yolun sonucu tam hesapla tutmadı → bu oturumda o bayrak kapanır, cihazdaki
+   açma silinir (bir dahaki açılışta da kapalı başlasın) ve günlüğe yazılır. Veri tam hesaptan gelir. */
+function syncFlagTrip(name,why){
+  if(_syncTrip[name])return;
+  _syncTrip[name]=String(why||'?');
+  try{localStorage.removeItem(SYNC_FLAG_LS+name);}catch(e){}
+  try{slog('bayrak kendiliğinden kapandı: '+name,_syncTrip[name]);}catch(e){}
+}
+/* Adresle bu cihazda aç/kapat: ?syncflag=a,b  ?syncflag=-a */
+function syncFlagsFromUrl(search){
+  const m=/[?&]syncflag=([^&#]*)/.exec(search||'');
+  if(!m)return[];
+  const done=[];
+  decodeURIComponent(m[1]).split(',').map(s=>s.trim()).filter(Boolean).forEach(s=>{
+    const off=s.charAt(0)==='-',name=off?s.slice(1):s;
+    if(!Object.prototype.hasOwnProperty.call(SYNC_FLAGS,name))return;
+    try{if(off)localStorage.removeItem(SYNC_FLAG_LS+name);else localStorage.setItem(SYNC_FLAG_LS+name,'1');done.push(s);}catch(e){}
+  });
+  return done;
+}
+/* Tanı penceresi için: her tanımlı bayrağın durumu ve neden. */
+function syncFlagsReport(){
+  const c=_syncCfg,names=Object.keys(SYNC_FLAGS);
+  const head=c.state==='ok'?(c.off?'ayar: HEPSİ KAPALI (off)':'ayar okundu'):c.state==='error'?'ayar okunamadı → hepsi kapalı':'ayar bekleniyor → hepsi kapalı';
+  if(!names.length)return head+' · tanımlı bayrak yok';
+  return head+' · '+names.map(n=>{
+    let local=false;try{local=localStorage.getItem(SYNC_FLAG_LS+n)==='1';}catch(e){}
+    const why=c.kill[n]===true?'uzaktan kapalı':_syncTrip[n]?'kendiliğinden kapandı':c.flags[n]===true?'herkese açık':local?'bu cihazda açık':'kapalı';
+    return n+'='+(syncFlag(n)?'AÇIK':'kapalı')+' ('+why+')';
+  }).join(', ');
+}
+/* config/sync'i canlı dinler. Okunamazsa (yetki, ağ) bütün bayraklar kapalı kalır. */
+function useSyncConfig(user){
+  const uid=user&&user.uid;
+  useEffect(()=>{
+    try{const done=syncFlagsFromUrl(typeof location!=='undefined'?location.search:'');if(done.length)slog('bayrak (adres)',done.join(','));}catch(e){}
+  },[]);
+  useEffect(()=>{
+    syncCfgSet(null,'unknown');
+    const fb=FB();if(!fb||!uid)return;
+    let ref=null;
+    try{ref=fb.firestore().collection('config').doc('sync');}catch(e){}
+    if(!ref||typeof ref.onSnapshot!=='function')return;   // sahte ortam (sync-test) → ayar yok, hepsi kapalı
+    let last='';
+    const off=ref.onSnapshot(s=>{
+      syncCfgSet(s.exists?s.data():null,'ok');
+      const sum=syncFlagsReport();
+      if(sum!==last){last=sum;slog('senkron ayarı',sum);}
+    },e=>{syncCfgSet(null,'error');slog('senkron ayarı okunamadı → bayraklar kapalı',(e&&e.code)||'?');});
+    return()=>{try{off();}catch(e){}syncCfgSet(null,'unknown');};
+  },[uid]);
+}
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
@@ -41427,6 +41522,7 @@ function useCloudSync(data,setData){
   const[syncWarn,setSyncWarn]=useState('');
   /* Kayıt bazlı senkron (455-store-v2.jsx). Hesap yeni yapıya taşınmışsa veri oradan dinlenir ve
      yazılır; aşağıdaki eski dinleyici, yazıcı, boşaltma ve gözcü durur. Taşınmamış hesapta v2On false. */
+  useSyncConfig(user);   // senkron bayrakları + uzaktan kapatma anahtarı (447)
   const v2=useStoreV2({user,data,dataRef,setData,setStatus,setSyncErr,setSyncNote,ready});
   const v2On=v2.active;
   const v2Ref=useRef(false);v2Ref.current=v2On;
@@ -43028,6 +43124,7 @@ function useCloudSync(data,setData){
     skew:skew.current,
     kicks:netKick.current.total,
     auto:autoRun.current.t.length,autoTrip:!!autoRun.current.trip,
+    v2:v2On,v2stats:v2On&&v2.stats?v2.stats():null,flags:syncFlagsReport(),
   });
   /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
      şeyden birini söyler — okundu (taşıma sağlam, sorun mantıkta), zaman aşımı (cihaz
@@ -43128,6 +43225,7 @@ function useStoreV2(o){
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
   const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
   const ctl=useRef(null);
+  const slowAt=useRef({});
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
   // 1) kendi çalışma alanı + katıldığı kulüpler + bu cihazın seçimi
   useEffect(()=>{
@@ -43182,6 +43280,9 @@ function useStoreV2(o){
       prep:d=>stripDeviceOnly(d),
       fromDocs:docs=>migrate(smFromDocs(docs)),
       status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}},
+      /* Yavaş tur (ana iş parçacığında SM_SLOW_MS'den uzun): her tür için en çok 30 sn'de bir günlüğe. */
+      slow:(k,ms,info)=>{const t=Date.now(),l=slowAt.current;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: yavaş tur ('+k+')',ms+' ms · '+info);},
+      flag:syncFlag,                                  // bayraklar (447): denetleyici yeni davranışı yalnızca bunlarla açar
       note:n=>{slog('v2: silinmiş kayda düzenleme düştü','adet='+n);
         setSyncNote(L('Başka bir cihazda silinmiş '+n+' kayda yaptığın değişiklik uygulanamadı.',
           'Your change to '+n+' record(s) deleted on another device could not be applied.'));},
@@ -43200,7 +43301,7 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,ownSrv,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }
 function LoadingScreen(){
   return(
@@ -43500,6 +43601,19 @@ function SyncDiag({sync,onClose}){
     [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
     [L('Durum','Status'),sync.status],
   ];
+  /* Yeni yapı (v2) ölçümü: düzenleme başına ana iş parçacığında geçen süre (senkron hız planı R1).
+     ort / en çok, ms. Kişisel veri yok. */
+  const vs=d.v2stats;
+  if(vs){
+    const avg=(s,n)=>n?Math.round(s/n):0,mx=v=>Math.round(v);
+    rows.push(
+      [L('Yeni yapı: gönderim (ort/en çok)','New sync: send (avg/max)'),avg(vs.flushMs,vs.flushN)+' / '+mx(vs.flushMax)+' ms · '+vs.flushN+L(' tur',' runs')],
+      [L('Yeni yapı: gelen işleme (ort/en çok)','New sync: incoming (avg/max)'),avg(vs.echoMs,vs.echoN)+' / '+mx(vs.echoMax)+' ms · '+vs.echoN+L(' tur',' runs')],
+      [L('Yeni yapı: yazım onayı (ort/en çok)','New sync: write ack (avg/max)'),avg(vs.ackMs,vs.writeN)+' / '+mx(vs.ackMax)+' ms · '+vs.writeN+L(' yazım',' writes')],
+      [L('Yeni yapı: yavaş tur (>50 ms)','New sync: slow runs (>50 ms)'),String(vs.slowN)+(vs.docs?' · '+vs.docs+L(' belge',' docs'):'')],
+    );
+  }
+  if(d.flags)rows.push([L('Senkron bayrakları','Sync flags'),d.flags]);
   const prev=slogPrevText();
   const prevHead=SYNC_LOG_PREV?(L('Önceki oturum','Previous session')+' · '+new Date(SYNC_LOG_PREV.at).toLocaleString()
     +(SYNC_LOG_PREV.clean?'':L(' · düzgün kapanmadı',' · did not close cleanly'))):'';
@@ -44596,18 +44710,30 @@ function smListen(fs,wsPath,onDocs,onError,teams){
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
      fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
      status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
+     slow(tür, ms, ayrıntı)             (isteğe bağlı) ana iş parçacığında SM_SLOW_MS'yi aşan tur
+     flag(ad) → bool                    (isteğe bağlı) senkron bayrakları (447); yoksa hepsi kapalı.
+                                        Yeni bir davranış YALNIZCA bununla açılır (senkron hız planı G2)
    }
    Kural: yerel değişiklik her zaman ÖNCE gönderilir. Başka cihazdan güncelleme gelirken ekranda
    henüz gönderilmemiş bir düzenleme varsa, o düzenlemenin farkı gelen belgelerin üstüne uygulanır
    ve gönderilir; ekrana birleşik hâl konur. Böylece hiçbir yerel düzenleme gelen veriyle ezilmez. */
+/* Ölçüm (senkron hız planı R0/R1): yalnızca sayar, hiçbir kararı değiştirmez. Ana iş parçacığında
+   SM_SLOW_MS'yi aşan bir tur o.slow(tür, ms, ayrıntı) ile bildirilir (uygulama günlüğe yazar). */
+var SM_SLOW_MS=50;
+var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
+function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0};}
 function smController(o){
   var docs=null,handled=null,off=null,chain=Promise.resolve(),inflight=0,lastPending=false,newer=false;
+  var st=smStatsNew();
+  var slow=function(kind,ms,info){st.slowN++;if(o.slow)try{o.slow(kind,Math.round(ms),info);}catch(e){}};
   var report=function(){o.status(inflight||lastPending?'syncing':'synced');};
   /* Veri bu uygulamadan daha yeni bir biçimle yazılmışsa ne okunur ne yazılır; uygulama yenilenmeli. */
   var tooNew=function(incoming){var r=incoming&&incoming[''],f=r&&r._fmt;return typeof f==='number'&&f>SM_FORMAT;};
   var send=function(ops){
     inflight++;report();
-    chain=chain.then(function(){return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+    var t0=0;
+    chain=chain.then(function(){t0=smNow();return smWrite(o.fs,o.wsPath,ops,o.K);}).then(function(r){
+      var dt=smNow()-t0;st.writeN++;st.ackMs+=dt;if(dt>st.ackMax)st.ackMax=dt;
       if(r.failed.length)o.note(r.failed.length);
     }).catch(function(e){o.error(e);}).then(function(){inflight--;report();});
     return chain;
@@ -44617,10 +44743,14 @@ function smController(o){
     var d=o.getData();
     if(!docs||newer||d===handled)return[];
     handled=d;
+    var t0=smNow();
     var next=smToDocs(o.prep(d),docs);
     var ops=smDiff(docs,next);
+    var dt=smNow()-t0;
+    st.flushN++;st.flushMs+=dt;if(dt>st.flushMax)st.flushMax=dt;st.opsN+=ops.length;
     docs=next;
     if(ops.length)send(ops);
+    if(dt>SM_SLOW_MS){var nd=0;for(var k in next)nd++;st.docs=nd;slow('gönderim',dt,'belge='+nd+' yazım='+ops.length);}
     return ops;
   };
   var onDocs=function(incoming,info){
@@ -44630,6 +44760,7 @@ function smController(o){
     }
     newer=false;
     lastPending=!!info.pending;
+    var t0=smNow();
     var base=docs,local=[];
     if(base){
       var d=o.getData();
@@ -44639,8 +44770,12 @@ function smController(o){
     docs=merged;
     var remote=o.fromDocs(merged);
     var cur=o.getData();
-    if(!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur))){handled=remote;o.apply(remote);}
+    var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
+    if(applied){handled=remote;o.apply(remote);st.applyN++;}
     else handled=cur;
+    var dt=smNow()-t0;
+    st.echoN++;st.echoMs+=dt;if(dt>st.echoMax)st.echoMax=dt;
+    if(dt>SM_SLOW_MS){var nd=0;for(var k in merged)nd++;st.docs=nd;slow('gelen',dt,'belge='+nd+(applied?' ekrana kondu':' ekran aynı'));}
     report();
   };
   return{
@@ -44649,6 +44784,7 @@ function smController(o){
     changed:flush,                      // ekranda veri değişti
     ready:function(){return docs!==null;},
     idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
+    stats:function(){var r={};for(var k in st)r[k]=st[k];return r;},   // ölçüm (tanı penceresi)
   };
 }
 
