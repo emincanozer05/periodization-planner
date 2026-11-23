@@ -109,7 +109,16 @@ function useStoreV2(o){
     });
     setLoaded(false);
     ctl.current=c;c.start();
-    return()=>{c.stop();ctl.current=null;ready.current=false;};
+    /* Onarım ağı (incMap, R3): düzenleme yapıldıysa 3 dakikada bir ve sekme gizlenince, tarayıcının boş anında
+       ekrandaki veri tam eşlemeyle karşılaştırılır (bayrak kapalıyken hiçbir şey yapmaz). */
+    let lastFlush=-1;
+    const recon=()=>{const s=c.stats();if(s.flushN===lastFlush)return;lastFlush=s.flushN;
+      const run=()=>{try{const r=c.reconcile();if(r&&r.ops)slog('v2: uzlaşma farkı gönderildi','adet='+r.ops);}catch(e){console.warn('reconcile',e);}};
+      if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:5000});else setTimeout(run,0);};
+    const iv=setInterval(recon,180000);
+    const onVis=()=>{if(document.visibilityState==='hidden')recon();};
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{clearInterval(iv);document.removeEventListener('visibilitychange',onVis);c.stop();ctl.current=null;ready.current=false;};
   },[active,ws,role,teamsKey]);
   // 4) ekrandaki her değişiklik: fark hemen gönderilir (izleyicinin ekranı zaten salt okunur)
   useEffect(()=>{if(ctl.current&&ctl.current.ready())ctl.current.changed();},[data]);

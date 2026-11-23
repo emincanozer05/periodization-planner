@@ -42,12 +42,18 @@ const reference = (prev, data) => { const docs = SM.smToDocs(data, prev); return
 function makeCandidate(data0) {
   const memo = {};
   let cdocs = SM.smToDocs(data0, null, memo);
-  const f = (prev, data) => {
-    const docs = SM.smToDocs(data, cdocs, memo); const ops = SM.smDiff(cdocs, docs);
-    for (const p in docs) { f.total++; if (docs[p] === cdocs[p]) f.reused++; }
-    cdocs = docs; return { docs, ops };
+  /* Gelen veri taklidi: denetleyici bir olay işleyince önceki hâli Firestore'dan gelen nesnelerdir (içerikçe aynı,
+     nesne olarak farklı). Dinleyici değişmeyen belgede aynı nesneyi tutar; burada da her belgenin kopyası, kaynağı
+     değişmedikçe aynı kalır. Ezber bu nesneleri bir kez doğrulayıp hatırlamalı (smPrevSame). */
+  const mirror = new Map();
+  let lastOut = cdocs;
+  const f = (prev, data, rebase) => {
+    if (rebase) { const r = {}; for (const p in cdocs) { const m = mirror.get(p); if (m && m.src === cdocs[p]) r[p] = m.copy; else { const c = clone(cdocs[p]); mirror.set(p, { src: cdocs[p], copy: c }); r[p] = c; } } cdocs = r; f.rebases++; }
+    const docs = SM.smToDocs(data, cdocs, memo); const ops = SM.smDiff(cdocs, docs, memo);
+    for (const p in docs) { f.total++; if (docs[p] === lastOut[p]) f.reused++; }   // ezberden: bir önceki çıktının aynısı
+    cdocs = docs; lastOut = docs; return { docs, ops };
   };
-  f.total = 0; f.reused = 0;
+  f.total = 0; f.reused = 0; f.rebases = 0;
   return f;
 }
 /* Yapısal paylaşım: düzenlenmiş kopyada içeriği değişmeyen her alt ağaç ESKİ nesneyle değiştirilir (React gibi). */
@@ -124,7 +130,7 @@ for (const seed of SEEDS) {
     const next = share(data, edited);
     const changed = SM.smCanon(next) !== SM.smCanon(data);
     W.n = 0; const ref = reference(prev, next); workRef += W.n;
-    W.n = 0; const can = candidate(prev, next); workCan += W.n;
+    W.n = 0; const can = candidate(prev, next, i % 5 === 4); workCan += W.n;
     const tag = `tohum ${seed} adım ${i} (${name})`;
     // D1
     const applied = SM.smApply(prev, ref.ops);

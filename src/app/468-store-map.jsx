@@ -192,14 +192,27 @@ function smPrevO(prev,paths){var r={};if(!prev)return r;paths.forEach(function(x
 function smDepsEq(a,b){if(!a||!b||a.length!==b.length)return false;for(var i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
 /* smOmit ile aynı alanlar: kaynaktaki (atlananlar dışındaki) her alanın adı ve değeri (kimlik). */
 function smEntries(o,skip){var r=[];for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k)&&(!skip||skip.indexOf(k)<0))r.push(k,o[k]);}return r;}
+/* Önceki belge (prev[yol]) ezberdeki çıktıyla AYNI İÇERİKTE mi. Denetleyici gelen veriyi işleyince önceki hâl
+   Firestore'dan gelen nesnelerdir (içerikçe aynı, nesne olarak farklı); eşitlik bir kez metne çevrilerek
+   doğrulanır ve nesne bazında hatırlanır (memo['\u0001eq'], WeakMap): aynı gelen nesne bir daha çevrilmez. */
+function smMemoEq(memo){var e=memo['\u0001eq'];if(!e){e=typeof WeakMap!=='undefined'?new WeakMap():null;Object.defineProperty(memo,'\u0001eq',{value:e,enumerable:false,writable:true});}return e;}
+function smPrevSame(memo,pv,mo){
+  if(pv===mo)return true;
+  if(!pv||typeof pv!=='object')return false;
+  var e=smMemoEq(memo);
+  if(e&&e.get(pv)===mo)return true;
+  if(smCanon(pv)===smCanon(mo)){if(e)e.set(pv,mo);return true;}
+  return false;
+}
 function smToDocs(data,prev,memo){
   var out={},seen=memo?{}:null;
-  /* put(yol, bağımlılıklar(), kur()): memo varsa ve bağımlılıklar + önceki çıktı aynıysa eski belge aynen. */
+  /* put(yol, bağımlılıklar(), kur()): memo varsa ve bağımlılıklar aynıysa, önceki belge de ezberdeki çıktıyla
+     aynıysa (aynı nesne ya da doğrulanmış aynı içerik) eski belge aynen. */
   var put=function(path,deps,build){
     if(memo){
       var dp=deps(),m=memo[path];
       seen[path]=1;
-      if(m&&prev&&prev[path]===m.out&&smDepsEq(m.deps,dp)){out[path]=m.out;return;}
+      if(m&&prev&&smDepsEq(m.deps,dp)&&smPrevSame(memo,prev[path],m.out)){out[path]=m.out;return;}
       var enc=smEnc(build(),prev&&prev[path]);
       memo[path]={deps:dp,out:enc};out[path]=enc;return;
     }
@@ -352,7 +365,7 @@ function smAthleteToDocs(a,teamBase,order,used,ctx){
   /* Ezber: sporcunun günlük dizileri (kimlikleriyle) aynıysa ve kovalar önceki çıktıysa anahtarlar (kimliksiz
      kayıtlarda içerik özeti — pahalı) ve kovalar hiç hesaplanmaz. */
   var lkey='\u0001logs:'+teamBase+'/'+aid,lm=memo&&memo[lkey],ldeps=memo?[aid].concat(logList,logArrs):null;
-  var reuse=lm&&smDepsEq(lm.deps,ldeps)&&lm.paths.every(function(p){var m=memo[p];return m&&prev&&prev[p]===m.out;});
+  var reuse=lm&&smDepsEq(lm.deps,ldeps)&&lm.paths.every(function(p){var m=memo[p];return m&&prev&&smPrevSame(memo,prev[p],m.out);});
   if(reuse){
     lm.paths.forEach(function(p){ctx.out[p]=memo[p].out;ctx.seen[p]=1;});
     ctx.seen[lkey]=1;
@@ -489,12 +502,15 @@ function smDiffFields(a,b,path,depth,out,mode){   // mode: undefined | 'kl' (gir
     else out.push({path:p,value:b[k]});
   }
 }
-function smDiff(prev,next){
-  var ops=[],p;
+/* memo (isteğe bağlı): smToDocs'un ezberi; içerik eşitliği doğrulanmış önceki/sonraki çiftleri de metne
+   çevirmeden geçer (bkz. smPrevSame). */
+function smDiff(prev,next,memo){
+  var ops=[],p,eq=memo?smMemoEq(memo):null;
   prev=prev||{};
   for(p in next){
     if(!(p in prev)){ops.push({op:'set',path:p,data:next[p]});continue;}
     if(prev[p]===next[p])continue;   // aynı nesne (ezber, R3): metne çevirmeye gerek yok
+    if(eq&&prev[p]&&typeof prev[p]==='object'&&eq.get(prev[p])===next[p])continue;
     if(smCanon(prev[p])===smCanon(next[p]))continue;
     var fields=[];smDiffFields(prev[p],next[p],[],0,fields);
     if(fields.length)ops.push({op:'update',path:p,fields:fields});
@@ -701,7 +717,8 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0,rebaseN:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0,rebaseN:0,
+  incN:0,shN:0,shMs:0,shMiss:0,reconN:0,reconMiss:0};}
 /* staleEcho: bir belge için bu cihazın gönderdiği sürümlerden en çok bu kadarı hatırlanır (belge başına). */
 var SM_SENT_KEEP=24;
 /* Belgenin içindeki bir alan yolunun değeri (yoksa undefined). */
@@ -728,6 +745,14 @@ function smController(o){
   /* sent[yol]: bu cihazın o belge için gönderdiği sürümlerin özeti (eskiden yeniye). Belge onaylanmamış yerel
      yazım taşımadan gelince (sunucu son sözü söyledi) sıfırlanır. staleEcho bununla kendi eski yankısını tanır. */
   var sent={};
+  /* ARTIMLI EŞLEME (incMap, senkron hız planı R3). memo: smToDocs'un ezberi. Bayrak açıkken gönderim ezberle
+     yapılır (değişen kayıt kadar iş). Bayrak kapalıyken GÖLGE: aday (ezberli) kendi zinciriyle (cdocs) yürür ve
+     ürettiği yazımlar her düzenlemede tam eşlemeninkiyle karşılaştırılır; buluta tam eşlemenin sonucu gider.
+     Bayrak açıkken onarım ağı: reconcile() boşta tam eşlemeyle karşılaştırır; fark (ör. ekranın veriyi yerinde
+     değiştirmesi, ezberin göremediği) bulunursa gönderilir, ezber sıfırlanır, bayrak bu oturumda kapanır. */
+  var memo={},cdocs=null;
+  var incOn=function(){return !!(o.flag&&o.flag('incMap'));};
+  var opsKey=function(ops){return ops.map(function(x){return smCanon(x);}).sort().join('\n');};
   var noteSent=function(ops,nd){
     ops.forEach(function(op){
       var h=sent[op.path]||(sent[op.path]=[]);
@@ -794,13 +819,24 @@ function smController(o){
     var d=o.getData();
     if(!docs||newer||d===handled)return[];
     handled=d;
-    var t0=smNow();
-    var next=smToDocs(o.prep(d),docs);
-    var ops=smDiff(docs,next);
+    var t0=smNow(),pd=o.prep(d),inc=incOn(),before=docs,next,ops;
+    if(inc){next=smToDocs(pd,docs,memo);ops=smDiff(docs,next,memo);st.incN++;}
+    else{next=smToDocs(pd,docs);ops=smDiff(docs,next);}
     var dt=smNow()-t0;
     st.flushN++;st.flushMs+=dt;if(dt>st.flushMax)st.flushMax=dt;st.opsN+=ops.length;
     docs=next;
     if(ops.length){noteSent(ops,next);send(ops);}
+    if(!inc){   // gölge: aday aynı düzenlemeyi kendi zinciriyle yapsaydı aynı yazımları üretir miydi
+      var t1=smNow(),cb=cdocs||before,cn=smToDocs(pd,cb,memo),co=smDiff(cb,cn,memo);
+      st.shN++;st.shMs+=smNow()-t1;
+      if(opsKey(co)!==opsKey(ops)){
+        st.shMiss++;
+        var a=co.map(function(x){return x.path;}),b=ops.map(function(x){return x.path;});
+        var dp=b.filter(function(x){return a.indexOf(x)<0;}).concat(a.filter(function(x){return b.indexOf(x)<0;}));
+        if(o.shadow)try{o.shadow('incMap','gölge: yazımlar farklı ('+(dp.slice(0,4).join(', ')||'aynı yollar, farklı içerik')+')');}catch(e){}
+        cdocs=next;for(var mk in memo)delete memo[mk];
+      }else cdocs=cn;
+    }
     if(dt>SM_SLOW_MS){var nd=0;for(var k in next)nd++;st.docs=nd;slow('gönderim',dt,'belge='+nd+' yazım='+ops.length);}
     return ops;
   };
@@ -869,10 +905,10 @@ function smController(o){
     var base=docs,local=[];
     if(base){
       var d=o.getData();
-      if(d!==handled){var ld=smToDocs(o.prep(d),base);local=smDiff(base,ld);handled=d;if(local.length){noteSent(local,ld);send(local);}}
+      if(d!==handled){var inc2=incOn(),ld=inc2?smToDocs(o.prep(d),base,memo):smToDocs(o.prep(d),base);local=inc2?smDiff(base,ld,memo):smDiff(base,ld);handled=d;if(local.length){noteSent(local,ld);send(local);}}
     }
     var merged=local.length?smApply(incoming,local).docs:incoming;
-    docs=merged;
+    docs=merged;cdocs=merged;
     var remote=o.fromDocs(merged);
     var cur=o.getData();
     var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
@@ -903,6 +939,24 @@ function smController(o){
       if(!lops.length)return null;
       st.rebaseN++;
       return o.fromDocs(smApply(c.merged,lops).docs);
+    },
+    /* Onarım ağı (incMap açıkken): ekrandaki veriyi tam eşlemeyle (ezbersiz) belgelere çevirip elimizdekiyle
+       karşılaştırır. Fark ezberin kaçırdığı bir değişikliktir: gönderilir, ezber sıfırlanır, bayrak kapanır.
+       Döner: { skipped } | { ops: fark sayısı }. Pahalıdır (tam eşleme): boşta ve seyrek çağrılır. */
+    reconcile:function(){
+      if(!docs||newer||!incOn())return{skipped:true};
+      flush();
+      var ref=smToDocs(o.prep(o.getData()),docs),rops=smDiff(docs,ref);
+      st.reconN++;
+      if(rops.length){
+        st.reconMiss++;
+        var ps=rops.map(function(x){return x.path;});
+        if(o.shadow)try{o.shadow('incMap','uzlaşma: ezber '+rops.length+' değişikliği kaçırmıştı ('+ps.slice(0,4).join(', ')+')');}catch(e){}
+        if(o.trip)try{o.trip('incMap','boşta tam karşılaştırma '+rops.length+' fark buldu');}catch(e){}
+        for(var mk in memo)delete memo[mk];
+        docs=ref;noteSent(rops,ref);send(rops);
+      }
+      return{ops:rops.length};
     },
   };
 }

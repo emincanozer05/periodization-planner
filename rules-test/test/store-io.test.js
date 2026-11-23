@@ -434,6 +434,80 @@ test('gelen veri, ekranın SIRADA BEKLEYEN düzenlemesini silmez: yeniden tabanl
   a.ctl.stop(); b.ctl.stop();
 });
 
+/* Senkron hız planı R3 — incMap: artımlı eşleme (ezber). Ekran değişmez nesnelerle günceller (edit = derin kopya,
+   bu yüzden ezber burada hiç tutmazdı); yapısal paylaşım için düzenlenen sporcuyu tek başına kopyalayan editS. */
+const editS = (dev, ai, mut) => {
+  const d = Object.assign({}, dev.screen.data);
+  d.teams = d.teams.slice(); const t = d.teams[0] = Object.assign({}, d.teams[0]);
+  t.athletes = t.athletes.slice(); const a = t.athletes[ai] = clone(t.athletes[ai]);
+  mut(a, d); dev.screen.data = d; dev.ctl.changed();
+};
+test('incMap gölge (bayrak kapalı): her düzenlemede aday aynı yazımları üretir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl(), b = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 6; i++) { editS(a, 0, x => { x.tests[0].cmj = 600 + i; }); editS(a, 1, x => { x.position = 'S' + i; }); await a.ctl.idle(); }
+  b.edit(d => { d.exercises[0].name = 'Bremote'; }); await a.until(d => d.exercises[0].name === 'Bremote');
+  editS(a, 2, x => { x.tests[0].cmj = 699; }); await a.ctl.idle();
+  await b.until(d => d.teams[0].athletes[2].tests[0].cmj === 699 && d.teams[0].athletes[1].position === 'S5');
+  const sa = a.ctl.stats();
+  assert.ok(sa.shN >= 13, JSON.stringify(sa)); assert.strictEqual(sa.shMiss, 0, JSON.stringify(a.screen.shadows));
+  assert.strictEqual(sa.incN, 0);
+  a.ctl.stop(); b.ctl.stop();
+});
+
+test('incMap gölge: ekran veriyi YERİNDE değiştirirse (ezberin göremeyeceği) gölge farkı yakalar, buluta doğrusu gider', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams));
+  editS(a, 0, x => { x.tests[0].cmj = 610; }); await a.ctl.idle();
+  const d = Object.assign({}, a.screen.data); d.teams[0].athletes[0].tests[0].cmj = 777;   // yerinde değiştirme
+  a.screen.data = d; a.ctl.changed(); await a.ctl.idle();
+  assert.ok(a.ctl.stats().shMiss >= 1, 'gölge farkı yakalamalı: ' + JSON.stringify(a.ctl.stats()));
+  const t0 = (await (await device()).doc(WS + '/teams/T1/tests/t0').get()).data();
+  assert.strictEqual(t0.cmj, 777, 'bayrak kapalıyken buluta tam eşlemenin doğrusu gider');
+  a.ctl.stop();
+});
+
+test('incMap açık: iki cihaz düzenler, yazımlar doğru; uzlaşma fark bulmaz', async () => {
+  const data = sample(); await start(data);
+  const F = { incMap: true };
+  const a = await deviceCtl('alice', undefined, F), b = await deviceCtl('alice', undefined, F);
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  for (let i = 0; i < 6; i++) {
+    editS(a, 0, x => { x.tests[0].cmj = 620 + i; x.wellness.push({ date: D(i), sleep: i % 5 + 1 }); });
+    editS(b, 1, x => { x.position = 'P' + i; x.srpeLog.push({ id: 'rb' + i, date: D(-i), scRPE: 5 }); });
+    await Promise.all([a.ctl.idle(), b.ctl.idle()]);
+  }
+  const fin = d => d.teams[0].athletes[0].tests[0].cmj === 625 && d.teams[0].athletes[1].position === 'P5' && d.teams[0].athletes[1].srpeLog.length === 7;
+  await a.until(fin); await b.until(fin);
+  await a.until(() => a.screen.status === 'synced'); await b.until(() => b.screen.status === 'synced');
+  assert.ok(same(a.screen.data, b.screen.data));
+  assert.ok(a.ctl.stats().incN >= 6 && b.ctl.stats().incN >= 6);
+  assert.deepStrictEqual(a.ctl.reconcile(), { ops: 0 }); assert.deepStrictEqual(b.ctl.reconcile(), { ops: 0 });
+  assert.deepStrictEqual(a.screen.trips.concat(b.screen.trips), []);
+  const c = await deviceCtl(); await c.until(fin); assert.ok(same(c.screen.data.teams, a.screen.data.teams), 'sunucu ekranla aynı olmalı');
+  a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
+/* Uzlaşma tek başına: dinleyici durdurulur (arada gelen bir olay ekranı sunucunun hâline çevirip yerinde yapılmış
+   düzenlemeyi ekrandan da silebilir — bu yüzden incMap gölgede 0 fark görülmeden AÇILMAZ; bkz. plan R3b). */
+test('incMap açık: yerinde değiştirmeyi ezber kaçırır, UZLAŞMA bulur → gönderir, bayrak kapanır', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl('alice', undefined, { incMap: true });
+  await a.until(d => same(d.teams, data.teams));
+  editS(a, 0, x => { x.tests[0].cmj = 630; }); await a.ctl.idle();
+  await new Promise(r => setTimeout(r, 300)); a.ctl.stop();
+  const d = Object.assign({}, a.screen.data); d.teams[0].athletes[0].tests[0].cmj = 888;   // yerinde değiştirme
+  a.screen.data = d; a.ctl.changed(); await a.ctl.idle();
+  const before = (await (await device()).doc(WS + '/teams/T1/tests/t0').get()).data().cmj;
+  assert.strictEqual(before, 630, 'ezber yerinde değiştirmeyi kaçırır (beklenen: bu yüzden uzlaşma var)');
+  const r = a.ctl.reconcile(); await a.ctl.idle();
+  assert.strictEqual(r.ops, 1);
+  assert.strictEqual((await (await device()).doc(WS + '/teams/T1/tests/t0').get()).data().cmj, 888, 'uzlaşma doğrusunu göndermeli');
+  assert.ok(a.screen.trips.some(t => /^incMap:/.test(t)), 'bayrak kapanmalı: ' + JSON.stringify(a.screen.trips));
+});
+
 test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {
   const data = sample(); await start(data);
   const a = await deviceCtl(), b = await deviceCtl();
