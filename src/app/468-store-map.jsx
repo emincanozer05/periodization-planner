@@ -680,7 +680,10 @@ function smListen(fs,wsPath,onDocs,onError,teams){
      fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
      teams                              üyenin erişebildiği takımlar (['*'] = hepsi; Faz 5)
      getData()                          ekrandaki güncel veri (nesne kimliği önemli)
-     apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
+     apply(data, ctx)                   buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı). ctx = {cur, base,
+                                        merged}: karşılaştırılan ekran hâli ve belgeler. Ekran çerçevesi (React)
+                                        bekleyen bir güncelleme taşıyorsa cur'u değil SON hâli rebase(son, ctx) ile
+                                        gelen verinin üstüne taşımalı (bkz. rebase)
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
      fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
      status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
@@ -698,7 +701,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0,rebaseN:0};}
 /* staleEcho: bir belge için bu cihazın gönderdiği sürümlerden en çok bu kadarı hatırlanır (belge başına). */
 var SM_SENT_KEEP=24;
 /* Belgenin içindeki bir alan yolunun değeri (yoksa undefined). */
@@ -873,7 +876,7 @@ function smController(o){
     var remote=o.fromDocs(merged);
     var cur=o.getData();
     var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
-    if(applied){handled=remote;o.apply(remote);st.applyN++;}
+    if(applied){handled=remote;o.apply(remote,{cur:cur,base:base,merged:merged});st.applyN++;}
     else handled=cur;
     if(quiet&&applied)st.quietRevert++;
     if(echo&&applied){if(stale)st.staleRevert++;else st.ownRevert++;}   // gölge: tam yol yankı olayında ekranı değiştirdi (geri aldı)   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
@@ -889,6 +892,18 @@ function smController(o){
     ready:function(){return docs!==null;},
     idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
     stats:function(){var r={};for(var k in st)r[k]=st[k];return r;},   // ölçüm (tanı penceresi)
+    /* YENİDEN TABANLAMA. Gelen veri ekrana konurken (apply) ekranda henüz işlenmemiş bir güncelleme sırada olabilir
+       (React güncellemeleri toplar; Firestore dinleyicisi arada çalışabilir). Gelen veriyi düz değer olarak koymak o
+       güncellemeyi SİLİYORDU — hiç gönderilmeden. Burada o güncellemenin farkı (cur → son, belgeler düzeyinde, cur'un
+       dayandığı belgelere göre) gelen birleşik belgelerin üstüne uygulanır ve ekrana konacak veri döner; gönderimi
+       her zamanki gönderim turu (veri değişti → flush) yapar. Fark yoksa null. Saf: yan etkisi yok. */
+    rebase:function(latest,c){
+      if(!c||!c.base||!c.merged||latest===c.cur)return null;
+      var a=smToDocs(o.prep(c.cur),c.base),b=smToDocs(o.prep(latest),c.base),lops=smDiff(a,b);
+      if(!lops.length)return null;
+      st.rebaseN++;
+      return o.fromDocs(smApply(c.merged,lops).docs);
+    },
   };
 }
 

@@ -14,7 +14,8 @@ function App(){
   /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
   /* Taşınmış hesabın eski senkronu devretti, yeni yapı henüz açılmadı (450 → legacyLock): ekranda
      ya varsayılan ya da eski yapıdan kalmış bir hâl var; düzenleme ikisine de yazılamaz. */
-  const readOnly=!bill.access.full||(sync.v2&&(sync.v2.role==='viewer'||sync.v2.hold));
+  /* Yeni yapı ilk veriyi alana kadar da (v2.loading): o arada yapılan düzenleme gönderilemez ve ilk veriyle silinirdi. */
+  const readOnly=!bill.access.full||(sync.v2&&(sync.v2.role==='viewer'||sync.v2.hold||sync.v2.loading));
   const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);

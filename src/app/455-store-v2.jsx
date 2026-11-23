@@ -25,6 +25,9 @@ function useStoreV2(o){
   const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
   const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
+  /* İlk veri geldi mi. Gelmeden yapılan düzenleme kaybolurdu: denetleyici henüz bir taban bilmediği için onu
+     gönderemez, ilk veri gelince ekran onunla değişir. O ana kadar ekran salt okunur (690 → readOnly). */
+  const[loaded,setLoaded]=useState(false);
   const ctl=useRef(null);
   const slowAt=useRef({});
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
@@ -77,10 +80,21 @@ function useStoreV2(o){
       fs:fb.firestore(),wsPath:'workspaces/'+ws,teams,
       K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid},
       getData:()=>dataRef.current,
-      apply:d=>{dataRef.current=d;setData(d);},
+      /* Gelen veri düz değer olarak değil, React'in SIRADAKİ son hâline bakan bir güncelleyiciyle konur: arada sıraya
+         girmiş bir düzenleme varsa (ör. Firestore olayı bir tıklamanın güncellemesi işlenmeden geldi) silinmez,
+         gelen verinin üstüne taşınır (smController.rebase) ve bir sonraki gönderim turunda gider. */
+      apply:(d,cx)=>{
+        dataRef.current=d;
+        setData(prev=>{
+          if(!cx||prev===cx.cur||prev===d)return d;
+          let r=null;try{r=ctl.current?ctl.current.rebase(prev,cx):null;}catch(e){console.warn('rebase',e);}
+          if(r){slog('v2: gelen veri, sırada bekleyen düzenlemeyle birleştirildi');return r;}
+          return d;
+        });
+      },
       prep:d=>stripDeviceOnly(d),
       fromDocs:docs=>migrate(smFromDocs(docs)),
-      status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}},
+      status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}if(ctl.current&&ctl.current.ready())setLoaded(true);},
       /* Yavaş tur (ana iş parçacığında SM_SLOW_MS'den uzun): her tür için en çok 30 sn'de bir günlüğe. */
       slow:(k,ms,info)=>{const t=Date.now(),l=slowAt.current;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: yavaş tur ('+k+')',ms+' ms · '+info);},
       flag:syncFlag,                                  // bayraklar (447): denetleyici yeni davranışı yalnızca bunlarla açar
@@ -93,6 +107,7 @@ function useStoreV2(o){
         setSyncErr(e&&e.code==='newer-format'?L('Veri uygulamanın daha yeni bir sürümüyle yazılmış. Değişiklikler gönderilmiyor: sayfayı yenile.',
           'The data was written by a newer version of the app. Changes are not being sent: reload the page.'):m);},
     });
+    setLoaded(false);
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};
   },[active,ws,role,teamsKey]);
@@ -104,5 +119,5 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,ownSrv,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,loading:active&&!loaded,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }

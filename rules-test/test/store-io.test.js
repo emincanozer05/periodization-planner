@@ -185,17 +185,27 @@ test('verinin üst düzey alanları state/root\'ta; çalışma alanı belgesi (s
 });
 
 /* ── denetleyici: iki cihaz, her birinin kendi "ekranı" ─────────────────────── */
-async function deviceCtl(uid = 'alice', teams, flags) {
-  const screen = { data: null, status: '', notes: 0, errors: [], shadows: [], trips: [] };
-  const ctl = SM.smController({
+async function deviceCtl(uid = 'alice', teams, flags, reactQ) {
+  const screen = { data: null, status: '', notes: 0, errors: [], shadows: [], trips: [], q: reactQ ? [] : null, applies: 0 };
+  let ctl = null;
+  ctl = SM.smController({
     fs: await device(uid), wsPath: WS, K: K(uid), teams,
     flag: n => !!(flags && flags[n]), shadow: (n, i) => screen.shadows.push(n + ':' + i), trip: (n, w) => screen.trips.push(n + ':' + w),
-    getData: () => screen.data, apply: d => { screen.data = d; if (screen.trace) screen.trace.push(screen.traceOf(d)); },
+    getData: () => screen.data,
+    /* reactQ: ekran React gibi davranır — güncellemeler sıraya girer, render() onları sırayla işler. apply, uygulamanın
+       455'teki güncelleyicisiyle aynı: sıradaki son hâl karşılaştırılan hâl değilse yeniden tabanlanır. */
+    apply: (d, cx) => {
+      screen.applies++;
+      if (!screen.q || screen.data === null) { screen.data = d; if (screen.trace) screen.trace.push(screen.traceOf(d)); return; }
+      screen.q.push(prev => (!cx || prev === cx.cur || prev === d) ? d : (ctl.rebase(prev, cx) || d));
+    },
     prep: d => { const c = Object.assign({}, d); delete c.activeTeamId; return c; },
     fromDocs: docs => Object.assign(SM.smFromDocs(docs), { activeTeamId: 'T1' }),
     status: s => { screen.status = s; }, note: n => { screen.notes += n; }, error: e => { screen.errors.push(e); },
   });
   ctl.start();
+  const render = () => { if (!screen.q) return; let v = screen.data; const q = screen.q.splice(0); q.forEach(f => { v = f(v); }); if (v !== screen.data) { screen.data = v; ctl.changed(); } };
+  const enqueue = mut => screen.q.push(prev => { const d = clone(prev); mut(d); return d; });
   /* Ekranda düzenleme: yeni nesne (React gibi), sonra denetleyiciye haber. */
   const edit = (mut, notify = true) => { const d = clone(screen.data); mut(d); screen.data = d; if (notify) ctl.changed(); };
   const until = (pred, ms = 10000) => new Promise((res, rej) => {
@@ -205,7 +215,7 @@ async function deviceCtl(uid = 'alice', teams, flags) {
       setTimeout(tick, 50); };
     tick();
   });
-  return { screen, ctl, edit, until };
+  return { screen, ctl, edit, until, render, enqueue };
 }
 const A0 = d => d.teams[0].athletes.find(a => a.id === 'a0');
 
@@ -398,6 +408,30 @@ test('staleEcho açık: karşı cihaz AYNI ALANA A\'nın eski değerini yazar �
   assert.strictEqual(cmjOf(b.screen.data), srv, 'B ekranı sunucuyla aynı olmalı');
   assert.ok(same(a.screen.data, b.screen.data) && same(c.screen.data.teams, a.screen.data.teams));
   a.ctl.stop(); b.ctl.stop(); c.ctl.stop();
+});
+
+/* VERİ KAYBI (bulundu: uçtan uca test bölüm 10). Gelen veri ekrana düz değer olarak konunca, ekranda henüz
+   işlenmemiş (React'in topladığı) bir düzenleme siliniyordu ve hiç gönderilmiyordu. */
+test('gelen veri, ekranın SIRADA BEKLEYEN düzenlemesini silmez: yeniden tabanlanır ve gönderilir', async () => {
+  const data = sample(); await start(data);
+  const a = await deviceCtl('alice', undefined, undefined, true), b = await deviceCtl();
+  await a.until(d => same(d.teams, data.teams)); await b.until(d => same(d.teams, data.teams));
+  const ap0 = a.screen.applies;
+  a.enqueue(d => { A0(d).tests[0].cmj = 901; d.exercises[1].name = 'Asırada'; });   // A'da sıraya girdi, işlenmedi
+  b.edit(d => { A0(d).position = 'RR'; }); await b.ctl.idle();                       // B uzaktan değiştirdi
+  for (let k = 0; k < 100 && a.screen.applies === ap0; k++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(a.screen.applies > ap0, 'A gelen veriyi işlemeli');
+  a.render();                                                                      // React sırayı işler
+  const d = a.screen.data;
+  assert.strictEqual(A0(d).tests[0].cmj, 901, 'A\'nın sıradaki düzenlemesi silinmemeli');
+  assert.strictEqual(d.exercises[1].name, 'Asırada');
+  assert.strictEqual(A0(d).position, 'RR', 'B\'nin değişikliği de ekranda olmalı');
+  assert.strictEqual(a.ctl.stats().rebaseN, 1);
+  await a.ctl.idle(); await a.until(() => a.screen.status === 'synced');
+  await b.until(x => A0(x).tests[0].cmj === 901 && x.exercises[1].name === 'Asırada' && A0(x).position === 'RR');
+  const srv = (await (await device()).doc(WS + '/teams/T1/tests/t0').get()).data();
+  assert.strictEqual(srv.cmj, 901, 'sunucuya gitmeli');
+  a.ctl.stop(); b.ctl.stop();
 });
 
 test('denetleyici: iki cihaz AYNI ANDA aynı sporcunun farklı alanlarını değiştirir ve ayrı sporcu ekler → iki ekran da ikisini gösterir', async () => {
