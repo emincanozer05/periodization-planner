@@ -123,9 +123,14 @@ rastgele eşdeğerlik testi → ≥2 hafta / ≥5.000 gerçek düzenleme gölge 
       veriyi almadan yapılan düzenleme ilk veriyle siliniyordu → o ana kadar ekran salt okunur (`v2.loading`).
       Bayraklardan bağımsızdı; R3b'nin gölgesi gönderimi uzatınca görünür oldu. Emulator testi hatayı belirlenimci
       üretiyor (eski davranışla kırmızı).
-- [ ] **R3b — uygulamaya bağlama** (`smController`): bayrak `incMap`, varsayılan kapalı. Gölge: aday kendi zinciriyle
-      yürür, yazımları tam eşlemeyle karşılaştırılır (0 fark şartı). Açıkken: boşta / sekme gizlenince tam uzlaşma
-      (fark → gönderilir, bayrak kapanır). Geliştirme modunda veri dondurma (yerinde değişikliği yakalamak).
+- [x] **R3b — uygulamaya bağlama** (`smController`): bayrak `incMap`, varsayılan kapalı. Gelen veriyle ezber boşa
+      düşmesin diye içerik eşitliği bir kez doğrulanıp nesne bazında hatırlanıyor (`smPrevSame`, WeakMap). Bayrak
+      kapalıyken GÖLGE: aday kendi zinciriyle yürür, yazımları her düzenlemede tam eşlemeyle karşılaştırılır
+      (tanı penceresi: "gölge farkı"). Açıkken: gönderim ezberle; 3 dk'da bir (düzenleme varsa) ve sekme gizlenince
+      boşta tam uzlaşma (`reconcile`): fark → gönderilir, ezber sıfırlanır, bayrak oturumda kapanır.
+      **Açılış koşulu (sert):** ekran veriyi yerinde değiştirirse ezber göremez; uzlaşmadan önce gelen bir olay o
+      düzenlemeyi ekrandan da silebilir. Bu yüzden `incMap` gölgede ≥2 hafta **gölge farkı 0** görülmeden açılmaz;
+      fark görülürse önce o ekran düzeltilir. Bayrak kapalıyken risk yok (gölge yakalar, buluta doğrusu gider).
 
 ### R4 — Gelen tarafta artımlı uygulama
 Aynı düzen: yalnızca değişen takım / sporcu yeniden kurulur, `migrate` kimliği korur.
@@ -177,4 +182,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | #797 |
 | 2026-11-22 | R2 | `staleEcho` (varsayılan kapalı): yazarken geri gidip gelme biter; emulator +3 (77/77, 3 tekrar kararlı), uçtan uca bölüm 11 (66/66) | #799 |
 | 2026-11-23 | R3 | R3a: ezberli eşleme + kimlikle kısa devre yapan fark (uygulamaya bağlı değil); gönderim ~35–50× hızlı (ölçüm); eşdeğerlik testinde aday + iş bütçesi | #800 |
-| 2026-11-23 | R3 | Veri güvenliği: sıradaki ekran güncellemesi gelen veriyle silinmez (yeniden tabanlama); v2 ilk veriyi alana kadar salt okunur. Emulator +1 (78/78), uçtan uca 3 koşu 66/66 | bu PR |
+| 2026-11-23 | R3 | Veri güvenliği: sıradaki ekran güncellemesi gelen veriyle silinmez (yeniden tabanlama); v2 ilk veriyi alana kadar salt okunur. Emulator +1 (78/78), uçtan uca 3 koşu 66/66 | #801 |
+| 2026-11-23 | R3 | R3b: `incMap` (varsayılan kapalı) gölge + uzlaşma; emulator +4 (82/82), uçtan uca bölüm 12, 3 koşu 73/73 | bu PR |

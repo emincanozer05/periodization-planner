@@ -315,6 +315,31 @@ const SEED = () => {
     const bad11 = await Promise.all([D, G, H].map(pg => pg.evaluate(() => /gölge uyuşmazlığı|bayrak kendiliğinden kapandı|v2: hata/.test(slogText()))));
     check('uyuşmazlık, bayrak kapanması ya da senkron hatası yok', !bad11.some(Boolean), JSON.stringify(bad11));
     check('11. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+    /* Senkron hız planı R3 — incMap: gerçek uygulamanın ekranları değişmez nesnelerle mi güncelliyor? Gölge (D, G, H:
+       bayrak kapalı) gerçek ekran düzenlemelerinde aday ile tam eşlemeyi karşılaştırır; I bayrakla yazar. */
+    console.log('\n== 12. incMap: gölgede fark yok, bayrakla yazılanlar doğru');
+    const I = await open('I', UID, '?syncflag=metaSkip,echoSkip,pipeWrite,staleEcho,incMap');
+    check('I\'de incMap açık', !!(await until(() => I.evaluate(() => syncFlag('incMap')), 10000)), await I.evaluate(() => syncFlagsReport()));
+    await until(async () => (await data(I)).teams && ath(await data(I), 'a1'), 20000);
+    // Yapısal paylaşımlı düzenlemeler (ekranların yaptığı gibi): yalnızca değişen sporcu yeni nesne.
+    const editS = (pg, aid, body) => pg.evaluate(([aid, body]) => { __setData(prev => { const teams = prev.teams.slice(); const t = teams[0] = { ...teams[0] }; t.athletes = t.athletes.map(a => a.id === aid ? (new Function('a', body))(JSON.parse(JSON.stringify(a))) : a); return { ...prev, teams }; }); }, [aid, body]);
+    for (let i = 0; i < 6; i++) {
+      await editS(I, 'a0', `a.tests[0].cmj=${110 + i}; return a;`);
+      await editS(D, 'a1', `a.position='I${i}'; return a;`);
+      await sleep(120);
+    }
+    const fin12 = d => ath(d, 'a0').tests[0].cmj === 115 && ath(d, 'a1').position === 'I5';
+    for (const [n, pg] of [['D', D], ['H', H], ['I', I]]) check(n + ' son hâli gösteriyor', !!(await until(async () => fin12(await data(pg)))));
+    await sleep(1500);
+    {
+      const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v);
+      const tI = canon((await data(I)).teams);
+      check('D, H, I ekranı birebir aynı', (await Promise.all([D, H].map(async pg => canon((await data(pg)).teams)))).every(t => t === tI));
+    }
+    const bad12 = await Promise.all([D, H, I].map(pg => pg.evaluate(() => /gölge uyuşmazlığı \(incMap\)|bayrak kendiliğinden kapandı|v2: hata|uzlaşma farkı/.test(slogText()))));
+    check('gölgede fark yok (D, H), I\'de uzlaşma farkı ya da kapanma yok', !bad12.some(Boolean), JSON.stringify(bad12));
+    check('12. bölümde sayfa hatası yok', errors.length === 0, errors.slice(0, 3).join(' | '));
   } catch (e) {
     fail++; console.log('  FAIL beklenmeyen hata: ' + (e && e.stack || e));
   } finally {
