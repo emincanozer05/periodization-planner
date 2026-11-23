@@ -116,6 +116,13 @@ rastgele eşdeğerlik testi → ≥2 hafta / ≥5.000 gerçek düzenleme gölge 
       yazımlar referansla birebir. Eşdeğerlik testi (CI): düzenlemeler yapısal paylaşımlı, D4 aday≡referans,
       ezberden kullanılan belge %98, **iş bütçesi: aday tam eşlemenin %10'undan az** (bugün ~%2). Bilerek
       bozulmuş ezberler (sıra, kayıt kimliği, günlük dizileri) yakalanıyor.
+- [x] **Ön koşul — v2'de iki veri kaybı yolu kapatıldı** (R3b'nin uçtan uca testi aralıklı kırmızıyken bulundu):
+      (1) gelen veri ekrana düz değer olarak konunca, React'in sırada tuttuğu (henüz işlenmemiş) bir düzenleme
+      siliniyor ve hiç gönderilmiyordu → `apply` artık sıradaki son hâle bakan bir güncelleyiciyle; arada düzenleme
+      varsa farkı gelen verinin üstüne taşınır (`smController.rebase`), sonraki turda gönderilir. (2) Yeni yapı ilk
+      veriyi almadan yapılan düzenleme ilk veriyle siliniyordu → o ana kadar ekran salt okunur (`v2.loading`).
+      Bayraklardan bağımsızdı; R3b'nin gölgesi gönderimi uzatınca görünür oldu. Emulator testi hatayı belirlenimci
+      üretiyor (eski davranışla kırmızı).
 - [ ] **R3b — uygulamaya bağlama** (`smController`): bayrak `incMap`, varsayılan kapalı. Gölge: aday kendi zinciriyle
       yürür, yazımları tam eşlemeyle karşılaştırılır (0 fark şartı). Açıkken: boşta / sekme gizlenince tam uzlaşma
       (fark → gönderilir, bayrak kapanır). Geliştirme modunda veri dondurma (yerinde değişikliği yakalamak).
@@ -169,4 +176,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | #796 |
 | 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | #797 |
 | 2026-11-22 | R2 | `staleEcho` (varsayılan kapalı): yazarken geri gidip gelme biter; emulator +3 (77/77, 3 tekrar kararlı), uçtan uca bölüm 11 (66/66) | #799 |
-| 2026-11-23 | R3 | R3a: ezberli eşleme + kimlikle kısa devre yapan fark (uygulamaya bağlı değil); gönderim ~35–50× hızlı (ölçüm); eşdeğerlik testinde aday + iş bütçesi | bu PR |
+| 2026-11-23 | R3 | R3a: ezberli eşleme + kimlikle kısa devre yapan fark (uygulamaya bağlı değil); gönderim ~35–50× hızlı (ölçüm); eşdeğerlik testinde aday + iş bütçesi | #800 |
+| 2026-11-23 | R3 | Veri güvenliği: sıradaki ekran güncellemesi gelen veriyle silinmez (yeniden tabanlama); v2 ilk veriyi alana kadar salt okunur. Emulator +1 (78/78), uçtan uca 3 koşu 66/66 | bu PR |

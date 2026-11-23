@@ -127,6 +127,9 @@ const SEED = () => {
     const onV2 = await until(() => logHas(A, /v2: yeni yapı etkin/), 15000);
     check('A kendiliğinden yeni yapıya geçti', !!onV2);
     await A.keyboard.press('Escape').catch(() => {});
+    /* Yeni yapı ilk veriyi alana kadar ekran salt okunur (v2.loading). Test düzenlemeyi salt okunur kapıyı atlayan
+       doğrudan yoldan yaptığı için o ana kadar bekler (kullanıcı da bekler). */
+    await until(() => A.evaluate(() => /Synced|Senkronize/.test(document.querySelector('.sync-txt b')?.innerText || '')), 20000);
 
     console.log('\n== 3. yeni yapıda düzenleme: yalnızca kendi belgesi, eski yapıya yazım yok');
     const revBefore = (await get('kullanici_verileri/' + UID)).rev;

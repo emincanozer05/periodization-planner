@@ -43203,7 +43203,7 @@ function useCloudSync(data,setData){
   };
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),syncWarn,
     /* Faz 5: açık kulüp ve bu kişinin oradaki rolü (yeni yapı etkin değilse ws/role null). */
-    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select,hold:legacyHold&&!v2On},
+    v2:{active:v2On,ws:v2.ws,role:v2.role,teams:v2.teams,clubs:v2.clubs,select:v2.select,hold:legacyHold&&!v2On,loading:!!v2.loading},
     sizeReport:()=>syncSizeReport(dataRef.current),
     /* Kayıt bazlı senkron ön kontrolü (468-store-map.jsx): hiçbir şey yazmaz. */
     preflight:()=>smPreflightReport(dataRef.current),
@@ -43280,6 +43280,9 @@ function useStoreV2(o){
   const[pick,setPick]=useState(null);                // bu cihazda seçili kulüp
   const[member,setMember]=useState(null);            // seçili kulüpteki üyelik {role,teams} | null
   const[wsOk,setWsOk]=useState(false);               // seçili kulüp taşınmış mı
+  /* İlk veri geldi mi. Gelmeden yapılan düzenleme kaybolurdu: denetleyici henüz bir taban bilmediği için onu
+     gönderemez, ilk veri gelince ekran onunla değişir. O ana kadar ekran salt okunur (690 → readOnly). */
+  const[loaded,setLoaded]=useState(false);
   const ctl=useRef(null);
   const slowAt=useRef({});
   const fsOf=()=>{const fb=FB();if(!fb||!uid)return null;try{const fs=fb.firestore();return fs&&typeof fs.doc==='function'?fs:null;}catch(e){return null;}};
@@ -43332,10 +43335,21 @@ function useStoreV2(o){
       fs:fb.firestore(),wsPath:'workspaces/'+ws,teams,
       K:{FieldPath:firebase.firestore.FieldPath,FieldValue:firebase.firestore.FieldValue,uid},
       getData:()=>dataRef.current,
-      apply:d=>{dataRef.current=d;setData(d);},
+      /* Gelen veri düz değer olarak değil, React'in SIRADAKİ son hâline bakan bir güncelleyiciyle konur: arada sıraya
+         girmiş bir düzenleme varsa (ör. Firestore olayı bir tıklamanın güncellemesi işlenmeden geldi) silinmez,
+         gelen verinin üstüne taşınır (smController.rebase) ve bir sonraki gönderim turunda gider. */
+      apply:(d,cx)=>{
+        dataRef.current=d;
+        setData(prev=>{
+          if(!cx||prev===cx.cur||prev===d)return d;
+          let r=null;try{r=ctl.current?ctl.current.rebase(prev,cx):null;}catch(e){console.warn('rebase',e);}
+          if(r){slog('v2: gelen veri, sırada bekleyen düzenlemeyle birleştirildi');return r;}
+          return d;
+        });
+      },
       prep:d=>stripDeviceOnly(d),
       fromDocs:docs=>migrate(smFromDocs(docs)),
-      status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}},
+      status:s=>{setStatus(s);if(s==='synced'){ready.current=true;setSyncErr('');}if(ctl.current&&ctl.current.ready())setLoaded(true);},
       /* Yavaş tur (ana iş parçacığında SM_SLOW_MS'den uzun): her tür için en çok 30 sn'de bir günlüğe. */
       slow:(k,ms,info)=>{const t=Date.now(),l=slowAt.current;if(t-(l[k]||0)<30000)return;l[k]=t;slog('v2: yavaş tur ('+k+')',ms+' ms · '+info);},
       flag:syncFlag,                                  // bayraklar (447): denetleyici yeni davranışı yalnızca bunlarla açar
@@ -43348,6 +43362,7 @@ function useStoreV2(o){
         setSyncErr(e&&e.code==='newer-format'?L('Veri uygulamanın daha yeni bir sürümüyle yazılmış. Değişiklikler gönderilmiyor: sayfayı yenile.',
           'The data was written by a newer version of the app. Changes are not being sent: reload the page.'):m);},
     });
+    setLoaded(false);
     ctl.current=c;c.start();
     return()=>{c.stop();ctl.current=null;ready.current=false;};
   },[active,ws,role,teamsKey]);
@@ -43359,7 +43374,7 @@ function useStoreV2(o){
     setPick(id||null);
   };
   const clubs=(own?[uid]:[]).concat(joined);
-  return{active,ws,role,teams,clubs,select,ownSrv,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
+  return{active,ws,role,teams,clubs,select,ownSrv,loading:active&&!loaded,stats:()=>ctl.current?ctl.current.stats():null,idle:()=>ctl.current?ctl.current.idle():Promise.resolve()};
 }
 function LoadingScreen(){
   return(
@@ -44861,7 +44876,10 @@ function smListen(fs,wsPath,onDocs,onError,teams){
      fs, wsPath, K,                     Firestore (compat), 'workspaces/<ws>', {FieldPath, FieldValue, uid}
      teams                              üyenin erişebildiği takımlar (['*'] = hepsi; Faz 5)
      getData()                          ekrandaki güncel veri (nesne kimliği önemli)
-     apply(data)                        buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı)
+     apply(data, ctx)                   buluttan gelen veriyi ekrana koy (aynı nesneyi koymalı). ctx = {cur, base,
+                                        merged}: karşılaştırılan ekran hâli ve belgeler. Ekran çerçevesi (React)
+                                        bekleyen bir güncelleme taşıyorsa cur'u değil SON hâli rebase(son, ctx) ile
+                                        gelen verinin üstüne taşımalı (bkz. rebase)
      prep(data)  → data                 buluta gidecek hâl (cihaza ait alanlar atılmış)
      fromDocs(docs) → data              belgeler → ekran verisi (eşleme + gerekiyorsa migrate)
      status(s), note(msg), error(e)     'syncing' | 'synced'; kullanıcıya not; hata
@@ -44879,7 +44897,7 @@ function smListen(fs,wsPath,onDocs,onError,teams){
 var SM_SLOW_MS=50;
 var smNow=function(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();};
 function smStatsNew(){return{flushN:0,flushMs:0,flushMax:0,opsN:0,docs:0,echoN:0,echoMs:0,echoMax:0,applyN:0,writeN:0,ackMs:0,ackMax:0,slowN:0,
-  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0};}
+  quietN:0,quietSkip:0,quietMiss:0,quietRevert:0,ownN:0,ownHit:0,ownSkip:0,ownMiss:0,ownRevert:0,pipeN:0,pipeRetry:0,staleHit:0,staleSkip:0,staleRevert:0,rebaseN:0};}
 /* staleEcho: bir belge için bu cihazın gönderdiği sürümlerden en çok bu kadarı hatırlanır (belge başına). */
 var SM_SENT_KEEP=24;
 /* Belgenin içindeki bir alan yolunun değeri (yoksa undefined). */
@@ -45054,7 +45072,7 @@ function smController(o){
     var remote=o.fromDocs(merged);
     var cur=o.getData();
     var applied=!base||smCanon(o.prep(remote))!==smCanon(o.prep(cur));
-    if(applied){handled=remote;o.apply(remote);st.applyN++;}
+    if(applied){handled=remote;o.apply(remote,{cur:cur,base:base,merged:merged});st.applyN++;}
     else handled=cur;
     if(quiet&&applied)st.quietRevert++;
     if(echo&&applied){if(stale)st.staleRevert++;else st.ownRevert++;}   // gölge: tam yol yankı olayında ekranı değiştirdi (geri aldı)   // gölge: tam yol sessiz olayda ekranı değiştirdi (yankısı gelmemiş düzenlemeyi geri aldı)
@@ -45070,6 +45088,18 @@ function smController(o){
     ready:function(){return docs!==null;},
     idle:function(){return chain;},     // bekleyen yazımlar bitince çözülür (testler, çıkış)
     stats:function(){var r={};for(var k in st)r[k]=st[k];return r;},   // ölçüm (tanı penceresi)
+    /* YENİDEN TABANLAMA. Gelen veri ekrana konurken (apply) ekranda henüz işlenmemiş bir güncelleme sırada olabilir
+       (React güncellemeleri toplar; Firestore dinleyicisi arada çalışabilir). Gelen veriyi düz değer olarak koymak o
+       güncellemeyi SİLİYORDU — hiç gönderilmeden. Burada o güncellemenin farkı (cur → son, belgeler düzeyinde, cur'un
+       dayandığı belgelere göre) gelen birleşik belgelerin üstüne uygulanır ve ekrana konacak veri döner; gönderimi
+       her zamanki gönderim turu (veri değişti → flush) yapar. Fark yoksa null. Saf: yan etkisi yok. */
+    rebase:function(latest,c){
+      if(!c||!c.base||!c.merged||latest===c.cur)return null;
+      var a=smToDocs(o.prep(c.cur),c.base),b=smToDocs(o.prep(latest),c.base),lops=smDiff(a,b);
+      if(!lops.length)return null;
+      st.rebaseN++;
+      return o.fromDocs(smApply(c.merged,lops).docs);
+    },
   };
 }
 
@@ -56000,7 +56030,8 @@ function App(){
   /* İzleyici rolü (Faz 5) de salt okunur: kurallar zaten reddeder, ekran da düzenlemeye izin vermez. */
   /* Taşınmış hesabın eski senkronu devretti, yeni yapı henüz açılmadı (450 → legacyLock): ekranda
      ya varsayılan ya da eski yapıdan kalmış bir hâl var; düzenleme ikisine de yazılamaz. */
-  const readOnly=!bill.access.full||(sync.v2&&(sync.v2.role==='viewer'||sync.v2.hold));
+  /* Yeni yapı ilk veriyi alana kadar da (v2.loading): o arada yapılan düzenleme gönderilemez ve ilk veriyle silinirdi. */
+  const readOnly=!bill.access.full||(sync.v2&&(sync.v2.role==='viewer'||sync.v2.hold||sync.v2.loading));
   const setData=useCallback(u=>{if(readOnly)return;setDataRaw(u);},[readOnly]);
   const[view,setView]=useState('season');
   const[menuOpen,setMenuOpen]=useState(false);
