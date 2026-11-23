@@ -4,8 +4,9 @@
    Yük Takibi'ndeki Wellness Isı Haritası'nın yerini aldı. Üç katman:
      1. Başlık bandı — sade koyu zemin: yavaşça kayan iki hafif ışık ve sağa doğru
         silikleşen ince nokta deseni; seçili gün ve kaç sporcunun o gün form doldurduğu.
-     2. Takımın o günkü ortalaması — beş 1-5 sorusu halka göstergelerde, Polar gece nabzı
-        (bpm, o sabah uyanılan gecenin ortalaması), hazır oluşun 1-5 dağılımı ve takımın
+     2. Takımın o günkü ortalaması — hazır oluş halkası, uyku ve iki yorgunluk ölçek çubukları,
+        Polar gece nabzı (bpm, o sabah uyanılan gecenin ortalaması), ağrı bildirimi ve check-in
+        doluluğu, hazır oluşun 1-5 dağılımı ve takımın
         haftalık hazır oluşu (hafta şeridi + seçili haftanın günleri çubuk grafik).
      3. Sporcu kutuları — her sporcunun profil fotoğrafı, çevresinde o günkü hazır oluş
         halkası; kutunun hemen altında o günün değerleri. Kutuya tıklayınca sporcunun
@@ -152,9 +153,13 @@ function WvHero({title,sub,dayKey,setDayKey,stats,onBack,photo,name,actions}){
   </div>);
 }
 
-/* ---- Takımın o günkü ortalaması ---- */
+/* ---- Takımın o günkü ortalaması ----
+   Solda büyük hazır oluş halkası; sağda uyku ve iki yorgunluk 1-5 ölçek çubuğu (beş dilimli,
+   puanın renginde), altında üç küçük kutu: Polar gece nabzı, ağrı bildirimi, check-in doluluğu.
+   Kas ağrısı burada yok — ağrının takım görünümündeki karşılığı ağrı bildirimi sayısı.
+   En altta hazır oluşun 1-5 dağılımı. */
 function WvTeamPanel({athletes,dayKey,setDayKey,rows,pnhr}){
-  const MS=WV_METRICS();
+  const MS=WV_METRICS().filter(m=>m.five&&m.id!=='readiness'&&m.id!=='soreness');
   const avg=id=>wvMean(rows.map(r=>r.d&&r.d[id]));
   const rdy=avg('readiness');
   const rdyN=useWvCount(rdy);
@@ -165,34 +170,47 @@ function WvTeamPanel({athletes,dayKey,setDayKey,rows,pnhr}){
   const dist=[0,0,0,0,0];rows.forEach(r=>{const v=r.d&&r.d.readiness;if(v!=null)dist[Math.min(5,Math.max(1,Math.round(v)))-1]++;});
   const distN=dist.reduce((a,b)=>a+b,0);
   const painN=rows.filter(r=>r.d&&(r.d.pain||r.d.note)).length;
+  const filled=rows.filter(r=>r.d).length,total=athletes.length;
   return(<div className="wv-team">
     <div className="panel wv-team-main">
-      <div className="wv-ph"><h2>{L('Takım Ortalaması','Team Average')}</h2>
-        <span>{L(`${fd(dayKey)} · ${rows.filter(r=>r.d).length}/${athletes.length} sporcu`,`${fd(dayKey)} · ${rows.filter(r=>r.d).length}/${athletes.length} athletes`)}</span></div>
-      <div className="wv-team-grid">
-        <div className="wv-big">
-          <WvRing value={rdy} max={5} color={score5Color(rdy)||'var(--border2)'} size={148} stroke={12}>
+      <div className="wv-ph"><h2>{L('Takım Ortalaması','Team Average')}</h2><span>{fd(dayKey)}</span></div>
+      <div className="wv-tm">
+        <div className="wv-tm-ring">
+          <WvRing value={rdy} max={5} color={score5Color(rdy)||'var(--border2)'} size={152} stroke={12}>
             <b style={{color:rdy!=null?score5Color(rdy):'var(--dim)'}}>{rdyN==null?'—':rdyN.toFixed(1)}</b>
             <span>{L('hazır oluş','readiness')}</span>
           </WvRing>
-          <div className="wv-big-side">
-            <div className="wv-rhr"><i className="wv-heart" aria-hidden="true">♥</i>
-              <b>{nhrN==null?'—':Math.round(nhrN)}</b><small>bpm</small><span>{L('ort. gece nabzı','avg night HR')}</span></div>
-            <div className="wv-pain-n" data-on={painN>0?'1':'0'}><b>{painN}</b><span>{L('ağrı bildirimi','pain reports')}</span></div>
-          </div>
         </div>
-        <div className="wv-mini-rings">
-          {MS.filter(m=>m.five&&m.id!=='readiness').map((m,i)=>{const v=avg(m.id);
-            return<div key={m.id} className="wv-mr" style={{animationDelay:(i*80)+'ms'}}>
-              <WvRing value={v} max={5} color={score5Color(v)||'var(--border2)'} size={70} stroke={6} delay={150+i*90}>
-                <b style={{color:v!=null?score5Color(v):'var(--dim)'}}>{wvFmt(v,true)}</b></WvRing>
-              <span>{m.label}</span></div>;})}
+        <div className="wv-tm-side">
+          <div className="wv-meters">
+            {MS.map((m,i)=>{const v=avg(m.id),c=score5Color(v);
+              return<div key={m.id} className="wv-meter" style={{animationDelay:(80+i*70)+'ms'}}>
+                <div className="wv-meter-h"><span>{m.label}</span><b style={{color:v!=null?c:'var(--dim)'}}>{v==null?'—':v.toFixed(1)}</b></div>
+                <i className="wv-meter-bar" role="meter" aria-label={m.label} aria-valuemin={1} aria-valuemax={5} aria-valuenow={v==null?undefined:+v.toFixed(1)}>
+                  <em style={{width:v==null?0:(v/5*100)+'%',background:c||'var(--dim)',animationDelay:(200+i*90)+'ms'}}/></i>
+              </div>;})}
+          </div>
+          <div className="wv-tiles">
+            <div className="wv-tile">
+              <span><i className="wv-heart" aria-hidden="true">♥</i>{L('Gece nabzı','Night HR')}</span>
+              <b className={nhrN==null?'none':undefined}>{nhrN==null?'—':Math.round(nhrN)}{nhrN!=null&&<small> bpm</small>}</b>
+            </div>
+            <div className="wv-tile" data-alert={painN>0?'1':'0'}>
+              <span>{L('Ağrı bildirimi','Pain reports')}</span>
+              <b>{painN}<small> {L('sporcu','athl.')}</small></b>
+            </div>
+            <div className="wv-tile">
+              <span>Check-in</span>
+              <b>{filled}<small>/{total}</small></b>
+              <i className="wv-tile-bar"><em style={{width:total?(filled/total*100)+'%':0}}/></i>
+            </div>
+          </div>
         </div>
       </div>
       <div className="wv-dist">
-        <div className="wv-dist-k">{L('Hazır oluş dağılımı','Readiness spread')}</div>
+        <div className="wv-dist-k">{L('Hazır oluş dağılımı','Readiness spread')}<span>{L(`${distN} sporcu`,`${distN} athletes`)}</span></div>
         <div className="wv-dist-bar">{distN===0?<i className="none"/>:dist.map((n,i)=>n?<i key={i} style={{flexGrow:n,background:SCORE5_COLORS[i],animationDelay:(i*70)+'ms'}} title={`${i+1}: ${n}`}>{n}</i>:null)}</div>
-        <div className="wv-dist-leg">{SCORE5_COLORS.map((c,i)=><span key={i}><i style={{background:c}}/>{i+1}</span>)}</div>
+        <div className="wv-dist-leg">{SCORE5_COLORS.map((c,i)=><span key={i} className={dist[i]?undefined:'zero'}><i style={{background:c}}/>{i+1}<em>{dist[i]}</em></span>)}</div>
       </div>
     </div>
     <WvWeekTrend athletes={athletes} dayKey={dayKey} setDayKey={setDayKey}/>
