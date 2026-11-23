@@ -7,9 +7,10 @@
      D1  gönderilen fark, Firestore'da birebir hedef belgeleri üretir: smApply(önceki, fark) ≡ sonraki
      D2  belgelerden ekran verisi birebir geri kurulur: smFromDocs(sonraki) ≡ veri
      D3  değişiklik yoksa hiçbir şey yazılmaz
-     D4  ADAY ≡ REFERANS: aday eşleme (R3'ün artımlı eşlemesi) her adımda tam eşlemeyle (smToDocs +
-         smDiff) aynı belgeleri ve aynı yazımları üretir. Bugün aday = referans; R3 adayı buraya bağlar
-         ve ancak bu test (CI'da kısa, elle `--steps 1000000`) yeşilken açılabilir.
+     D4  ADAY ≡ REFERANS: aday eşleme (R3: ezberli smToDocs + kimlikle kısa devre yapan smDiff, kendi önceki
+         çıktısı ve ezberiyle) her adımda tam eşlemeyle (ezbersiz smToDocs + smDiff) aynı belgeleri ve aynı
+         yazımları üretir. Düzenlemeler ekranlardaki gibi YAPISAL PAYLAŞIMLI yapılır (değişmeyen kayıt aynı
+         nesne kalır), yoksa ezber hiç sınanmazdı. Uzun koşu: `--steps 20000 --size large`.
 
    Kullanım:  node store-map-equiv-test.js                 (CI: küçük hesap, 3 tohum × 150 adım)
               node store-map-equiv-test.js --steps 20000 --seed 7 --size large
@@ -22,8 +23,12 @@ const { makeFixture, prng } = require('./tools/sync-fixture.js');
 const src = fs.readFileSync(path.join(__dirname, 'src', 'app', '468-store-map.jsx'), 'utf8');
 const a = src.indexOf('/* <store-map>'), z = src.indexOf('/* </store-map> */');
 if (a < 0 || z < a) { console.error('468-store-map.jsx: <store-map> bölümü bulunamadı'); process.exit(1); }
+/* İş sayacı: smCanon (metne çevirme) çağrıları. Aday için CI bütçesi bununla tutulur (makineden bağımsız). */
+const W = { n: 0 };
+const body = src.slice(a, z).replace('function smCanon(v){', 'function smCanon(v){__W.n++;');
+if (body === src.slice(a, z)) { console.error('smCanon bulunamadı'); process.exit(1); }
 // eslint-disable-next-line no-new-func
-const SM = new Function(src.slice(a, z) + '; return { smToDocs, smFromDocs, smDiff, smApply, smCanon, smCheckDocs };')();
+const SM = new Function('__W', body + '; return { smToDocs, smFromDocs, smDiff, smApply, smCanon, smCheckDocs };')(W);
 
 const argv = process.argv.slice(2);
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
@@ -33,7 +38,26 @@ const SEEDS = opt('--seed', null) != null ? [Number(opt('--seed'))] : [1, 2, 3];
 /* ── referans ve aday ─────────────────────────────────────────────────────────
    Aday arayüzü: (öncekiBelgeler, veri) → { docs, ops }. R3 burada artımlı eşlemeyi verir. */
 const reference = (prev, data) => { const docs = SM.smToDocs(data, prev); return { docs, ops: SM.smDiff(prev, docs) }; };
-const candidate = reference;
+/* Aday: kendi önceki çıktısı (cdocs) ve ezberiyle; denetleyicinin bayrak açıkken yapacağı iş. */
+function makeCandidate(data0) {
+  const memo = {};
+  let cdocs = SM.smToDocs(data0, null, memo);
+  const f = (prev, data) => {
+    const docs = SM.smToDocs(data, cdocs, memo); const ops = SM.smDiff(cdocs, docs);
+    for (const p in docs) { f.total++; if (docs[p] === cdocs[p]) f.reused++; }
+    cdocs = docs; return { docs, ops };
+  };
+  f.total = 0; f.reused = 0;
+  return f;
+}
+/* Yapısal paylaşım: düzenlenmiş kopyada içeriği değişmeyen her alt ağaç ESKİ nesneyle değiştirilir (React gibi). */
+function share(oldV, newV) {
+  if (oldV === newV) return oldV;
+  if (!oldV || !newV || typeof oldV !== 'object' || typeof newV !== 'object' || Array.isArray(oldV) !== Array.isArray(newV)) return newV;
+  if (SM.smCanon(oldV) === SM.smCanon(newV)) return oldV;
+  if (Array.isArray(newV)) return newV.map((x, i) => share(oldV[i], x));
+  const r = {}; for (const k of Object.keys(newV)) r[k] = share(oldV[k], newV[k]); return r;
+}
 
 const clone = o => JSON.parse(JSON.stringify(o));
 const strip = d => { const c = clone(d); delete c.activeTeamId; return c; };
@@ -89,14 +113,18 @@ for (const seed of SEEDS) {
   const E = edits(r);
   let data = strip(makeFixture(SIZE, seed));
   let prev = SM.smToDocs(data);
+  const candidate = makeCandidate(data);
+  let workRef = 0, workCan = 0;
   const count = {};
   const t0 = Date.now();
   for (let i = 0; i < STEPS; i++) {
     const [name, fn] = E[Math.floor(r() * E.length)];
     count[name] = (count[name] || 0) + 1;
-    const next = clone(data); fn(next);
+    const edited = clone(data); fn(edited);
+    const next = share(data, edited);
     const changed = SM.smCanon(next) !== SM.smCanon(data);
-    const ref = reference(prev, next), can = candidate(prev, next);
+    W.n = 0; const ref = reference(prev, next); workRef += W.n;
+    W.n = 0; const can = candidate(prev, next); workCan += W.n;
     const tag = `tohum ${seed} adım ${i} (${name})`;
     // D1
     const applied = SM.smApply(prev, ref.ops);
@@ -114,9 +142,16 @@ for (const seed of SEEDS) {
     (sameDocs && opsKey(can.ops) === opsKey(ref.ops)) ? pass++ : bad('D4 aday ≠ referans: ' + tag);
     data = next; prev = ref.docs;
   }
+  /* İŞ BÜTÇESİ (senkron hız planı R3): aday, düzenleme başına tam eşlemenin %10'undan az metne çevirme
+     yapmalı. Biri ileride ezberi bozan (her şeyi yeniden kuran/karşılaştıran) bir değişiklik yaparsa kırmızı. */
+  const ratio = workCan / Math.max(1, workRef);
+  ratio < 0.1 ? pass++ : bad(`tohum ${seed}: iş bütçesi aşıldı — aday tam eşlemenin %${(ratio * 100).toFixed(1)}'i kadar metne çevirdi (sınır %10)`);
+  // Ezber gerçekten devrede mi: belgelerin büyük çoğunluğu yeniden kurulmadan (aynı nesne) kullanılmalı.
+  const rate = candidate.reused / Math.max(1, candidate.total);
+  rate > 0.9 ? pass++ : bad(`tohum ${seed}: ezber devrede değil (yeniden kullanılan belge oranı %${(rate * 100).toFixed(1)})`);
   const iss = SM.smCheckDocs(prev).issues.filter(x => x.kind !== 'nested-array');
   iss.length === 0 ? pass++ : bad(`tohum ${seed}: zincirin sonunda Firestore'a yazılamayacak belge`, JSON.stringify(iss.slice(0, 3)));
-  console.log(`  tohum ${seed}: ${STEPS} adım, ${Object.keys(count).length} düzenleme türü, ${((Date.now() - t0) / 1000).toFixed(1)} sn`);
+  console.log(`  tohum ${seed}: ${STEPS} adım, ${Object.keys(count).length} düzenleme türü, ${((Date.now() - t0) / 1000).toFixed(1)} sn, ezberden kullanılan belge %${(rate * 100).toFixed(1)}, iş oranı %${(ratio * 100).toFixed(2)}`);
 }
 
 if (failures.length) console.log('\n  KALANLAR:\n  · ' + failures.join('\n  · '));

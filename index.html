@@ -44325,30 +44325,57 @@ function smOrder(keys,prevO){
 function smPrevO(prev,paths){var r={};if(!prev)return r;paths.forEach(function(x){var d=prev[x[1]];if(d&&typeof d._o==='number')r[x[0]]=d._o;});return r;}
 
 /* ── data → belgeler ─────────────────────────────────────────────────────── */
-function smToDocs(data,prev){
-  var out={};
-  var put=function(path,doc){out[path]=smEnc(doc,prev&&prev[path]);};
-  var ws=smOmit(data,['activeTeamId','teams'].concat(SM_WS_COLS));
-  ws.schemaVersion=SM_VERSION;
-  ws._fmt=SM_FORMAT;
+/* EZBERLEME (memo, senkron hız planı R3). memo verilirse her belge için onu kuran girdiler (kaynak nesnelerin
+   KİMLİĞİ + küçük bağlam değerleri: sıra, tarih, sezon, sahip, bölme kararları) saklanır. Girdiler aynıysa ve
+   önceki çıktı (prev[yol]) hâlâ bu fonksiyonun o belge için ürettiği nesneyse belge yeniden kurulmaz, KODLANMAZ:
+   aynı nesne döner. smDiff aynı nesneyi metne çevirmeden geçer. Böylece bir düzenlemenin maliyeti hesabın
+   değil, değişen kayıtların büyüklüğüyle orantılı olur.
+   Varsayım: ekran verisi değişmez nesnelerle güncellenir (değişen kayıt yeni nesne). Yerinde değiştirilen bir
+   kaynak ezberden eski belgeyi döndürür; denetleyici bunun için gölgede tam eşlemeyle karşılaştırır ve boşta
+   tam uzlaşma yapar (bkz. smController). memo verilmezse davranış ezberlemesiz eşlemeyle birebir aynıdır. */
+function smDepsEq(a,b){if(!a||!b||a.length!==b.length)return false;for(var i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
+/* smOmit ile aynı alanlar: kaynaktaki (atlananlar dışındaki) her alanın adı ve değeri (kimlik). */
+function smEntries(o,skip){var r=[];for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k)&&(!skip||skip.indexOf(k)<0))r.push(k,o[k]);}return r;}
+function smToDocs(data,prev,memo){
+  var out={},seen=memo?{}:null;
+  /* put(yol, bağımlılıklar(), kur()): memo varsa ve bağımlılıklar + önceki çıktı aynıysa eski belge aynen. */
+  var put=function(path,deps,build){
+    if(memo){
+      var dp=deps(),m=memo[path];
+      seen[path]=1;
+      if(m&&prev&&prev[path]===m.out&&smDepsEq(m.deps,dp)){out[path]=m.out;return;}
+      var enc=smEnc(build(),prev&&prev[path]);
+      memo[path]={deps:dp,out:enc};out[path]=enc;return;
+    }
+    out[path]=smEnc(build(),prev&&prev[path]);
+  };
+  var ctx={put:put,prev:prev,memo:memo,seen:seen,out:out};
   var split=[];
   SM_WS_COLS.forEach(function(c){
     if(!(c in data))return;
     if(smSplittable(data[c])){
       split.push(c);
       var o=smOrder(data[c].map(function(x){return x.id;}),smPrevO(prev,data[c].map(function(x){return [x.id,c+'/'+x.id];})));
-      data[c].forEach(function(x,i){put(c+'/'+x.id,Object.assign({},x,{_o:o[i]}));});
-    }else ws[c]=data[c];
+      data[c].forEach(function(x,i){put(c+'/'+x.id,function(){return [x,o[i]];},function(){return Object.assign({},x,{_o:o[i]});});});
+    }
   });
-  ws._split=split;
-  if('teams'in data){
-    if(smSplittable(data.teams)){
-      ws._hasTeams=true;
-      var to=smOrder(data.teams.map(function(t){return t.id;}),smPrevO(prev,data.teams.map(function(t){return [t.id,'teams/'+t.id];})));
-      data.teams.forEach(function(t,i){smTeamToDocs(t,'teams/'+t.id,to[i],put,prev);});
-    }else ws.teams=data.teams;
+  var hasTeams=false;
+  if('teams'in data&&smSplittable(data.teams)){
+    hasTeams=true;
+    var to=smOrder(data.teams.map(function(t){return t.id;}),smPrevO(prev,data.teams.map(function(t){return [t.id,'teams/'+t.id];})));
+    data.teams.forEach(function(t,i){smTeamToDocs(t,'teams/'+t.id,to[i],ctx);});
   }
-  put('',ws);
+  var rootSkip=['activeTeamId','teams'].concat(split);
+  put('',function(){return smEntries(data,rootSkip).concat([split.join('\u0001'),hasTeams,'teams'in data,hasTeams?null:data.teams]);},function(){
+    var ws=smOmit(data,['activeTeamId','teams'].concat(SM_WS_COLS));
+    ws.schemaVersion=SM_VERSION;
+    ws._fmt=SM_FORMAT;
+    SM_WS_COLS.forEach(function(c){if(c in data&&split.indexOf(c)<0)ws[c]=data[c];});
+    ws._split=split;
+    if('teams'in data){if(hasTeams)ws._hasTeams=true;else ws.teams=data.teams;}
+    return ws;
+  });
+  if(memo)for(var k in memo)if(!seen[k])delete memo[k];
   return out;
 }
 
@@ -44358,66 +44385,85 @@ function smDaysSplittable(days){
 }
 /* Günler: her gün bir belge; seanslar kimlikleri uygunsa ayrı belge (gün içinde kesirli sıra).
    owner: sporcu kimliği (sporcu takvimi) ya da null (takım takvimi). */
-function smDaysToDocs(days,base,season,owner,used,put,prev){
+function smDaysToDocs(days,base,season,owner,used,ctx){
+  var put=ctx.put,prev=ctx.prev;
   var dayCol=owner==null?'days':'athleteDays',sesCol=owner==null?'sessions':'athleteSessions';
   Object.keys(days).forEach(function(dk){
     var day=days[dk],ses=day.sessions;
     var ok=smSplittable(ses,used);
-    var dd=Object.assign({},ok?smOmit(day,['sessions']):day,{_key:dk,_season:season});
-    if(owner!=null)dd._a=owner;
     if(ok){
-      smMark(ses,used);dd._sessions=true;
+      smMark(ses,used);
       var o=smOrder(ses.map(function(s){return s.id;}),smPrevO(prev,ses.map(function(s){return [s.id,base+'/'+sesCol+'/'+s.id];})));
       ses.forEach(function(s,i){
-        var sd=Object.assign({},s,{_date:dk,_season:season,_o:o[i]});if(owner!=null)sd._a=owner;
-        put(base+'/'+sesCol+'/'+s.id,sd);
+        put(base+'/'+sesCol+'/'+s.id,function(){return [s,dk,season,o[i],owner];},function(){
+          var sd=Object.assign({},s,{_date:dk,_season:season,_o:o[i]});if(owner!=null)sd._a=owner;return sd;
+        });
       });
     }
     var key=owner!=null?owner+'_'+dk:(season!=null?season+'_':'')+dk;
-    put(base+'/'+dayCol+'/'+key,dd);
+    put(base+'/'+dayCol+'/'+key,function(){return smEntries(day,ok?['sessions']:null).concat([dk,season,owner,ok]);},function(){
+      var dd=Object.assign({},ok?smOmit(day,['sessions']):day,{_key:dk,_season:season});
+      if(owner!=null)dd._a=owner;
+      if(ok)dd._sessions=true;
+      return dd;
+    });
   });
 }
 
-function smTeamToDocs(t,base,order,put,prev){
-  var td=smOmit(t,['athletes','days','setup','weekOverrides','seasonData']);
-  td._o=order;
+function smTeamToDocs(t,base,order,ctx){
+  var put=ctx.put,prev=ctx.prev;
   var used={sessions:{},athleteSessions:{},tests:{},injuries:{},measurements:{}};
   var sid=t.activeSeasonId!=null?String(t.activeSeasonId):'_active';
-  if(smValidId(sid)){
-    var act={_active:true};
-    if('setup'in t)act.setup=t.setup;
-    if('weekOverrides'in t)act.weekOverrides=t.weekOverrides;
-    if('days'in t){
-      if(smDaysSplittable(t.days)){act._hasDays=true;smDaysToDocs(t.days,base,sid,null,used.sessions,put,prev);}
-      else act.days=t.days;
-    }
-    put(base+'/seasons/'+sid,act);
-  }else{
-    ['setup','weekOverrides','days'].forEach(function(k){if(k in t)td[k]=t[k];});
+  var sidOk=smValidId(sid),daysSplit=false;
+  if(sidOk){
+    if('days'in t&&smDaysSplittable(t.days)){daysSplit=true;smDaysToDocs(t.days,base,sid,null,used.sessions,ctx);}
+    put(base+'/seasons/'+sid,function(){return ['setup'in t,t.setup,'weekOverrides'in t,t.weekOverrides,'days'in t,daysSplit,daysSplit?null:t.days];},function(){
+      var act={_active:true};
+      if('setup'in t)act.setup=t.setup;
+      if('weekOverrides'in t)act.weekOverrides=t.weekOverrides;
+      if('days'in t){if(daysSplit)act._hasDays=true;else act.days=t.days;}
+      return act;
+    });
   }
-  if('seasonData'in t){
-    if(smIsObj(t.seasonData)){
-      td._hasSeasonData=true;
-      Object.keys(t.seasonData).forEach(function(k){
-        var sl=t.seasonData[k];
-        if(!smValidId(k)||k===sid||!smIsObj(sl)){(td._seasonDataRaw=td._seasonDataRaw||{})[k]=sl;return;}
+  var sdObj='seasonData'in t&&smIsObj(t.seasonData);
+  if(sdObj){
+    Object.keys(t.seasonData).forEach(function(k){
+      var sl=t.seasonData[k];
+      if(!smValidId(k)||k===sid||!smIsObj(sl))return;
+      var sdSplit='days'in sl&&smDaysSplittable(sl.days);
+      if(sdSplit)smDaysToDocs(sl.days,base,k,null,used.sessions,ctx);
+      put(base+'/seasons/'+k,function(){return smEntries(sl,['days']).concat(['days'in sl,sdSplit,sdSplit?null:sl.days]);},function(){
         var sd=smOmit(sl,['days']);
-        if('days'in sl){
-          if(smDaysSplittable(sl.days)){sd._hasDays=true;smDaysToDocs(sl.days,base,k,null,used.sessions,put,prev);}
-          else sd.days=sl.days;
-        }
-        put(base+'/seasons/'+k,sd);
+        if('days'in sl){if(sdSplit)sd._hasDays=true;else sd.days=sl.days;}
+        return sd;
       });
-    }else td.seasonData=t.seasonData;
+    });
   }
-  if('athletes'in t){
-    if(smSplittable(t.athletes)){
-      td._hasAthletes=true;
-      var ao=smOrder(t.athletes.map(function(a){return a.id;}),smPrevO(prev,t.athletes.map(function(a){return [a.id,base+'/athletes/'+a.id];})));
-      t.athletes.forEach(function(a,i){smAthleteToDocs(a,base,ao[i],used,put,prev);});
-    }else td.athletes=t.athletes;
+  var athSplit='athletes'in t&&smSplittable(t.athletes);
+  if(athSplit){
+    var ao=smOrder(t.athletes.map(function(a){return a.id;}),smPrevO(prev,t.athletes.map(function(a){return [a.id,base+'/athletes/'+a.id];})));
+    t.athletes.forEach(function(a,i){smAthleteToDocs(a,base,ao[i],used,ctx);});
   }
-  put(base,td);
+  var tdSkip=['athletes','days','setup','weekOverrides','seasonData'];
+  put(base,function(){
+    return smEntries(t,tdSkip).concat([order,sidOk,sidOk?null:t.setup,sidOk?null:t.weekOverrides,sidOk?null:t.days,
+      'seasonData'in t,t.seasonData,'athletes'in t,athSplit,athSplit?null:t.athletes]);
+  },function(){
+    var td=smOmit(t,tdSkip);
+    td._o=order;
+    if(!sidOk)['setup','weekOverrides','days'].forEach(function(k){if(k in t)td[k]=t[k];});
+    if('seasonData'in t){
+      if(sdObj){
+        td._hasSeasonData=true;
+        Object.keys(t.seasonData).forEach(function(k){
+          var sl=t.seasonData[k];
+          if(!smValidId(k)||k===sid||!smIsObj(sl))(td._seasonDataRaw=td._seasonDataRaw||{})[k]=sl;
+        });
+      }else td.seasonData=t.seasonData;
+    }
+    if('athletes'in t){if(athSplit)td._hasAthletes=true;else td.athletes=t.athletes;}
+    return td;
+  });
 }
 
 /* Kimliksiz günlük kaydının anahtarı: içeriğin özeti; aynı içerikten iki kayıt varsa sayaç. */
@@ -44432,41 +44478,65 @@ function smLogKeys(arr){
   });
 }
 
-function smAthleteToDocs(a,teamBase,order,used,put,prev){
+function smAthleteToDocs(a,teamBase,order,used,ctx){
+  var put=ctx.put,prev=ctx.prev,memo=ctx.memo;
   var aid=a.id,base=teamBase+'/athletes/'+aid;
-  var ad=smOmit(a,SM_ATH_SUBS.concat(Object.keys(SM_ATH_LOGS),['days']));
-  ad._o=order;ad._split=[];ad._logs=[];
+  var splitList=[];
   SM_ATH_SUBS.forEach(function(c){
     if(!(c in a))return;
     if(smSplittable(a[c],used[c])){
-      smMark(a[c],used[c]);ad._split.push(c);
+      smMark(a[c],used[c]);splitList.push(c);
       var o=smOrder(a[c].map(function(x){return x.id;}),smPrevO(prev,a[c].map(function(x){return [x.id,teamBase+'/'+c+'/'+x.id];})));
-      a[c].forEach(function(x,i){put(teamBase+'/'+c+'/'+x.id,Object.assign({},x,{_a:aid,_o:o[i]}));});
-    }else ad[c]=a[c];
+      a[c].forEach(function(x,i){put(teamBase+'/'+c+'/'+x.id,function(){return [x,aid,o[i]];},function(){return Object.assign({},x,{_a:aid,_o:o[i]});});});
+    }
   });
   // günlükler: ay kovası teams/T/logs/{sporcu}_{YYYY-MM}
-  var buckets={};
-  Object.keys(SM_ATH_LOGS).forEach(function(c){
-    if(!(c in a))return;
-    var arr=a[c];
-    if(!Array.isArray(arr)){ad[c]=arr;return;}
-    ad._logs.push(c);
-    var f=SM_ATH_LOGS[c],keys=smLogKeys(arr);
-    var prevO={};
-    if(prev)arr.forEach(function(x,i){var m=smMonth(x&&x.date),b=prev[teamBase+'/logs/'+aid+'_'+m];var e=b&&b[f]&&b[f][keys[i]];if(e&&typeof e._o==='number')prevO[keys[i]]=e._o;});
-    var o=smOrder(keys,prevO);
-    arr.forEach(function(x,i){
-      var m=smMonth(x&&x.date);
-      var b=buckets[m]||(buckets[m]={_a:aid,_m:m});
-      (b[f]||(b[f]={}))[keys[i]]={v:x,_o:o[i]};
+  var logList=[],logArrs=[];
+  Object.keys(SM_ATH_LOGS).forEach(function(c){if(c in a&&Array.isArray(a[c])){logList.push(c);logArrs.push(a[c]);}});
+  /* Ezber: sporcunun günlük dizileri (kimlikleriyle) aynıysa ve kovalar önceki çıktıysa anahtarlar (kimliksiz
+     kayıtlarda içerik özeti — pahalı) ve kovalar hiç hesaplanmaz. */
+  var lkey='\u0001logs:'+teamBase+'/'+aid,lm=memo&&memo[lkey],ldeps=memo?[aid].concat(logList,logArrs):null;
+  var reuse=lm&&smDepsEq(lm.deps,ldeps)&&lm.paths.every(function(p){var m=memo[p];return m&&prev&&prev[p]===m.out;});
+  if(reuse){
+    lm.paths.forEach(function(p){ctx.out[p]=memo[p].out;ctx.seen[p]=1;});
+    ctx.seen[lkey]=1;
+  }else{
+    var buckets={};
+    logList.forEach(function(c,ci){
+      var arr=logArrs[ci];
+      var f=SM_ATH_LOGS[c],keys=smLogKeys(arr);
+      var prevO={};
+      if(prev)arr.forEach(function(x,i){var m=smMonth(x&&x.date),b=prev[teamBase+'/logs/'+aid+'_'+m];var e=b&&b[f]&&b[f][keys[i]];if(e&&typeof e._o==='number')prevO[keys[i]]=e._o;});
+      var o=smOrder(keys,prevO);
+      arr.forEach(function(x,i){
+        var m=smMonth(x&&x.date);
+        var b=buckets[m]||(buckets[m]={_a:aid,_m:m});
+        (b[f]||(b[f]={}))[keys[i]]={v:x,_o:o[i]};
+      });
     });
-  });
-  Object.keys(buckets).forEach(function(m){put(teamBase+'/logs/'+aid+'_'+m,buckets[m]);});
-  if('days'in a){
-    if(smDaysSplittable(a.days)){ad._hasDays=true;smDaysToDocs(a.days,teamBase,null,aid,used.athleteSessions,put,prev);}
-    else ad.days=a.days;
+    var bpaths=[];
+    Object.keys(buckets).forEach(function(m){
+      var bp=teamBase+'/logs/'+aid+'_'+m;bpaths.push(bp);
+      put(bp,function(){return ldeps.concat([m]);},function(){return buckets[m];});
+    });
+    if(memo){memo[lkey]={deps:ldeps,paths:bpaths};ctx.seen[lkey]=1;}
   }
-  put(base,ad);
+  var daysSplit='days'in a&&smDaysSplittable(a.days);
+  if(daysSplit)smDaysToDocs(a.days,teamBase,null,aid,used.athleteSessions,ctx);
+  var adSkip=SM_ATH_SUBS.concat(Object.keys(SM_ATH_LOGS),['days']);
+  put(base,function(){
+    var d=smEntries(a,adSkip).concat([order,splitList.join('\u0001'),logList.join('\u0001'),daysSplit,daysSplit?null:a.days,'days'in a]);
+    SM_ATH_SUBS.forEach(function(c){if(c in a&&splitList.indexOf(c)<0)d.push(c,a[c]);});
+    Object.keys(SM_ATH_LOGS).forEach(function(c){if(c in a&&logList.indexOf(c)<0)d.push(c,a[c]);});
+    return d;
+  },function(){
+    var ad=smOmit(a,adSkip);
+    ad._o=order;ad._split=splitList.slice();ad._logs=logList.slice();
+    SM_ATH_SUBS.forEach(function(c){if(c in a&&splitList.indexOf(c)<0)ad[c]=a[c];});
+    Object.keys(SM_ATH_LOGS).forEach(function(c){if(c in a&&logList.indexOf(c)<0)ad[c]=a[c];});
+    if('days'in a){if(daysSplit)ad._hasDays=true;else ad.days=a.days;}
+    return ad;
+  });
 }
 
 /* ── belgeler → data ─────────────────────────────────────────────────────── */
@@ -44568,6 +44638,7 @@ function smDiff(prev,next){
   prev=prev||{};
   for(p in next){
     if(!(p in prev)){ops.push({op:'set',path:p,data:next[p]});continue;}
+    if(prev[p]===next[p])continue;   // aynı nesne (ezber, R3): metne çevirmeye gerek yok
     if(smCanon(prev[p])===smCanon(next[p]))continue;
     var fields=[];smDiffFields(prev[p],next[p],[],0,fields);
     if(fields.length)ops.push({op:'update',path:p,fields:fields});

@@ -1,6 +1,6 @@
 # Senkron Hız Planı — riski sıfıra yaklaştırarak
 
-> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip, pipeWrite, staleEcho yayında, varsayılan kapalı) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
+> **Durum:** R0 tamam · R2 sürüyor (metaSkip, echoSkip, pipeWrite, staleEcho yayında, varsayılan kapalı) · R3 sürüyor (R3a: ezberli eşleme, uygulamaya bağlı değil) · R1 (gerçek cihaz ölçümü) bekliyor · **Son güncelleme:** 2026-11-22
 > Üst plan: [`senkron-gecis-plani.md`](senkron-gecis-plani.md) (kayıt bazlı yapıya geçiş). Bu dosya hız
 > işinin tek kaynağıdır; her PR sonunda en alttaki **İlerleme** güncellenir.
 
@@ -108,6 +108,17 @@ Gerçek cihazda düzenleme başına ms, yankı süresi, onay süresi, taşıma. 
 ### R3 — Giden tarafta artımlı eşleme
 Kaynak nesne kimliğine göre önbellek; değişmeyen belge yeniden üretilmez. CI'da ≥1 milyon adımlık
 rastgele eşdeğerlik testi → ≥2 hafta / ≥5.000 gerçek düzenleme gölge (0 fark) → kademeli açılış, onarım ağı açık.
+- [x] **R3a — ezberli eşleme** (`468` → `smToDocs(data, prev, memo)`): her belge için girdilerin kimliği (+ sıra,
+      tarih, sezon, sahip, bölme kararları) saklanıyor; aynıysa ve önceki çıktı hâlâ bu fonksiyonunsa belge yeniden
+      kurulmuyor/kodlanmıyor (aynı nesne). Kimliksiz wellness özetleri sporcu bazında ezberden. `smDiff` aynı
+      nesneyi metne çevirmeden geçiyor. `memo` verilmezse davranış birebir aynı (uygulama henüz kullanmıyor).
+      Ölçüm (büyük hesap, sunucu CPU): gönderim 515–567 ms → **11–19 ms**, metne çevirme 1,5 milyon → 74–17 bin,
+      yazımlar referansla birebir. Eşdeğerlik testi (CI): düzenlemeler yapısal paylaşımlı, D4 aday≡referans,
+      ezberden kullanılan belge %98, **iş bütçesi: aday tam eşlemenin %10'undan az** (bugün ~%2). Bilerek
+      bozulmuş ezberler (sıra, kayıt kimliği, günlük dizileri) yakalanıyor.
+- [ ] **R3b — uygulamaya bağlama** (`smController`): bayrak `incMap`, varsayılan kapalı. Gölge: aday kendi zinciriyle
+      yürür, yazımları tam eşlemeyle karşılaştırılır (0 fark şartı). Açıkken: boşta / sekme gizlenince tam uzlaşma
+      (fark → gönderilir, bayrak kapanır). Geliştirme modunda veri dondurma (yerinde değişikliği yakalamak).
 
 ### R4 — Gelen tarafta artımlı uygulama
 Aynı düzen: yalnızca değişen takım / sporcu yeniden kurulur, `migrate` kimliği korur.
@@ -157,4 +168,5 @@ Elle: `tools/v2-e2e-test.js`, `tools/smoke-test.js`, gerektiğinde `tools/sync-l
 | 2026-11-22 | R2 | `metaSkip` (varsayılan kapalı) + gölge; emulator +2, uçtan uca bölüm 8 (44/44) | #795 |
 | 2026-11-22 | R2 | `echoSkip` (varsayılan kapalı) + gölge; geri alma yarışının kaynağı bulundu (sıralı yazım zinciri); emulator +2 (71/71), uçtan uca bölüm 9 (51/51) | #796 |
 | 2026-11-22 | R2 | `pipeWrite` (varsayılan kapalı) + reddedilen paketin en güncel hâlden yeniden yazılması; emulator +3 (74/74, bozuk sürüm yakalandı), uçtan uca bölüm 10 (59/59) | #797 |
-| 2026-11-22 | R2 | `staleEcho` (varsayılan kapalı): yazarken geri gidip gelme biter; emulator +3 (77/77, 3 tekrar kararlı), uçtan uca bölüm 11 (66/66) | bu PR |
+| 2026-11-22 | R2 | `staleEcho` (varsayılan kapalı): yazarken geri gidip gelme biter; emulator +3 (77/77, 3 tekrar kararlı), uçtan uca bölüm 11 (66/66) | #799 |
+| 2026-11-23 | R3 | R3a: ezberli eşleme + kimlikle kısa devre yapan fark (uygulamaya bağlı değil); gönderim ~35–50× hızlı (ölçüm); eşdeğerlik testinde aday + iş bütçesi | bu PR |
