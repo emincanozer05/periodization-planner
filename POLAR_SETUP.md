@@ -138,7 +138,8 @@ bir kural tek başına token sızdırmaz. Sunucu kimliğinin kendisi ele geçiri
 ## Veri senkronu (Aşama 2)
 
 Koç sporcu profilindeki Polar panelinde **Verileri Senkronize Et**'e basar → `POST /sync`
-(ID token). Aynı sporcu için iki dakikada bir manuel senkron; eşzamanlı ikinci senkron kilitle
+(ID token). Bir önceki senkron TAMAMLANDIYSA aynı sporcu için dakikada bir manuel senkron
+(yarıda kalan ya da kısmi senkrondan sonra bekleme yok); eşzamanlı ikinci senkron kilitle
 reddedilir.
 
 | Veri | Uç nokta (v3) | Koleksiyon / doküman adı | Model |
@@ -174,11 +175,43 @@ reddedilir.
 | Antrenman | `duration`, `heart_rate.average/maximum`, `heart_rate_zones`, `calories`, `distance`, `training_load`, `training_load_pro` (cardio/muscle/perceived load), `sport` |
 | Aktivite | `active-steps`, `calories`, `active-calories`, `duration` |
 
+## "Ağ hatası" ve gelmeyen veri — neden oluyordu, nasıl çözüldü
+
+**Belirti 1:** "Verileri al" veri gelse bile "Ağ hatası" diyordu. **Neden:** her `/sync` isteği
+sporcunun bütün senkronunu (altı adım; her seferinde 28 günlük sürekli nabız örnekleri dahil)
+bitirene kadar açık kalıyordu. `polarApi` 120 sn / 256 MB sınırına çarpınca Google bağlantıyı
+CORS başlığı olmadan kesiyor; tarayıcı bunu internet kopması gibi "Failed to fetch" olarak
+görüyor. O ana kadar alınan veri Firestore'a yazılmış oluyordu, bu yüzden tablo dolu ama hata var.
+
+**Belirti 2:** sporcu saatini eşitlese de veri gelmiyordu. **Neden:** kesilen istek kilidi
+(150 sn) ve "son başlama" zamanını açık bırakıyordu; koç yeniden basınca sunucu
+`SYNC_IN_PROGRESS` / `TOO_SOON` dönüyor, uygulama da bunları **sessizce "güncel"** sayıyordu:
+Polar'a hiç gidilmiyordu. Sporcu eşitledikten hemen sonra (iki dakika içinde) basılınca da aynısı.
+Ayrıca süre bütçesine sığmayan adımlar ("deferred") başarı sayılıyor, sıra hep aynı olduğu için
+sondaki adımlar (aktivite, nabız) Polar yavaşken hiç gelmeyebiliyordu.
+
+**Çözüm:**
+- `polarApi` 300 sn / 512 MB; senkronun Polar bütçesi 100 sn. Sınıra çarpma payı geniş.
+- Sürekli nabız artımlı: ilk senkronda 28 gün, sonra son alınan günün iki gün öncesinden
+  (en az son 4 gün). Senkron kısalıyor, bellek rahatlıyor.
+- `TOO_SOON` yalnızca bir önceki senkron **tamamlandıysa** (ve son bir dakika içindeyse).
+  Yarıda kalan ya da kısmi senkrondan sonra beklemeden yeniden alınır.
+- Ertelenen adım varsa senkron "kısmi" (`ok: false`, `lastSyncAt` ilerlemez); bir sonraki
+  senkronda ertelenen adımlar **en önce** çalışır.
+- Uygulama (`polarSyncAthlete`, ekip sayfasında `polarSyncOne`): yanıt koparsa ya da senkron
+  sürüyorsa en çok 4 dakika bekleyip yeniden sorar. Yeniden sorulduğunda `TOO_SOON` = o senkron
+  bitti, veri yazıldı. Gerçek bir sorun varsa (izin kaldırılmış, Polar yanıt vermiyor) açık mesaj.
+- `/team-data` okuması ağ hatasında iki kez daha denenir.
+
+Polar'ın kendi gecikmesi ayrı: sporcu saatini Polar Flow'la eşitledikten sonra verinin
+AccessLink'te görünmesi birkaç dakika sürebilir; o durumda bir dakika sonra yeniden basmak yeter.
+
 ## Wellness → Polar ("Verileri al") ve sporcu grafikleri
 
 **Wellness sekmesi → Polar bölümü (günlük):**
 1. **Verileri al** → takımın Polar'a bağlı her sporcusu için `POST /sync` (aynı anda 3 sporcu).
-   Son iki dakikada senkronlanmış sporcu (`TOO_SOON`) "güncel" sayılır.
+   Son bir dakikada senkronu TAMAMLANMIŞ sporcu (`TOO_SOON`) "güncel" sayılır. Yanıt koparsa
+   ya da senkron sunucuda sürüyorsa uygulama bekleyip yeniden sorar (aşağıda *"Ağ hatası" ve gelmeyen veri*).
 2. Ardından `POST /team-data { teamId, from: gün, to: gün }`: Wellness'ın üstündeki tarih seçicide
    **seçili günün** verisi. Gün değişince yalnızca o gün yeniden okunur (senkron yok).
 3. Tablo: uyku süresi, uyku skoru, HRV, gece nabzı, solunum, ANS (o sabah uyanılan gece), adım ve
@@ -204,7 +237,7 @@ koleksiyonlarını doğrudan okuyamaz; veri `polarApi`'den gelir (`functions/pol
 | Uç | Gövde | Ne yapar |
 |---|---|---|
 | `POST /staff-sleep` | `{ from, to }` | Takımın bağlı sporcuları + o günlerin gecesi: yalnızca `sleepStart`, `sleepEnd`, `asleepSec`, `sleepScore` |
-| `POST /staff-sync` | `{ athleteId }` | O sporcunun manuel senkronu (iki dakika kuralı ve kilit aynı) |
+| `POST /staff-sync` | `{ athleteId }` | O sporcunun manuel senkronu (bir dakika kuralı ve kilit aynı) |
 
 Kapsam istekten değil `staff_members/{uid}` eşleşmesinden kurulur ve dayandığı `staff_links/{token}`
 hâlâ aynı koçu ve takımı gösteriyor mu diye her istekte yeniden bakılır; link silinince erişim biter

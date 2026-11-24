@@ -5,7 +5,8 @@
    (functions/polar → /sync, aynı anda 3 sporcu), ardından Wellness'ta SEÇİLİ
    GÜNÜN Polar verisi tek istekle (/team-data, from = to = o gün) gelir; tablodaki gece
    nabzı (pwNight) Gece Nabzı Takibi'yle (pwNightHrMap) aynı kuralla. Senkron
-   az önce yapıldıysa (TOO_SOON) sporcu "güncel" sayılır. 14/28 günlük
+   az önce TAMAMLANDIYSA (TOO_SOON) sporcu "güncel" sayılır; yanıt koparsa ya da senkron
+   sürüyorsa bitmesi beklenir (polarSyncAthlete). 14/28 günlük
    grafikler sporcunun kendi sayfasında (PolarAthleteCharts); aralık bugünle
    biten tam 14 / 28 gün (yerel takvim), istekte açık from/to olarak gidiyor.
    Profil Çıktısı'nın aylık "Polar Loop" bölümü de burada (pwSheetSection).
@@ -549,7 +550,7 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
   /* Seçili gün ve bir önceki gün istenir: gece kaydı uyanış saatine (sleepEnd) göre
      eşleştiriliyor; Polar'ın `date` alanı geceyi başladığı güne yazsa da sabahki
      uyku bulunur (pwNight). */
-  const ask=d=>polarCall('/team-data',{teamId:team.id,from:pwShift(d,-1),to:d})
+  const ask=d=>polarCallRetry('/team-data',{teamId:team.id,from:pwShift(d,-1),to:d})
     .then(j=>{PW_DAY_CACHE.set(`${team.id}|${d}`,j);return j;});
   const load=async d=>{const j=await ask(d);setData(j);return j;};
   /* Sekmeye girince, takım ya da gün değişince: son alınan veri sunucudan okunur
@@ -577,8 +578,10 @@ function PolarWellness({team,dayKey,onOpen,onSynced}){
       const worker=async()=>{
         while(queue.length){
           const a=queue.shift();
-          try{await polarCall('/sync',{athleteId:a.athleteId});}
-          catch(e){if(e.code!=='TOO_SOON'&&e.code!=='SYNC_IN_PROGRESS')fails.push({name:nameOf(a.athleteId)||a.athleteName,msg:e.message});}
+          // Yanıt koparsa ya da senkron sunucuda sürüyorsa bitene kadar bekler (polarSyncAthlete);
+          // "güncel" yalnızca sunucu az önceki senkronun TAMAMLANDIĞINI söylediğinde.
+          try{await polarSyncAthlete(a.athleteId);}
+          catch(e){fails.push({name:nameOf(a.athleteId)||a.athleteName,msg:e.message});}
           done++;setProg({done,total:act.length,fails:fails.slice()});
         }
       };

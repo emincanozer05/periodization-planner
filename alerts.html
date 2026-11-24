@@ -1553,16 +1553,33 @@ function loadSleep(day){
   });
 }
 /* "Polar Verilerini Al": takımın Polar'a bağlı her sporcusu için Polar'dan senkron
-   (aynı anda 3), sonra görünen günün uykusu yeniden okunur. Son iki dakikada zaten
-   alınmış sporcu (TOO_SOON) güncel sayılır. */
+   (aynı anda 3), sonra görünen günün uykusu yeniden okunur. Az önce TAMAMLANMIŞ
+   senkron (TOO_SOON) güncel sayılır. Yanıt koparsa (NETWORK: sunucu işi yine de bitirip
+   veriyi yazar) ya da senkron sunucuda sürüyorsa (SYNC_IN_PROGRESS) beklenip yeniden
+   sorulur; yeniden sorulduğunda TOO_SOON = o senkron bitti (koç uygulamasındaki
+   polarSyncAthlete ile aynı kural). */
+var POLAR_SYNC_WAIT_MS=4*60*1000;
+function polarSyncOne(id){
+  var t0=Date.now(),tries=0;
+  function attempt(){
+    tries++;
+    return polarPost('/staff-sync',{athleteId:id}).catch(function(e){
+      var c=e&&e.code;
+      if(c==='TOO_SOON')return {ok:true,settled:true};
+      if((c!=='NETWORK'&&c!=='SYNC_IN_PROGRESS')||Date.now()-t0>POLAR_SYNC_WAIT_MS)throw e;
+      return new Promise(function(r){setTimeout(r,Math.min(15000,4000*tries));}).then(attempt);
+    });
+  }
+  return attempt();
+}
 function polarFetchAll(onStep){
   if(POLAR.busy)return POLAR.busy;
   var ids=POLAR.active.slice(),done=0,fails=0,i=0;
   function next(){
     if(i>=ids.length)return Promise.resolve();
     var id=ids[i++];
-    return polarPost('/staff-sync',{athleteId:id}).catch(function(e){
-      if((e&&e.code)!=='TOO_SOON'&&(e&&e.code)!=='SYNC_IN_PROGRESS'){fails++;console.warn('polar staff-sync',id,(e&&e.code)||e);}
+    return polarSyncOne(id).catch(function(e){
+      fails++;console.warn('polar staff-sync',id,(e&&e.code)||e);
     }).then(function(){done++;if(onStep)onStep(done,ids.length);return next();});
   }
   var lanes=[];for(var k=0;k<Math.min(3,ids.length);k++)lanes.push(next());

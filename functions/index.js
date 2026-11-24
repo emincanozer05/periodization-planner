@@ -547,10 +547,11 @@ const polarLog = (level, event, fields) => {
 
 exports.polarApi = functions
   .region(POLAR_REGION)
-  /* 120 sn: bir sporcunun tam senkronu (altı adım, Polar yavaşken yeniden denemeler)
-     60 sn'yi aşabiliyordu; aşınca bağlantı CORS başlığı olmadan kesiliyor ve koç
-     "Ağ hatası" görüyordu. Senkronun kendi bütçesi 80 sn (polar/sync.js). */
-  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 120, memory: '256MB' })
+  /* 300 sn / 512 MB: function süre ya da bellek sınırına çarparsa Google bağlantıyı CORS
+     başlığı olmadan kesiyor; tarayıcı bunu — veri o ana kadar yazılmış olsa bile — "Ağ
+     hatası" olarak görüyordu (120 sn / 256 MB'ta sahada olan buydu). Senkronun Polar
+     bütçesi 100 sn (polar/sync.js); kalan pay Firestore yazımları ve soğuk başlangıç için. */
+  .runWith({ secrets: polarConfig.SECRETS, timeoutSeconds: 300, memory: '512MB' })
   .https.onRequest((req, res) => polarHandler.handle(req, res, {
     db: db(),
     fetch: (...a) => globalThis.fetch(...a),

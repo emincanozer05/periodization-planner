@@ -37,13 +37,21 @@ const DATA_COL = {
 };
 const HR_RANGE_DAYS = 28;   // sürekli nabız: tek istekte en çok 28 gün (Polar'ın sınırı)
 const HR_FALLBACK_DAYS = 7; // aralık ucu yoksa gün gün en çok bu kadar gün
-const LOCK_MS = 150 * 1000;             // aynı sporcu için eşzamanlı ikinci senkron yok (function sınırından uzun)
-/* Bir senkronun süre bütçesi. polarApi'nin sınırı 120 sn (index.js); bütçe onun epey
-   altında kalıyor ki adımlar, hesap bilgisi ve kilidin bırakılması sınıra çarpmadan bitsin.
-   Bütçe dolunca kalan adımlar yapılmıyor ("deferred"): veri bir sonraki senkronda gelir,
-   koç ise "Ağ hatası" yerine güncellenmiş veriyi görür. */
-const SYNC_BUDGET_MS = 80 * 1000;
-const MANUAL_MIN_GAP_MS = 2 * 60 * 1000; // düğmeye art arda basılırsa Polar'ı yormayalım
+/* Kilit: aynı sporcu için eşzamanlı ikinci senkron yok. Bir senkron en çok bütçe +
+   Firestore yazımları kadar sürer; kilit ondan uzun, function sınırından (300 sn) kısa:
+   function bir sebeple kesilirse sporcu en geç 3 dakika sonra yeniden senkronlanabilir. */
+const LOCK_MS = 180 * 1000;
+/* Bir senkronun Polar'a ayrılan süre bütçesi. polarApi'nin sınırı 300 sn (index.js); bütçe
+   onun çok altında kalıyor ki Firestore yazımları, hesap bilgisi ve kilidin bırakılması
+   sınıra asla çarpmasın. Sınıra çarpan istek Google tarafından CORS başlığı olmadan
+   kesiliyordu ve tarayıcı bunu — veri o ana kadar yazılmış olsa bile — "Ağ hatası"
+   olarak görüyordu. Bütçe dolunca kalan adımlar yapılmıyor ("deferred"): senkron
+   "kısmi" sayılır, bir sonraki senkronda o adımlar EN ÖNCE çalışır. */
+const SYNC_BUDGET_MS = 100 * 1000;
+/* Düğmeye art arda basılırsa Polar'ı yormayalım — ama yalnızca bir önceki senkron
+   TAMAMEN bittiyse. Yarıda kesilen ya da kısmi kalan senkrondan sonra beklemek yok:
+   sporcu saatini eşitledikten sonra koç hemen yeniden alabilsin. */
+const MANUAL_MIN_GAP_MS = 60 * 1000;
 const BATCH = 400;
 const SUMMARY_PAR = 3;                   // aktivite özetleri: aynı anda en çok bu kadar istek
 
@@ -119,10 +127,21 @@ async function syncList(ctx, kind, path, listKeys, normFn, keyFn) {
    Transaction'sız: aynı gün yeniden çekilebilir, içerik değişmediyse yazılmaz. Bugünün
    kaydı gün içinde büyür; özeti her senkronda yeniden hesaplanır. */
 const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+/* Sürekli nabzın isteneceği ilk gün. İlk senkronda son 28 gün; sonrakilerde yalnızca
+   son alınan günün iki gün öncesinden (en az son 4 gün): her senkronda 28 günlük örnek
+   yığınını yeniden indirmek senkronu uzatıyor ve belleği zorluyordu. */
+function hrFrom(ctx) {
+  const full = isoDay(ctx.now - (HR_RANGE_DAYS - 2) * 86400000);
+  const p = ctx.prev && ctx.prev.hr;
+  const latest = p && p.status === 'ok' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.latest || '')) ? String(p.latest) : null;
+  if (!latest) return full;
+  const inc = [isoDay(Date.parse(latest + 'T00:00:00Z') - 2 * 86400000), isoDay(ctx.now - 3 * 86400000)].sort()[0];
+  return inc > full ? inc : full;
+}
 async function syncContinuousHr(ctx) {
   // Polar tarihleri sporcunun yerel günü; UTC'ye göre bir gün ileri pay (Türkiye UTC+3).
   const to = isoDay(ctx.now + 86400000);
-  const from = isoDay(ctx.now - (HR_RANGE_DAYS - 2) * 86400000);
+  const from = hrFrom(ctx);
   let items = null;
   const r = await ctx.client.get(`/users/continuous-heart-rate?from=${from}&to=${to}`);
   if (r.status === 403) return unavailable('FORBIDDEN');
@@ -136,6 +155,7 @@ async function syncContinuousHr(ctx) {
     let errors = 0, forbidden = false;
     for (let i = 0; i < HR_FALLBACK_DAYS; i++) {
       const d = isoDay(ctx.now - i * 86400000);
+      if (d < from) break;
       const g = await ctx.client.get(`/users/continuous-heart-rate/${d}`);
       if (g.status === 403) { forbidden = true; break; }
       if (g.status === 204 || g.status === 404) continue;
@@ -243,7 +263,11 @@ async function acquire(db, linkRef, now, manual) {
     if (l.status !== 'active' || !l.polarUserId) return { err: 'NOT_ACTIVE', link: l };
     const t = now();
     if (Number(l.syncLockUntil) > t) return { err: 'SYNC_IN_PROGRESS' };
-    if (manual && Number(l.lastSyncStartedAt) > t - MANUAL_MIN_GAP_MS) return { err: 'TOO_SOON', retryAt: Number(l.lastSyncStartedAt) + MANUAL_MIN_GAP_MS };
+    // Bir dakika kuralı yalnızca TAMAMLANMIŞ bir senkrondan sonra. Function
+    // kesildiyse (lastSyncResult o başlangıçtan eski) ya da senkron kısmi kaldıysa beklemek yok.
+    const r = l.lastSyncResult || {};
+    const prevDone = r.ok === true && Number(r.at) >= Number(l.lastSyncStartedAt || 0);
+    if (manual && prevDone && Number(l.lastSyncStartedAt) > t - MANUAL_MIN_GAP_MS) return { err: 'TOO_SOON', retryAt: Number(l.lastSyncStartedAt) + MANUAL_MIN_GAP_MS };
     tx.set(linkRef, { syncLockUntil: t + LOCK_MS, lastSyncStartedAt: t }, { merge: true });
     return { link: l };
   });
@@ -277,6 +301,7 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
 
   const ctx = {
     db, now: now(), log, linkId, coachUid, athleteId, teamId: l.teamId || null, polarUserId: pid,
+    prev: (l.lastSyncReport && typeof l.lastSyncReport === 'object') ? l.lastSyncReport : {},
     client: makeClient({ fetch: deps.fetch, accessToken, sleep: deps.sleep, log, deadline: now() + SYNC_BUDGET_MS, clock: now }),
   };
   const steps = [
@@ -288,6 +313,10 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
     ['activity', () => syncActivity(ctx)],
     ['hr', () => syncContinuousHr(ctx)],
   ];
+  /* Bir önceki senkronda süre bütçesine sığmayan adımlar bu sefer EN ÖNCE: sıra hep aynı
+     kalsaydı Polar yavaşken sondaki adımlar (aktivite, nabız) hiç gelmeyebilirdi. */
+  const wasDeferred = k => (ctx.prev[k] || {}).status === 'deferred';
+  steps.sort((a, b) => wasDeferred(b[0]) - wasDeferred(a[0]));
   try {
     let outOfTime = false;
     for (const [kind, run] of steps) {
@@ -325,14 +354,17 @@ async function syncLink(deps, { coachUid, athleteId, manual }) {
 
   const kinds = Object.keys(report);
   const failed = kinds.filter(k => report[k].status === 'error');
-  const ok = failed.length === 0;
+  const deferred = kinds.filter(k => report[k].status === 'deferred');
+  // Ertelenen adım varsa senkron TAMAM sayılmaz: "son senkron" ilerlemez, bir sonraki
+  // senkron beklemeden başlayabilir ve o adımlarla başlar.
+  const ok = failed.length === 0 && deferred.length === 0;
   const t = now();
-  const fields = { lastSyncReport: report, lastSyncResult: { ok, at: t, failed } };
+  const fields = { lastSyncReport: report, lastSyncResult: { ok, at: t, failed, deferred } };
   if (account) fields.polarAccount = account;
   if (ok) Object.assign(fields, { lastSyncAt: t, lastError: null });
   else fields.lastError = { code: 'SYNC_PARTIAL', at: t };
   await finish(fields);
-  log('info', 'synced', { linkId, ok, failed, counts: kinds.reduce((o, k) => (o[k] = report[k].written || 0, o), {}) });
+  log('info', 'synced', { linkId, ok, failed, deferred, ms: t - ctx.now, counts: kinds.reduce((o, k) => (o[k] = report[k].written || 0, o), {}) });
   return { ok, report, lastSyncAt: ok ? t : (l.lastSyncAt || null) };
 }
 
