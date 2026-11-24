@@ -131,7 +131,7 @@ const INVITE_MSG = {
   NOT_FOUND: [404, 'Bu sporcu için bir Polar bağlantısı ya da daveti yok.'],
   NOT_ACTIVE: [409, 'Polar bağlantısı aktif değil. Önce sporcuyu bağla.'],
   SYNC_IN_PROGRESS: [409, 'Bu sporcu için senkron zaten çalışıyor. Biraz sonra tekrar dene.'],
-  TOO_SOON: [429, 'Son senkron az önce yapıldı. İki dakika sonra tekrar dene.'],
+  TOO_SOON: [429, 'Son senkron az önce tamamlandı. Bir dakika sonra tekrar dene.'],
   TOKEN_UNAVAILABLE: [409, 'Polar erişim bilgisi okunamadı. Bağlantıyı kesip sporcuyu yeniden bağla.'],
   REVOKED: [409, 'Sporcu Polar iznini kaldırmış. Yeniden bağlamak için yeni bir davet linki gönder.'],
   NOT_STAFF: [403, 'Bu cihaz bir takıma eşleşmemiş ya da ekip linki geçersiz. Kişisel linki yeniden aç.'],

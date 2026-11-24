@@ -25,7 +25,13 @@ async function polarCall(path,body){
     r=await fetch(POLAR_FN_BASE+path,{method:'POST',
       headers:{'content-type':'application/json',authorization:'Bearer '+tok},
       body:JSON.stringify(body||{})});
-  }catch(e){throw new Error(L('Ağ hatası — internet bağlantını kontrol et.','Network error — check your connection.'));}
+  }catch(e){
+    /* Tarayıcının çıplak "Failed to fetch"i. İnternet yokken de, sunucu yanıtı CORS başlığı
+       olmadan kestiğinde de (süre / bellek sınırı) aynı görünür; ayırt edilemez. Senkronda
+       polarSyncAthlete bunu yutup sunucunun işi bitirmesini bekliyor. */
+    const err=new Error(L('Polar sunucusundan yanıt alınamadı. Bağlantını kontrol edip tekrar dene.','No response from the Polar server. Check your connection and try again.'));
+    err.code='NETWORK';throw err;
+  }
   let j=null;try{j=await r.json();}catch(e){}
   if(!r.ok||!j||j.error){
     const err=new Error((j&&j.error&&j.error.message)||L(`Polar servisine ulaşılamadı (${r.status}).`,`The Polar service could not be reached (${r.status}).`));
@@ -33,6 +39,45 @@ async function polarCall(path,body){
     throw err;
   }
   return j;
+}
+
+/* Ağ hatasında bir kez daha dener (okuma uçları için: /team-data). */
+async function polarCallRetry(path,body,tries=3){
+  for(let i=1;;i++){
+    try{return await polarCall(path,body);}
+    catch(e){if(e.code!=='NETWORK'||i>=tries)throw e;await new Promise(r=>setTimeout(r,1500*i));}
+  }
+}
+
+/* Bir sporcunun senkronu, yanıtı kopsa bile sonuna kadar.
+   Sunucu senkronu yanıt tarayıcıya ulaşmasa da tamamlar ve veriyi yazar; eskiden bu
+   durumda koç "Ağ hatası" görüyor, hemen yeniden basınca da kilit / iki dakika kuralı
+   yüzünden sporcu sessizce "güncel" sayılıyordu (veri gelmiyordu). Şimdi:
+     NETWORK            → biraz bekle, aynı isteği yeniden gönder
+     SYNC_IN_PROGRESS   → sunucuda hâlâ çalışıyor: bekle, yeniden sor
+     TOO_SOON (yeniden) → az önceki senkron TAMAMLANMIŞ (sunucu bu kodu yalnızca tamamlanmış
+                          senkrondan sonra veriyor): veri yazıldı, iş bitti
+   İlk istekte gelen TOO_SOON / SYNC_IN_PROGRESS de aynı şekilde ele alınır; `quiet`
+   değilse ilk TOO_SOON hata olarak döner (tek sporcu düğmesi "az önce alındı" desin).
+   Döner: sunucunun yanıtı ({ok, report, lastSyncAt}) ya da {ok:true, settled:true}. */
+const POLAR_SYNC_WAIT_MS=4*60*1000;
+async function polarSyncAthlete(athleteId,{quiet=true,path='/sync'}={}){
+  const t0=Date.now();let tries=0,lastErr=null;
+  for(;;){
+    tries++;
+    try{return await polarCall(path,{athleteId});}
+    catch(e){
+      if(e.code==='TOO_SOON'&&(tries>1||quiet))return{ok:true,settled:true,report:null};
+      if(e.code!=='NETWORK'&&e.code!=='SYNC_IN_PROGRESS')throw e;
+      lastErr=e;
+    }
+    if(Date.now()-t0>POLAR_SYNC_WAIT_MS){
+      if(lastErr&&lastErr.code==='SYNC_IN_PROGRESS')throw lastErr;
+      const err=new Error(L('Polar sunucusu dakikalardır yanıt vermiyor. Veri arka planda gelmiş olabilir; biraz sonra "Verileri güncelle"ye bas.','The Polar server has not answered for minutes. The data may still arrive in the background; press "Update data" again shortly.'));
+      err.code='NETWORK';throw err;
+    }
+    await new Promise(r=>setTimeout(r,Math.min(15000,4000*tries)));
+  }
 }
 
 /* Bu sporcunun bağlantı satırı, canlı. undefined = yükleniyor, null = kayıt yok. */
@@ -138,7 +183,7 @@ function PolarConnect({ath,teamId}){
   const doSync=async()=>{
     setErr('');setNote('');setSyncing(true);
     try{
-      const j=await polarCall('/sync',{athleteId:ath.id});
+      const j=await polarSyncAthlete(ath.id,{quiet:false});
       const lines=polarReportLines(j.report);
       setNote((j.ok?L('Senkron tamamlandı','Sync complete'):L('Senkron kısmen tamamlandı','Sync partially complete'))+(lines&&lines.ok.length?' · '+lines.ok.join(' · '):''));
     }catch(e){setErr(e.message||String(e));}

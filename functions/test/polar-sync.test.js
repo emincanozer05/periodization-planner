@@ -433,6 +433,68 @@ ta('art arda manuel senkron: ikincisi 429 TOO_SOON; eşzamanlı senkron kilitle 
   assert.strictEqual(r2.json.error.code, 'SYNC_IN_PROGRESS');
 });
 
+ta('yarıda kesilen senkrondan sonra (function sınırı / yanıt koptu) beklemeden yeniden alınabiliyor', async () => {
+  const env = setup();
+  // Önceki çalışma başladı ama bitmedi: kilit süresi geçmiş, sonuç o başlangıçtan eski.
+  const t = Date.parse('2026-11-02T08:00:00Z');
+  env.db.put('polar_links', 'coach1__ath1', Object.assign(env.db.get('polar_links', 'coach1__ath1'),
+    { lastSyncStartedAt: t - 30000, syncLockUntil: t - 1000, lastSyncResult: { ok: true, at: t - 3600000 } }));
+  const r = await syncReq(env);
+  assert.strictEqual(r.status, 200, 'TOO_SOON dönmemeli: önceki senkron tamamlanmadı');
+  assert.strictEqual(r.json.ok, true);
+  assert.ok(env.db.get('polar_sleep', 'coach1__ath1__2026-11-01'));
+});
+
+ta('tamamlanmış senkrondan sonra bir dakika kuralı; dakika dolunca yeniden alınıyor', async () => {
+  const env = setup();
+  await syncReq(env);
+  env.tick(30 * 1000);
+  assert.strictEqual((await syncReq(env)).json.error.code, 'TOO_SOON');
+  env.tick(sync.MANUAL_MIN_GAP_MS);
+  assert.strictEqual((await syncReq(env)).status, 200);
+});
+
+ta('süre bütçesine sığmayan adımlar: senkron "kısmi", beklemeden yeniden alınır ve o adımlar EN ÖNCE çalışır', async () => {
+  let env, slow = true;
+  env = setup({ routes: { 'GET /users/nightly-recharge': () => { if (slow) env.tick(sync.SYNC_BUDGET_MS + 5000); return { status: 200, body: { recharges: [RECHARGE] } }; } } });
+  const r = await syncReq(env);
+  assert.strictEqual(r.json.ok, false, 'ertelenen adım varken senkron tamam sayılmamalı');
+  let link = env.db.get('polar_links', 'coach1__ath1');
+  assert.strictEqual(link.lastSyncAt, undefined, 'son senkron ilerlememeli');
+  assert.deepStrictEqual(link.lastSyncResult.deferred, ['exercises', 'cardioLoad', 'activity', 'hr']);
+  slow = false;
+  const before = env.polar.calls.length;
+  const r2 = await syncReq(env);
+  assert.strictEqual(r2.status, 200, 'kısmi senkrondan sonra TOO_SOON olmamalı');
+  assert.strictEqual(r2.json.ok, true);
+  const order = env.polar.calls.slice(before).map(c => c.path);
+  const ix = p => order.findIndex(x => x.startsWith(p));
+  assert.ok(ix('/exercises') < ix('/users/sleep'), 'ertelenen antrenman adımı uykudan önce');
+  assert.ok(ix('/users/777/activity-transactions') < ix('/users/sleep'), 'ertelenen aktivite adımı uykudan önce');
+  link = env.db.get('polar_links', 'coach1__ath1');
+  assert.ok(link.lastSyncAt);
+  assert.ok(env.db.get('polar_activity', 'coach1__ath1__2026-11-01'));
+});
+
+ta('sürekli nabız artımlı: ilk senkron 28 gün, sonrakiler son alınan günün iki gün öncesinden', async () => {
+  const seen = [];
+  let env;
+  env = setup({ routes: {} });
+  const realFetch = env.deps.fetch;
+  env.deps.fetch = async (url, init) => {
+    const m = /continuous-heart-rate\?from=([\d-]+)&to=([\d-]+)/.exec(url);
+    if (m) {
+      seen.push(m[1] + '..' + m[2]);
+      return { status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ heart_rates: [HR_DAY] }) };
+    }
+    return realFetch(url, init);
+  };
+  await syncReq(env);
+  env.tick(2 * sync.MANUAL_MIN_GAP_MS);
+  await syncReq(env);
+  assert.deepStrictEqual(seen, ['2026-10-07..2026-11-03', '2026-10-30..2026-11-03']);
+});
+
 ta('mevcut sporcu verisine dokunulmuyor; yalnızca polar_* koleksiyonları', async () => {
   const env = setup();
   const before = env.db.get('kullanici_verileri', 'coach1');
@@ -640,7 +702,7 @@ ta('başka takımın ekip üyesi bu takımın sporcusunu ne görür ne senkronla
   assert.strictEqual(s.status, 404);
 });
 
-ta('"Polar Verilerini Al": ekip üyesi kendi takımının sporcusunu senkronlar, iki dakika kuralı geçerli', async () => {
+ta('"Polar Verilerini Al": ekip üyesi kendi takımının sporcusunu senkronlar, bir dakika kuralı geçerli', async () => {
   const env = staffSetup();
   const s = await staffReq(env, '/staff-sync', { athleteId: 'ath1' });
   assert.strictEqual(s.status, 200);
