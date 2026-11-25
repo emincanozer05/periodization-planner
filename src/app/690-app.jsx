@@ -171,6 +171,9 @@ function App(){
      another) and writes through the latest state, like updateTeam does. */
   /* A write that changes nothing (an empty patch) hands the state back as it was: a new state
      object would set the cloud sync writing — serialising the whole state — for nothing. */
+  /* The Programs tab's programmes and templates are offered by the same picker, beside each
+     athlete's own saved programmes. */
+  useEffect(()=>{registerProgramLib(data.templates);},[data.templates]);
   useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>{
     let hit=false;
     const teams=prev.teams.map(t=>{
@@ -266,7 +269,7 @@ function App(){
       {id:'wellness',label:'Wellness',icon:NAV_ICONS.wellness},
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
-      {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
+      {id:'programs',label:L('Programlar','Programs'),icon:NAV_ICONS.programs,count:(data.templates||[]).length||null},
       ...(clubMember?[]:[{id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin}]),
     ]},
     /* Tryouts is deliberately its own group rather than another Workspace row: every
@@ -381,7 +384,7 @@ function App(){
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam} weeks={weeks}/>}
-      {view==='tempo'&&<TempoView data={data} setData={setData}/>}
+      {view==='programs'&&<ProgramsView data={data} setData={setData} team={team} updateTeam={updateTeam}/>}
       {/* Sakatlık Sürveyansı Yük Takibi'nden kalktı; sporcunun kendi sayfasında duruyor. */}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam} focus={wvFocus}/>}

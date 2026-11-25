@@ -11287,6 +11287,263 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
   .sp-body,.sp-menu,.rp-menu,.rp-ses,.rpbx,.rp-ed,.sp-wk.sp-flash{animation:none}
   .sp-prog i{transition:none}
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (`pg-*`, 270-programs.jsx)
+
+   Solda kütüphane (Programlarım / Şablonlar, arama, türe göre süzgeç, kartlar), sağda seçili
+   programın başlığı (ad, tür çipleri, not, işlem çubuğu), özet şeridi ve takvimin seans
+   düzenleyicisi. "Sporculara Ata" sağdan açılan panel (`pg-asg`), "Şablon olarak kaydet" küçük
+   pencere (`pg-dlg`), bildirim alttaki şerit (`pg-toast`). Renk yalnızca antrenman türünün
+   işaretinde (`--tc`: kartın sol çizgisi, nokta, seçili çip); yüzeyler tema değişkenlerinden.
+   Gradyan ve gölge parlaması yok; 19n'den sonra yüklenir.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg{
+  --pg-card:color-mix(in srgb,var(--panel) 55%,var(--bg));
+  --pg-box:color-mix(in srgb,var(--text) 4%,var(--pg-card));
+  --pg-line:color-mix(in srgb,var(--text) 11%,transparent);
+  --pg-line2:color-mix(in srgb,var(--text) 22%,transparent);
+  --pg-r:8px;--pg-rs:6px;
+  --tc:#8b93a1;
+}
+:root[data-theme="light"] .pg{
+  --pg-card:color-mix(in srgb,var(--panel) 62%,#fff);
+  --pg-box:color-mix(in srgb,var(--text) 3.5%,var(--pg-card));
+}
+.pg-grid{display:grid;grid-template-columns:minmax(270px,330px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1100px){.pg-grid{grid-template-columns:minmax(0,1fr)}}
+.pg-new{display:inline-flex;align-items:center;gap:7px}
+
+/* ── Ortak küçük parçalar ─────────────────────────────────────────────────────── */
+.pg-tdot{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;background:var(--tc)}
+.pg-ib{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;padding:0;cursor:pointer;
+  color:var(--muted);background:transparent;border:1px solid transparent;border-radius:var(--pg-rs,6px);font:inherit;
+  transition:color .15s ease,background .15s ease,border-color .15s ease}
+.pg-ib:hover{color:var(--text);background:var(--pg-box,var(--hover));border-color:var(--pg-line,var(--border))}
+.pg-ib.pri:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.pg-ib.danger:hover{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
+.pg-ib:focus-visible,.pg-card-b:focus-visible,.pg-tc:focus-visible,.pg-fc:focus-visible,.pg-day:focus-visible,.pg-ath:focus-visible,
+.pg-seg button:focus-visible,.pg-blank:focus-visible,.pg-tplc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg-search{display:flex;align-items:center;gap:8px;padding:0 10px;height:36px;color:var(--muted);
+  background:var(--k-inp,var(--bg));border:1px solid var(--k-inp-line,var(--border));border-radius:var(--pg-rs)}
+.pg-search:focus-within{border-color:var(--accent)}
+.pg-search input{flex:1;min-width:0;height:100%;padding:0;border:0!important;background:transparent!important;outline:none;box-shadow:none!important;color:var(--text);font:inherit;font-size:13px}
+.pg-search.sm{height:32px}
+.pg-none{padding:14px 4px;font-size:12.5px;color:var(--muted);text-align:center}
+
+/* ── Kütüphane ────────────────────────────────────────────────────────────────── */
+.pg-lib{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px;max-height:calc(100vh - 96px);min-height:0;
+  padding:12px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r)}
+@media (max-width:1100px){.pg-lib{position:static;max-height:none}}
+.pg-seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;background:var(--bg);border:1px solid var(--pg-line);border-radius:var(--pg-rs)}
+.pg-seg button{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 8px;cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);background:transparent;border:0;border-radius:4px;transition:background .15s ease,color .15s ease}
+.pg-seg button:hover{color:var(--text)}
+.pg-seg button.on{color:var(--text);background:var(--pg-card);box-shadow:0 0 0 1px var(--pg-line2)}
+.pg-seg i,.pg-fc i,.pg-posb i{font-style:normal;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:1px 6px;border-radius:999px;color:var(--muted);background:color-mix(in srgb,var(--text) 8%,transparent)}
+.pg-seg button.on i{color:var(--accent);background:var(--accent-bg)}
+.pg-filt{display:flex;flex-wrap:wrap;gap:5px}
+.pg-fc{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:600;
+  color:var(--text2);background:transparent;border:1px solid var(--pg-line);border-radius:999px;transition:border-color .15s ease,background .15s ease}
+.pg-fc .pg-tdot{width:7px;height:7px}
+.pg-fc:hover{border-color:var(--pg-line2)}
+.pg-fc.on{color:var(--text);border-color:var(--tc,var(--accent));background:color-mix(in srgb,var(--tc,var(--accent)) 14%,transparent)}
+.pg-fc:not([style]).on{--tc:var(--accent)}
+.pg-list{display:flex;flex-direction:column;gap:7px;overflow-y:auto;min-height:0;margin:0 -4px;padding:2px 4px 4px;scrollbar-width:thin}
+
+.pg-card{position:relative;display:flex;align-items:stretch;background:var(--pg-box);border:1px solid var(--pg-line);
+  border-left:3px solid var(--tc);border-radius:var(--pg-rs);transition:border-color .15s ease,background .15s ease,transform .15s ease}
+.pg-card:hover{border-color:var(--pg-line2);border-left-color:var(--tc)}
+.pg-card.on{background:color-mix(in srgb,var(--tc) 9%,var(--pg-box));border-color:color-mix(in srgb,var(--tc) 55%,transparent);border-left-color:var(--tc)}
+.pg-card-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:9px 6px 9px 11px;cursor:pointer;text-align:left;
+  font:inherit;color:var(--text);background:transparent;border:0;border-radius:var(--pg-rs)}
+.pg-card-top{display:flex;align-items:center;gap:6px;min-width:0}
+.pg-card-t{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-card-ago{margin-left:auto;font-size:10.5px;color:var(--dim);white-space:nowrap}
+.pg-card-n{font-size:14px;font-weight:800;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-card-x{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-card-m{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:2px;font-size:11px;color:var(--muted)}
+.pg-card-m b{color:var(--text2);font-variant-numeric:tabular-nums}
+.pg-card-asg{display:inline-flex;align-items:center;gap:3px;color:var(--accent)}
+.pg-card-acts{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 5px 4px 0;opacity:.55;transition:opacity .15s ease}
+.pg-card:hover .pg-card-acts,.pg-card.on .pg-card-acts,.pg-card-acts:focus-within{opacity:1}
+@media (hover:none){.pg-card-acts{opacity:1}}
+.pg-lib-empty{display:flex;flex-direction:column;align-items:center;gap:7px;padding:26px 12px;text-align:center;color:var(--muted);
+  border:1px dashed var(--pg-line2);border-radius:var(--pg-rs)}
+.pg-lib-empty b{color:var(--text);font-size:13.5px}
+.pg-lib-empty span{font-size:12px;line-height:1.5}
+.pg-lib-empty .btn{display:inline-flex;align-items:center;gap:6px;margin-top:4px}
+
+/* ── Başlangıç (seçili program yokken) ────────────────────────────────────────── */
+.pg-main{min-width:0;scroll-margin-top:64px}
+.pg-start{padding:22px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r)}
+.pg-start-h{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
+.pg-start-h b{font-size:17px}
+.pg-start-h span{font-size:12.5px;color:var(--muted)}
+.pg-start-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.pg-blank,.pg-tplc{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:118px;padding:14px;cursor:pointer;text-align:left;
+  font:inherit;color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
+  transition:border-color .15s ease,transform .15s ease,background .15s ease}
+.pg-blank{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--pg-line2)}
+.pg-blank:hover,.pg-tplc:hover{transform:translateY(-1px);border-color:var(--accent)}
+.pg-tplc{border-top:3px solid var(--tc)}
+.pg-tplc:hover{border-color:var(--tc)}
+.pg-blank-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--accent);background:var(--accent-bg)}
+.pg-blank b,.pg-tplc b{font-size:14px;line-height:1.3}
+.pg-blank em,.pg-tplc em{font-style:normal;font-size:11.5px;color:var(--muted)}
+.pg-tplc-go{margin-top:auto;font-size:11.5px;font-weight:700;color:var(--tc)}
+
+/* ── Düzenleyici başlığı ──────────────────────────────────────────────────────── */
+.pg-ed{display:flex;flex-direction:column;gap:12px;animation:pgIn .22s var(--ease-out,ease) both}
+@keyframes pgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.pg-head{display:flex;flex-direction:column;gap:10px;padding:14px 16px 14px;background:var(--pg-card);
+  border:1px solid var(--pg-line);border-top:3px solid var(--tc);border-radius:var(--pg-r)}
+.pg-head-top{display:flex;align-items:center;gap:10px;min-height:30px}
+.pg-head-sp{flex:1}
+.pg-kind{font-size:10px;font-weight:800;letter-spacing:.1em;padding:3px 8px;border-radius:4px;color:var(--accent);background:var(--accent-bg)}
+.pg-kind.tpl{color:var(--tc);background:color-mix(in srgb,var(--tc) 15%,transparent)}
+.pg-head-ago{font-size:11.5px;color:var(--dim)}
+.pg .pg-name{width:100%;padding:2px 0 6px;font:inherit;font-size:22px;font-weight:800;letter-spacing:-.01em;color:var(--text);
+  background:transparent!important;border:0!important;border-bottom:1px solid var(--pg-line)!important;border-radius:0!important;box-shadow:none!important;outline:none}
+.pg .pg-name:focus{border-bottom-color:var(--tc)!important}
+.pg .pg-name::placeholder{color:var(--dim);font-weight:600}
+.pg-types{display:flex;flex-wrap:wrap;gap:6px}
+.pg-tc{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;cursor:pointer;font:inherit;font-size:12px;font-weight:600;
+  color:var(--text2);background:transparent;border:1px solid var(--pg-line,var(--border));border-radius:999px;
+  transition:border-color .15s ease,background .15s ease,color .15s ease}
+.pg-tc i{width:7px;height:7px;border-radius:50%;background:var(--tc)}
+.pg-tc:hover{border-color:color-mix(in srgb,var(--tc) 60%,transparent)}
+.pg-tc.on{color:var(--text);border-color:var(--tc);background:color-mix(in srgb,var(--tc) 17%,transparent)}
+.pg .pg-note{width:100%;min-height:36px;padding:8px 10px;resize:vertical;font:inherit;font-size:12.5px;line-height:1.5;color:var(--text2);
+  background:var(--k-inp,var(--bg));border:1px solid var(--k-inp-line,var(--border));border-radius:var(--pg-rs)}
+.pg-bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding-top:4px}
+.pg-bar .btn{display:inline-flex;align-items:center;gap:6px}
+.pg-go{display:inline-flex;align-items:center;gap:7px;font-weight:700}
+
+.pg-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.6fr);gap:1px;overflow:hidden;
+  background:var(--pg-line);border:1px solid var(--pg-line);border-radius:var(--pg-r)}
+.pg-stats>div{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:var(--pg-card);min-width:0}
+.pg-stats b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+.pg-stats span{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-stats-asg b{color:var(--accent)}
+@media (max-width:640px){.pg-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pg-stats-asg{grid-column:1/-1}}
+.pg-editor{min-width:0}
+.pg-editor .sess-ed{margin:0}
+
+/* ── Pencere ve panel zemini ──────────────────────────────────────────────────── */
+.pg-scrim{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:16px;
+  background:rgba(8,10,14,.55);animation:pgFade .16s ease both}
+.pg-scrim-r{place-items:stretch end;padding:0}
+@keyframes pgFade{from{opacity:0}to{opacity:1}}
+.pg-dlg{width:min(560px,100%);display:flex;flex-direction:column;gap:14px;padding:18px;color:var(--text);
+  background:var(--panel);border:1px solid var(--border2);border-radius:10px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);animation:pgIn .2s ease both}
+.pg-dlg-h{display:flex;align-items:flex-start;gap:12px}
+.pg-dlg-h>div{flex:1;display:flex;flex-direction:column;gap:3px}
+.pg-dlg-h b{font-size:16px}
+.pg-dlg-h em{font-style:normal;font-size:12px;color:var(--muted);line-height:1.45}
+.pg-dlg-ic{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:8px;color:var(--accent);background:var(--accent-bg)}
+.pg-dlg-f{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+.pg-fl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pg-fl>span{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.pg-fl input,.pg-fl select{height:36px;padding:0 10px;font:inherit;font-size:13px;color:var(--text);
+  background:var(--k-inp,var(--bg));border:1px solid var(--k-inp-line,var(--border));border-radius:var(--pg-rs,6px)}
+.pg-fl.sm input,.pg-fl.sm select{height:34px}
+
+/* ── Sporculara ata paneli ────────────────────────────────────────────────────── */
+.pg-asg{--pg-line:color-mix(in srgb,var(--text) 11%,transparent);--pg-line2:color-mix(in srgb,var(--text) 22%,transparent);
+  --pg-box:color-mix(in srgb,var(--text) 4%,var(--panel));--pg-rs:6px;
+  width:min(560px,100vw);height:100%;display:flex;flex-direction:column;color:var(--text);background:var(--panel);
+  border-left:1px solid var(--border2);box-shadow:-24px 0 60px -30px rgba(0,0,0,.7);animation:pgSlide .24s var(--ease-out,cubic-bezier(.2,.8,.2,1)) both}
+@keyframes pgSlide{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.pg-asg-h{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 14px;border-bottom:1px solid var(--pg-line);border-top:3px solid var(--tc)}
+.pg-asg-ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.pg-asg-k{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.pg-asg-ht b{font-size:18px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-asg-ht em{display:flex;align-items:center;gap:6px;font-style:normal;font-size:12px;color:var(--muted)}
+.pg-asg-b{flex:1;min-height:0;overflow-y:auto;padding:6px 18px 18px;scrollbar-width:thin}
+.pg-step{padding:14px 0;border-bottom:1px solid var(--pg-line)}
+.pg-step:last-child{border-bottom:0}
+.pg-step-h{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.pg-step-h b{font-size:14px}
+.pg-step-h em{font-style:normal;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pg-step-n{display:grid;place-items:center;width:22px;height:22px;flex:none;border-radius:50%;font-size:11.5px;font-weight:800;
+  color:var(--accent);background:var(--accent-bg)}
+.pg-step-acts{margin-left:auto;display:flex;gap:5px}
+.pg-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.pg-day{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 5px;cursor:pointer;font:inherit;
+  color:var(--text2);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
+  transition:border-color .12s ease,background .12s ease,color .12s ease}
+.pg-day:hover{border-color:var(--pg-line2)}
+.pg-day.past{opacity:.55}
+.pg-day.today{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.pg-day.on{color:#fff;background:var(--accent);border-color:var(--accent);opacity:1}
+.pg-day-dn{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.75}
+.pg-day-n{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.pg-day-m{font-size:9.5px;opacity:.65}
+.pg-day.wk2{margin-top:0}
+.pg-dates-x{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+.pg-chip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 10px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:#fff;background:var(--accent);border-radius:999px}
+.pg-chip button{width:20px;height:20px;padding:0;cursor:pointer;font-size:14px;line-height:1;color:inherit;background:rgba(255,255,255,.18);border:0;border-radius:50%}
+.pg-other{display:inline-flex}
+.pg-other .dmy{max-width:170px}
+.pg-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pg-sumdates{display:flex;align-items:flex-start;gap:7px;margin-top:11px;padding:8px 10px;font-size:12px;line-height:1.5;color:var(--text2);
+  background:var(--pg-box);border-radius:var(--pg-rs)}
+.pg-sumdates svg{flex:none;margin-top:2px;color:var(--accent)}
+.pg-pos{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.pg-posb{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;cursor:pointer;font:inherit;font-size:11.5px;font-weight:600;
+  color:var(--text2);background:transparent;border:1px solid var(--pg-line);border-radius:999px}
+.pg-posb:hover{border-color:var(--pg-line2)}
+.pg-posb.on{color:var(--text);border-color:var(--accent);background:var(--accent-bg)}
+.pg-aths{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:10px}
+.pg-ath{position:relative;display:flex;align-items:center;gap:9px;min-width:0;padding:7px 30px 7px 7px;cursor:pointer;text-align:left;font:inherit;
+  color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);transition:border-color .12s ease,background .12s ease}
+.pg-ath:hover{border-color:var(--pg-line2)}
+.pg-ath.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--pg-box))}
+.pg-ath-av{display:grid;place-items:center;flex:none;width:32px;height:32px;overflow:hidden;border-radius:50%;font-size:11px;font-weight:800;
+  color:var(--text2);background:color-mix(in srgb,var(--text) 10%,transparent)}
+.pg-ath-av img{width:100%;height:100%;object-fit:cover}
+.pg-ath-t{display:flex;flex-direction:column;min-width:0}
+.pg-ath-n{font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-ath-s{font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-ath-busy{position:absolute;top:4px;right:26px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;
+  font-size:9.5px;font-weight:800;color:#1a1a1a;background:#f5b342;border-radius:999px}
+.pg-ath-ck{position:absolute;right:7px;top:50%;width:17px;height:17px;margin-top:-8.5px;display:grid;place-items:center;
+  color:transparent;border:1.5px solid var(--pg-line2);border-radius:50%;transition:background .12s ease,border-color .12s ease,color .12s ease}
+.pg-ath.on .pg-ath-ck{color:#fff;background:var(--accent);border-color:var(--accent)}
+.pg-asg-f{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--pg-line);background:color-mix(in srgb,var(--text) 2.5%,var(--panel))}
+.pg-asg-tot{flex:1;min-width:0;display:flex;align-items:baseline;gap:7px}
+.pg-asg-tot b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)}
+.pg-asg-tot span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:560px){
+  .pg-asg{width:100vw}
+  .pg-strip{gap:3px}
+  .pg-day-m{display:none}
+  .pg-asg-f{flex-wrap:wrap}
+  .pg-asg-tot{flex-basis:100%}
+}
+
+/* ── Bildirim ─────────────────────────────────────────────────────────────────── */
+.pg-toast{position:fixed;left:50%;bottom:22px;z-index:1300;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+  max-width:calc(100vw - 32px);padding:10px 10px 10px 14px;font-size:13px;color:#f2f2f2;background:#1d2127;
+  border:1px solid #343a42;border-radius:8px;box-shadow:0 16px 40px -14px rgba(0,0,0,.7);animation:pgToast .22s ease both}
+@keyframes pgToast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.pg-toast>svg{flex:none;color:#4ade80}
+.pg-toast span{min-width:0}
+.pg-toast button{flex:none;height:28px;padding:0 10px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:700;color:#6ab8ef;
+  background:transparent;border:1px solid #3a4048;border-radius:6px}
+.pg-toast button:hover{background:#2a2f36}
+.pg-toast .pg-toast-x{width:28px;padding:0;display:grid;place-items:center;color:#9aa1aa;border-color:transparent}
+
+/* Kayıtlı program seçicisinde (527) Programlar sekmesinden gelen satır. */
+.pbk-kind.lib{color:var(--accent);background:var(--accent-bg)}
+
+@media (prefers-reduced-motion:reduce){
+  .pg-ed,.pg-scrim,.pg-dlg,.pg-asg,.pg-toast{animation:none}
+  .pg-blank:hover,.pg-tplc:hover{transform:none}
+}
 </style>
 </head>
 <body>
@@ -14779,12 +15036,9 @@ function migrate(data){
   data.templates=data.templates.map(t=>{const s=t.session||{};
     return{...t,session:{...s,focus:Array.isArray(s.focus)?s.focus:sesFocus(s)}};});
   if(!Array.isArray(data.exercises))data.exercises=[];
-  // The Interval Timer's work/rest block, its saved intervals and the player's settings
-  // ride along with the rest of the workspace, so an interval set up on the laptop is
-  // there on the phone.
-  if(data.interval&&Array.isArray(data.interval.saved))
-    data.interval={...data.interval,saved:data.interval.saved.map((x,j)=>x&&!x.id?{...x,id:detId('iv_',j+'|'+JSON.stringify(x))}:x)};
-  data.interval=normInterval(data.interval);
+  /* The Interval Timer tab is gone (its place is the Programs tab, which keeps its records in
+     `templates` above). A workspace that still carries the timer's settings keeps them as they
+     are: nothing reads them, and rewriting them would only set the sync writing. */
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
   /* Spread the entry first so the fields this normaliser does not name survive a reload —
@@ -26380,442 +26634,511 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
 }
 
 /* =========================================================
-   INTERVAL TIMER
+   PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (eski Interval Zamanlayıcı'nın yeri)
    =========================================================
-   The other half of the Tempo tab: a tempo runs one rep at a time, an interval runs
-   the clock. Work, rest, round, set — and the answer to "what am I doing right now"
-   is the colour of the screen rather than a word: green while the work is on, red on
-   the rest, blue on the break between rounds/sets. Full screen makes that colour the
-   whole display, so it reads from the far end of the gym. */
-const IT_KINDS={
-  prep: {label:'Get ready',  tr:'Hazırlan',   short:'PREP',hint:'starting in',         hintTr:'başlıyor',            color:'#f59e0b'},
-  work: {label:'Work',       tr:'Çalışma',    short:'WORK',hint:'go',                  hintTr:'başla',               color:'#10b981'},
-  rest: {label:'Rest',       tr:'Dinlenme',   short:'REST',hint:'recover',             hintTr:'toparlan',            color:'#ef4444'},
-  brk:  {label:'Set break',  tr:'Set arası',  short:'SET', hint:'between rounds/sets', hintTr:'tur / set arası',     color:'#3b82f6'},
-  done: {label:'Finished',   tr:'Bitti',      short:'DONE',hint:'session complete',    hintTr:'seans tamamlandı',    color:'#8b5cf6'},
-};
-const itKind=k=>{const z=IT_KINDS[k]||IT_KINDS.work;return{...z,label:L(z.tr,z.label),hint:L(z.hintTr,z.hint)};};
-/* Written the way a conditioning block is written on a whiteboard: work / rest ×
-   rounds, and how many times that block is repeated. */
-const IT_PRESETS=[
-  {name:'Tabata',      code:'20/10 ×8',  work:20,rest:10,rounds:8, sets:1,setRest:0},
-  {name:'HIIT 30/30',  code:'30/30 ×10', work:30,rest:30,rounds:10,sets:1,setRest:0},
-  {name:'40/20',       code:'40/20 ×8×2',work:40,rest:20,rounds:8, sets:2,setRest:120},
-  {name:'Sprint reps', code:'15/45 ×6×3',work:15,rest:45,rounds:6, sets:3,setRest:180},
-  {name:'RSA 6×30m',   code:'6/24 ×6×2', work:6, rest:24,rounds:6, sets:2,setRest:150},
+   Üç iş, tek ekranda:
+     • PROGRAM YAZ — takvimin kendi seans düzenleyicisiyle (`SessEd`, 260): bloklar, fazlar,
+       hareket paterni tablosu, antrenman özellikleri. Program bir tarihe bağlı değildir.
+     • ŞABLON OLARAK SAKLA — programın kopyası, antrenman türüyle (Kuvvet, Güç, Kondisyon…)
+       etiketlenir; şablon listesi türe göre süzülür. Şablondan tek tıkla yeni program açılır.
+     • KOPYALA / ATA — program çoğaltılır ya da panoya (takvimin yapıştır düğmesi) kopyalanır;
+       "Sporculara Ata" sekme değiştirmeden seçilen sporcuların kişisel takvimine, seçilen
+       günlere (isteğe bağlı haftalık tekrarla) birer bağımsız seans olarak yazar. Son atama
+       birkaç saniye içinde geri alınabilir.
+
+   VERİ: `data.templates` — çalışma alanının belge-belge senkronlanan koleksiyonu (468,
+   SM_WS_COLS). Her kayıt bir belge: {id, kind:'prog'|'tpl', type, name, note, created_at,
+   updated_at, asg:[{at,dates,aths}], session:{…takvim seansı, id:'tpl_…', blocks:[…]}}.
+   `kind`'ı olmayan eski kayıtlar (eski seans şablonları) şablon sayılır. Seansın kimliği
+   `tpl_` ile başlar: SessEd onu şablon kipinde açar (saat, seans türü, sporcu seçici ve
+   otomatik profil kaydı yok). Sporcuya atanan kopya `sessionFromClipboard` (060) ile yeni
+   kimlikler alır ve `progId` ile programına bağlı kalır.
+   ========================================================= */
+const PG_TYPES=[
+  {id:'strength',    tr:'Kuvvet',             en:'Strength',          c:'#3aa0e6'},
+  {id:'power',       tr:'Güç & Patlayıcılık', en:'Power',             c:'#f97316'},
+  {id:'hypertrophy', tr:'Hipertrofi',         en:'Hypertrophy',       c:'#a78bfa'},
+  {id:'speed',       tr:'Hız & Çeviklik',     en:'Speed & Agility',   c:'#eab308'},
+  {id:'conditioning',tr:'Kondisyon',          en:'Conditioning',      c:'#ef4444'},
+  {id:'mobility',    tr:'Mobilite',           en:'Mobility',          c:'#14b8a6'},
+  {id:'prevention',  tr:'Sakatlık Önleme',    en:'Injury Prevention', c:'#22c55e'},
+  {id:'rehab',       tr:'Rehabilitasyon',     en:'Rehab',             c:'#ec4899'},
+  {id:'recovery',    tr:'Toparlanma',         en:'Recovery',          c:'#06b6d4'},
+  {id:'other',       tr:'Diğer',              en:'Other',             c:'#8b93a1'},
 ];
-const itNum=(v,d,lo,hi)=>{const n=Number(v);return Number.isFinite(n)?Math.max(lo,Math.min(hi,Math.round(n))):d;};
-function defaultInterval(){
-  return{name:'Interval',work:30,rest:30,rounds:8,sets:1,setRest:120,prep:10,sound:true,saved:[]};
+const PG_TYPE_BY=Object.fromEntries(PG_TYPES.map(t=>[t.id,t]));
+const pgTypeLbl=id=>{const t=PG_TYPE_BY[id];return t?L(t.tr,t.en):L('Türsüz','Untyped');};
+const pgTypeCol=id=>(PG_TYPE_BY[id]||{c:'#8b93a1'}).c;
+const pgIsTpl=p=>!p||p.kind!=='prog';
+const pgNow=()=>new Date().toISOString();
+const pgJson=o=>o==null?o:JSON.parse(JSON.stringify(o));
+const pgName=p=>String((p&&p.name)||(p&&p.session&&p.session.name)||'').trim();
+
+/* Programın seansı, düzenleyicinin okuyacağı biçimde: kimlik `tpl_` ile başlar, blok listesi var. */
+function pgSession(p){
+  const s=(p&&p.session&&typeof p.session==='object')?p.session:{};
+  const id=String(s.id||'').startsWith('tpl_')?s.id:'tpl_'+((p&&p.id)||uid());
+  return{...SESS({name:pgName(p)}),...s,id,name:s.name||pgName(p),blocks:Array.isArray(s.blocks)?s.blocks:[]};
 }
-function normIntervalOne(c,d){
-  d=d||defaultInterval();
-  if(!c||typeof c!=='object')return{...d,saved:undefined};
-  return{name:c.name||d.name,
-    work:itNum(c.work,d.work,1,3600),
-    rest:itNum(c.rest,d.rest,0,3600),
-    rounds:itNum(c.rounds,d.rounds,1,99),
-    sets:itNum(c.sets,d.sets,1,99),
-    setRest:itNum(c.setRest,d.setRest,0,3600),
-    prep:itNum(c.prep,d.prep,0,60)};
+/* Kart ve özet şeridi için sayılar: blok, adı yazılmış egzersiz, toplam set, süre. */
+function pgStats(p){
+  const bl=(p&&p.session&&Array.isArray(p.session.blocks))?p.session.blocks:[];
+  let ex=0,sets=0;const names=[];
+  bl.forEach(b=>(b.exercises||[]).forEach(e=>{
+    const n=String(e&&e.name||'').trim();if(!n)return;
+    ex++;names.push(n);
+    const s=parseFloat(String(e.sets||'').replace(',','.'));if(isFinite(s)&&s>0)sets+=s;
+  }));
+  return{blocks:bl.length,ex,sets:Math.round(sets),names,dur:Number(p&&p.session&&p.session.duration)||0};
 }
-function normInterval(c){
-  const d=defaultInterval();const base=normIntervalOne(c,d);
-  return{...base,sound:!c||c.sound!==false,
-    saved:(c&&Array.isArray(c.saved)?c.saved:[]).map(s=>({id:s.id||uid(),...normIntervalOne(s,d)}))};
+function pgNew(kind,type,name){
+  const id=uid(),now=pgNow(),nm=String(name||'');
+  const s=SESS({name:nm});
+  return{id,kind,type:type||'',name:nm,note:'',created_at:now,updated_at:now,asg:[],
+    session:{...s,id:'tpl_'+id,name:nm,blocks:[BLK(nm,'sc')]}};
 }
-/* The whole session as a flat list of blocks. A round's rest is dropped after the last
-   round of a set — what follows there is the set break, not another rest — and blocks
-   set to zero seconds simply never appear. */
-function intervalSchedule(c){
-  const steps=[];const rounds=Math.max(1,c.rounds|0),sets=Math.max(1,c.sets|0);
-  for(let s=1;s<=sets;s++){
-    for(let r=1;r<=rounds;r++){
-      if(c.work>0)steps.push({kind:'work',sec:c.work,set:s,round:r});
-      if(r<rounds&&c.rest>0)steps.push({kind:'rest',sec:c.rest,set:s,round:r});
-    }
-    if(s<sets&&c.setRest>0)steps.push({kind:'brk',sec:c.setRest,set:s,round:rounds});
-  }
-  return steps;
+/* Bağımsız kopya: yeni kimlikler (program, seans, bloklar), atama geçmişi taşınmaz. */
+function pgClone(p,over){
+  const id=uid(),now=pgNow();
+  const s=pgJson(pgSession(p));
+  const c={...pgJson(p),id,created_at:now,updated_at:now,asg:[],...(over||{})};
+  return{...c,session:{...s,id:'tpl_'+id,name:c.name||s.name||'',
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}};
 }
-const itClock=s=>{const v=Math.max(0,Math.round(s));return `${Math.floor(v/60)}:${pad(v%60)}`;};
-const itWorkSec=c=>Math.max(1,c.work)*Math.max(1,c.rounds|0)*Math.max(1,c.sets|0);
-
-/* The ring the countdown sits in: the inner arc drains through the current block, the
-   thin outer arc fills over the whole session. */
-function ItRing({frac,total,color,children,pulse}){
-  const R=112,C=2*Math.PI*R,R2=128,C2=2*Math.PI*R2;
-  return(<div className={'it2-ring'+(pulse?' pulse':'')}>
-    <svg viewBox="0 0 280 280" aria-hidden="true">
-      <circle cx="140" cy="140" r={R2} className="it2-trk2"/>
-      <circle cx="140" cy="140" r={R2} className="it2-arc2" style={{strokeDasharray:C2,strokeDashoffset:C2*(1-total)}}/>
-      <circle cx="140" cy="140" r={R} className="it2-trk"/>
-      <circle cx="140" cy="140" r={R} className="it2-arc" style={{stroke:color,strokeDasharray:C,strokeDashoffset:C*frac}}/>
-    </svg>
-    <div className="it2-ring-c">{children}</div>
-  </div>);
+/* Haftalık tekrarla açılmış, sıralı ve tekrarsız tarih listesi. */
+function pgExpandDates(dates,weeks){
+  const out=new Set();
+  (dates||[]).forEach(d=>{if(!d)return;for(let w=0;w<Math.max(1,weeks||1);w++)out.add(fmt(addD(parseD(d),7*w)));});
+  return[...out].sort();
 }
-
-function IntervalPlayer({cfg,onSound}){
-  const steps=useMemo(()=>intervalSchedule(cfg),[cfg]);
-  const totalSec=useMemo(()=>steps.reduce((a,p)=>a+p.sec,0),[steps]);
-  const prep=cfg.prep,sound=cfg.sound;
-  /* When each block starts on the session clock (the get-ready count included), so a
-     skip or a click on the timeline is one assignment to the clock. */
-  const starts=useMemo(()=>{const a=[];let acc=prep;steps.forEach(s=>{a.push(acc);acc+=s.sec;});return a;},[steps,prep]);
-  const[run,setRun]=useState(false);
-  const[t,setT]=useState(0);            // seconds since Start, the get-ready count included
-  const[fs,setFs]=useState(false);      // full screen — the colour and nothing else
-  const raf=useRef(0),last=useRef(0),ac=useRef(null),lock=useRef(null);
-  const wrap=useRef(null),native=useRef(false);
-  const total=prep+totalSec;
-
-  /* Full screen asks the browser first; where that is refused — Safari on iOS won't
-     give a plain <div> the Fullscreen API — the same class still covers the viewport,
-     so the button does what it says on every device. */
-  const enterFs=()=>{
-    setFs(true);
-    const el=wrap.current;if(!el)return;
-    const req=el.requestFullscreen||el.webkitRequestFullscreen;
-    if(!req)return;
-    try{const r=req.call(el);native.current=true;if(r&&r.catch)r.catch(()=>{native.current=false;});}
-    catch(e){native.current=false;}
-  };
-  const exitFs=()=>{
-    setFs(false);
-    if(!native.current)return;
-    native.current=false;
-    try{
-      const ex=document.exitFullscreen||document.webkitExitFullscreen;
-      if(ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
-    }catch(e){}
-  };
-  useEffect(()=>{
-    const onCh=()=>{if(native.current&&!(document.fullscreenElement||document.webkitFullscreenElement)){
-      native.current=false;setFs(false);}};
-    document.addEventListener('fullscreenchange',onCh);
-    document.addEventListener('webkitfullscreenchange',onCh);
-    return()=>{
-      document.removeEventListener('fullscreenchange',onCh);
-      document.removeEventListener('webkitfullscreenchange',onCh);
-      try{
-        const ex=document.exitFullscreen||document.webkitExitFullscreen;
-        if(native.current&&ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
-      }catch(e){}
-    };
-  },[]);
-  useEffect(()=>{
-    if(!fs)return;
-    const prev=document.body.style.overflow;document.body.style.overflow='hidden';
-    document.body.classList.add('it2-fs-on');
-    return()=>{document.body.style.overflow=prev;document.body.classList.remove('it2-fs-on');};
-  },[fs]);
-
-  const beep=(freq,dur,vol)=>{
-    if(!sound)return;
-    try{
-      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-      if(!ac.current)ac.current=new AC();
-      const c=ac.current;if(c.state==='suspended')c.resume();
-      const o=c.createOscillator(),g=c.createGain(),now=c.currentTime;
-      o.type='sine';o.frequency.value=freq;o.connect(g);g.connect(c.destination);
-      g.gain.setValueAtTime(vol||.16,now);g.gain.exponentialRampToValueAtTime(.0001,now+(dur||.09));
-      o.start(now);o.stop(now+(dur||.09)+.02);
-    }catch(e){/* no audio device / blocked autoplay — the colour carries on */}
-  };
-  const buzz=ms=>{try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}};
-
-  useEffect(()=>{
-    if(!run)return;
-    last.current=performance.now();
-    const loop=now=>{const d=(now-last.current)/1000;last.current=now;
-      setT(p=>p+d);raf.current=requestAnimationFrame(loop);};
-    raf.current=requestAnimationFrame(loop);
-    return()=>cancelAnimationFrame(raf.current);
-  },[run]);
-
-  // Keep the phone awake while the session is running; released as soon as it stops.
-  useEffect(()=>{
-    if(!run)return;
-    let released=false;
-    try{
-      if(navigator.wakeLock&&navigator.wakeLock.request)
-        navigator.wakeLock.request('screen').then(s=>{if(released)s.release();else lock.current=s;}).catch(()=>{});
-    }catch(e){}
-    return()=>{released=true;try{lock.current&&lock.current.release();}catch(e){}lock.current=null;};
-  },[run]);
-
-  const el=Math.min(t,total);
-  const inPrep=el<prep;
-  const done=totalSec>0&&t>=total;
-  let idx=-1,phEl=0;
-  if(!inPrep&&steps.length){
-    for(let i=0;i<steps.length;i++){
-      if(el<starts[i]+steps[i].sec||i===steps.length-1){idx=i;phEl=Math.min(el-starts[i],steps[i].sec);break;}
-    }
-  }
-  const step=idx>=0?steps[idx]:null;
-  const kindKey=done?'done':(inPrep?'prep':(step?step.kind:'work'));
-  const k=itKind(kindKey);
-  const frac=done?1:inPrep?(prep?el/prep:1):(step&&step.sec>0?Math.min(1,Math.max(0,phEl/step.sec)):0);
-  const remain=done?0:(inPrep?prep-el:(step?step.sec-phEl:0));
-  const nextStep=done?null:(inPrep?steps[0]:steps[idx+1]||null);
-
-  /* One tone per block change, pitched by kind, plus a tick on each of the last three
-     seconds so the athlete hears the change coming without looking up. */
-  const marker=useRef(null);
-  useEffect(()=>{
-    if(!run)return;
-    const key=done?'done':(inPrep?'prep':'s'+idx)+'|'+Math.ceil(Math.max(0,remain));
-    if(marker.current===key)return;
-    const prevKey=marker.current;marker.current=key;
-    if(prevKey===null)return;
-    const block=key.split('|')[0];
-    if(done){beep(880,.5,.2);buzz([200,80,200]);return;}
-    if(prevKey.split('|')[0]!==block){beep(kindKey==='work'?880:kindKey==='rest'?440:620,.16,.18);buzz(120);}
-    else if(remain<=3.05)beep(660,.06,.11);
+/* Sporcu takvimine yazılacak seanslar, önceden kurulur: güncelleyici iki kez çalışsa da
+   aynı kimlikler yazılır (geri alma bu kimliklerle yapılır). */
+function pgPlan(prog,athIds,dates,time){
+  const base=pgSession(prog);
+  const nm=pgName(prog)||L('Program','Programme');
+  const plan={};const ids=[];
+  athIds.forEach(aid=>{plan[aid]={};dates.forEach(dk=>{
+    const s=sessionFromClipboard(base);
+    const ses={...s,name:nm,time:time||base.time||'17:00',progId:prog.id};
+    plan[aid][dk]=ses;ids.push(ses.id);
+  });});
+  return{plan,ids};
+}
+function pgApplyPlan(athletes,plan){
+  return(athletes||[]).map(a=>{
+    const mine=plan[a.id];if(!mine)return a;
+    const days={...(a.days||{})};
+    Object.keys(mine).forEach(dk=>{
+      const d=days[dk]||EDAY(dk);
+      if((d.sessions||[]).some(s=>s&&s.id===mine[dk].id))return;
+      days[dk]={...d,date:dk,sessions:[...(d.sessions||[]),mine[dk]]};
+    });
+    return{...a,days};
   });
+}
+function pgUndoPlan(athletes,ids,dates){
+  const gone=new Set(ids);
+  return(athletes||[]).map(a=>{
+    if(!a.days)return a;
+    let ch=false;const days={...a.days};
+    dates.forEach(dk=>{const d=days[dk];if(!d||!d.sessions)return;
+      const ss=d.sessions.filter(s=>!(s&&gone.has(s.id)));
+      if(ss.length!==d.sessions.length){days[dk]={...d,sessions:ss};ch=true;}});
+    return ch?{...a,days}:a;
+  });
+}
+const pgAgo=iso=>{
+  if(!iso)return'';
+  const t=Date.parse(iso);if(!isFinite(t))return'';
+  const m=Math.round((Date.now()-t)/60000);
+  if(m<1)return L('az önce','just now');
+  if(m<60)return L(`${m} dk önce`,`${m} min ago`);
+  const h=Math.round(m/60);if(h<24)return L(`${h} sa önce`,`${h} h ago`);
+  const d=Math.round(h/24);if(d<8)return L(`${d} gün önce`,`${d} d ago`);
+  return fd(iso.slice(0,10));
+};
 
-  useEffect(()=>{if(run&&done){setRun(false);setT(total);}},[run,done,total]);
+/* ---- Simgeler (çizgi, currentColor) ---------------------------------------------- */
+const PgIc=({d,size=15})=><svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8"
+  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+const PG_IC={
+  plus:<><path d="M12 5v14"/><path d="M5 12h14"/></>,
+  send:<><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 5v14"/></>,
+  copy:<><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></>,
+  clip:<><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6"/><path d="M9 16h4"/></>,
+  tpl:<><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4"/><path d="M8 13h8"/><path d="M8 17h5"/></>,
+  print:<><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M7 14h10v6H7z"/></>,
+  trash:<><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></>,
+  search:<><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></>,
+  cal:<><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></>,
+  users:<><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.3.2 3.9 1.8 4.5 4.8"/></>,
+  check:<><path d="M5 12.5l4.5 4.5L19 7.5"/></>,
+  x:<><path d="M6 6l12 12"/><path d="M18 6L6 18"/></>,
+  bolt:<><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></>,
+};
 
-  const start=()=>{if(!steps.length)return;if(done||t>=total){setT(0);marker.current=null;}
-    beep(660,.08,.14);setRun(true);};
-  const pause=()=>setRun(false);
-  const reset=()=>{setRun(false);setT(0);marker.current=null;};
-  const jumpTo=i=>{marker.current=null;if(i<0){setT(0);return;}if(i>=steps.length){setT(total);return;}setT(starts[i]+0.001);};
-  const next=()=>jumpTo(inPrep?0:idx+1);
-  const prev=()=>{if(inPrep){setT(0);return;}if(phEl>2)jumpTo(idx);else jumpTo(idx-1);};
-
-  // Space starts and stops the session, ← → skip a block, F fills the screen, Esc comes back.
-  const act=useRef(null);
-  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();},next,prev};
-  useEffect(()=>{
-    const onKey=e=>{
-      const tag=(e.target&&e.target.tagName)||'';
-      if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)||(e.target&&e.target.isContentEditable))return;
-      if(e.code==='Space'){e.preventDefault();act.current.space();}
-      else if(e.code==='KeyF'){e.preventDefault();act.current.f();}
-      else if(e.code==='ArrowRight'){e.preventDefault();act.current.next();}
-      else if(e.code==='ArrowLeft'){e.preventDefault();act.current.prev();}
-      else if(e.code==='Escape')act.current.esc();
-    };
-    window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[]);
-
-  const roundNo=step?step.round:(done?cfg.rounds:1);
-  const setNo=step?step.set:(done?cfg.sets:1);
-  const secs=Math.ceil(remain-.0001)||0;
-  const big=done?itClock(totalSec):(secs>=60?itClock(secs):String(secs));
-  const title=done?L('Bitti','Finished'):k.label;
-  const sub=done?L(`${cfg.rounds*cfg.sets} tur · ${itClock(totalSec)}`,`${cfg.rounds*cfg.sets} round${cfg.rounds*cfg.sets===1?'':'s'} · ${itClock(totalSec)}`)
-    :k.hint;
-  const idle=!run&&t===0;
-
-  if(!steps.length)return(<div className="empty-st">
-    {L('Aşağıda çalışma aralığına bir süre ver ki sayacın çalıştıracak bir şeyi olsun.',
-       'Give the work interval a duration below and the timer has something to run.')}
-  </div>);
-
-  return(<div className={`it2${fs?' fs':''}${run?' running':''}`} ref={wrap} style={{'--it-c':k.color}}>
-    {fs&&<button className="it2-fsx" onClick={exitFs} title="Esc">✕ {L('Tam ekrandan çık','Exit full screen')}</button>}
-    <div className="it2-stage">
-      <div className="it2-side l">
-        <div className="it2-kpi"><u>{L('Tur','Round')}</u><b>{roundNo}<i>/{cfg.rounds}</i></b>
-          <div className="it2-dots">{Array.from({length:Math.min(cfg.rounds,20)},(_,i)=>
-            <span key={i} className={(i+1<roundNo||done)?'d':(i+1===roundNo&&!inPrep&&!idle)?'c':''}/>)}</div></div>
-        {cfg.sets>1&&<div className="it2-kpi"><u>{L('Set','Set')}</u><b>{setNo}<i>/{cfg.sets}</i></b></div>}
-      </div>
-      <ItRing frac={frac} total={total?el/total:0} color={k.color} pulse={run&&!done&&secs<=3&&secs>0}>
-        <span className="it2-ph">{title}</span>
-        <span className="it2-big">{big}</span>
-        <span className="it2-sub">{sub}</span>
-      </ItRing>
-      <div className="it2-side r">
-        <div className="it2-kpi"><u>{L('Kalan süre','Time left')}</u><b>{itClock(total-el)}</b></div>
-        <div className={'it2-next'+(nextStep?'':' none')} style={nextStep?{'--nc':itKind(nextStep.kind).color}:null}>
-          <u>{L('Sıradaki','Up next')}</u>
-          {nextStep?<b><span/>{itKind(nextStep.kind).label} · {nextStep.sec}{L(' sn',' s')}</b>:<b>{done?'—':L('Bitiş','Finish')}</b>}
-        </div>
-      </div>
-    </div>
-    <div className="it2-ctrl">
-      <button className="it2-cb" onClick={prev} title={L('Önceki blok (←)','Previous block (←)')} aria-label={L('Önceki','Previous')}>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-      {run
-        ?<button className="it2-play on" onClick={pause} title={L('Duraklat (boşluk)','Pause (space)')} aria-label={L('Duraklat','Pause')}>
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
-        :<button className="it2-play" onClick={start} title={L('Başlat (boşluk)','Start (space)')} aria-label={L('Başlat','Start')}>
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg></button>}
-      <button className="it2-cb" onClick={next} title={L('Sonraki blok (→)','Next block (→)')} aria-label={L('Sonraki','Next')}>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
-      <span className="it2-sep"/>
-      <button className="it2-cb" onClick={reset} disabled={!t} title={L('Sıfırla','Reset')} aria-label={L('Sıfırla','Reset')}>
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v5h5"/></svg></button>
-      <button className={'it2-cb'+(sound?' act':'')} onClick={onSound} title={sound?L('Ses açık','Sound on'):L('Ses kapalı','Sound off')} aria-label={L('Ses','Sound')}>
-        {sound?<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
-          :<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>}</button>
-      <button className="it2-cb" onClick={()=>fs?exitFs():enterFs()} title={L('Tam ekran (F)','Full screen (F)')} aria-label={L('Tam ekran','Full screen')}>
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    </div>
-    {/* The whole session, block by block. A click jumps the clock to that block. */}
-    <div className="it2-tl">
-      {steps.map((p,i)=>{const cur=idx===i&&!done;const past=idx>i||done;
-        return(<button key={i} type="button" className={`it2-tseg${cur?' on':''}${past?' done':''}${i>0&&steps[i-1].set!==p.set?' nset':''}`}
-          style={{flex:`${p.sec} 1 0`,'--sc':itKind(p.kind).color}} onClick={()=>jumpTo(i)}
-          title={`${itKind(p.kind).label} · ${p.sec}${L(' sn',' s')} · ${L('Set','Set')} ${p.set} · ${L('Tur','Round')} ${p.round}`}>
-          <b style={{transform:`scaleX(${cur?frac.toFixed(4):(past?1:0)})`}}/>
-        </button>);})}
-    </div>
-    <div className="it2-legend">
-      {['work','rest','brk'].map(kk=><span key={kk} style={{'--sc':itKind(kk).color}}><i/>{itKind(kk).label}</span>)}
-      <em>{L('Boşluk: başlat/durdur · ← →: blok atla · F: tam ekran','Space: start/stop · ← →: skip block · F: full screen')}</em>
-    </div>
+/* ---- Liste kartı ---------------------------------------------------------------- */
+function PgCard({p,active,onOpen,onAssign,onDup}){
+  const st=pgStats(p);
+  const first=st.names.slice(0,3).join(' · ');
+  return(<div className={'pg-card'+(active?' on':'')} style={{'--tc':pgTypeCol(p.type)}}>
+    <button type="button" className="pg-card-b" onClick={onOpen} aria-pressed={active}>
+      <span className="pg-card-top">
+        <span className="pg-tdot" aria-hidden="true"/>
+        <span className="pg-card-t">{pgTypeLbl(p.type)}</span>
+        <span className="pg-card-ago">{pgAgo(p.updated_at||p.created_at)}</span>
+      </span>
+      <span className="pg-card-n">{pgName(p)||L('Adsız program','Untitled programme')}</span>
+      <span className="pg-card-x">{first||L('Henüz egzersiz yok','No exercises yet')}{st.names.length>3?` +${st.names.length-3}`:''}</span>
+      <span className="pg-card-m">
+        <span><b>{st.blocks}</b> {L('blok','block'+(st.blocks===1?'':'s'))}</span>
+        <span><b>{st.ex}</b> {L('egz.','ex.')}</span>
+        {st.sets>0&&<span><b>{st.sets}</b> set</span>}
+        {(p.asg||[]).length>0&&<span className="pg-card-asg" title={L('Bu programın yapılan atamaları','Times this programme was assigned')}>
+          <PgIc d={PG_IC.send} size={11}/>{(p.asg||[]).length}</span>}
+      </span>
+    </button>
+    <span className="pg-card-acts">
+      <button type="button" className="pg-ib" onClick={onDup} title={L('Çoğalt','Duplicate')} aria-label={L('Çoğalt','Duplicate')}><PgIc d={PG_IC.copy} size={14}/></button>
+      <button type="button" className="pg-ib pri" onClick={onAssign} title={L('Sporculara ata','Assign to athletes')} aria-label={L('Sporculara ata','Assign to athletes')}><PgIc d={PG_IC.send} size={14}/></button>
+    </span>
   </div>);
 }
 
-/* A number with − / + either side, in the unit it is written in. */
-/* The box keeps what is being TYPED as its own text, and hands the parent a number only
-   when that text is one: clamping every keystroke turned an emptied box straight back
-   into the minimum, so "5" could never become "45" — clearing it left "1", and the 4
-   landed in front of it. A value in range applies as it is typed; anything else (an
-   empty box, a number past the limit) is settled when the box is left or Enter is hit. */
-function ItNum({label,hint,value,onChange,lo,hi,step,accent}){
-  const st=step||1;
-  const set=v=>onChange(itNum(v,lo,lo,hi));
-  const[draft,setDraft]=useState(null);   // null = not being edited: show the value
-  const type=raw=>{
-    const t=String(raw).replace(/[^0-9]/g,'').slice(0,String(hi).length);
-    setDraft(t);
-    const n=Number(t);
-    if(t!==''&&n>=lo&&n<=hi&&n!==value)onChange(n);
-  };
-  const commit=()=>{if(draft==null)return;if(draft!=='')set(draft);setDraft(null);};
-  return(<div className="it2-f" style={accent?{'--fc':accent}:null}>
-    <span className="it2-fl">{accent&&<i/>}{label}</span>
-    <div className="it2-fin">
-      <button type="button" onClick={()=>set(value-st)} disabled={value<=lo} aria-label="−">−</button>
-      <input type="text" inputMode="numeric" pattern="[0-9]*" enterKeyHint="done" aria-label={label}
-        value={draft!=null?draft:String(value)}
-        onFocus={e=>{setDraft(String(value));const el=e.target;setTimeout(()=>{try{el.setSelectionRange(0,el.value.length);}catch(_){}},0);}}
-        onChange={e=>type(e.target.value)} onBlur={commit}
-        onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}/>
-      <button type="button" onClick={()=>set(value+st)} disabled={value>=hi} aria-label="+">+</button>
-    </div>
-    <span className="it2-fh">{hint}</span>
+/* ---- Tür seçici (çip satırı) ------------------------------------------------------ */
+function PgTypePick({value,onChange,allowNone}){
+  return(<div className="pg-types" role="radiogroup" aria-label={L('Antrenman türü','Training type')}>
+    {allowNone&&<button type="button" role="radio" aria-checked={!value} className={'pg-tc'+(!value?' on':'')}
+      style={{'--tc':'#8b93a1'}} onClick={()=>onChange('')}>{L('Türsüz','Untyped')}</button>}
+    {PG_TYPES.map(t=><button key={t.id} type="button" role="radio" aria-checked={value===t.id}
+      className={'pg-tc'+(value===t.id?' on':'')} style={{'--tc':t.c}} onClick={()=>onChange(t.id)}>
+      <i aria-hidden="true"/>{L(t.tr,t.en)}</button>)}
   </div>);
 }
 
-function IntervalTimerPanels({data,setData}){
-  const c=useMemo(()=>normInterval(data.interval),[data.interval]);
-  const patch=upd=>setData(prev=>({...prev,interval:{...normInterval(prev.interval),...upd}}));
-  const[saveName,setSaveName]=useState('');
-  const steps=useMemo(()=>intervalSchedule(c),[c]);
-  const totalSec=steps.reduce((a,p)=>a+p.sec,0);
-  const usePreset=p=>patch({name:p.name,work:p.work,rest:p.rest,rounds:p.rounds,sets:p.sets,setRest:p.setRest});
-  const saveCurrent=()=>{const nm=(saveName||c.name||'Interval').trim();
-    patch({name:nm,saved:[{id:uid(),name:nm,work:c.work,rest:c.rest,rounds:c.rounds,sets:c.sets,
-      setRest:c.setRest,prep:c.prep},...c.saved]});
-    setSaveName('');};
-  const loadSaved=s=>patch({name:s.name,work:s.work,rest:s.rest,rounds:s.rounds,sets:s.sets,
-    setRest:s.setRest,prep:s.prep});
-  const delSaved=id=>patch({saved:c.saved.filter(s=>s.id!==id)});
-  const isCur=p=>p.work===c.work&&p.rest===c.rest&&p.rounds===c.rounds&&p.sets===c.sets&&p.setRest===c.setRest;
-  const ratio=c.rest>0?`1 : ${+(c.rest/c.work).toFixed(2)}`:L('aralıksız','no rest');
-  const workShare=totalSec?Math.round(itWorkSec(c)/totalSec*100):0;
-  const sec=L('saniye','seconds');
-  /* A small picture of a block: work and rest bars for one set, to scale. */
-  const mini=p=>{const st=intervalSchedule({...p,sets:1}).slice(0,24);const tot=st.reduce((a,x)=>a+x.sec,0)||1;
-    return<div className="it2-mini">{st.map((x,i)=><i key={i} style={{flex:`${x.sec} 1 0`,background:itKind(x.kind).color}}/>)}</div>;};
-
-  return(<>
-    <PageHero title={L('Interval Zamanlayıcı','Interval Timer')}
-      sub={L('Çalışma / dinlenme, turlar ve setler — durumu ekranın rengi taşır.',
-             'Work / rest over rounds and sets — the screen\'s colour carries the state.')}
-      stats={[{v:`${c.work}/${c.rest}`,l:L('Çalışma / dinlenme (sn)','Work / rest (s)')},
-              {v:`${c.rounds}×${c.sets}`,l:L('Tur × set','Rounds × sets')},
-              {v:itClock(c.prep+totalSec),l:L('Tüm seans','Whole session')}]}/>
-
-    <div className="panel it2-panel">
-      <IntervalPlayer cfg={c} onSound={()=>patch({sound:!c.sound})}/>
-    </div>
-
-    <div className="it2-cols">
-      <div className="panel it2-setup">
-        <div className="it-head">
-          <div className="it-head-t">
-            <b>{L('Aralık ayarı','Interval setup')}</b>
-            <span>{L('Blok kaç tur sürüyorsa çalışma / dinlenme o kadar tekrarlanır, setler boyunca.',
-                     'Work / rest for as many rounds as the block asks for, repeated over sets.')}</span>
-          </div>
-        </div>
-        <div className="it2-grid">
-          <ItNum label={L('Çalışma','Work')} hint={sec} value={c.work} lo={1} hi={3600} step={5} accent={IT_KINDS.work.color} onChange={v=>patch({work:v})}/>
-          <ItNum label={L('Dinlenme','Rest')} hint={sec} value={c.rest} lo={0} hi={3600} step={5} accent={IT_KINDS.rest.color} onChange={v=>patch({rest:v})}/>
-          <ItNum label={L('Tur','Rounds')} hint={L('set başına','per set')} value={c.rounds} lo={1} hi={99} onChange={v=>patch({rounds:v})}/>
-          <ItNum label={L('Set','Sets')} hint={L('tekrar','repeats')} value={c.sets} lo={1} hi={99} onChange={v=>patch({sets:v})}/>
-          <ItNum label={L('Set arası','Set break')} hint={sec} value={c.setRest} lo={0} hi={3600} step={15} accent={IT_KINDS.brk.color} onChange={v=>patch({setRest:v})}/>
-          <ItNum label={L('Hazırlık','Get ready')} hint={sec} value={c.prep} lo={0} hi={60} step={5} accent={IT_KINDS.prep.color} onChange={v=>patch({prep:v})}/>
-        </div>
-        <div className="it2-sum">
-          <div><u>{L('Set başına','Per set')}</u><strong>{itClock(c.work*c.rounds+c.rest*Math.max(0,c.rounds-1))}</strong></div>
-          <div><u>{L('Toplam çalışma','Total work')}</u><strong>{itClock(itWorkSec(c))}</strong></div>
-          <div><u>{L('Çalışma : dinlenme','Work : rest')}</u><strong>{ratio}</strong></div>
-          <div><u>{L('Tüm seans','Whole session')}</u><strong>{itClock(c.prep+totalSec)}</strong></div>
-          <div className="wide"><u>{L('Çalışma payı','Work share')}</u>
-            <div className="it2-share"><i style={{width:workShare+'%'}}/></div><strong>{workShare}%</strong></div>
-        </div>
+/* ---- Şablon olarak kaydet penceresi -------------------------------------------------- */
+function PgSaveTpl({prog,onClose,onSave}){
+  const[name,setName]=useState(pgName(prog));
+  const[type,setType]=useState(prog.type||'');
+  useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);return()=>document.removeEventListener('keydown',k);},[]);
+  const ok=String(name).trim()&&type;
+  return ReactDOM.createPortal(<div className="pg-scrim" onClick={onClose}>
+    <div className="pg-dlg" role="dialog" aria-modal="true" aria-label={L('Şablon olarak kaydet','Save as template')} onClick={e=>e.stopPropagation()}>
+      <div className="pg-dlg-h">
+        <span className="pg-dlg-ic"><PgIc d={PG_IC.tpl} size={18}/></span>
+        <div><b>{L('Şablon olarak kaydet','Save as template')}</b>
+          <em>{L('Programın bir kopyası şablon kütüphanesine, seçtiğin türün altına girer.','A copy of the programme goes into the template library, under the type you pick.')}</em></div>
+        <button type="button" className="pg-ib" onClick={onClose} aria-label={L('Kapat','Close')}><PgIc d={PG_IC.x}/></button>
       </div>
+      <label className="pg-fl"><span>{L('Şablon adı','Template name')}</span>
+        <input autoFocus value={name} onChange={e=>setName(e.target.value)} placeholder={L('Örn. Alt vücut kuvvet A','e.g. Lower body strength A')}
+          onKeyDown={e=>{if(e.key==='Enter'&&ok)onSave(String(name).trim(),type);}}/></label>
+      <div className="pg-fl"><span>{L('Antrenman türü','Training type')}</span>
+        <PgTypePick value={type} onChange={setType}/></div>
+      <div className="pg-dlg-f">
+        <button type="button" className="btn sec sm" onClick={onClose}>{L('Vazgeç','Cancel')}</button>
+        <button type="button" className="btn sm" disabled={!ok} onClick={()=>onSave(String(name).trim(),type)}>{L('Şablonu kaydet','Save template')}</button>
+      </div>
+    </div>
+  </div>,document.body);
+}
 
-      <div className="it2-rcol">
-        <div className="panel">
-          <div className="it-head"><div className="it-head-t">
-            <b>{L('Hazır protokoller','Ready protocols')}</b>
-            <span>{L('Tek tıkla alanlara yükle.','Load one into the fields with a click.')}</span>
-          </div></div>
-          <div className="it2-presets">
-            {IT_PRESETS.map(p=><button key={p.name} type="button" className={'it2-pre'+(isCur(p)?' on':'')} onClick={()=>usePreset(p)}>
-              <b>{p.name}</b><span>{p.code}</span>{mini(p)}</button>)}
-          </div>
+/* ---- Sporculara ata paneli ----------------------------------------------------------
+   Sekmeden çıkmadan: iki haftalık gün şeridi (+ başka tarih), haftalık tekrar, saat, sporcu
+   ızgarası (arama, pozisyona göre toplu seçim, o günlerde zaten seansı olanlar işaretli). */
+function PgAssign({prog,athletes,onClose,onAssign}){
+  const todayK=fmt(new Date());
+  const[dates,setDates]=useState([todayK]);
+  const[weeks,setWeeks]=useState(1);
+  const[time,setTime]=useState((prog.session&&prog.session.time)||'17:00');
+  const[sel,setSel]=useState([]);
+  const[q,setQ]=useState('');
+  const[other,setOther]=useState('');
+  useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);return()=>document.removeEventListener('keydown',k);},[]);
+  /* Bu haftanın pazartesisinden başlayan 14 gün. */
+  const strip=useMemo(()=>{const n=new Date();const mon=addD(n,-((n.getDay()+6)%7));
+    return Array.from({length:14},(_,i)=>{const d=addD(mon,i);return{k:fmt(d),dn:(d.getDay()+6)%7,n:d.getDate(),m:d.getMonth()};});},[]);
+  const togDate=k=>setDates(ds=>ds.includes(k)?ds.filter(x=>x!==k):[...ds,k].sort());
+  const allDates=useMemo(()=>pgExpandDates(dates,weeks),[dates,weeks]);
+  const extra=dates.filter(k=>!strip.some(s=>s.k===k));
+  const list=athletes||[];
+  const qn=phNorm(q);
+  const shown=list.filter(a=>!qn||phNorm([a.name,a.position,a.number].join(' ')).includes(qn));
+  const selSet=new Set(sel);
+  const positions=useMemo(()=>{const m=new Map();list.forEach(a=>{const p=String(a.position||'').trim();if(p)m.set(p,(m.get(p)||[]).concat(a.id));});
+    return[...m.entries()].sort((a,b)=>a[0].localeCompare(b[0],'tr'));},[list]);
+  const busy=a=>allDates.reduce((n,dk)=>n+(((a.days||{})[dk]||{}).sessions||[]).length,0);
+  const tog=id=>setSel(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const addMany=ids=>setSel(s=>{const allOn=ids.every(i=>s.includes(i));return allOn?s.filter(x=>!ids.includes(x)):[...new Set([...s,...ids])];});
+  const total=sel.length*allDates.length;
+  const st=pgStats(prog);
+  const MN_S=L('Oca Şub Mar Nis May Haz Tem Ağu Eyl Eki Kas Ara','Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec').split(' ');
+  return ReactDOM.createPortal(<div className="pg-scrim pg-scrim-r" onClick={onClose}>
+    <aside className="pg-asg" role="dialog" aria-modal="true" aria-label={L('Sporculara ata','Assign to athletes')} onClick={e=>e.stopPropagation()}
+      style={{'--tc':pgTypeCol(prog.type)}}>
+      <div className="pg-asg-h">
+        <div className="pg-asg-ht">
+          <span className="pg-asg-k">{L('Takvime ata','Assign to calendar')}</span>
+          <b>{pgName(prog)||L('Adsız program','Untitled programme')}</b>
+          <em><span className="pg-tdot" aria-hidden="true"/>{pgTypeLbl(prog.type)} · {st.blocks} {L('blok','block(s)')} · {st.ex} {L('egzersiz','exercise(s)')}</em>
         </div>
-        <div className="panel">
-          <div className="it-head"><div className="it-head-t">
-            <b>{L('Kayıtlı aralıklar','Saved intervals')}</b>
-            <span>{L('Geçerli aralığı adlandır ve başka bir günde tek tıkla geri yükle.',
-                     'Name the current interval and load it back with one click on another day.')}</span>
-          </div></div>
-          <div className="it-save">
-            <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}} aria-label={L('Ad','Name')}/>
-            <button className="btn sm" onClick={saveCurrent}>{L('Kaydet','Save')}</button>
+        <button type="button" className="pg-ib" onClick={onClose} aria-label={L('Kapat','Close')}><PgIc d={PG_IC.x}/></button>
+      </div>
+      <div className="pg-asg-b">
+        <section className="pg-step">
+          <div className="pg-step-h"><span className="pg-step-n">1</span><b>{L('Günler','Days')}</b>
+            <em>{L('Birden fazla gün seçebilirsin','Pick as many days as you like')}</em></div>
+          <div className="pg-strip">
+            {strip.map((d,i)=>{const on=dates.includes(d.k);
+              return<button key={d.k} type="button" aria-pressed={on}
+                className={'pg-day'+(on?' on':'')+(d.k===todayK?' today':'')+(d.k<todayK?' past':'')+(i===7?' wk2':'')}
+                onClick={()=>togDate(d.k)} title={fdLong(d.k)}>
+                <span className="pg-day-dn">{dnL(d.dn)}</span><span className="pg-day-n">{d.n}</span>
+                <span className="pg-day-m">{MN_S[d.m]}</span></button>;})}
           </div>
-          {c.saved.length===0
-            ?<div className="empty-st">{L('Henüz kayıt yok — bir aralık kur ve kaydet.','Nothing saved yet — set an interval up and save it.')}</div>
-            :<div className="it2-saved">
-              {c.saved.map(s=><div key={s.id} className={'it2-sv'+(isCur(s)&&s.prep===c.prep?' on':'')}>
-                <div className="it2-sv-t">
-                  <b>{s.name}</b>
-                  <i>{s.work}/{s.rest} × {s.rounds}{s.sets>1?` × ${s.sets}`:''} · {itClock(s.prep+intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}</i>
-                  {mini(s)}
-                </div>
-                <div className="it-sv-a">
-                  <button className="btn xs" onClick={()=>loadSaved(s)}>{L('Yükle','Load')}</button>
-                  <button className="btn xs danger" onClick={()=>delSaved(s.id)} aria-label={L('Sil','Delete')}>✕</button>
-                </div>
-              </div>)}
+          <div className="pg-dates-x">
+            {extra.map(k=><span key={k} className="pg-chip">{fd(k)}<button type="button" onClick={()=>togDate(k)} aria-label={L('Kaldır','Remove')}>×</button></span>)}
+            <span className="pg-other">
+              <DateDMY value={other} onChange={v=>{setOther(v);if(v&&!dates.includes(v))setDates(ds=>[...ds,v].sort());}} title={L('Başka bir tarih ekle','Add another date')}/>
+            </span>
+          </div>
+          <div className="pg-row2">
+            <label className="pg-fl sm"><span>{L('Haftalık tekrar','Repeat weekly')}</span>
+              <select value={weeks} onChange={e=>setWeeks(Number(e.target.value)||1)}>
+                {[1,2,3,4,5,6,8,10,12].map(n=><option key={n} value={n}>{n===1?L('Tekrar yok','No repeat'):L(`${n} hafta`,`${n} weeks`)}</option>)}
+              </select></label>
+            <label className="pg-fl sm"><span>{L('Saat','Time')}</span>
+              <input type="time" value={time} onChange={e=>setTime(e.target.value)}/></label>
+          </div>
+          {allDates.length>0&&<div className="pg-sumdates">
+            <PgIc d={PG_IC.cal} size={13}/>
+            <span>{allDates.length>6
+              ?L(`${allDates.length} gün · ${fd(allDates[0])} → ${fd(allDates[allDates.length-1])}`,`${allDates.length} days · ${fd(allDates[0])} → ${fd(allDates[allDates.length-1])}`)
+              :allDates.map(fd).join(' · ')}</span></div>}
+        </section>
+        <section className="pg-step">
+          <div className="pg-step-h"><span className="pg-step-n">2</span><b>{L('Sporcular','Athletes')}</b>
+            <em>{sel.length} / {list.length}</em>
+            <span className="pg-step-acts">
+              <button type="button" className="btn xs sec" onClick={()=>setSel(list.map(a=>a.id))}>{L('Tümü','All')}</button>
+              <button type="button" className="btn xs sec" onClick={()=>setSel([])} disabled={!sel.length}>{L('Temizle','Clear')}</button>
+            </span></div>
+          {list.length===0?<div className="empty-st">{L('Kadroda sporcu yok — Kadro sekmesinden ekle.','No athletes on the roster — add them in the Roster tab.')}</div>:<>
+            <div className="pg-search sm"><PgIc d={PG_IC.search} size={14}/>
+              <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Sporcu ara…','Search athletes…')} aria-label={L('Sporcu ara','Search athletes')}/></div>
+            {positions.length>1&&<div className="pg-pos">
+              {positions.map(([p,ids])=>{const on=ids.every(i=>selSet.has(i));
+                return<button key={p} type="button" className={'pg-posb'+(on?' on':'')} onClick={()=>addMany(ids)}
+                  title={L(`${p} pozisyonundakilerin hepsini seç / bırak`,`Select / clear everyone playing ${p}`)}>{p}<i>{ids.length}</i></button>;})}
             </div>}
-        </div>
+            <div className="pg-aths">
+              {shown.map(a=>{const on=selSet.has(a.id);const b=busy(a);
+                return<button key={a.id} type="button" className={'pg-ath'+(on?' on':'')} aria-pressed={on} onClick={()=>tog(a.id)}>
+                  <span className="pg-ath-av">{hasMedia(a.photo)?<img src={mediaSrc(a.photo)} alt="" loading="lazy"/>:skInit(a.name)}</span>
+                  <span className="pg-ath-t"><span className="pg-ath-n">{a.name||L('(adsız)','(unnamed)')}</span>
+                    <span className="pg-ath-s">{[a.number?`#${a.number}`:'',a.position||''].filter(Boolean).join(' · ')||' '}</span></span>
+                  {b>0&&<span className="pg-ath-busy" title={L('Seçili günlerde takviminde zaten bu kadar seans var; yeni seans yanına eklenir','Sessions already on their calendar on the chosen days; the new one is added alongside')}>{b}</span>}
+                  <span className="pg-ath-ck" aria-hidden="true"><PgIc d={PG_IC.check} size={12}/></span>
+                </button>;})}
+              {shown.length===0&&<div className="pg-none">{L('Aramaya uyan sporcu yok.','No athlete matches.')}</div>}
+            </div>
+          </>}
+        </section>
       </div>
+      <div className="pg-asg-f">
+        <div className="pg-asg-tot">
+          <b>{total}</b>
+          <span>{total?L(`seans · ${sel.length} sporcu × ${allDates.length} gün`,`session${total===1?'':'s'} · ${sel.length} athlete${sel.length===1?'':'s'} × ${allDates.length} day${allDates.length===1?'':'s'}`)
+            :L('Gün ve sporcu seç','Pick days and athletes')}</span>
+        </div>
+        <button type="button" className="btn sec sm" onClick={onClose}>{L('Vazgeç','Cancel')}</button>
+        <button type="button" className="btn pg-go" disabled={!total} onClick={()=>onAssign(sel,allDates,time)}>
+          <PgIc d={PG_IC.send}/>{L('Takvimlere yaz','Write to calendars')}</button>
+      </div>
+    </aside>
+  </div>,document.body);
+}
+
+/* ---- Sekme ---------------------------------------------------------------------- */
+function ProgramsView({data,setData,team,updateTeam}){
+  const all=useMemo(()=>(Array.isArray(data.templates)?data.templates:[]).filter(p=>p&&p.id),[data.templates]);
+  const progs=useMemo(()=>all.filter(p=>!pgIsTpl(p)).sort((a,b)=>String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||''))),[all]);
+  const tpls=useMemo(()=>all.filter(pgIsTpl).sort((a,b)=>String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||''))),[all]);
+  const[tab,setTab]=useState(()=>progs.length||!tpls.length?'prog':'tpl');
+  const[q,setQ]=useState('');
+  const[ft,setFt]=useState('');
+  const[selId,setSelId]=useState(()=>(progs[0]||tpls[0]||{}).id||null);
+  const[asgId,setAsgId]=useState(null);
+  const[tplOpen,setTplOpen]=useState(false);
+  const[toast,setToast]=useState(null);
+  const toastT=useRef(null);
+  const say=(msg,undo)=>{clearTimeout(toastT.current);setToast({msg,undo,k:Date.now()});toastT.current=setTimeout(()=>setToast(null),undo?9000:4000);};
+  useEffect(()=>()=>clearTimeout(toastT.current),[]);
+
+  const write=fn=>setData(prev=>({...prev,templates:fn(Array.isArray(prev.templates)?prev.templates:[])}));
+  const patch=(id,upd)=>write(list=>list.map(p=>p&&p.id===id?{...p,...(typeof upd==='function'?upd(p):upd),updated_at:pgNow()}:p));
+  /* Dar ekranda kütüphane düzenleyicinin üstünde durur: seçilen program açılınca ona kaydırılır. */
+  const mainRef=useRef(null);
+  const jumpRef=useRef(false);
+  const open=id=>{setSelId(id);jumpRef.current=true;};
+  useEffect(()=>{
+    if(!jumpRef.current)return;jumpRef.current=false;
+    const el=mainRef.current;
+    if(el&&window.matchMedia&&window.matchMedia('(max-width:1100px)').matches)
+      el.scrollIntoView({behavior:'smooth',block:'start'});
+  },[selId]);
+  const add=(p,go=true)=>{write(list=>[p,...list]);if(go){open(p.id);setTab(pgIsTpl(p)?'tpl':'prog');}};
+
+  const sel=all.find(p=>p.id===selId)||null;
+  const selSes=useMemo(()=>sel?pgSession(sel):null,[sel&&sel.session,sel&&sel.id]);
+  const asgProg=asgId?all.find(p=>p.id===asgId):null;
+  const athletes=(team&&team.athletes)||[];
+
+  const listAll=tab==='prog'?progs:tpls;
+  const typeCount=useMemo(()=>{const m={};listAll.forEach(p=>{const k=p.type||'';m[k]=(m[k]||0)+1;});return m;},[listAll]);
+  const qn=phNorm(q).split(/\s+/).filter(Boolean);
+  const shown=listAll.filter(p=>(!ft||(p.type||'')===(ft==='_none'?'':ft))&&
+    (!qn.length||(()=>{const t=phNorm([pgName(p),pgTypeLbl(p.type),p.note||'',...pgStats(p).names].join(' '));return qn.every(x=>t.includes(x));})()));
+
+  const newProg=(type)=>add(pgNew('prog',type||'',''));
+  const fromTpl=t=>{const c=pgClone(t,{kind:'prog',name:pgName(t)});add(c);say(L(`"${pgName(t)}" şablonundan yeni program açıldı`,`New programme opened from "${pgName(t)}"`));};
+  const dup=p=>{const c=pgClone(p,{name:`${pgName(p)||L('Program','Programme')} ${L('(kopya)','(copy)')}`});add(c);say(L('Program çoğaltıldı','Programme duplicated'));};
+  const del=p=>{if(!confirm(L(`"${pgName(p)||'Adsız program'}" silinsin mi? Sporcuların takvimine daha önce yazılan kopyalar kalır.`,`Delete "${pgName(p)||'Untitled programme'}"? Copies already written to athletes' calendars stay.`)))return;
+    write(list=>list.filter(x=>x&&x.id!==p.id));if(selId===p.id)setSelId(null);say(L('Silindi','Deleted'));};
+  const saveAsTpl=(name,type)=>{const c=pgClone(sel,{kind:'tpl',name,type});write(list=>[c,...list]);setTplOpen(false);
+    say(L(`Şablon kaydedildi · ${pgTypeLbl(type)}`,`Template saved · ${pgTypeLbl(type)}`));};
+  const toClip=p=>{copySessionToClipboard({...pgSession(p),name:pgName(p)||L('Program','Programme')});
+    say(L('Panoya kopyalandı — takvimde istediğin güne "Yapıştır" ile ekleyebilirsin','Copied — paste it onto any day in a calendar'));};
+  const printIt=p=>printDayA4((team&&team.setup&&team.setup.teamName)||'',pgName(p),[{...pgSession(p),name:pgName(p)||L('Program','Programme')}]);
+  const doAssign=(athIds,dates,time)=>{
+    const prog=asgProg;if(!prog||!team)return;
+    const{plan,ids}=pgPlan(prog,athIds,dates,time);
+    updateTeam(team.id,t=>({athletes:pgApplyPlan(t.athletes,plan)}));
+    const rec={at:pgNow(),dates,aths:athIds};
+    write(list=>list.map(p=>p&&p.id===prog.id?{...p,asg:[rec,...(p.asg||[])].slice(0,12)}:p));
+    setAsgId(null);
+    const n=ids.length;
+    say(L(`${n} seans ${athIds.length} sporcunun takvimine yazıldı`,`${n} session${n===1?'':'s'} written to ${athIds.length} athlete${athIds.length===1?'':'s'}' calendars`),
+      ()=>{updateTeam(team.id,t=>({athletes:pgUndoPlan(t.athletes,ids,dates)}));
+        write(list=>list.map(p=>p&&p.id===prog.id?{...p,asg:(p.asg||[]).filter(r=>r.at!==rec.at)}:p));
+        say(L('Atama geri alındı','Assignment undone'));});
+  };
+  const athName=id=>{const a=athletes.find(x=>x.id===id);return a?a.name:'';};
+
+  const st=sel?pgStats(sel):null;
+  const isTpl=sel&&pgIsTpl(sel);
+  return(<div className="pg">
+    <PageHero title={L('Programlar','Programs')}
+      sub={L('Program yaz, türüne göre şablon olarak sakla, sporcuların takvimine tek seferde ata.','Write programmes, keep them as templates by type, assign them to athletes’ calendars in one go.')}
+      stats={[{v:progs.length,l:L('Program','Programmes')},{v:tpls.length,l:L('Şablon','Templates')},
+        {v:all.reduce((n,p)=>n+(p.asg||[]).reduce((m,r)=>m+(r.aths||[]).length*(r.dates||[]).length,0),0),l:L('Atanan seans','Sessions assigned')}]}>
+      <button type="button" className="btn pg-new" onClick={()=>newProg(ft&&ft!=='_none'?ft:'')}><PgIc d={PG_IC.plus}/>{L('Yeni Program','New Programme')}</button>
+    </PageHero>
+    <div className="pg-grid">
+      {/* ---- Kütüphane ---- */}
+      <aside className="pg-lib">
+        <div className="pg-seg" role="tablist">
+          <button type="button" role="tab" aria-selected={tab==='prog'} className={tab==='prog'?'on':''} onClick={()=>{setTab('prog');setFt('');}}>
+            {L('Programlarım','My Programmes')}<i>{progs.length}</i></button>
+          <button type="button" role="tab" aria-selected={tab==='tpl'} className={tab==='tpl'?'on':''} onClick={()=>{setTab('tpl');setFt('');}}>
+            {L('Şablonlar','Templates')}<i>{tpls.length}</i></button>
+        </div>
+        <div className="pg-search"><PgIc d={PG_IC.search} size={14}/>
+          <input type="search" value={q} onChange={e=>setQ(e.target.value)} aria-label={L('Ara','Search')}
+            placeholder={tab==='prog'?L('Program ya da egzersiz ara…','Search programmes or exercises…'):L('Şablon ya da egzersiz ara…','Search templates or exercises…')}/></div>
+        {listAll.length>0&&<div className="pg-filt">
+          <button type="button" className={'pg-fc'+(!ft?' on':'')} onClick={()=>setFt('')}>{L('Tümü','All')}<i>{listAll.length}</i></button>
+          {PG_TYPES.filter(t=>typeCount[t.id]).map(t=><button key={t.id} type="button" className={'pg-fc'+(ft===t.id?' on':'')}
+            style={{'--tc':t.c}} onClick={()=>setFt(ft===t.id?'':t.id)}><span className="pg-tdot" aria-hidden="true"/>{L(t.tr,t.en)}<i>{typeCount[t.id]}</i></button>)}
+          {typeCount['']>0&&<button type="button" className={'pg-fc'+(ft==='_none'?' on':'')} onClick={()=>setFt(ft==='_none'?'':'_none')}>{L('Türsüz','Untyped')}<i>{typeCount['']}</i></button>}
+        </div>}
+        <div className="pg-list">
+          {shown.map(p=><PgCard key={p.id} p={p} active={p.id===selId} onOpen={()=>open(p.id)}
+            onAssign={()=>setAsgId(p.id)} onDup={()=>dup(p)}/>)}
+          {listAll.length===0&&<div className="pg-lib-empty">
+            <PgIc d={tab==='prog'?PG_IC.clip:PG_IC.tpl} size={22}/>
+            <b>{tab==='prog'?L('Henüz program yok','No programmes yet'):L('Henüz şablon yok','No templates yet')}</b>
+            <span>{tab==='prog'?L('"Yeni Program" ile başla ya da bir şablondan aç.','Start with "New Programme", or open one from a template.')
+              :L('Bir programı açıp "Şablon olarak kaydet" de; türüne göre burada listelenir.','Open a programme and choose "Save as template"; it is listed here by type.')}</span>
+            {tab==='prog'&&<button type="button" className="btn sm" onClick={()=>newProg('')}><PgIc d={PG_IC.plus} size={13}/>{L('Yeni Program','New Programme')}</button>}
+          </div>}
+          {listAll.length>0&&shown.length===0&&<div className="pg-none">{L('Bu süzgece uyan kayıt yok.','Nothing matches this filter.')}</div>}
+        </div>
+      </aside>
+
+      {/* ---- Düzenleyici ---- */}
+      <section className="pg-main" ref={mainRef}>
+        {!sel?<div className="pg-start">
+          <div className="pg-start-h">
+            <b>{L('Bir programla başla','Start with a programme')}</b>
+            <span>{L('Boş bir program aç ya da türüne göre kayıtlı bir şablondan kopyasını oluştur.','Open a blank programme, or make a copy of a saved template by type.')}</span>
+          </div>
+          <div className="pg-start-g">
+            <button type="button" className="pg-blank" onClick={()=>newProg('')}>
+              <span className="pg-blank-ic"><PgIc d={PG_IC.plus} size={22}/></span>
+              <b>{L('Boş program','Blank programme')}</b><em>{L('Bloklar, fazlar, egzersizler','Blocks, phases, exercises')}</em></button>
+            {tpls.slice(0,7).map(t=>{const s=pgStats(t);return<button key={t.id} type="button" className="pg-tplc" style={{'--tc':pgTypeCol(t.type)}} onClick={()=>fromTpl(t)}>
+              <span className="pg-card-top"><span className="pg-tdot" aria-hidden="true"/><span className="pg-card-t">{pgTypeLbl(t.type)}</span></span>
+              <b>{pgName(t)||L('Adsız şablon','Untitled template')}</b>
+              <em>{s.ex} {L('egzersiz','exercises')} · {s.blocks} {L('blok','blocks')}</em>
+              <span className="pg-tplc-go">{L('Bu şablondan başla','Start from this')} →</span></button>;})}
+          </div>
+        </div>
+        :<div className="pg-ed" style={{'--tc':pgTypeCol(sel.type)}} key={sel.id}>
+          <div className="pg-head">
+            <div className="pg-head-top">
+              <span className={'pg-kind'+(isTpl?' tpl':'')}>{isTpl?L('ŞABLON','TEMPLATE'):L('PROGRAM','PROGRAMME')}</span>
+              <span className="pg-head-ago">{L('Güncellendi','Updated')} {pgAgo(sel.updated_at||sel.created_at)}</span>
+              <span className="pg-head-sp"/>
+              <button type="button" className="pg-ib danger" onClick={()=>del(sel)} title={L('Sil','Delete')} aria-label={L('Sil','Delete')}><PgIc d={PG_IC.trash}/></button>
+            </div>
+            <LiveInput className="pg-name" value={sel.name||''} placeholder={isTpl?L('Şablonun adı','Template name'):L('Programın adı — örn. Alt Vücut Kuvvet A','Programme name — e.g. Lower Body Strength A')}
+              onChange={v=>patch(sel.id,p=>({name:v,session:{...pgSession(p),name:String(v||'').trim()}}))} aria-label={L('Ad','Name')}/>
+            <PgTypePick value={sel.type||''} allowNone onChange={v=>patch(sel.id,{type:v})}/>
+            <LiveTextarea className="pg-note" value={sel.note||''} rows={1}
+              placeholder={L('Kısa not: hedef, sezon dönemi, kime uygun…','Short note: aim, season phase, who it suits…')}
+              onChange={v=>patch(sel.id,{note:v})}/>
+            <div className="pg-bar">
+              <button type="button" className="btn pg-go" onClick={()=>setAsgId(sel.id)}><PgIc d={PG_IC.users}/>{L('Sporculara Ata','Assign to Athletes')}</button>
+              {isTpl
+                ?<button type="button" className="btn sec sm" onClick={()=>fromTpl(sel)}><PgIc d={PG_IC.bolt} size={14}/>{L('Bu şablondan program aç','New programme from this')}</button>
+                :<button type="button" className="btn sec sm" onClick={()=>setTplOpen(true)}><PgIc d={PG_IC.tpl} size={14}/>{L('Şablon olarak kaydet','Save as template')}</button>}
+              <button type="button" className="btn sec sm" onClick={()=>dup(sel)}><PgIc d={PG_IC.copy} size={14}/>{L('Çoğalt','Duplicate')}</button>
+              <button type="button" className="btn sec sm" onClick={()=>toClip(sel)} title={L('Takvimin yapıştır düğmesiyle istediğin güne eklemek için','To paste onto any day with the calendar’s paste button')}>
+                <PgIc d={PG_IC.clip} size={14}/>{L('Panoya kopyala','Copy')}</button>
+              <button type="button" className="btn sec sm" onClick={()=>printIt(sel)}><PgIc d={PG_IC.print} size={14}/>{L('Yazdır','Print')}</button>
+            </div>
+          </div>
+          <div className="pg-stats">
+            <div><b>{st.blocks}</b><span>{L('Blok','Blocks')}</span></div>
+            <div><b>{st.ex}</b><span>{L('Egzersiz','Exercises')}</span></div>
+            <div><b>{st.sets||'—'}</b><span>{L('Toplam set','Total sets')}</span></div>
+            <div><b>{st.dur?st.dur:'—'}</b><span>{L('Süre (dk)','Duration (min)')}</span></div>
+            <div className="pg-stats-asg">{(sel.asg||[]).length
+              ?<><b>{(sel.asg||[]).reduce((m,r)=>m+(r.aths||[]).length*(r.dates||[]).length,0)}</b>
+                <span title={(sel.asg||[]).slice(0,6).map(r=>`${fd(String(r.at).slice(0,10))}: ${(r.aths||[]).map(athName).filter(Boolean).join(', ')} → ${(r.dates||[]).map(fd).join(', ')}`).join('\n')}>
+                  {L('Atanan seans','Assigned')} · {L('son','last')} {pgAgo(sel.asg[0].at)}</span></>
+              :<><b>0</b><span>{L('Henüz atanmadı','Not assigned yet')}</span></>}</div>
+          </div>
+          <div className="pg-editor">
+            <SessEd session={selSes} index={0} total={1}
+              onUpdate={ns=>patch(sel.id,{session:ns})}
+              onRemove={()=>patch(sel.id,p=>({session:{...pgSession(p),blocks:[]}}))}
+              onDuplicate={()=>dup(sel)} onMove={()=>{}}
+              printContext={{title:(team&&team.setup&&team.setup.teamName)||'',subtitle:pgName(sel)}}/>
+          </div>
+        </div>}
+      </section>
     </div>
-  </>);
+    {tplOpen&&sel&&<PgSaveTpl prog={sel} onClose={()=>setTplOpen(false)} onSave={saveAsTpl}/>}
+    {asgProg&&<PgAssign prog={asgProg} athletes={athletes} onClose={()=>setAsgId(null)} onAssign={doAssign}/>}
+    {toast&&ReactDOM.createPortal(<div className="pg-toast" key={toast.k} role="status">
+      <PgIc d={PG_IC.check}/><span>{toast.msg}</span>
+      {toast.undo&&<button type="button" onClick={()=>{const u=toast.undo;setToast(null);u();}}>{L('Geri al','Undo')}</button>}
+      <button type="button" className="pg-toast-x" onClick={()=>setToast(null)} aria-label={L('Kapat','Close')}><PgIc d={PG_IC.x} size={13}/></button>
+    </div>,document.body)}
+  </div>);
 }
-
-/* The tab is the interval timer and nothing else. The tempo player that used to share
-   it was a second clock with its own keyboard shortcuts and its own tone, and a coach
-   standing on the floor only ever ran one of them. */
-function TempoView({data,setData}){
-  return<IntervalTimerPanels data={data} setData={setData}/>;
-}
-
 /* =========================================================
    GENERIC REPORTS RENDERER (used by team & athletes)
    ========================================================= */
@@ -47466,10 +47789,16 @@ function ProgramHistory({team,updateTeam}){
    değilse (takım takvimi, Hafta/Gün planı) hangi sporcunun programı olduğunu seçtirir. Okunan liste
    `registerProgramBank` ile uygulamanın tepesinden verilir (kütüphane listesiyle aynı yol:
    setLibItems); yazma da aynı yoldan, `_pbWrite` ile, sporcunun güncel hâline uygulanır.
-   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur. */
+   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur.
+   Programlar sekmesinin programları ve şablonları (`data.templates`, 270) da seçicide ayrı bir kaynak olarak
+   durur (`registerProgramLib`, `pbLibRows`): sporcuya bağlı olmadıkları için her yazım yerinde sunulurlar. */
 let _pbTeams=[];
 let _pbWrite=null;
 function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
+/* Programlar sekmesinin kayıtları (`data.templates`, 270): seçici onları da sunar — sporcuya bağlı
+   değiller, her yazım yerinde (bir sporcunun takviminde de) görünürler. */
+let _pbLib=[];
+function registerProgramLib(list){_pbLib=Array.isArray(list)?list:[];}
 
 const pbNamed=e=>!!String(e&&e.name||'').trim();
 /* Yapıştırılabilir bir program yalnızca S&C bloklarından oluşur: top antrenmanı bloğu çizim ve
@@ -47567,10 +47896,29 @@ function pbRowsOf(ath,teamName){
   });
   return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
 }
+/* Programlar sekmesinin satırları: sporcusuz, türüyle (`athName` yerine türün adı yazılır). */
+function pbLibRows(){
+  const out=[];
+  _pbLib.forEach(p=>{
+    if(!p||!p.id||!p.session)return;
+    const blocks=pbBlocksOf(p.session);
+    if(!blocks.length)return;
+    const names=[];blocks.forEach(b=>(b.exercises||[]).forEach(e=>{if(pbNamed(e))names.push(e.name);}));
+    const name=String(p.name||p.session.name||'').trim();
+    const tpl=p.kind!=='prog';
+    const type=pgTypeLbl(p.type);
+    out.push({key:`lib:${p.id}`,kind:'lib',tpl,id:p.id,name,date:'',at:p.updated_at||p.created_at||'',note:p.note||'',
+      athId:'',athName:type,teamName:'',blocks,exNames:names,exCount:names.length,
+      text:phNorm([name,type,p.note||'',...blocks.map(b=>b.name),...names].join(' '))});
+  });
+  return out.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+}
+const PB_KIND_RANK={saved:0,lib:1,day:2};
 function pbAllRows(){
   const out=[];
   _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>pbRowsOf(a,(t.setup&&t.setup.teamName)||'').forEach(r=>out.push(r))));
-  return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
+  pbLibRows().forEach(r=>out.push(r));
+  return out.sort((a,b)=>(PB_KIND_RANK[a.kind]-PB_KIND_RANK[b.kind])||String(b.at).localeCompare(String(a.at)));
 }
 function pbFilter(rows,f){
   const terms=phNorm(f.q).split(/\s+/).filter(Boolean);
@@ -47654,9 +48002,10 @@ function PbRow({r,open,onToggle,showAth,children}){
   return(<div className={'panel pbk-row'+(open?' open':'')}>
     <div className="pbk-top">
       <button type="button" className="pbk-sum" aria-expanded={open} onClick={onToggle}>
-        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')}>{r.kind==='saved'?L('KAYITLI','SAVED'):L('TAKVİM','CALENDAR')}</span>
+        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')+(r.kind==='lib'?' lib':'')}>{r.kind==='saved'?L('KAYITLI','SAVED')
+          :r.kind==='lib'?(r.tpl?L('ŞABLON','TEMPLATE'):L('PROGRAM','PROGRAMME')):L('TAKVİM','CALENDAR')}</span>
         <span className="pbk-name">{r.name||first||'—'}</span>
-        <span className="pbk-meta">{showAth?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}{r.auto?' · '+L('otomatik','auto'):''}</span>
+        <span className="pbk-meta">{(showAth||r.kind==='lib')?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}{r.auto?' · '+L('otomatik','auto'):''}</span>
         <span className="pbk-first">{first}</span>
         <span className="inj-car" aria-hidden="true">▾</span>
       </button>
@@ -47669,10 +48018,10 @@ function PbRow({r,open,onToggle,showAth,children}){
 /* Yapıştırılacak programı seçtiren pencere. `onPick(row)` çağrılır, pencere kapanır. */
 function ProgramPicker({onClose,onPick,athId,title}){
   /* Yazılan yerin sporcusu belliyse yalnızca onun programları; başkasının programı hiç gelmez. */
-  const rows=useMemo(()=>pbAllRows().filter(r=>!athId||r.athId===athId),[]);
+  const rows=useMemo(()=>pbAllRows().filter(r=>!athId||r.kind==='lib'||r.athId===athId),[]);
   const[f,setF]=useState(()=>({q:'',ath:athId||'',
     /* Kayıtlı programlar önde: takvim geçmişi kalabalık olur. Hiç kayıtlı yoksa boş liste açılmasın. */
-    src:rows.some(r=>r.kind==='saved')?'saved':''}));
+    src:rows.some(r=>r.kind==='saved')?'saved':rows.some(r=>r.kind==='lib')?'lib':''}));
   const[open,setOpen]=useState(null);
   const[limit,setLimit]=useState(30);
   const set=(k,v)=>{setF(o=>({...o,[k]:v}));setLimit(30);};
@@ -47681,9 +48030,10 @@ function ProgramPicker({onClose,onPick,athId,title}){
     document.addEventListener('keydown',onKey);
     return()=>document.removeEventListener('keydown',onKey);
   },[]);
-  const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
+  const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(r.athId&&!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
   const shown=useMemo(()=>pbFilter(rows,f),[rows,f]);
   const nSaved=rows.filter(r=>r.kind==='saved').length;
+  const nLib=rows.filter(r=>r.kind==='lib').length;
   const athName=useMemo(()=>{let n='';_pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{if(a.id===athId)n=a.name||'';}));return n;},[]);
   return ReactDOM.createPortal(
     <div className="modal-bg" onClick={onClose}>
@@ -47699,7 +48049,8 @@ function ProgramPicker({onClose,onPick,athId,title}){
           </select>}
           <select value={f.src} onChange={e=>set('src',e.target.value)} aria-label={L('Kaynak','Source')}>
             <option value="saved">{L(`Kayıtlı programlar (${nSaved})`,`Saved programmes (${nSaved})`)}</option>
-            <option value="">{L('Kayıtlı + takvim geçmişi','Saved + calendar history')}</option>
+            {nLib>0&&<option value="lib">{L(`Programlar sekmesi (${nLib})`,`Programs tab (${nLib})`)}</option>}
+            <option value="">{L('Hepsi (kayıtlı + programlar + takvim)','Everything (saved + programmes + calendar)')}</option>
             <option value="day">{L('Yalnız takvim geçmişi','Calendar history only')}</option>
           </select>
         </div>
@@ -54403,7 +54754,7 @@ const NAV_ICONS={
   evaluation:<NIc><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5h6v2.5H9z"/><path d="M8.5 11.5l2 2 4-4.5"/></NIc>,
   setup:<NIc><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></NIc>,
   backup:<NIc><path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19.5h14"/></NIc>,
-  tempo:<NIc><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></NIc>,
+  programs:<NIc><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5V6h6V3.5"/><path d="M8.5 11h7"/><path d="M8.5 14.5h7"/><path d="M8.5 18h4"/></NIc>,
   checkin:<NIc><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8.5 9.5h7"/><path d="M8.5 13.5h4.5"/><path d="M14.5 17.5l1.8 1.8 3.2-3.6"/></NIc>,
   tryouts:<NIc><circle cx="10.5" cy="8" r="3.2"/><path d="M4.5 19.6c.7-3.2 3-5 6-5s5.3 1.8 6 5"/><path d="M17.5 4.5v6"/><path d="M14.5 7.5h6"/></NIc>,
 };
@@ -56301,6 +56652,9 @@ function App(){
      another) and writes through the latest state, like updateTeam does. */
   /* A write that changes nothing (an empty patch) hands the state back as it was: a new state
      object would set the cloud sync writing — serialising the whole state — for nothing. */
+  /* The Programs tab's programmes and templates are offered by the same picker, beside each
+     athlete's own saved programmes. */
+  useEffect(()=>{registerProgramLib(data.templates);},[data.templates]);
   useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>{
     let hit=false;
     const teams=prev.teams.map(t=>{
@@ -56396,7 +56750,7 @@ function App(){
       {id:'wellness',label:'Wellness',icon:NAV_ICONS.wellness},
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
-      {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
+      {id:'programs',label:L('Programlar','Programs'),icon:NAV_ICONS.programs,count:(data.templates||[]).length||null},
       ...(clubMember?[]:[{id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin}]),
     ]},
     /* Tryouts is deliberately its own group rather than another Workspace row: every
@@ -56511,7 +56865,7 @@ function App(){
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam} weeks={weeks}/>}
-      {view==='tempo'&&<TempoView data={data} setData={setData}/>}
+      {view==='programs'&&<ProgramsView data={data} setData={setData} team={team} updateTeam={updateTeam}/>}
       {/* Sakatlık Sürveyansı Yük Takibi'nden kalktı; sporcunun kendi sayfasında duruyor. */}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='wellness'&&<WellnessView key={team.id} team={team} updateTeam={updateTeam} focus={wvFocus}/>}
