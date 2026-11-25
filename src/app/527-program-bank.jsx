@@ -16,10 +16,16 @@
    değilse (takım takvimi, Hafta/Gün planı) hangi sporcunun programı olduğunu seçtirir. Okunan liste
    `registerProgramBank` ile uygulamanın tepesinden verilir (kütüphane listesiyle aynı yol:
    setLibItems); yazma da aynı yoldan, `_pbWrite` ile, sporcunun güncel hâline uygulanır.
-   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur. */
+   Sporcunun Takvim sekmesindeki eski panel (Antrenman Programları) kaldırıldı; kayıtlar seçiciden okunur.
+   Programlar sekmesinin programları ve şablonları (`data.templates`, 270) da seçicide ayrı bir kaynak olarak
+   durur (`registerProgramLib`, `pbLibRows`): sporcuya bağlı olmadıkları için her yazım yerinde sunulurlar. */
 let _pbTeams=[];
 let _pbWrite=null;
 function registerProgramBank(teams,write){_pbTeams=Array.isArray(teams)?teams:[];_pbWrite=write||null;}
+/* Programlar sekmesinin kayıtları (`data.templates`, 270): seçici onları da sunar — sporcuya bağlı
+   değiller, her yazım yerinde (bir sporcunun takviminde de) görünürler. */
+let _pbLib=[];
+function registerProgramLib(list){_pbLib=Array.isArray(list)?list:[];}
 
 const pbNamed=e=>!!String(e&&e.name||'').trim();
 /* Yapıştırılabilir bir program yalnızca S&C bloklarından oluşur: top antrenmanı bloğu çizim ve
@@ -117,10 +123,29 @@ function pbRowsOf(ath,teamName){
   });
   return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
 }
+/* Programlar sekmesinin satırları: sporcusuz, türüyle (`athName` yerine türün adı yazılır). */
+function pbLibRows(){
+  const out=[];
+  _pbLib.forEach(p=>{
+    if(!p||!p.id||!p.session)return;
+    const blocks=pbBlocksOf(p.session);
+    if(!blocks.length)return;
+    const names=[];blocks.forEach(b=>(b.exercises||[]).forEach(e=>{if(pbNamed(e))names.push(e.name);}));
+    const name=String(p.name||p.session.name||'').trim();
+    const tpl=p.kind!=='prog';
+    const type=pgTypeLbl(p.type);
+    out.push({key:`lib:${p.id}`,kind:'lib',tpl,id:p.id,name,date:'',at:p.updated_at||p.created_at||'',note:p.note||'',
+      athId:'',athName:type,teamName:'',blocks,exNames:names,exCount:names.length,
+      text:phNorm([name,type,p.note||'',...blocks.map(b=>b.name),...names].join(' '))});
+  });
+  return out.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+}
+const PB_KIND_RANK={saved:0,lib:1,day:2};
 function pbAllRows(){
   const out=[];
   _pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>pbRowsOf(a,(t.setup&&t.setup.teamName)||'').forEach(r=>out.push(r))));
-  return out.sort((a,b)=>(a.kind===b.kind?0:a.kind==='saved'?-1:1)||String(b.at).localeCompare(String(a.at)));
+  pbLibRows().forEach(r=>out.push(r));
+  return out.sort((a,b)=>(PB_KIND_RANK[a.kind]-PB_KIND_RANK[b.kind])||String(b.at).localeCompare(String(a.at)));
 }
 function pbFilter(rows,f){
   const terms=phNorm(f.q).split(/\s+/).filter(Boolean);
@@ -204,9 +229,10 @@ function PbRow({r,open,onToggle,showAth,children}){
   return(<div className={'panel pbk-row'+(open?' open':'')}>
     <div className="pbk-top">
       <button type="button" className="pbk-sum" aria-expanded={open} onClick={onToggle}>
-        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')}>{r.kind==='saved'?L('KAYITLI','SAVED'):L('TAKVİM','CALENDAR')}</span>
+        <span className={'inj-pill pbk-kind'+(r.kind==='saved'?' ok':'')+(r.kind==='lib'?' lib':'')}>{r.kind==='saved'?L('KAYITLI','SAVED')
+          :r.kind==='lib'?(r.tpl?L('ŞABLON','TEMPLATE'):L('PROGRAM','PROGRAMME')):L('TAKVİM','CALENDAR')}</span>
         <span className="pbk-name">{r.name||first||'—'}</span>
-        <span className="pbk-meta">{showAth?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}{r.auto?' · '+L('otomatik','auto'):''}</span>
+        <span className="pbk-meta">{(showAth||r.kind==='lib')?`${r.athName} · `:''}{r.date?fd(r.date)+' · ':''}{r.exCount} {L('egz.','ex.')}{r.auto?' · '+L('otomatik','auto'):''}</span>
         <span className="pbk-first">{first}</span>
         <span className="inj-car" aria-hidden="true">▾</span>
       </button>
@@ -219,10 +245,10 @@ function PbRow({r,open,onToggle,showAth,children}){
 /* Yapıştırılacak programı seçtiren pencere. `onPick(row)` çağrılır, pencere kapanır. */
 function ProgramPicker({onClose,onPick,athId,title}){
   /* Yazılan yerin sporcusu belliyse yalnızca onun programları; başkasının programı hiç gelmez. */
-  const rows=useMemo(()=>pbAllRows().filter(r=>!athId||r.athId===athId),[]);
+  const rows=useMemo(()=>pbAllRows().filter(r=>!athId||r.kind==='lib'||r.athId===athId),[]);
   const[f,setF]=useState(()=>({q:'',ath:athId||'',
     /* Kayıtlı programlar önde: takvim geçmişi kalabalık olur. Hiç kayıtlı yoksa boş liste açılmasın. */
-    src:rows.some(r=>r.kind==='saved')?'saved':''}));
+    src:rows.some(r=>r.kind==='saved')?'saved':rows.some(r=>r.kind==='lib')?'lib':''}));
   const[open,setOpen]=useState(null);
   const[limit,setLimit]=useState(30);
   const set=(k,v)=>{setF(o=>({...o,[k]:v}));setLimit(30);};
@@ -231,9 +257,10 @@ function ProgramPicker({onClose,onPick,athId,title}){
     document.addEventListener('keydown',onKey);
     return()=>document.removeEventListener('keydown',onKey);
   },[]);
-  const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
+  const aths=useMemo(()=>{const m=new Map();rows.forEach(r=>{if(r.athId&&!m.has(r.athId))m.set(r.athId,r.athName);});return[...m.entries()].sort((a,b)=>a[1].localeCompare(b[1],'tr'));},[rows]);
   const shown=useMemo(()=>pbFilter(rows,f),[rows,f]);
   const nSaved=rows.filter(r=>r.kind==='saved').length;
+  const nLib=rows.filter(r=>r.kind==='lib').length;
   const athName=useMemo(()=>{let n='';_pbTeams.forEach(t=>(t.athletes||[]).forEach(a=>{if(a.id===athId)n=a.name||'';}));return n;},[]);
   return ReactDOM.createPortal(
     <div className="modal-bg" onClick={onClose}>
@@ -249,7 +276,8 @@ function ProgramPicker({onClose,onPick,athId,title}){
           </select>}
           <select value={f.src} onChange={e=>set('src',e.target.value)} aria-label={L('Kaynak','Source')}>
             <option value="saved">{L(`Kayıtlı programlar (${nSaved})`,`Saved programmes (${nSaved})`)}</option>
-            <option value="">{L('Kayıtlı + takvim geçmişi','Saved + calendar history')}</option>
+            {nLib>0&&<option value="lib">{L(`Programlar sekmesi (${nLib})`,`Programs tab (${nLib})`)}</option>}
+            <option value="">{L('Hepsi (kayıtlı + programlar + takvim)','Everything (saved + programmes + calendar)')}</option>
             <option value="day">{L('Yalnız takvim geçmişi','Calendar history only')}</option>
           </select>
         </div>

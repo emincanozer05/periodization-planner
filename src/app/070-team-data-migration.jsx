@@ -344,12 +344,9 @@ function migrate(data){
   data.templates=data.templates.map(t=>{const s=t.session||{};
     return{...t,session:{...s,focus:Array.isArray(s.focus)?s.focus:sesFocus(s)}};});
   if(!Array.isArray(data.exercises))data.exercises=[];
-  // The Interval Timer's work/rest block, its saved intervals and the player's settings
-  // ride along with the rest of the workspace, so an interval set up on the laptop is
-  // there on the phone.
-  if(data.interval&&Array.isArray(data.interval.saved))
-    data.interval={...data.interval,saved:data.interval.saved.map((x,j)=>x&&!x.id?{...x,id:detId('iv_',j+'|'+JSON.stringify(x))}:x)};
-  data.interval=normInterval(data.interval);
+  /* The Interval Timer tab is gone (its place is the Programs tab, which keeps its records in
+     `templates` above). A workspace that still carries the timer's settings keeps them as they
+     are: nothing reads them, and rewriting them would only set the sync writing. */
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
   /* Spread the entry first so the fields this normaliser does not name survive a reload —
