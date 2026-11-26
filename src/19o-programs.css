@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (`pg-*`, 270-programs.jsx)
 
-   Solda kütüphane (Programlarım / Şablonlar, arama, türe göre süzgeç, kartlar), sağda seçili
-   programın başlığı (ad, tür çipleri, not, işlem çubuğu), özet şeridi ve takvimin seans
+   Solda kütüphane (Programlarım / Şablonlar, arama, türe göre süzgeç, kartlar). Sağda, seçili
+   kayıt yokken türe göre gruplu şablon galerisi (`pg-start`, `pg-tplc`); seçiliyken kaydın başlığı (ad, tür çipleri, not, işlem çubuğu), özet şeridi ve takvimin seans
    düzenleyicisi. "Sporculara Ata" sağdan açılan panel (`pg-asg`), "Şablon olarak kaydet" küçük
    pencere (`pg-dlg`), bildirim alttaki şerit (`pg-toast`). Renk yalnızca antrenman türünün
    işaretinde (`--tc`: kartın sol çizgisi, nokta, seçili çip); yüzeyler tema değişkenlerinden.
@@ -33,7 +33,7 @@
 .pg-ib.pri:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .pg-ib.danger:hover{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
 .pg-ib:focus-visible,.pg-card-b:focus-visible,.pg-tc:focus-visible,.pg-fc:focus-visible,.pg-day:focus-visible,.pg-ath:focus-visible,
-.pg-seg button:focus-visible,.pg-blank:focus-visible,.pg-tplc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg-seg button:focus-visible,.pg-blank:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pg-search{display:flex;align-items:center;gap:8px;padding:0 10px;height:36px;color:var(--muted);
   background:var(--k-inp,var(--bg));border:1px solid var(--k-inp-line,var(--border));border-radius:var(--pg-rs)}
 .pg-search:focus-within{border-color:var(--accent)}
@@ -85,24 +85,47 @@
 .pg-lib-empty span{font-size:12px;line-height:1.5}
 .pg-lib-empty .btn{display:inline-flex;align-items:center;gap:6px;margin-top:4px}
 
-/* ── Başlangıç (seçili program yokken) ────────────────────────────────────────── */
+/* ── Başlangıç: şablon galerisi (seçili kayıt yokken) ───────────────────────────── */
 .pg-main{min-width:0;scroll-margin-top:64px}
-.pg-start{padding:22px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r)}
-.pg-start-h{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
-.pg-start-h b{font-size:17px}
-.pg-start-h span{font-size:12.5px;color:var(--muted)}
-.pg-start-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-.pg-blank,.pg-tplc{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:118px;padding:14px;cursor:pointer;text-align:left;
-  font:inherit;color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
+.pg-start{display:flex;flex-direction:column;gap:14px;padding:20px 22px 22px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r);
+  animation:pgIn .22s var(--ease-out,ease) both}
+.pg-start-h{display:flex;align-items:flex-start;gap:12px}
+.pg-start-ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.pg-start-ht b{display:flex;align-items:center;gap:8px;font-size:18px}
+.pg-start-ht b i{font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;color:var(--accent);background:var(--accent-bg);font-variant-numeric:tabular-nums}
+.pg-start-ht span{font-size:12.5px;color:var(--muted)}
+.pg-start-new{flex:none;display:inline-flex;align-items:center;gap:6px}
+.pg-start-tools{display:flex;flex-direction:column;gap:8px}
+.pg-start-tools .pg-search{max-width:420px}
+.pg-gal-sec{display:flex;flex-direction:column;gap:8px}
+.pg-gal-h{display:flex;align-items:center;gap:7px;margin:4px 0 0;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+.pg-gal-h i{font-style:normal;font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums}
+.pg-start-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.pg-blank,.pg-tplc{color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
   transition:border-color .15s ease,transform .15s ease,background .15s ease}
-.pg-blank{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--pg-line2)}
+.pg-blank{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:118px;padding:14px;cursor:pointer;
+  font:inherit;text-align:center;border-style:dashed;border-color:var(--pg-line2)}
 .pg-blank:hover,.pg-tplc:hover{transform:translateY(-1px);border-color:var(--accent)}
-.pg-tplc{border-top:3px solid var(--tc)}
+.pg-tplc{position:relative;display:flex;flex-direction:column;min-height:124px;border-top:3px solid var(--tc)}
 .pg-tplc:hover{border-color:var(--tc)}
+.pg-tplc-b{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px 14px 10px;cursor:pointer;text-align:left;
+  font:inherit;color:inherit;background:transparent;border:0;border-radius:var(--pg-rs)}
+.pg-tplc-b:focus-visible,.pg-tplc-go:focus-visible,.pg-back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg-tplc-x{max-width:100%;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-blank-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--accent);background:var(--accent-bg)}
 .pg-blank b,.pg-tplc b{font-size:14px;line-height:1.3}
 .pg-blank em,.pg-tplc em{font-style:normal;font-size:11.5px;color:var(--muted)}
-.pg-tplc-go{margin-top:auto;font-size:11.5px;font-weight:700;color:var(--tc)}
+.pg-tplc em{margin-top:auto}
+.pg-tplc-go{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;cursor:pointer;
+  font:inherit;font-size:11.5px;font-weight:700;color:var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--tc) 35%,transparent);border-radius:999px;opacity:.75;transition:opacity .15s ease,background .15s ease}
+.pg-tplc:hover .pg-tplc-go,.pg-tplc-go:focus-visible{opacity:1}
+.pg-tplc-go:hover{background:color-mix(in srgb,var(--tc) 22%,transparent)}
+@media (hover:none){.pg-tplc-go{opacity:1}}
+.pg-back{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px 0 6px;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
+  color:var(--text2);background:transparent;border:1px solid var(--pg-line);border-radius:var(--pg-rs);transition:border-color .15s ease,color .15s ease}
+.pg-back:hover{color:var(--text);border-color:var(--pg-line2)}
+@media (max-width:560px){.pg-start{padding:16px}.pg-start-h{flex-wrap:wrap}}
 
 /* ── Düzenleyici başlığı ──────────────────────────────────────────────────────── */
 .pg-ed{display:flex;flex-direction:column;gap:12px;animation:pgIn .22s var(--ease-out,ease) both}
@@ -252,6 +275,6 @@
 .pbk-kind.lib{color:var(--accent);background:var(--accent-bg)}
 
 @media (prefers-reduced-motion:reduce){
-  .pg-ed,.pg-scrim,.pg-dlg,.pg-asg,.pg-toast{animation:none}
+  .pg-ed,.pg-start,.pg-scrim,.pg-dlg,.pg-asg,.pg-toast{animation:none}
   .pg-blank:hover,.pg-tplc:hover{transform:none}
 }
