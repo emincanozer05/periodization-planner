@@ -508,6 +508,18 @@ function PlanPhaseBar({presets,onAdd,bank,onPickSaved,onForgetSaved}){
     <LoadDistButton/>
   </div>);
 }
+/* "Kaydet" on a ready-made phase's header: puts the phase into the athlete's phase bank (the
+   list beside the phase in the bar above). Nothing is banked on its own. `state` comes from
+   phbState: 'empty' (nothing written yet), 'saved' (this exact phase is already in the bank),
+   'dirty' (can be saved). */
+function PhaseSaveBtn({state,onSave}){
+  const saved=state==='saved';
+  return(<button type="button" className={'pp-save'+(saved?' done':'')} disabled={state!=='dirty'} onClick={onSave}
+    title={saved?L('Bu faz kayıtlı — Fazlar çubuğundaki listesinde','This phase is saved — in its list on the Phases bar')
+      :state==='empty'?L('Kaydedilecek egzersiz yok','No exercises to save')
+      :L('Bu fazı kaydet — Fazlar çubuğundaki listesine eklenir, sonra tek tıkla geri eklenebilir','Save this phase — it goes into its list on the Phases bar, to add back in one click')}>
+    {saved?'✓ '+L('Kayıtlı','Saved'):L('Kaydet','Save')}</button>);
+}
 /* One phase: `cls` is its colour (pc0…pc5, or 'loose' for the tray), `name` its name with
    `onRename` to type over it (none for the tray), `count` how many exercises it holds. */
 function PlanPhase({cls,name,onRename,count,unit,folded,onFold,onClose,acts,note,children}){

@@ -309,10 +309,12 @@ function ProgramPickBtn({onPick,athId,label,title,cls}){
 /* ---- FAZ BANKASI -------------------------------------------------------------------
    Bireyselleştirme'nin Antrenman tablosunda bir sporcu için yazılan hazır fazlar (Hazırlık Bölümü,
    Ana Bölüm, Soğuma) sporcunun kaydında faz faz ayrı durur: `ath.phaseBank = {prep:[…],main:[…],cool:[…]}`,
-   her kayıt {id, date, src, at, rows:[tablo satırı…]}. Kayıt kendiliğinden olur (`phbAutoSave`): gün, seans ve
-   faz başına tek kayıt, faz değiştikçe aynı kayıt güncellenir; içeriği başka bir kayıtla birebir aynıysa ikincisi
-   tutulmaz (kayıtlı bir fazı tabloya eklemek yeni kayıt açmaz). Fazdaki satırlar sonradan silinse de kayıt
-   kalır; koç faz çubuğundaki listeden ✕ ile siler. Yazma program bankasının yolundan (`_pbWrite`). */
+   her kayıt {id, date, src, at, rows:[tablo satırı…]}. Kayıt YALNIZCA koç fazın başlığındaki "Kaydet"e
+   bastığında olur (`phbSave`); kendiliğinden kayıt yok. Gün, seans ve faz başına tek kayıt: aynı
+   seansta faz değiştirilip yeniden kaydedilirse aynı kayıt güncellenir (listenin başına geçer);
+   içeriği başka bir kayıtla birebir aynıysa ikincisi tutulmaz, düğme "Kayıtlı" der. Fazdaki satırlar
+   sonradan silinse de kayıt kalır; koç faz çubuğundaki listeden ✕ ile siler. Yazma program
+   bankasının yolundan (`_pbWrite`). */
 const PHB_KINDS=['prep','main','cool'];
 const PHB_MAX=30;
 const phbNamed=p=>!!(String(p&&p.exercise||'').trim()||String(p&&p.sets||'').trim()||String(p&&p.reps||'').trim());
@@ -321,48 +323,42 @@ const phbRows=rows=>diMovePatterns(rows).filter(phbNamed).map(p=>({...p,phase:''
 const phbSig=rows=>JSON.stringify(phbRows(rows).map(p=>[p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]));
 /* Bir fazın kayıtları, en yenisi başta; bozuk kayıt okunmaz. */
 const phbList=(bank,kind)=>((bank&&Array.isArray(bank[kind]))?bank[kind]:[]).filter(e=>e&&e.id&&Array.isArray(e.rows)&&e.rows.some(phbNamed));
-/* GÜN + SEANS BAŞINA TEK KAYIT. Kayıt yalnızca güne bağlıyken aynı sporcunun aynı gündeki iki
-   seansı (sabah / akşam) tek kaydı paylaşıyordu: iki cihazda (ya da iki sekmede) iki ayrı seans
-   açıkken her cihaz senkronla gelen hâli görünce kendi fazını o kaydın üstüne yeniden yazıyor,
-   öbürü de aynısını yapıyordu. Bu bitmeyen bir yazım döngüsüydü: her turda bütün durum
-   serileştirilip buluta gidiyor, sekme saatler içinde belleği doldurup "Out of Memory" ile
-   çöküyordu. Artık kayıt seansın anahtarını (`src`) da taşır; seanssız eski bir kayıt aynı günün
-   ilk yazan seansına geçer. */
+/* GÜN + SEANS BAŞINA TEK KAYIT: kayıt seansın anahtarını (`src`) da taşır, böylece aynı günün
+   sabah ve akşam seansları birbirinin kaydını ezmez; seanssız eski bir kayıt aynı günün ilk
+   kaydeden seansına geçer. */
 const phbSlot=(e,date,src)=>!!e&&e.date===date&&(e.src||'')===(src||'');
-function phbAutoSave(athId,date,instr,src){
-  if(!_pbWrite||!athId||!date)return;
-  const list=diMovePatterns(instr&&instr.patterns);
-  const upd={};
-  diMovePhases(instr&&instr.phases).forEach(ph=>{
-    if(!PHB_KINDS.includes(ph.preset))return;
-    const rows=phbRows(list.filter(p=>p.phase===ph.id));
-    if(rows.length)upd[ph.preset]=rows;
-  });
-  if(!Object.keys(upd).length)return;
+/* Tablodaki (`{patterns,phases}`) bir hazır fazın kaydedilecek satırları. */
+function phbRowsOf(instr,kind){
+  const ph=diMovePhases(instr&&instr.phases).find(x=>x.preset===kind);
+  return ph?phbRows(diMovePatterns(instr&&instr.patterns).filter(p=>p.phase===ph.id)):[];
+}
+/* "Kaydet" düğmesinin hâli: 'empty' (kaydedilecek satır yok), 'saved' (birebir aynısı bankada)
+   ya da 'dirty' (kaydedilebilir). */
+function phbState(bank,kind,rows){
+  if(!rows||!rows.length)return'empty';
+  const sig=phbSig(rows);
+  return phbList(bank,kind).some(e=>phbSig(e.rows)===sig)?'saved':'dirty';
+}
+function phbSave(athId,kind,rows,date,src){
+  if(!_pbWrite||!athId||!PHB_KINDS.includes(kind)||!rows||!rows.length)return;
+  const sig=phbSig(rows);
   _pbWrite(athId,a=>{
     const bank={...(a.phaseBank||{})};
-    let changed=false;
-    Object.keys(upd).forEach(k=>{
-      const cur=Array.isArray(bank[k])?bank[k]:[];
-      const rows=upd[k],sig=phbSig(rows);
-      let i=cur.findIndex(e=>phbSlot(e,date,src));
-      if(i<0&&src)i=cur.findIndex(e=>phbSlot(e,date,''));
-      if(i>=0&&phbSig(cur[i].rows)===sig)return;
-      const others=cur.filter((_,j)=>j!==i);
-      /* Aynısı başka bir günden kayıtlıysa bugünün kaydı ikinci bir kopya olmaz. */
-      if(others.some(e=>e&&phbSig(e.rows)===sig)){if(i<0)return;bank[k]=others;changed=true;return;}
-      const e={id:i>=0?cur[i].id:uid(),date,...(src?{src}:{}),at:new Date().toISOString(),rows};
-      bank[k]=[e,...others].slice(0,PHB_MAX);changed=true;
-    });
-    return changed?{phaseBank:bank}:{};
+    const cur=Array.isArray(bank[kind])?bank[kind]:[];
+    if(cur.some(e=>e&&Array.isArray(e.rows)&&phbSig(e.rows)===sig))return{};
+    let i=date?cur.findIndex(e=>phbSlot(e,date,src)):-1;
+    if(i<0&&date&&src)i=cur.findIndex(e=>phbSlot(e,date,''));
+    const e={id:i>=0?cur[i].id:uid(),...(date?{date}:{}),...(src?{src}:{}),at:new Date().toISOString(),rows:phbRows(rows)};
+    bank[kind]=[e,...cur.filter((_,j)=>j!==i)].slice(0,PHB_MAX);
+    return{phaseBank:bank};
   });
 }
 /* ---- FAZ BANKASI ↔ TAKVİM -----------------------------------------------------------
    Aynı banka sporcunun kendi takviminde (Kadro → sporcu → Takvim, ve Bireyselleştirme kartındaki
    takvim) seans yazılırken de açık: faz çubuğundaki Hazırlık Bölümü / Ana Bölüm / Soğuma'nın
    yanında kayıtlı fazların listesi; seçilen faz bloğun o bölümüne eklenir. Ters yönde de: takvimde
-   bir hazır faza yazılanlar bankaya aynı kuralla (`phbAutoSave`: gün + seans/blok başına tek kayıt,
-   birebir aynısı ikinci kez tutulmaz) kaydedilir — iki yerde yazılan fazlar tek listede durur.
+   bir hazır fazın başlığındaki "Kaydet" onu bankaya aynı kuralla (`phbSave`: gün + seans/blok başına
+   tek kayıt, birebir aynısı ikinci kez tutulmaz) yazar — iki yerde yazılan fazlar tek listede durur.
    Takvim bloğunun faz kimlikleri hazirlik / ana / soguma; bankanınki prep / main / cool. */
 const PHB_BLK={prep:'hazirlik',main:'ana',cool:'soguma'};
 const PHB_OF_BLK={hazirlik:'prep',ana:'main',soguma:'cool'};
@@ -398,15 +394,13 @@ function phbView(bank,idOf){
       return{id:e.id,title:e.date?fd(e.date):L('Kayıt','Saved'),count:rows.length,detail,
         names:names.slice(0,4).join(', ')+(names.length>4?` +${names.length-4}`:'')};})}));
 }
-/* Takvimde yazılan bir seansın hazır fazları bankaya: S&C bloğu başına, `pbToPatterns` ile
-   Bireyselleştirme tablosunun biçimine çevrilip. Kayıt anahtarı seans + blok. */
-function phbFromSession(athId,date,session){
-  if(!_pbWrite||!athId||!date||!session)return;
-  ((session.blocks)||[]).forEach(b=>{
-    if(blkKind(b)==='ball'||!blkPhases(b).some(p=>PHB_OF_BLK[p]))return;
-    const r=pbToPatterns([b],null);
-    phbAutoSave(athId,date,{patterns:r.patterns,phases:r.phases},`cal:${session.id}:${b.id}`);
-  });
+/* Takvim bloğunun bir hazır fazının (hazirlik / ana / soguma) kaydedilecek satırları: blok
+   `pbToPatterns` ile Bireyselleştirme tablosunun biçimine çevrilip o faz okunur. */
+function phbRowsOfBlock(block,blkPhase){
+  const kind=PHB_OF_BLK[blkPhase];
+  if(!kind||!block)return[];
+  const r=pbToPatterns([block],null);
+  return phbRowsOf({patterns:r.patterns,phases:r.phases},kind);
 }
 function phbForget(athId,kind,id){
   if(!_pbWrite||!athId)return;

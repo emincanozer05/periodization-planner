@@ -715,9 +715,10 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
 /* `bank` / `bankAth`: on an athlete's own calendar, the phases saved for that athlete
    (`ath.phaseBank`, 527) — the same list the Individualization table offers — and whose they
    are. The phase bar lists them beside each ready-made phase; picking one adds its exercises
-   to that phase of this block. */
+   to that phase of this block. A ready-made phase's own "Kaydet" (on its header) puts it into
+   that list, keyed by `bankDate` and this session + block; nothing is banked on its own. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd,ses,sesMoves,bank,bankAth}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,ses,sesMoves,bank,bankAth,bankDate}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -986,7 +987,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           note={g.loose?L('Henüz bir faza konmadı','Not placed in a phase yet'):null}
           acts={g.loose?phaseList.map(p=><button key={p} type="button" className={'pp-mv '+phC(p)} onClick={()=>placeLooseIn(p)}
             title={L(`Yerleştirilmemiş ${g.rows.length} satırı ${phLbl(p)} bölümüne taşı`,`Move the ${g.rows.length} unplaced row${g.rows.length!==1?'s':''} into ${phLbl(p)}`)}>
-            → {phLbl(p)}</button>):null}>
+            → {phLbl(p)}</button>)
+            :(bankView&&PHB_OF_BLK[g.phase]?(()=>{const rows=phbRowsOfBlock(block,g.phase),kind=PHB_OF_BLK[g.phase];
+              return<PhaseSaveBtn state={phbState(bank,kind,rows)}
+                onSave={()=>phbSave(bankAth,kind,rows,bankDate||'',`cal:${(session&&session.id)||''}:${block.id}`)}/>;})():null)}>
           {grid}
         </PlanPhase>);
       })}</div>
