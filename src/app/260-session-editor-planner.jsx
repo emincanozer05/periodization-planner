@@ -429,9 +429,9 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     if(sig===a.sig)return;
     a.sig=sig;
     clearTimeout(a.timer);
-    /* The ready-made phases written here go into the athlete's phase bank too — the list
-       the Individualization table and this editor's phase bar both offer (phbFromSession). */
-    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);phbFromSession(saveAth,sesDate,session);};
+    /* The ready-made phases are NOT banked here: a phase reaches the athlete's phase bank only
+       through the Save button on its own header (BlockEd → phbSave). */
+    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);};
     a.timer=setTimeout(()=>a.run&&a.run(),2000);
   },[session.blocks]);
   useEffect(()=>()=>{const a=autoRef.current;clearTimeout(a.timer);if(a.run)a.run();},[]);
@@ -511,7 +511,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
         ses={sesCtl} sesMoves={bi===0?headActs:null}
-        bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''}/>)}
+        bank={saveAth&&!isTemplate?bank:undefined} bankAth={saveAth&&!isTemplate?saveAth:''} bankDate={sesDate}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
           title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>

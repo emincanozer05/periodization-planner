@@ -33,7 +33,7 @@ function diFileToLibrary(instr){
     if(p.alt)file(t(p.alt.name),p.alt.link,'');
   });
 }
-function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
+function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved,onSavePhase}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
   /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
@@ -298,6 +298,8 @@ function DiPatternPlan({plan,onChange:emit,bank,onForgetSaved}){
       ?section('',false)
       :<>{phases.map((p,i)=><PlanPhase key={p.id} cls={'pc'+(i%PH_COLORS)} folded={folded.has(p.id)} onFold={()=>toggleFold(p.id)}
           name={diPhaseName(p)} onRename={v=>renamePhase(p.id,v)} count={list.filter(x=>x.phase===p.id).length}
+          acts={onSavePhase&&PHB_KINDS.includes(p.preset)?(()=>{const rows=phbRows(list.filter(x=>x.phase===p.id));
+            return<PhaseSaveBtn state={phbState(bank,p.preset,rows)} onSave={()=>onSavePhase(p.preset,rows)}/>;})():null}
           onClose={()=>closePhase(p.id)}>
           {section(p.id,false)}
         </PlanPhase>)}
@@ -390,26 +392,8 @@ function diTableFromClipboard(clip,instr){
 function DiInstructionForm({instr,save,athId,date,srcKey,bank}){
   const[pasted,setPasted]=useState('');
   const clip=useTableClipboard();
-  /* Each ready-made phase written here is kept for the athlete (phbAutoSave), a moment after the
-     typing stops — and at once when the card closes with a change still waiting. */
-  const phbPending=useRef(null);
-  /* What this card last handed to the bank. `instr` is rebuilt on every change of the state —
-     each snapshot the cloud sync applies too — so the effect below wakes far more often than
-     the table changes. Only a table that reads differently from the one already handed over is
-     saved: a write arriving from another device (or a saved phase the coach just deleted) does
-     not make this card write its phases again. */
-  const phbDone=useRef('');
-  /* Declared first so its cleanup runs before the timer's: another athlete or day keeps the edit pending for this one. */
-  useEffect(()=>()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},[athId,date,srcKey]);
-  useEffect(()=>{
-    const key=[athId,date,srcKey||'',JSON.stringify(diMovePhases(instr.phases).map(p=>[p.id,p.preset])),
-      JSON.stringify(diMovePatterns(instr.patterns).map(p=>[p.phase,p.id,p.exercise,p.sets,p.reps,p.duration,p.tempo,
-        p.rpe,p.load,p.rest,p.superset,p.note,p.alt&&p.alt.name]))].join('|');
-    if(key===phbDone.current){phbPending.current=null;return;}
-    phbPending.current=()=>{phbDone.current=key;phbAutoSave(athId,date,instr,srcKey||'');};
-    const t=setTimeout(()=>{const f=phbPending.current;phbPending.current=null;if(f)f();},900);
-    return()=>clearTimeout(t);
-  },[athId,date,srcKey,instr.patterns,instr.phases]);
+  /* A ready-made phase reaches the athlete's phase bank only through the Save button on its
+     header (DiPatternPlan → phbSave); nothing is banked on its own. */
   const copyTable=()=>{
     const c=diTableToClipboard(instr);
     copyTableToClipboard(c);
@@ -460,7 +444,8 @@ function DiInstructionForm({instr,save,athId,date,srcKey,bank}){
           'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan key={tableKey} plan={{patterns:instr.patterns,phases:instr.phases}}
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}
-          bank={bank} onForgetSaved={(kind,id)=>phbForget(athId,kind,id)}/></div>
+          bank={bank} onForgetSaved={(kind,id)=>phbForget(athId,kind,id)}
+          onSavePhase={athId&&date?((kind,rows)=>phbSave(athId,kind,rows,date,srcKey||'')):undefined}/></div>
       </div>
     </div>
   </div>);
