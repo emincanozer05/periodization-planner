@@ -11290,8 +11290,8 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 /* ═══════════════════════════════════════════════════════════════════════════
    PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (`pg-*`, 270-programs.jsx)
 
-   Solda kütüphane (Programlarım / Şablonlar, arama, türe göre süzgeç, kartlar), sağda seçili
-   programın başlığı (ad, tür çipleri, not, işlem çubuğu), özet şeridi ve takvimin seans
+   Solda kütüphane (Programlarım / Şablonlar, arama, türe göre süzgeç, kartlar). Sağda, seçili
+   kayıt yokken türe göre gruplu şablon galerisi (`pg-start`, `pg-tplc`); seçiliyken kaydın başlığı (ad, tür çipleri, not, işlem çubuğu), özet şeridi ve takvimin seans
    düzenleyicisi. "Sporculara Ata" sağdan açılan panel (`pg-asg`), "Şablon olarak kaydet" küçük
    pencere (`pg-dlg`), bildirim alttaki şerit (`pg-toast`). Renk yalnızca antrenman türünün
    işaretinde (`--tc`: kartın sol çizgisi, nokta, seçili çip); yüzeyler tema değişkenlerinden.
@@ -11322,7 +11322,7 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 .pg-ib.pri:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .pg-ib.danger:hover{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
 .pg-ib:focus-visible,.pg-card-b:focus-visible,.pg-tc:focus-visible,.pg-fc:focus-visible,.pg-day:focus-visible,.pg-ath:focus-visible,
-.pg-seg button:focus-visible,.pg-blank:focus-visible,.pg-tplc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg-seg button:focus-visible,.pg-blank:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pg-search{display:flex;align-items:center;gap:8px;padding:0 10px;height:36px;color:var(--muted);
   background:var(--k-inp,var(--bg));border:1px solid var(--k-inp-line,var(--border));border-radius:var(--pg-rs)}
 .pg-search:focus-within{border-color:var(--accent)}
@@ -11374,24 +11374,47 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 .pg-lib-empty span{font-size:12px;line-height:1.5}
 .pg-lib-empty .btn{display:inline-flex;align-items:center;gap:6px;margin-top:4px}
 
-/* ── Başlangıç (seçili program yokken) ────────────────────────────────────────── */
+/* ── Başlangıç: şablon galerisi (seçili kayıt yokken) ───────────────────────────── */
 .pg-main{min-width:0;scroll-margin-top:64px}
-.pg-start{padding:22px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r)}
-.pg-start-h{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
-.pg-start-h b{font-size:17px}
-.pg-start-h span{font-size:12.5px;color:var(--muted)}
-.pg-start-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-.pg-blank,.pg-tplc{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:118px;padding:14px;cursor:pointer;text-align:left;
-  font:inherit;color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
+.pg-start{display:flex;flex-direction:column;gap:14px;padding:20px 22px 22px;background:var(--pg-card);border:1px solid var(--pg-line);border-radius:var(--pg-r);
+  animation:pgIn .22s var(--ease-out,ease) both}
+.pg-start-h{display:flex;align-items:flex-start;gap:12px}
+.pg-start-ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.pg-start-ht b{display:flex;align-items:center;gap:8px;font-size:18px}
+.pg-start-ht b i{font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;color:var(--accent);background:var(--accent-bg);font-variant-numeric:tabular-nums}
+.pg-start-ht span{font-size:12.5px;color:var(--muted)}
+.pg-start-new{flex:none;display:inline-flex;align-items:center;gap:6px}
+.pg-start-tools{display:flex;flex-direction:column;gap:8px}
+.pg-start-tools .pg-search{max-width:420px}
+.pg-gal-sec{display:flex;flex-direction:column;gap:8px}
+.pg-gal-h{display:flex;align-items:center;gap:7px;margin:4px 0 0;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+.pg-gal-h i{font-style:normal;font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums}
+.pg-start-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.pg-blank,.pg-tplc{color:var(--text);background:var(--pg-box);border:1px solid var(--pg-line);border-radius:var(--pg-rs);
   transition:border-color .15s ease,transform .15s ease,background .15s ease}
-.pg-blank{align-items:center;justify-content:center;text-align:center;border-style:dashed;border-color:var(--pg-line2)}
+.pg-blank{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:118px;padding:14px;cursor:pointer;
+  font:inherit;text-align:center;border-style:dashed;border-color:var(--pg-line2)}
 .pg-blank:hover,.pg-tplc:hover{transform:translateY(-1px);border-color:var(--accent)}
-.pg-tplc{border-top:3px solid var(--tc)}
+.pg-tplc{position:relative;display:flex;flex-direction:column;min-height:124px;border-top:3px solid var(--tc)}
 .pg-tplc:hover{border-color:var(--tc)}
+.pg-tplc-b{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px 14px 10px;cursor:pointer;text-align:left;
+  font:inherit;color:inherit;background:transparent;border:0;border-radius:var(--pg-rs)}
+.pg-tplc-b:focus-visible,.pg-tplc-go:focus-visible,.pg-back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg-tplc-x{max-width:100%;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-blank-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--accent);background:var(--accent-bg)}
 .pg-blank b,.pg-tplc b{font-size:14px;line-height:1.3}
 .pg-blank em,.pg-tplc em{font-style:normal;font-size:11.5px;color:var(--muted)}
-.pg-tplc-go{margin-top:auto;font-size:11.5px;font-weight:700;color:var(--tc)}
+.pg-tplc em{margin-top:auto}
+.pg-tplc-go{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;cursor:pointer;
+  font:inherit;font-size:11.5px;font-weight:700;color:var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--tc) 35%,transparent);border-radius:999px;opacity:.75;transition:opacity .15s ease,background .15s ease}
+.pg-tplc:hover .pg-tplc-go,.pg-tplc-go:focus-visible{opacity:1}
+.pg-tplc-go:hover{background:color-mix(in srgb,var(--tc) 22%,transparent)}
+@media (hover:none){.pg-tplc-go{opacity:1}}
+.pg-back{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px 0 6px;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
+  color:var(--text2);background:transparent;border:1px solid var(--pg-line);border-radius:var(--pg-rs);transition:border-color .15s ease,color .15s ease}
+.pg-back:hover{color:var(--text);border-color:var(--pg-line2)}
+@media (max-width:560px){.pg-start{padding:16px}.pg-start-h{flex-wrap:wrap}}
 
 /* ── Düzenleyici başlığı ──────────────────────────────────────────────────────── */
 .pg-ed{display:flex;flex-direction:column;gap:12px;animation:pgIn .22s var(--ease-out,ease) both}
@@ -11541,7 +11564,7 @@ select.ses-type-sel option{background:#1b1e24;color:#fff;text-transform:none;let
 .pbk-kind.lib{color:var(--accent);background:var(--accent-bg)}
 
 @media (prefers-reduced-motion:reduce){
-  .pg-ed,.pg-scrim,.pg-dlg,.pg-asg,.pg-toast{animation:none}
+  .pg-ed,.pg-start,.pg-scrim,.pg-dlg,.pg-asg,.pg-toast{animation:none}
   .pg-blank:hover,.pg-tplc:hover{transform:none}
 }
 </style>
@@ -26636,7 +26659,9 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
 /* =========================================================
    PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (eski Interval Zamanlayıcı'nın yeri)
    =========================================================
-   Üç iş, tek ekranda:
+   Açılışta ortada ŞABLON GALERİSİ durur (türe göre gruplu, arama + süzgeç); bir kayda
+   (galeriden ya da soldaki kütüphaneden) tıklanınca içeriği ortada açılır, "← Şablonlar"
+   galeriye döner. Üç iş, tek ekranda:
      • PROGRAM YAZ — takvimin kendi seans düzenleyicisiyle (`SessEd`, 260): bloklar, fazlar,
        hareket paterni tablosu, antrenman özellikleri. Program bir tarihe bağlı değildir.
      • ŞABLON OLARAK SAKLA — programın kopyası, antrenman türüyle (Kuvvet, Güç, Kondisyon…)
@@ -26775,6 +26800,7 @@ const PG_IC={
   check:<><path d="M5 12.5l4.5 4.5L19 7.5"/></>,
   x:<><path d="M6 6l12 12"/><path d="M18 6L6 18"/></>,
   bolt:<><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></>,
+  back:<><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></>,
 };
 
 /* ---- Liste kartı ---------------------------------------------------------------- */
@@ -26959,6 +26985,62 @@ function PgAssign({prog,athletes,onClose,onAssign}){
   </div>,document.body);
 }
 
+/* ---- Şablon galerisi (ana ekran: seçili kayıt yokken) ----------------------------------
+   Bütün şablonlar türüne göre gruplu; arama ve tür süzgeci. Karta tıklamak şablonu ortada
+   açar (içeriği görülür, düzenlenebilir); "Kullan" ondan yeni bir program kopyası açar. */
+function PgGallery({tpls,onOpen,onUse,onBlank}){
+  const[q,setQ]=useState('');
+  const[ft,setFt]=useState('');
+  const count=useMemo(()=>{const m={};tpls.forEach(p=>{const k=p.type||'';m[k]=(m[k]||0)+1;});return m;},[tpls]);
+  const qn=phNorm(q).split(/\s+/).filter(Boolean);
+  const shown=tpls.filter(p=>(!ft||(p.type||'')===(ft==='_none'?'':ft))&&
+    (!qn.length||(()=>{const t=phNorm([pgName(p),pgTypeLbl(p.type),p.note||'',...pgStats(p).names].join(' '));return qn.every(x=>t.includes(x));})()));
+  /* Süzgeç yokken türe göre bölümler (PG_TYPES sırası, türsüzler sonda). */
+  const groups=ft?[{id:ft,items:shown}]
+    :[...PG_TYPES.map(t=>t.id),''].map(id=>({id,items:shown.filter(p=>(PG_TYPE_BY[p.type]?p.type:'')===id)})).filter(g=>g.items.length);
+  const card=t=>{const s=pgStats(t);const first=s.names.slice(0,3).join(' · ');
+    return<div key={t.id} className="pg-tplc" style={{'--tc':pgTypeCol(t.type)}}>
+      <button type="button" className="pg-tplc-b" onClick={()=>onOpen(t.id)} title={L('Şablonu aç','Open template')}>
+        <span className="pg-card-top"><span className="pg-tdot" aria-hidden="true"/><span className="pg-card-t">{pgTypeLbl(t.type)}</span></span>
+        <b>{pgName(t)||L('Adsız şablon','Untitled template')}</b>
+        <span className="pg-tplc-x">{first||L('Henüz egzersiz yok','No exercises yet')}{s.names.length>3?` +${s.names.length-3}`:''}</span>
+        <em>{s.ex} {L('egzersiz',s.ex===1?'exercise':'exercises')} · {s.blocks} {L('blok',s.blocks===1?'block':'blocks')}{s.dur?` · ${s.dur} ${L('dk','min')}`:''}</em>
+      </button>
+      <button type="button" className="pg-tplc-go" onClick={()=>onUse(t)} title={L('Bu şablondan yeni program aç','New programme from this template')}>
+        <PgIc d={PG_IC.bolt} size={12}/>{L('Kullan','Use')}</button>
+    </div>;};
+  return(<div className="pg-start">
+    <div className="pg-start-h">
+      <div className="pg-start-ht">
+        <b>{L('Şablonlar','Templates')}<i>{tpls.length}</i></b>
+        <span>{L('Bir şablona tıkla, içeriği burada açılsın. "Kullan" ondan yeni bir program oluşturur.','Click a template to open it here. "Use" makes a new programme from it.')}</span>
+      </div>
+      <button type="button" className="btn sec sm pg-start-new" onClick={onBlank}><PgIc d={PG_IC.plus} size={14}/>{L('Boş program','Blank programme')}</button>
+    </div>
+    {tpls.length>0&&<div className="pg-start-tools">
+      <div className="pg-search"><PgIc d={PG_IC.search} size={14}/>
+        <input type="search" value={q} onChange={e=>setQ(e.target.value)} aria-label={L('Şablon ara','Search templates')}
+          placeholder={L('Şablon ya da egzersiz ara…','Search templates or exercises…')}/></div>
+      <div className="pg-filt">
+        <button type="button" className={'pg-fc'+(!ft?' on':'')} onClick={()=>setFt('')}>{L('Tümü','All')}<i>{tpls.length}</i></button>
+        {PG_TYPES.filter(t=>count[t.id]).map(t=><button key={t.id} type="button" className={'pg-fc'+(ft===t.id?' on':'')}
+          style={{'--tc':t.c}} onClick={()=>setFt(ft===t.id?'':t.id)}><span className="pg-tdot" aria-hidden="true"/>{L(t.tr,t.en)}<i>{count[t.id]}</i></button>)}
+        {count['']>0&&<button type="button" className={'pg-fc'+(ft==='_none'?' on':'')} onClick={()=>setFt(ft==='_none'?'':'_none')}>{L('Türsüz','Untyped')}<i>{count['']}</i></button>}
+      </div>
+    </div>}
+    {tpls.length===0&&<div className="pg-start-g">
+      <button type="button" className="pg-blank" onClick={onBlank}>
+        <span className="pg-blank-ic"><PgIc d={PG_IC.plus} size={22}/></span>
+        <b>{L('Boş program','Blank programme')}</b><em>{L('Henüz şablon yok — bir programı "Şablon olarak kaydet" ile buraya ekle.','No templates yet — add one with "Save as template" on a programme.')}</em></button>
+    </div>}
+    {groups.map(g=><section key={g.id||'_none'} className="pg-gal-sec" style={{'--tc':pgTypeCol(g.id==='_none'?'':g.id)}}>
+      {!ft&&<h3 className="pg-gal-h"><span className="pg-tdot" aria-hidden="true"/>{pgTypeLbl(g.id)}<i>{g.items.length}</i></h3>}
+      <div className="pg-start-g">{g.items.map(card)}</div>
+    </section>)}
+    {tpls.length>0&&shown.length===0&&<div className="pg-none">{L('Bu süzgece uyan şablon yok.','No template matches this filter.')}</div>}
+  </div>);
+}
+
 /* ---- Sekme ---------------------------------------------------------------------- */
 function ProgramsView({data,setData,team,updateTeam}){
   const all=useMemo(()=>(Array.isArray(data.templates)?data.templates:[]).filter(p=>p&&p.id),[data.templates]);
@@ -26967,7 +27049,8 @@ function ProgramsView({data,setData,team,updateTeam}){
   const[tab,setTab]=useState(()=>progs.length||!tpls.length?'prog':'tpl');
   const[q,setQ]=useState('');
   const[ft,setFt]=useState('');
-  const[selId,setSelId]=useState(()=>(progs[0]||tpls[0]||{}).id||null);
+  /* Açılışta hiçbir kayıt açık değil: ortada şablon galerisi durur, tıklanan kayıt orada açılır. */
+  const[selId,setSelId]=useState(null);
   const[asgId,setAsgId]=useState(null);
   const[tplOpen,setTplOpen]=useState(false);
   const[toast,setToast]=useState(null);
@@ -27068,25 +27151,12 @@ function ProgramsView({data,setData,team,updateTeam}){
 
       {/* ---- Düzenleyici ---- */}
       <section className="pg-main" ref={mainRef}>
-        {!sel?<div className="pg-start">
-          <div className="pg-start-h">
-            <b>{L('Bir programla başla','Start with a programme')}</b>
-            <span>{L('Boş bir program aç ya da türüne göre kayıtlı bir şablondan kopyasını oluştur.','Open a blank programme, or make a copy of a saved template by type.')}</span>
-          </div>
-          <div className="pg-start-g">
-            <button type="button" className="pg-blank" onClick={()=>newProg('')}>
-              <span className="pg-blank-ic"><PgIc d={PG_IC.plus} size={22}/></span>
-              <b>{L('Boş program','Blank programme')}</b><em>{L('Bloklar, fazlar, egzersizler','Blocks, phases, exercises')}</em></button>
-            {tpls.slice(0,7).map(t=>{const s=pgStats(t);return<button key={t.id} type="button" className="pg-tplc" style={{'--tc':pgTypeCol(t.type)}} onClick={()=>fromTpl(t)}>
-              <span className="pg-card-top"><span className="pg-tdot" aria-hidden="true"/><span className="pg-card-t">{pgTypeLbl(t.type)}</span></span>
-              <b>{pgName(t)||L('Adsız şablon','Untitled template')}</b>
-              <em>{s.ex} {L('egzersiz','exercises')} · {s.blocks} {L('blok','blocks')}</em>
-              <span className="pg-tplc-go">{L('Bu şablondan başla','Start from this')} →</span></button>;})}
-          </div>
-        </div>
+        {!sel?<PgGallery tpls={tpls} onOpen={open} onUse={fromTpl} onBlank={()=>newProg('')}/>
         :<div className="pg-ed" style={{'--tc':pgTypeCol(sel.type)}} key={sel.id}>
           <div className="pg-head">
             <div className="pg-head-top">
+              <button type="button" className="pg-back" onClick={()=>setSelId(null)} title={L('Şablon galerisine dön','Back to the template gallery')}>
+                <PgIc d={PG_IC.back} size={14}/>{L('Şablonlar','Templates')}</button>
               <span className={'pg-kind'+(isTpl?' tpl':'')}>{isTpl?L('ŞABLON','TEMPLATE'):L('PROGRAM','PROGRAMME')}</span>
               <span className="pg-head-ago">{L('Güncellendi','Updated')} {pgAgo(sel.updated_at||sel.created_at)}</span>
               <span className="pg-head-sp"/>

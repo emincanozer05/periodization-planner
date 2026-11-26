@@ -1,7 +1,9 @@
 /* =========================================================
    PROGRAMLAR — kenar çubuğundaki "Programlar" sekmesi (eski Interval Zamanlayıcı'nın yeri)
    =========================================================
-   Üç iş, tek ekranda:
+   Açılışta ortada ŞABLON GALERİSİ durur (türe göre gruplu, arama + süzgeç); bir kayda
+   (galeriden ya da soldaki kütüphaneden) tıklanınca içeriği ortada açılır, "← Şablonlar"
+   galeriye döner. Üç iş, tek ekranda:
      • PROGRAM YAZ — takvimin kendi seans düzenleyicisiyle (`SessEd`, 260): bloklar, fazlar,
        hareket paterni tablosu, antrenman özellikleri. Program bir tarihe bağlı değildir.
      • ŞABLON OLARAK SAKLA — programın kopyası, antrenman türüyle (Kuvvet, Güç, Kondisyon…)
@@ -140,6 +142,7 @@ const PG_IC={
   check:<><path d="M5 12.5l4.5 4.5L19 7.5"/></>,
   x:<><path d="M6 6l12 12"/><path d="M18 6L6 18"/></>,
   bolt:<><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></>,
+  back:<><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></>,
 };
 
 /* ---- Liste kartı ---------------------------------------------------------------- */
@@ -324,6 +327,62 @@ function PgAssign({prog,athletes,onClose,onAssign}){
   </div>,document.body);
 }
 
+/* ---- Şablon galerisi (ana ekran: seçili kayıt yokken) ----------------------------------
+   Bütün şablonlar türüne göre gruplu; arama ve tür süzgeci. Karta tıklamak şablonu ortada
+   açar (içeriği görülür, düzenlenebilir); "Kullan" ondan yeni bir program kopyası açar. */
+function PgGallery({tpls,onOpen,onUse,onBlank}){
+  const[q,setQ]=useState('');
+  const[ft,setFt]=useState('');
+  const count=useMemo(()=>{const m={};tpls.forEach(p=>{const k=p.type||'';m[k]=(m[k]||0)+1;});return m;},[tpls]);
+  const qn=phNorm(q).split(/\s+/).filter(Boolean);
+  const shown=tpls.filter(p=>(!ft||(p.type||'')===(ft==='_none'?'':ft))&&
+    (!qn.length||(()=>{const t=phNorm([pgName(p),pgTypeLbl(p.type),p.note||'',...pgStats(p).names].join(' '));return qn.every(x=>t.includes(x));})()));
+  /* Süzgeç yokken türe göre bölümler (PG_TYPES sırası, türsüzler sonda). */
+  const groups=ft?[{id:ft,items:shown}]
+    :[...PG_TYPES.map(t=>t.id),''].map(id=>({id,items:shown.filter(p=>(PG_TYPE_BY[p.type]?p.type:'')===id)})).filter(g=>g.items.length);
+  const card=t=>{const s=pgStats(t);const first=s.names.slice(0,3).join(' · ');
+    return<div key={t.id} className="pg-tplc" style={{'--tc':pgTypeCol(t.type)}}>
+      <button type="button" className="pg-tplc-b" onClick={()=>onOpen(t.id)} title={L('Şablonu aç','Open template')}>
+        <span className="pg-card-top"><span className="pg-tdot" aria-hidden="true"/><span className="pg-card-t">{pgTypeLbl(t.type)}</span></span>
+        <b>{pgName(t)||L('Adsız şablon','Untitled template')}</b>
+        <span className="pg-tplc-x">{first||L('Henüz egzersiz yok','No exercises yet')}{s.names.length>3?` +${s.names.length-3}`:''}</span>
+        <em>{s.ex} {L('egzersiz',s.ex===1?'exercise':'exercises')} · {s.blocks} {L('blok',s.blocks===1?'block':'blocks')}{s.dur?` · ${s.dur} ${L('dk','min')}`:''}</em>
+      </button>
+      <button type="button" className="pg-tplc-go" onClick={()=>onUse(t)} title={L('Bu şablondan yeni program aç','New programme from this template')}>
+        <PgIc d={PG_IC.bolt} size={12}/>{L('Kullan','Use')}</button>
+    </div>;};
+  return(<div className="pg-start">
+    <div className="pg-start-h">
+      <div className="pg-start-ht">
+        <b>{L('Şablonlar','Templates')}<i>{tpls.length}</i></b>
+        <span>{L('Bir şablona tıkla, içeriği burada açılsın. "Kullan" ondan yeni bir program oluşturur.','Click a template to open it here. "Use" makes a new programme from it.')}</span>
+      </div>
+      <button type="button" className="btn sec sm pg-start-new" onClick={onBlank}><PgIc d={PG_IC.plus} size={14}/>{L('Boş program','Blank programme')}</button>
+    </div>
+    {tpls.length>0&&<div className="pg-start-tools">
+      <div className="pg-search"><PgIc d={PG_IC.search} size={14}/>
+        <input type="search" value={q} onChange={e=>setQ(e.target.value)} aria-label={L('Şablon ara','Search templates')}
+          placeholder={L('Şablon ya da egzersiz ara…','Search templates or exercises…')}/></div>
+      <div className="pg-filt">
+        <button type="button" className={'pg-fc'+(!ft?' on':'')} onClick={()=>setFt('')}>{L('Tümü','All')}<i>{tpls.length}</i></button>
+        {PG_TYPES.filter(t=>count[t.id]).map(t=><button key={t.id} type="button" className={'pg-fc'+(ft===t.id?' on':'')}
+          style={{'--tc':t.c}} onClick={()=>setFt(ft===t.id?'':t.id)}><span className="pg-tdot" aria-hidden="true"/>{L(t.tr,t.en)}<i>{count[t.id]}</i></button>)}
+        {count['']>0&&<button type="button" className={'pg-fc'+(ft==='_none'?' on':'')} onClick={()=>setFt(ft==='_none'?'':'_none')}>{L('Türsüz','Untyped')}<i>{count['']}</i></button>}
+      </div>
+    </div>}
+    {tpls.length===0&&<div className="pg-start-g">
+      <button type="button" className="pg-blank" onClick={onBlank}>
+        <span className="pg-blank-ic"><PgIc d={PG_IC.plus} size={22}/></span>
+        <b>{L('Boş program','Blank programme')}</b><em>{L('Henüz şablon yok — bir programı "Şablon olarak kaydet" ile buraya ekle.','No templates yet — add one with "Save as template" on a programme.')}</em></button>
+    </div>}
+    {groups.map(g=><section key={g.id||'_none'} className="pg-gal-sec" style={{'--tc':pgTypeCol(g.id==='_none'?'':g.id)}}>
+      {!ft&&<h3 className="pg-gal-h"><span className="pg-tdot" aria-hidden="true"/>{pgTypeLbl(g.id)}<i>{g.items.length}</i></h3>}
+      <div className="pg-start-g">{g.items.map(card)}</div>
+    </section>)}
+    {tpls.length>0&&shown.length===0&&<div className="pg-none">{L('Bu süzgece uyan şablon yok.','No template matches this filter.')}</div>}
+  </div>);
+}
+
 /* ---- Sekme ---------------------------------------------------------------------- */
 function ProgramsView({data,setData,team,updateTeam}){
   const all=useMemo(()=>(Array.isArray(data.templates)?data.templates:[]).filter(p=>p&&p.id),[data.templates]);
@@ -332,7 +391,8 @@ function ProgramsView({data,setData,team,updateTeam}){
   const[tab,setTab]=useState(()=>progs.length||!tpls.length?'prog':'tpl');
   const[q,setQ]=useState('');
   const[ft,setFt]=useState('');
-  const[selId,setSelId]=useState(()=>(progs[0]||tpls[0]||{}).id||null);
+  /* Açılışta hiçbir kayıt açık değil: ortada şablon galerisi durur, tıklanan kayıt orada açılır. */
+  const[selId,setSelId]=useState(null);
   const[asgId,setAsgId]=useState(null);
   const[tplOpen,setTplOpen]=useState(false);
   const[toast,setToast]=useState(null);
@@ -433,25 +493,12 @@ function ProgramsView({data,setData,team,updateTeam}){
 
       {/* ---- Düzenleyici ---- */}
       <section className="pg-main" ref={mainRef}>
-        {!sel?<div className="pg-start">
-          <div className="pg-start-h">
-            <b>{L('Bir programla başla','Start with a programme')}</b>
-            <span>{L('Boş bir program aç ya da türüne göre kayıtlı bir şablondan kopyasını oluştur.','Open a blank programme, or make a copy of a saved template by type.')}</span>
-          </div>
-          <div className="pg-start-g">
-            <button type="button" className="pg-blank" onClick={()=>newProg('')}>
-              <span className="pg-blank-ic"><PgIc d={PG_IC.plus} size={22}/></span>
-              <b>{L('Boş program','Blank programme')}</b><em>{L('Bloklar, fazlar, egzersizler','Blocks, phases, exercises')}</em></button>
-            {tpls.slice(0,7).map(t=>{const s=pgStats(t);return<button key={t.id} type="button" className="pg-tplc" style={{'--tc':pgTypeCol(t.type)}} onClick={()=>fromTpl(t)}>
-              <span className="pg-card-top"><span className="pg-tdot" aria-hidden="true"/><span className="pg-card-t">{pgTypeLbl(t.type)}</span></span>
-              <b>{pgName(t)||L('Adsız şablon','Untitled template')}</b>
-              <em>{s.ex} {L('egzersiz','exercises')} · {s.blocks} {L('blok','blocks')}</em>
-              <span className="pg-tplc-go">{L('Bu şablondan başla','Start from this')} →</span></button>;})}
-          </div>
-        </div>
+        {!sel?<PgGallery tpls={tpls} onOpen={open} onUse={fromTpl} onBlank={()=>newProg('')}/>
         :<div className="pg-ed" style={{'--tc':pgTypeCol(sel.type)}} key={sel.id}>
           <div className="pg-head">
             <div className="pg-head-top">
+              <button type="button" className="pg-back" onClick={()=>setSelId(null)} title={L('Şablon galerisine dön','Back to the template gallery')}>
+                <PgIc d={PG_IC.back} size={14}/>{L('Şablonlar','Templates')}</button>
               <span className={'pg-kind'+(isTpl?' tpl':'')}>{isTpl?L('ŞABLON','TEMPLATE'):L('PROGRAM','PROGRAMME')}</span>
               <span className="pg-head-ago">{L('Güncellendi','Updated')} {pgAgo(sel.updated_at||sel.created_at)}</span>
               <span className="pg-head-sp"/>
